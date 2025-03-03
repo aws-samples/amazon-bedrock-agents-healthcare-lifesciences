@@ -13,9 +13,10 @@ Multi-Agent Notebook Deployment Steps:
 
 Step 1: Click the 'Launch Stack' button located in the [Deployment](#deployment) section to deploy the underlying AWS infrastructure
 
-Step 2: Go to a SageMaker Studio JupyterLab environment in your AWS account and clone this repository in a terminal
+Step 2: Go to a SageMaker Notebook instance in your AWS account and clone this repository in a terminal
 
 ```bash
+cd SageMaker/
 git clone https://github.com/aws-samples/amazon-bedrock-agents-cancer-biomarker-discovery.git
 ```
 
@@ -27,7 +28,7 @@ cd amazon-bedrock-agents-cancer-biomarker-discovery
 git checkout multi-agent-collaboration
 ```
 
-Step 4: Navigate to multi_agent_development/0-Notebook-environment/ and go to setup_environment.ipynb, use the Python 3 (ipykernel)
+Step 4: Navigate to the agents_catalog/0-Notebook-environment/ and go to setup_environment.ipynb, use the Python 3 (ipykernel)
 
 Step 5: Proceed to build each agent using the notebooks
 
