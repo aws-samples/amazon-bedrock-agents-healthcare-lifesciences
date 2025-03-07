@@ -5,3 +5,4 @@ opensearch-py
 retrying
 termcolor 
 rich
+datasets
