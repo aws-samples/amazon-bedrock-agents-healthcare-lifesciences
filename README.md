@@ -159,7 +159,7 @@ Here is an example chain of thought sequence with the agent. 11 questions are li
 4. Access the UI:
    1. Navigate to AWS CloudFormation via AWS Console search
    2. Click the Streamlit nested stack (format: `<stackname>-StreamlitBuildNestedStack-<123ABCXXXX>`)
-   3. In the Outputs tab, find and click the StreamlitAppURL link
+   3. In the Outputs tab, find the CloudFrontURL link and add 'https://' to the beginning of the URL and paste in your browser
 
 
 ## Contributing Guidelines
