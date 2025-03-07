@@ -44,6 +44,8 @@ Step 4: Navigate to agents_catalog/0-Notebook-environment/ and go to setup_envir
 
 Step 5: Proceed to build each agent using the notebooks
 
+Step 6: If you are interested in deploying the Biomarker Supervisor Agent that leverages the Bedrock multi-agent collaboration feature, go to the multi_agent_orchestration/ folder of this repository and follow instructions there
+
 ## Overview
 The success rate for Phase I oncology clinical trials is significantly low. According to a study published in Nature Reviews Drug Discovery, the overall success rate for oncology drugs from Phase I to approval is around 5%, indicating a high failure rate of approximately 95%. 
 
