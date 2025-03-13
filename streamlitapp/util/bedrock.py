@@ -87,7 +87,8 @@ class BedrockAgent:
                 agentId=self.agent_id,
                 agentAliasId=self.agent_alias_id,
                 sessionId=st.session_state["SESSION_ID"],
-                enableTrace=True
+                enableTrace=True,
+                sessionState={"sessionAttributes": {"bucketname": self.s3_bucket_name}}
             )
 
             for event in response["completion"]:
