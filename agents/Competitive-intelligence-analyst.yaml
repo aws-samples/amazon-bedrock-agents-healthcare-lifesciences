@@ -9,10 +9,19 @@ Metadata:
           - TavilyApiKey
 
 Parameters:
-  AgentName:
+  EnvironmentName:
     Type: String
-    Default: CompetitiveIntelligenceAgent
-    Description: The name of the agent to create.
+    Description: The unique EnvironmentName for the application
+    Default: env1
+  S3Bucket:
+    Type: String
+    Description: The S3 bucket containing the lambda function for the agent
+  DevMode:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
   BedrockModelId:
     Type: String
     Description: The ID of the Foundation Model to use for the Agent
@@ -28,6 +37,7 @@ Parameters:
 
 Conditions:
   HasTavilyApiKey: !Not [!Equals [!Ref TavilyApiKey, ""]]
+  CreateAgentResources: !Equals [!Ref DevMode, "false"]
 
 Resources:
   #####################
@@ -53,18 +63,19 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       Runtime: python3.12
-      # FunctionName: web_search
       Handler: index.lambda_handler
       Role: !GetAtt WebSearchLambdaRole.Arn
-      Timeout: 300
+      Timeout: 30
+      MemorySize: 128
       Environment:
         Variables:
-          LOG_LEVEL: "DEBUG"
           ACTION_GROUP: "WebSearchActionGroup"
           TAVILY_API_KEY_NAME: !Sub
             - "TAVILY_API_KEY_${StackId}"
             - StackId: !Select [2, !Split ["/", !Ref AWS::StackId]]
-      Code: "WebSearchLambda"
+      Code:
+        S3Bucket: !Ref S3Bucket
+        S3Key: web-search.zip
 
   WebSearchLambdaRole:
     Type: AWS::IAM::Role
@@ -113,10 +124,10 @@ Resources:
   ##### Agent #####
   ###################
 
-  Agent:
+  CompetitiveIntelligenceAnalyst:
     Type: AWS::Bedrock::Agent
     Properties:
-      AgentName: !Ref AgentName
+      AgentName: !Sub Competitive-intelligence-researcher-${EnvironmentName}
       AgentResourceRoleArn: !Ref AgentRole
       AutoPrepare: True
       FoundationModel: !Ref BedrockModelId
@@ -163,6 +174,7 @@ Resources:
 
   AgentAliasResource:
     Type: AWS::Bedrock::AgentAlias
+    Condition: CreateAgentResources
     Properties:
-      AgentId: !GetAtt Agent.AgentId
-      AgentAliasName: !Sub ${AgentName}Alias
+      AgentId: !GetAtt CompetitiveIntelligenceAnalyst.AgentId
+      AgentAliasName: CompetitiveIntelligenceAnalystAlias
