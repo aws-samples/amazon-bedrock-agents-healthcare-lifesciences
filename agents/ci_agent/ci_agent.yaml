@@ -1,0 +1,168 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Creates the competitive intelligence agent.
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Web Search API keys
+        Parameters:
+          - TavilyApiKey
+
+Parameters:
+  AgentName:
+    Type: String
+    Default: CompetitiveIntelligenceAgent
+    Description: The name of the agent to create.
+  BedrockModelId:
+    Type: String
+    Description: The ID of the Foundation Model to use for the Agent
+    Default: amazon.nova-pro-v1:0
+  AgentRole:
+    Type: String
+    Description: The arn for the agent
+  TavilyApiKey:
+    Type: String
+    NoEcho: true
+    Description: Provide TavilyApiKey API Key to utilize /web_search path
+    MinLength: 1
+
+Conditions:
+  HasTavilyApiKey: !Not [!Equals [!Ref TavilyApiKey, ""]]
+
+Resources:
+  #####################
+  ##### API Keys #####
+  ###################
+
+  TavilyApiKeySecret:
+    Type: "AWS::SecretsManager::Secret"
+    Condition: HasTavilyApiKey
+    DeletionPolicy: Retain
+    Properties:
+      Name: !Sub
+        - "TAVILY_API_KEY_${StackId}"
+        - StackId: !Select [2, !Split ["/", !Ref AWS::StackId]]
+      Description: "API Key for Tavily service"
+      SecretString: !Ref TavilyApiKey
+
+  ########################
+  ##### WebSearch #####
+  ######################
+
+  WebSearchLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.12
+      # FunctionName: web_search
+      Handler: index.lambda_handler
+      Role: !GetAtt WebSearchLambdaRole.Arn
+      Timeout: 300
+      Environment:
+        Variables:
+          LOG_LEVEL: "DEBUG"
+          ACTION_GROUP: "WebSearchActionGroup"
+          TAVILY_API_KEY_NAME: !Sub
+            - "TAVILY_API_KEY_${StackId}"
+            - StackId: !Select [2, !Split ["/", !Ref AWS::StackId]]
+      Code: "WebSearchLambda"
+
+  WebSearchLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: GetSecretsManagerSecret
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  - !Sub arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:TAVILY_API_KEY_*
+
+  WebSearchLambdaAgentPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt WebSearchLambdaFunction.Arn
+      Principal: bedrock.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+      SourceArn: !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent-alias/*
+
+  WebSearchLambdaAgentAliasPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt WebSearchLambdaFunction.Arn
+      Principal: bedrock.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+      SourceArn: !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*
+
+  #####################
+  ##### Agent #####
+  ###################
+
+  Agent:
+    Type: AWS::Bedrock::Agent
+    Properties:
+      AgentName: !Ref AgentName
+      AgentResourceRoleArn: !Ref AgentRole
+      AutoPrepare: True
+      FoundationModel: !Ref BedrockModelId
+      Instruction: |
+        You are a market researcher with deep knowledge of the pharmaceutical industry.
+        Your primary task is to interpret user queries, gather internal and external evidence, and provide relevant business insights based on the results. 
+        Use only the appropriate tools as required by the specific question. Follow these instructions carefully: 
+        When providing your response: 
+        a. Start with a brief summary of your understanding of the user's query. 
+        b. Explain the steps you're taking to address the query. Ask for clarifications from the user if required. 
+        c. Separate the responses generated from internal evidence (knowledge base) and external evidence (web search).  
+        d. Conclude with a concise summary of the findings and their potential implications.
+      Description: "Research internal and external evidence."
+      ActionGroups:
+        - ActionGroupName: "UserInputAction"
+          ParentActionGroupSignature: "AMAZON.UserInput"
+          ActionGroupState: "ENABLED"
+        - ActionGroupName: WebSearch
+          Description: Actions for searching the internet
+          ActionGroupExecutor:
+            Lambda: !GetAtt WebSearchLambdaFunction.Arn
+          ActionGroupState: ENABLED
+          FunctionSchema:
+            Functions:
+              - Name: web_search
+                Description: Searches the internet for information
+                Parameters:
+                  search_query:
+                    Description: "The query to search the web with"
+                    Type: string
+                    Required: True
+                  target_website:
+                    Description: "The specific website to search including its domain name. If not provided, the most relevant website will be used"
+                    Type: string
+                    Required: False
+                  topic:
+                    Description: "The topic being searched. 'news' or 'general'. Helps narrow the search when news is the focus."
+                    Type: string
+                    Required: False
+                  days:
+                    Description: "The number of days of history to search. Helps when looking for recent events or news."
+                    Type: string
+                    Required: False
+
+  AgentAliasResource:
+    Type: AWS::Bedrock::AgentAlias
+    Properties:
+      AgentId: !GetAtt Agent.AgentId
+      AgentAliasName: !Sub ${AgentName}Alias
