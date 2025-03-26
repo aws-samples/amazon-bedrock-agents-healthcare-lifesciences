@@ -1,0 +1,56 @@
+---
+title: Agents catalog overview
+description: An introduction to the Agents available in the catalog
+template: splash
+hero:
+  tagline: Agent catalog for life sciences
+  image:
+    file: ../../../assets/architecture_details.jpg
+    alt: AI agents that access various data sources and execute tools
+---
+
+An agent helps users complete actions based on both proprietary and public data and user input. Agents orchestrate interactions between foundation models (FMs), data sources, software applications, and user conversations. In addition, agents automatically call APIs to take actions and search knowledge bases to supplement information for these actions. 
+
+## Available Agents
+
+- **[Biomarker database analyst]** Convert natural language questions to SQL statements and execute on an Amazon Redshift database of biomarkers.
+
+- **[Clinical evidence researcher]** Use PubMed APIs to search biomedical literature for external evidence. Use Amazon Bedrock Knowledge Bases for Retrieval Augmented Generation (RAG) to deliver responses from internal literature evidence.
+
+- **[Statistician]** Use a custom container with lifelines library to build survival regression models and visualization such as Kaplan Meier charts for survival analysis.
+
+- **[Medical imaging expert]** Use Amazon SageMaker jobs to augment agents with the capability to trigger asynchronous jobs with an ephemeral cluster to process CT scan images.
+
+- **[Custom agent]** Bring your own dataset - structured, unstructured, graph or bring your own tool to build a custom agent
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+## Agents Catalog Backlog
+
+| Layer | Item | Status | Capabilities |
+| ----- | ---- | ------ | ------------ |
+| Agent | Literature review with PubMed | ✅ Done | Abstract search with query |
+| Agent | Bring your own literature | ✅ Done | RAG with literature |
+| Agent | Biomarker analyst with TCGA | ✅ Done | Query clinical/genomics data |
+| Agent | Bring your own SQL database | ✅ Done | Text2SQL with any dataset |
+| Agent | Reactome biological pathways | 🔄 In Progress | Query relationships between pathways and molecules |
+| Agent | Bring your own knowledge graph | 🔄 In Progress | Tet2Cypher with any Neptune database |
+| Agent | Omics workflows | 🔄 In Progress | Trigger secondary analysis pipelines with Amazon Omics |
+| Agent | Variant analysis | 🔄 In Progress | Pathogenicity prediction with VEP / Evo2 |
+| Agent | Assay QC assessment | ⏳ Not Started | Interpret assay data quality at scale given standards |
+| Agent | ELN analyzer | ⏳ Not Started | Retrieve and summarize Electronic lab notebooks |
+| Agent | Medical imaging | ✅ Done | Analyze CT scan images with SageMaker |
+| Agent | Digital pathology | 🔄 In Progress | Analyse WSI images with SageMaker |
+| Agent | Clinical trial reviewer | 🔄 In Progress | Search and review past trials |
+| Agent | Clinical trial protocol generator | 🔄 In Progress | Generate new protocol drafts |
+| Agent | Real world evidence analysis | ⏳ Not Started | Analyse patient EHR data |
+| Agent | Bring your own tool | 🔄 In Progress | Metadata mapping with public ontology |
+| Agent | Bring your own open source agent | ⏳ Not Started | LangGraph agent |
+| Agent | Competitive intelligence | ⏳ Not Started | Market research on drug feasibility |
+| Agent | Medical affairs support | ⏳ Not Started | Patient support on drug use/ clinical guidelines |
+| Agent | Evaluation agent | 🔄 In Progress | Evaluate existing agents with LLM as a judge |
+| Multi-agent | Multi-modal biomarker analysis | ✅ Done | Multi-modal data analysis with literature search |
+| Multi-agent | Omics analysis | 🔄 In Progress | Variant analysis with literature search |
+| Multi-agent | Real world evidence analysis | ⏳ Not Started | Patient EHR data analysis with literature search |
+| Multi-agent | Clinical trial intelligence | ⏳ Not Started | Search and design new clinical trials |
+

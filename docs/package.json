@@ -1,0 +1,19 @@
+{
+  "name": "@amazon-bedrock-agents-healthcare-lifesciences/docs",
+  "type": "module",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "npx astro dev",
+    "start": "npx astro dev",
+    "build": "npx astro build",
+    "preview": "npx astro preview",
+    "astro": "npx astro"
+  },
+  "dependencies": {
+    "@astrojs/mdx": "^4.1.0",
+    "@astrojs/starlight": "^0.32.2",
+    "astro": "^5.1.5",
+    "mermaid": "^11.4.1",
+    "sharp": "^0.32.5"
+  }
+}

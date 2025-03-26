@@ -1,0 +1,15 @@
+/* Target the hero image more specifically */
+.hero-section .hero img,
+[data-pagefind-body] .hero-section img,
+.sl-markdown-content .hero img,
+.hero-image img {
+  max-width: 700px !important;
+  width: 100% !important;
+  height: auto !important;
+}
+
+/* This creates more space for the hero section overall */
+.hero-section,
+.sl-container > div > header {
+  padding-block: 3rem !important;
+}

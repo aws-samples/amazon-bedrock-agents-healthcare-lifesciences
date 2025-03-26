@@ -1,0 +1,1584 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Creates a Bedrock Agent and action group
+
+Parameters:
+  BedrockModelId:
+    Type: String
+    Description: The ID of the Foundation Model to use for the Agent
+    Default: us.anthropic.claude-3-5-sonnet-20241022-v2:0
+  EnvironmentName:
+    Type: String
+    Description: The name of the agent environment, used to differentiate agent application. Must be lowercase, contain one number, and be no more than 5 characters long.
+    Default: env1
+    MaxLength: 5
+    AllowedPattern: ^[a-z]{1,4}[0-9]$
+    ConstraintDescription: Must be lowercase, contain one number at the end, and be no more than 5 characters long.
+  MultiAgentDevMode:
+    Type: String
+    Description: Select True to use a python notebook to manually create the agents step by step. Select false to auto create all agents. 
+    AllowedValues: 
+     - True
+     - False
+  GitRepoURL:
+    Type: String
+    Default: 'https://github.com/aws-samples/amazon-bedrock-agents-cancer-biomarker-discovery.git'
+    Description: Git repository URL where the code files are stored
+  ImageTag:
+    Type: String
+    Default: latest
+    Description: Tag for the Docker image
+  VectorStoreName:
+    Type: String
+    Default: nmcicollection
+    Description: Name of the vector store/collection
+  IndexName:
+    Type: String
+    Default: vector-index
+    Description: Name of the vector index to be created
+  GitBranch:
+    Type: String
+    Description: The github branch to clone
+    Default: main
+  SubAgentS3Bucket:
+    Type: String
+    Description: 'The S3 bucket containing the Subagents'
+    
+
+
+Mappings:
+  RegionMap:
+    us-east-1:
+      PandasLayer: 'arn:aws:lambda:us-east-1:336392948345:layer:AWSSDKPandas-Python312:12'
+    us-east-2:
+      PandasLayer: 'arn:aws:lambda:us-east-2:336392948345:layer:AWSSDKPandas-Python312:12'
+    us-west-1:
+      PandasLayer: 'arn:aws:lambda:us-west-1:336392948345:layer:AWSSDKPandas-Python312:12'
+    us-west-2:
+      PandasLayer: 'arn:aws:lambda:us-west-2:336392948345:layer:AWSSDKPandas-Python312:12'
+
+Conditions:
+  AutoCreateAgents: !Equals [!Ref MultiAgentDevMode, "false"]
+
+Resources:
+  # Create ECR repository
+  ECRRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: lifelines-lambda-sample
+
+  EnsureECRImagePushed:
+    Type: Custom::EnsureECRImagePushed
+    DependsOn: 
+      - TriggerBuildCustomResource
+      - TriggerImagingDockerBuild
+    Properties:
+      ServiceToken: !GetAtt TriggerBuildLambda.Arn
+      ECRRepository: !Ref ECRRepository
+      ImageTag: !Ref ImageTag
+  
+  EnsureImagingDockerImagePushed:
+    Type: Custom::EnsureECRImagePushed
+    DependsOn: 
+      - TriggerBuildCustomResource
+      - TriggerImagingDockerBuild
+    Properties:
+      ServiceToken: !GetAtt TriggerBuildLambda.Arn
+      ECRRepository: !Ref ImagingECRRepository
+      ImageTag: !Ref ImageTag
+      
+
+  CleanupLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt CleanupLambdaRole.Arn
+      Code:
+        ZipFile: |
+          import boto3
+          import cfnresponse
+          
+          def delete_ecr_images(repository_name):
+              ecr = boto3.client('ecr')
+              paginator = ecr.get_paginator('list_images')
+              try:
+                  for page in paginator.paginate(repositoryName=repository_name):
+                      if 'imageIds' in page:
+                          ecr.batch_delete_image(
+                              repositoryName=repository_name,
+                              imageIds=page['imageIds']
+                          )
+                  print(f"All images deleted from repository: {repository_name}")
+              except Exception as e:
+                  print(f"Error deleting images from repository {repository_name}: {str(e)}")
+                  raise
+
+          def handler(event, context):
+              if event['RequestType'] == 'Delete':
+                  try:
+                      # Clean up ECR
+                      ecr = boto3.client('ecr')
+                      for repo_name in [event['ResourceProperties']['ECRRepositoryName'], 'medical-image-processing-smstudio']:
+                          try:
+                              delete_ecr_images(repo_name)
+                              ecr.delete_repository(repositoryName=repo_name)
+                              print(f"Repository {repo_name} deleted successfully")
+                          except ecr.exceptions.RepositoryNotFoundException:
+                              print(f"Repository {repo_name} not found, skipping deletion")
+                          except Exception as e:
+                              print(f"Error deleting repository {repo_name}: {str(e)}")
+                              # Continue with other cleanup tasks even if ECR deletion fails
+                
+                      # Clean up S3
+                      s3 = boto3.resource('s3')
+                      bucket = s3.Bucket(event['ResourceProperties']['S3BucketName'])
+                      bucket.objects.all().delete()
+                      logbucket = s3.Bucket(event['ResourceProperties']['LogBucketName'])
+                      logbucket.objects.all().delete()
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+                  except Exception as e:
+                      print(e)
+                      cfnresponse.send(event, context, cfnresponse.FAILED, {})
+              else:
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+      Runtime: python3.12
+      Timeout: 300
+
+  CleanupLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: !Sub CleanupPolicy-${EnvironmentName}
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 's3:ListBucket'
+                  - 's3:DeleteObject'
+                Resource: 
+                  - !Sub 'arn:aws:s3:::${S3Bucket}'
+                  - !Sub 'arn:aws:s3:::${S3Bucket}/*'
+                  - !Sub 'arn:aws:s3:::${LogBucket}'
+                  - !Sub 'arn:aws:s3:::${LogBucket}/*'
+              - Effect: Allow
+                Action:
+                  - 'ecr:ListImages'
+                  - 'ecr:BatchDeleteImage'
+                  - 'ecr:DeleteRepository'
+                  - 'ecr:DescribeRepositories'
+                Resource: 
+                  - !Sub 'arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/${ECRRepository}'
+                  - !Sub 'arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/medical-image-processing-smstudio'
+              - Effect: Allow
+                Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*'
+
+  CleanupCustomResource:
+    Type: Custom::Cleanup
+    DependsOn: 
+      - S3Bucket
+      - ECRRepository
+    Properties:
+      ServiceToken: !GetAtt CleanupLambdaFunction.Arn
+      ECRRepositoryName: !Ref ECRRepository
+      S3BucketName: !Ref S3Bucket
+      LogBucketName: !Ref LogBucket
+  
+  
+  S3Bucket: 
+     Type: AWS::S3::Bucket
+     Properties:
+       BucketName: !Sub '${EnvironmentName}-${AWS::AccountId}-${AWS::Region}-agent-build-bucket'
+       BucketEncryption:
+         ServerSideEncryptionConfiguration:
+           - ServerSideEncryptionByDefault:
+               SSEAlgorithm: AES256
+       LoggingConfiguration:
+         DestinationBucketName: !Ref LogBucket
+         LogFilePrefix: 'access-logs/'
+
+#Forces SSL/TLS encryption for all S3 operations on the S3 Bucket
+  S3BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref S3Bucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: ForceSSLOnlyAccess
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource: 
+              - !Sub '${S3Bucket.Arn}'
+              - !Sub '${S3Bucket.Arn}/*'
+            Condition:
+              Bool:
+                'aws:SecureTransport': false
+          - Sid: AllowCloudFormationAccess
+            Effect: Allow
+            Principal:
+              Service: cloudformation.amazonaws.com
+            Action:
+              - s3:GetObject
+              - s3:ListBucket
+            Resource:
+              - !Sub '${S3Bucket.Arn}'
+              - !Sub '${S3Bucket.Arn}/*'
+
+  LogBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${EnvironmentName}-${AWS::AccountId}-${AWS::Region}-log-bucket'
+  
+  LogBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref LogBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowLogDeliveryWrite
+            Effect: Allow
+            Principal:
+              Service: logging.s3.amazonaws.com
+            Action:
+              - s3:PutObject
+            Resource: !Sub '${LogBucket.Arn}/*'
+
+  # Create CloudWatch Log Group
+  CodeBuildLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/codebuild/${AWS::StackName}-DockerPushProject'
+      RetentionInDays: 14
+  
+  
+  #Gather Assets for pubmed lambda function, knowledgebase and survival data processing lambda
+  DataRetrievalLogic:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: DataRetrievalLogic
+      ServiceRole: !GetAtt DataRetrievalRole.Arn
+      Artifacts:
+        Type: NO_ARTIFACTS
+      LogsConfig:
+        CloudWatchLogs:
+          Status: ENABLED
+          GroupName: !Ref CodeBuildLogGroup
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
+        PrivilegedMode: true
+      Source:
+        Type: GITHUB
+        Location: !Ref GitRepoURL
+        BuildSpec: !Sub |
+          version: 0.2
+          phases:
+            pre_build:
+              commands:
+                - yum install -y git-lfs
+                - git lfs install
+                - echo "downloading Ncbi article for KB ingestion"
+                - yum install -y wget
+                - python -m pip install --upgrade pip
+               
+            build:
+              commands:
+                - echo "Starting build phase"
+                - echo "Downloading NCBI article..."
+                - wget --user-agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36" https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5749594/pdf/radiol.2017161845.pdf -O ncbi_article.pdf
+                - echo "Uploading NCBI article to S3..."
+                - aws s3 cp ncbi_article.pdf s3://${S3Bucket}/ncbi_article.pdf
+                - echo "NCBI article uploaded to S3"
+                - echo "Cloning Git repository..."
+                - GIT_LFS_SKIP_SMUDGE=1 git clone -b ${GitBranch} --single-branch ${GitRepoURL} repo
+                - echo "Zipping Lambda function..."
+                - cd ActionGroups/matplotbarchartlambda
+                - echo "Creating list of items to zip..."
+                - items_to_zip=$(ls -A | tr '\n' ' ')
+                - zip -r matplotbarchartlambda.zip $items_to_zip
+                - cd ../..
+                - echo "Moving zip file to project root..."
+                - mv ActionGroups/matplotbarchartlambda/matplotbarchartlambda.zip .
+                - aws s3 cp matplotbarchartlambda.zip s3://${S3Bucket}/matplotbarchartlambda.zip
+                - cd repo/ActionGroups/pubmed-lambda-function
+                - echo "Creating list of items to zip..."
+                - items_to_zip=$(ls -A | tr '\n' ' ')
+                - echo "Creating zip pubmed lambda file..."
+                - zip -r pubmed-lambda-function.zip $items_to_zip
+                - echo "Lambda function zipped"
+                - cd ../..
+                - echo "Moving zip file to project root..."
+                - mv ActionGroups/pubmed-lambda-function/pubmed-lambda-function.zip .
+                - aws s3 cp pubmed-lambda-function.zip s3://${S3Bucket}/pubmed-lambda-function.zip
+                - cd ActionGroups/querydatabaselambda
+                - echo "Creating list of items to zip..."
+                - items_to_zip=$(ls -A | tr '\n' ' ')
+                - zip -r querydatabaselambda.zip $items_to_zip
+                - cd ../..
+                - echo "Moving zip file to project root..."
+                - mv ActionGroups/querydatabaselambda/querydatabaselambda.zip .
+                - aws s3 cp querydatabaselambda.zip s3://${S3Bucket}/querydatabaselambda.zip
+                - cd ActionGroups/survivaldataprocessinglambda
+                - echo "Creating list of items to zip..."
+                - items_to_zip=$(ls -A | tr '\n' ' ')
+                - zip -r survivaldataprocessinglambda.zip $items_to_zip
+                - cd ../..
+                - echo "Moving zip file to project root..."
+                - mv ActionGroups/survivaldataprocessinglambda/survivaldataprocessinglambda.zip .
+                - aws s3 cp survivaldataprocessinglambda.zip s3://${S3Bucket}/survivaldataprocessinglambda.zip
+                - echo "Build phase completed"
+                - echo "lambda layer preperation phase starts"
+                - mkdir -p python
+                - pip install -r lambdalayers/requirements.txt -t python
+                - zip -r9 lambda-layer.zip python
+                - aws s3 cp lambda-layer.zip s3://${S3Bucket}/lambda-layer.zip
+
+      TimeoutInMinutes: 10
+
+
+  # Log into ECR and push scientific-plots-with-lifelines Docker image
+  DockerPushLogic:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: DockerPushProject
+      ServiceRole: !GetAtt DockerPushRole.Arn
+      Artifacts:
+        Type: NO_ARTIFACTS
+      LogsConfig:
+        CloudWatchLogs:
+          Status: ENABLED
+          GroupName: !Ref CodeBuildLogGroup
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
+        PrivilegedMode: true
+      Source:
+        Type: GITHUB
+        Location: !Ref GitRepoURL
+        BuildSpec: !Sub |
+          version: 0.2
+          phases:
+            pre_build:
+              commands:
+                - yum install -y git-lfs
+                - git lfs install
+                - echo "Starting pre_build phase"
+                - echo "Logging into Amazon ECR..."
+                - aws ecr get-login-password --region ${AWS::Region} | docker login --username AWS --password-stdin ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com
+                - echo "ECR login complete"
+            build:
+              commands:
+                - echo "Starting build phase"
+                - echo "Cloning Git repository..."
+                - GIT_LFS_SKIP_SMUDGE=1 git clone -b ${GitBranch} --single-branch ${GitRepoURL} repo
+                - cd repo/ActionGroups/scientific-plots-with-lifelines
+                - echo "Building Docker image..."
+                - docker build -t lifelines-python3.12-v2 .
+                - echo "Tagging Docker image..."
+                - docker tag lifelines-python3.12-v2:latest ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ECRRepository}:${ImageTag}
+                - echo "Docker image tagged"
+            post_build:
+              commands:
+                - echo "Starting post_build phase"
+                - echo "Pushing Docker image to ECR..."
+                - docker push ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ECRRepository}:${ImageTag}
+                - echo "Docker image pushed to ECR"
+                - echo "Displaying Docker images"
+                - docker images
+                - echo "Displaying ECR repository contents"
+                - aws ecr list-images --repository-name ${ECRRepository}
+      TimeoutInMinutes: 10
+
+  ImagingECRRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: medical-image-processing-smstudio
+
+  ImagingDockerBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:3.0
+        Type: LINUX_CONTAINER
+        PrivilegedMode: true
+      ServiceRole: !GetAtt ImagingDockerBuildRole.Arn
+      Source:
+        Type: GITHUB
+        Location: !Ref GitRepoURL
+        BuildSpec: !Sub |
+          version: 0.2
+          phases:
+            pre_build:
+              commands:
+                - echo Logging in to Amazon ECR...
+                - aws ecr get-login-password --region ${AWS::Region} | docker login --username AWS --password-stdin ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com
+                - echo Cloning the repository...
+                - git clone -b ${GitBranch} --single-branch ${GitRepoURL} repo
+                - cd repo/ActionGroups/imaging-biomarker 
+                - echo Checking for required files...
+                - ls -la
+                - if [ ! -f requirements.txt ] || [ ! -f dcm2nifti_processing.py ] || [ ! -f radiomics_utils.py ]; then echo "Missing required files"; exit 1; fi
+                - zip -r Imaginglambdafunction.zip dummy_lambda.py
+                - echo Copying lambda function 
+                - aws s3 cp Imaginglambdafunction.zip s3://${S3Bucket}/Imaginglambdafunction.zip
+               
+
+            build:
+              commands:
+                - echo Build started on `date`
+                - echo Building the Docker image...
+                - docker build -t ${ImagingECRRepository}:${ImageTag} .
+                - docker tag ${ImagingECRRepository}:${ImageTag} ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ImagingECRRepository}:${ImageTag}
+            post_build:
+              commands:
+                - echo Build completed on `date`
+                - echo Pushing the Docker image...
+                - docker push ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ImagingECRRepository}:${ImageTag}
+      SourceVersion: main
+  
+  ImagingStateMachine:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      RoleArn: !GetAtt StepFunctionsExecutionRole.Arn
+      DefinitionString: !Sub
+        - |
+          {
+            "StartAt": "iterate_over_subjects",
+            "States": {
+              "iterate_over_subjects": {
+                "ItemsPath": "$.Subject",
+                "MaxConcurrency": 50,
+                "Type": "Map",
+                "Next": "Finish",
+                "Iterator": {
+                  "StartAt": "DICOM/NIfTI Conversion and Radiomic Feature Extraction",
+                  "States": {
+                    "Fallback": {
+                      "Type": "Pass",
+                      "Result": "This iteration failed for some reason",
+                      "End": true
+                    },
+                    "DICOM/NIfTI Conversion and Radiomic Feature Extraction": {
+                      "Type": "Task",
+                      "OutputPath": "$.ProcessingJobArn",
+                      "Resource": "arn:aws:states:::sagemaker:createProcessingJob.sync",
+                      "Retry": [
+                        {
+                          "ErrorEquals": [
+                            "SageMaker.AmazonSageMakerException"
+                          ],
+                          "IntervalSeconds": 15,
+                          "MaxAttempts": 8,
+                          "BackoffRate": 1.5
+                        }
+                      ],
+                      "Catch": [
+                        {
+                          "ErrorEquals": [
+                            "States.TaskFailed"
+                          ],
+                          "Next": "Fallback"
+                        }
+                      ],
+                      "Parameters": {
+                        "ProcessingJobName.$": "States.Format('{}-{}', $$.Execution.Input['PreprocessingJobName'], $)",
+                        "ProcessingInputs": [
+                          {
+                            "InputName": "DICOM",
+                            "AppManaged": false,
+                            "S3Input": {
+                              "S3Uri.$": "States.Format('s3://sagemaker-solutions-prod-${AWS::Region}/sagemaker-lung-cancer-survival-prediction/1.1.0/data/nsclc_radiogenomics/{}' , $)", 
+                              "LocalPath": "/opt/ml/processing/input",
+                              "S3DataType": "S3Prefix",
+                              "S3InputMode": "File",
+                              "S3DataDistributionType": "FullyReplicated",
+                              "S3CompressionType": "None"
+                            }
+                          }
+                        ],
+                        "ProcessingOutputConfig": {
+                          "Outputs": [
+                            {
+                              "OutputName": "CT-Nifti",
+                              "AppManaged": false,
+                              "S3Output": {
+                                "S3Uri": "${S3Bucket}/nsclc_radiogenomics/CT-Nifti",
+                                "LocalPath": "/opt/ml/processing/output/CT-Nifti",
+                                "S3UploadMode": "EndOfJob"
+                              }
+                            },
+                            {
+                              "OutputName": "CT-SEG",
+                              "AppManaged": false,
+                              "S3Output": {
+                                "S3Uri": "${S3Bucket}/nsclc_radiogenomics/CT-SEG",
+                                "LocalPath": "/opt/ml/processing/output/CT-SEG",
+                                "S3UploadMode": "EndOfJob"
+                              }
+                            },
+                            {
+                              "OutputName": "PNG",
+                              "AppManaged": false,
+                              "S3Output": {
+                                "S3Uri": "${S3Bucket}/nsclc_radiogenomics/PNG",
+                                "LocalPath": "/opt/ml/processing/output/PNG",
+                                "S3UploadMode": "EndOfJob"
+                              }
+                            },
+                            {
+                              "OutputName": "CSV",
+                              "AppManaged": false,
+                              "S3Output": {
+                                "S3Uri": "${S3Bucket}/nsclc_radiogenomics/CSV",
+                                "LocalPath": "/opt/ml/processing/output/CSV",
+                                "S3UploadMode": "EndOfJob"
+                              }
+                            }
+                          ]
+                        },
+                        "AppSpecification": {
+                          "ImageUri": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ImagingECRRepository}:${ImageTag}",
+                          "ContainerArguments.$": "States.Array('--subject', $)",
+                          "ContainerEntrypoint": [
+                            "python3",
+                            "/opt/dcm2nifti_processing.py"
+                          ]
+                        },
+                        "RoleArn": "${SageMakerExecutionRoleArn}",
+                        "ProcessingResources": {
+                          "ClusterConfig": {
+                            "InstanceCount": 1,
+                            "InstanceType": "ml.m5.xlarge",
+                            "VolumeSizeInGB": 5
+                          }
+                        }
+                      },
+                      "End": true
+                    }
+                  }
+                }
+              },
+              "Finish": {
+                "Type": "Succeed"
+              }
+            }
+          }
+
+        - {
+            S3Bucket: !Sub "s3://${S3Bucket}",
+            SageMakerExecutionRoleArn: !GetAtt SageMakerExecutionRole.Arn
+          }
+  DataRetrievalRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: S3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                Resource: 
+                  - !GetAtt S3Bucket.Arn
+                  - !Sub "${S3Bucket.Arn}/*"
+        - PolicyName: CloudWatchLogs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: 
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*'
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*:*'
+  DockerPushRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: ECRAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                Resource: '*'  # This action requires resource '*'
+              - Effect: Allow
+                Action:
+                  - ecr:ListImages
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchGetImage
+                  - ecr:InitiateLayerUpload
+                  - ecr:UploadLayerPart
+                  - ecr:CompleteLayerUpload
+                  - ecr:PutImage
+                Resource: 
+                  - !Sub 'arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/${ECRRepository}'
+        - PolicyName: CloudWatchLogs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: 
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*'
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*:*'
+        - PolicyName: GitCloneAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - codecommit:GitPull
+                Resource: !Sub 'arn:aws:codecommit:${AWS::Region}:${AWS::AccountId}:${GitRepoURL}'
+  ImagingDockerBuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: ECRAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - ecr:ListImages
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchGetImage
+                  - ecr:InitiateLayerUpload
+                  - ecr:UploadLayerPart
+                  - ecr:CompleteLayerUpload
+                  - ecr:PutImage
+                Resource: 
+                  - !Sub 'arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/medical-image-processing-smstudio'
+        - PolicyName: S3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource: 
+                  - !Sub "${S3Bucket.Arn}/Imaginglambdafunction.zip"
+        - PolicyName: CloudWatchLogs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: 
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*'
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*:*'
+  StepFunctionsExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: states.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StepFunctionsExecutionPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # SageMaker permissions
+              - Effect: Allow
+                Action:
+                  - 'sagemaker:CreateProcessingJob'
+                  - 'sagemaker:DescribeProcessingJob'
+                  - 'sagemaker:StopProcessingJob'
+                  - 'sagemaker:ListTags'
+                  - 'sagemaker:AddTags'
+                Resource: !Sub 'arn:aws:sagemaker:${AWS::Region}:${AWS::AccountId}:processing-job/dcm-nifti-*'
+              # IAM permissions
+              - Effect: Allow
+                Action:
+                  - 'iam:PassRole'
+                Resource: !GetAtt SageMakerExecutionRole.Arn
+              # Step Functions Map state permissions
+              - Effect: Allow
+                Action:
+                  - 'events:PutTargets'
+                  - 'events:PutRule'
+                  - 'events:DescribeRule'
+                  - 'events:DeleteRule'
+                  - 'events:DisableRule'
+                  - 'events:EnableRule'
+                  - 'events:RemoveTargets'
+                Resource:
+                  - !Sub 'arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/StepFunctions-Map-*'
+                  - !Sub 'arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/StepFunctions-*'
+              # States permissions for Map state
+              - Effect: Allow
+                Action:
+                  - 'states:StartExecution'
+                  - 'states:StopExecution'
+                  - 'states:DescribeExecution'
+                  - 'states:CreateStateMachine'
+                  - 'states:DeleteStateMachine'
+                  - 'states:UpdateStateMachine'
+                  - 'states:DescribeStateMachine'
+                  - 'states:DescribeStateMachineForExecution'
+                  - 'states:ListExecutions'
+                Resource: 
+                  - !Sub 'arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:*'
+                  - !Sub 'arn:aws:states:${AWS::Region}:${AWS::AccountId}:execution:*:*'
+              # CloudWatch Logs permissions
+              - Effect: Allow
+                Action:
+                  - 'logs:CreateLogDelivery'
+                  - 'logs:GetLogDelivery'
+                  - 'logs:UpdateLogDelivery'
+                  - 'logs:DeleteLogDelivery'
+                  - 'logs:ListLogDeliveries'
+                  - 'logs:PutLogEvents'
+                  - 'logs:PutResourcePolicy'
+                  - 'logs:DescribeResourcePolicies'
+                  - 'logs:DescribeLogGroups'
+                Resource: 
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*'
+              - Effect: Allow
+                Action:
+                  - 'lambda:InvokeFunction'
+                Resource: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*'
+        - PolicyName: EventsPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'events:PutTargets'
+                  - 'events:PutRule'
+                  - 'events:DescribeRule'
+                Resource:
+                  - !Sub 'arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/*'
+  SageMakerExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: sagemaker.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: SageMakerProcessingAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # Processing Job Permissions
+              - Effect: Allow
+                Action:
+                  - 'sagemaker:CreateProcessingJob'
+                  - 'sagemaker:DescribeProcessingJob'
+                  - 'sagemaker:StopProcessingJob'
+                  - 'sagemaker:ListProcessingJobs'
+                Resource: !Sub 'arn:aws:sagemaker:${AWS::Region}:${AWS::AccountId}:processing-job/*'
+              # ECR Access for Container
+              - Effect: Allow
+                Action:
+                  - 'ecr:GetAuthorizationToken'
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - 'ecr:BatchCheckLayerAvailability'
+                  - 'ecr:GetDownloadUrlForLayer'
+                  - 'ecr:BatchGetImage'
+                Resource: 
+                  - !Sub 'arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/${ImagingECRRepository}'
+        - PolicyName: S3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # Input data access
+              - Effect: Allow
+                Action:
+                  - 's3:GetObject'
+                  - 's3:ListBucket'
+                Resource:
+                  - 'arn:aws:s3:::sagemaker-solutions-prod-*'
+                  - 'arn:aws:s3:::sagemaker-solutions-prod-*/sagemaker-lung-cancer-survival-prediction/*'
+              # Output data access
+              - Effect: Allow
+                Action:
+                  - 's3:PutObject'
+                  - 's3:GetObject'
+                  - 's3:ListBucket'
+                Resource: 
+                  - !Sub 'arn:aws:s3:::${S3Bucket}'
+                  - !Sub 'arn:aws:s3:::${S3Bucket}/nsclc_radiogenomics/*'
+        - PolicyName: CloudWatchLogsAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                  - 'logs:DescribeLogStreams'
+                Resource:
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/sagemaker/ProcessingJobs:*'
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/sagemaker/ProcessingJobs:log-stream:*'
+        - PolicyName: KMSAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'kms:Decrypt'
+                  - 'kms:GenerateDataKey'
+                Resource: !Sub 'arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/*'
+                Condition:
+                  StringEquals:
+                    'kms:ViaService': !Sub 'sagemaker.${AWS::Region}.amazonaws.com'
+
+        - PolicyName: NetworkAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'ec2:CreateNetworkInterface'
+                  - 'ec2:CreateNetworkInterfacePermission'
+                  - 'ec2:DeleteNetworkInterface'
+                  - 'ec2:DeleteNetworkInterfacePermission'
+                  - 'ec2:DescribeNetworkInterfaces'
+                  - 'ec2:DescribeVpcs'
+                  - 'ec2:DescribeDhcpOptions'
+                  - 'ec2:DescribeSubnets'
+                  - 'ec2:DescribeSecurityGroups'
+                Resource: '*'
+                Condition:
+                  StringEquals:
+                    'aws:RequestedRegion': !Ref 'AWS::Region'
+  TriggerBuildLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt TriggerBuildLambdaRole.Arn
+      Code:
+        ZipFile: |
+          import boto3
+          import cfnresponse
+          import time
+
+          def handler(event, context):
+              if event['RequestType'] in ['Create', 'Update']:
+                  try:
+                      codebuild = boto3.client('codebuild')
+                      ecr = boto3.client('ecr')
+                      
+                      if 'ProjectName' in event['ResourceProperties']:
+                          # This is for TriggerBuildCustomResource
+                          project_name = event['ResourceProperties']['ProjectName']
+                          response = codebuild.start_build(projectName=project_name)
+                          build_id = response['build']['id']
+                          print(f"Build started: {build_id}")
+                          
+                          # Wait for build to complete
+                          while True:
+                              build_status = codebuild.batch_get_builds(ids=[build_id])['builds'][0]['buildStatus']
+                              if build_status == 'SUCCEEDED':
+                                  print("Build completed successfully")
+                                  break
+                              elif build_status in ['FAILED', 'STOPPED', 'TIMED_OUT']:
+                                  print(f"Build failed with status: {build_status}")
+                                  cfnresponse.send(event, context, cfnresponse.FAILED, {"Error": f"Build failed with status: {build_status}"})
+                                  return
+                              time.sleep(10)  # Wait for 10 seconds before checking again
+                          
+                          cfnresponse.send(event, context, cfnresponse.SUCCESS, {"BuildId": build_id})
+                          
+                      elif 'ECRRepository' in event['ResourceProperties']:
+                          # This is for EnsureECRImagePushed
+                          repository_name = event['ResourceProperties']['ECRRepository']
+                          image_tag = event['ResourceProperties']['ImageTag']
+                          
+                          # Wait for image to be available in ECR
+                          max_attempts = 30  # Maximum number of attempts
+                          for attempt in range(max_attempts):
+                              try:
+                                  ecr.describe_images(repositoryName=repository_name, imageIds=[{'imageTag': image_tag}])
+                                  print(f"Image {repository_name}:{image_tag} exists in ECR")
+                                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+                                  return
+                              except ecr.exceptions.ImageNotFoundException:
+                                  if attempt == max_attempts - 1:
+                                      print(f"Image {repository_name}:{image_tag} not found in ECR after {max_attempts} attempts")
+                                      cfnresponse.send(event, context, cfnresponse.FAILED, {"Error": "Image not found in ECR after maximum attempts"})
+                                      return
+                                  time.sleep(10)  # Wait for 10 seconds before trying again
+                      else:
+                          cfnresponse.send(event, context, cfnresponse.FAILED, {"Error": "Invalid ResourceProperties"})
+                  except Exception as e:
+                      print(f"Error: {str(e)}")
+                      cfnresponse.send(event, context, cfnresponse.FAILED, {"Error": str(e)})
+              else:
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+      Runtime: python3.8
+      Timeout: 900
+
+  TriggerBuildLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CodeBuildAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: 
+                  - codebuild:StartBuild
+                  - codebuild:BatchGetBuilds
+                Resource: 
+                  - !GetAtt DockerPushLogic.Arn
+                  - !GetAtt DataRetrievalLogic.Arn
+                  - !Sub 'arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:project/ImagingDockerBuildProject-*'
+        - PolicyName: CloudWatchLogs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: 
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${AWS::StackName}-TriggerBuildLambda-*'
+        - PolicyName: ECRDescribeAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: ecr:DescribeImages
+                Resource: 
+                  - !Sub 'arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/${ECRRepository}'
+                  - !Sub 'arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/medical-image-processing-smstudio'
+  
+  
+  TriggerBuildCustomResource:
+    Type: Custom::TriggerBuild
+    DependsOn: DockerPushLogic
+    Properties:
+      ServiceToken: !GetAtt TriggerBuildLambda.Arn
+      ProjectName: !Ref DockerPushLogic
+  
+  TriggerImagingDockerBuild:
+    Type: Custom::TriggerBuild
+    DependsOn: ImagingDockerBuildProject
+    Properties:
+      ServiceToken: !GetAtt TriggerBuildLambda.Arn
+      ProjectName: !Ref ImagingDockerBuildProject
+  
+  TriggerDataRetrievalLogic:
+    Type: Custom::TriggerBuild
+    DependsOn: DataRetrievalLogic
+    Properties:
+      ServiceToken: !GetAtt TriggerBuildLambda.Arn
+      ProjectName: !Ref DataRetrievalLogic
+  
+
+      
+
+  AgentRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub AmazonBedrockExecutionRoleForAgents_${AWS::AccountId}
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - bedrock.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: BedrockInvokeModel
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:*
+                Resource: 
+                  - !Sub arn:aws:bedrock:*::foundation-model/*
+                  - !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:knowledge-base/*
+                  - !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent-alias/*
+                  - !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*
+                  - !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/*
+                  - !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:application-inference-profile/*
+            
+                
+
+  S3BucketNameSSMParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /streamlitapp/${EnvironmentName}/S3_BUCKET_NAME
+      Type: String
+      Value: !Ref S3Bucket
+      Description: !Sub SSM parameter for S3 bucket name for ${EnvironmentName}
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: AgentManagementPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource: 
+                  - !Sub arn:aws:s3:::${SubAgentS3Bucket}
+                  - !Sub arn:aws:s3:::${SubAgentS3Bucket}/*
+                  - !Sub arn:aws:s3:::${S3Bucket}
+                  - !Sub arn:aws:s3:::${S3Bucket}/*
+      
+              - Effect: Allow
+                Action:
+                  - cloudformation:CreateStack
+                  - cloudformation:UpdateStack
+                  - cloudformation:DeleteStack
+                  - cloudformation:DescribeStacks
+                  - cloudformation:ListStacks
+                  - cloudformation:GetTemplateSummary
+                  - cloudformation:DescribeStackEvents
+                  - cloudformation:DescribeStackResources
+                  - cloudformation:TagResource
+                  - cloudformation:UntagResource
+                  - aoss:*
+                Resource: 
+                  - !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${EnvironmentName}-*/*
+                  - "*"
+              - Effect: Allow
+                Action:
+                  - iam:CreateRole
+                  - iam:PutRolePolicy
+                  - iam:AttachRolePolicy
+                  - iam:TagRole
+                  - iam:UntagRole
+                  - iam:GetRole
+                  - iam:DeleteRole
+                  - iam:DetachRolePolicy
+                  - iam:DeleteRolePolicy
+                  - iam:DeletePolicy
+                  - iam:UpdateRole
+                  - iam:UpdateRoleDescription
+                  - iam:GetRolePolicy
+                  - iam:PassRole
+                  - iam:CreatePolicy
+                  - iam:GetPolicy
+                  - iam:ListPolicyVersions
+                Resource: 
+                  - !Sub arn:aws:iam::${AWS::AccountId}:role/${EnvironmentName}-*
+                  - !Sub arn:aws:iam::${AWS::AccountId}:role/ImagingBiomarkerLambdaExecutionRole-*
+                  - !Sub arn:aws:iam::${AWS::AccountId}:role/*-AgentLambdaRole-*
+                  - !Sub arn:aws:iam::${AWS::AccountId}:role/AgentLambdaRole-*
+                  - !Sub arn:aws:iam::${AWS::AccountId}:role/*
+                  - !Sub arn:aws:iam::${AWS::AccountId}:policy/${EnvironmentName}-*
+                  - !Sub arn:aws:iam::${AWS::AccountId}:policy/Clinical-evidence-researcher-*
+              - Effect: Allow
+                Action:
+                  - lambda:GetFunction
+                  - lambda:CreateFunction
+                  - lambda:DeleteFunction
+                  - lambda:UpdateFunctionCode
+                  - lambda:UpdateFunctionConfiguration
+                  - lambda:AddPermission
+                  - lambda:RemovePermission
+                  - lambda:GetPolicy
+                  - lambda:GetLayerVersion
+                  - lambda:InvokeFunction
+                  - lambda:PublishLayerVersion
+                  - lambda:DeleteLayerVersion
+                Resource:
+                  - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*-${EnvironmentName}
+                  - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:imaging-biomarker-lambda
+                  - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:ScientificPlotLambda
+                  - !Sub arn:aws:lambda:${AWS::Region}:336392948345:layer:AWSSDKPandas-Python312:12
+                  - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:biomarker-agent-*
+                  - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:matplotliblayer
+                  - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:matplotliblayer:*
+                  - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:MatPlotBarChartLambda
+                  - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:PubMedQueryFunction
+                  - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*-Clinical-evidence-*-OpenSearchIndexLambda-*
+              - Effect: Allow
+                Action:
+                  - bedrock:*
+                Resource:
+                  - !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:*
+                  - !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*
+                  - !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent-alias/*
+                  - !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*/action-group/*
+                  - !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:knowledge-base/*
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*
+              - Effect: Allow
+                Action: ecr:GetAuthorizationToken
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchGetImage
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:InitiateLayerUpload
+                  - ecr:UploadLayerPart
+                  - ecr:CompleteLayerUpload
+                  - ecr:PutImage
+                  - ecr:GetRepositoryPolicy
+                  - ecr:DescribeRepositories
+                  - ecr:ListImages
+                  - ecr:DescribeImages
+                  - ecr:BatchGetImage
+                  - ecr:GetLifecyclePolicy
+                  - ecr:GetLifecyclePolicyPreview
+                  - ecr:ListTagsForResource
+                  - ecr:DescribeImageScanFindings
+                  - ecr:GetAuthorizationToken
+                  - ecr:SetRepositoryPolicy  
+                Resource:
+                  - !Sub arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/*
+                  - !Sub arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/medical-image-processing-smstudio
+        - PolicyName: CreateServiceLinkedRole
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: iam:CreateServiceLinkedRole
+                Resource: !Sub 'arn:aws:iam::${AWS::AccountId}:role/aws-service-role/observability.aoss.amazonaws.com/AWSServiceRoleForAmazonOpenSearchServerless'
+              - Effect: Allow
+                Action: iam:GetRole
+                Resource: !Sub 'arn:aws:iam::${AWS::AccountId}:role/aws-service-role/observability.aoss.amazonaws.com/AWSServiceRoleForAmazonOpenSearchServerless'
+      
+  
+  AgentDiscoveryFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.12
+      Timeout: 300
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          import boto3
+          import cfnresponse
+          
+          def handler(event, context):
+            try:
+              if event['RequestType'] in ['Create', 'Update']:
+                s3 = boto3.client('s3')
+                bucket = event['ResourceProperties']['BucketName']
+                response = s3.list_objects_v2(
+                  Bucket=bucket,
+                  Prefix='packaged_'
+                )
+                
+                # Get list of agent templates, excluding supervisor and streamlit
+                agents = []
+                for obj in response.get('Contents', []):
+                  if obj['Key'].startswith('packaged_') and obj['Key'].endswith('.yaml') and obj['Key'] != "packaged_agent_build.yaml":
+                    agent_name = obj['Key'].replace('packaged_', '').replace('.yaml', '')
+                    if agent_name not in ['supervisor_agent', 'streamlit_build']:
+                      agents.append(agent_name)
+                
+                cfnresponse.send(event, context, cfnresponse.SUCCESS, {
+                  'Agents': agents
+                })
+              else:
+                cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+            except Exception as e:
+              cfnresponse.send(event, context, cfnresponse.FAILED, {
+                'Error': str(e)
+              })
+
+  # Custom Resource to discover agents
+  AgentDiscovery:
+    Type: Custom::AgentDiscovery
+    Properties:
+      ServiceToken: !GetAtt AgentDiscoveryFunction.Arn
+      BucketName: !Ref SubAgentS3Bucket
+
+  # Dynamic Agent Stacks
+  AgentStacks:
+    Type: Custom::AgentStacks
+    DependsOn: TriggerDataRetrievalLogic
+    Properties:
+      ServiceToken: !GetAtt AgentStackCreatorFunction.Arn
+      Agents: !GetAtt AgentDiscovery.Agents
+      StackConfiguration:
+        BedrockModelId: !Ref BedrockModelId
+        EnvironmentName: !Ref EnvironmentName
+        GitBranch: !Ref GitBranch
+        AgentRole: !GetAtt AgentRole.Arn
+        SourceS3Bucket: !Ref SubAgentS3Bucket
+        Region: !Ref AWS::Region
+        AgentS3Bucket: !Ref S3Bucket
+        ImagingStateMachineName: !GetAtt ImagingStateMachine.Name
+        ImagingStateMachineArn: !Ref ImagingStateMachine
+      VectorStoreName: !Ref VectorStoreName
+      MultiAgentDevModeStatus: !Ref MultiAgentDevMode
+
+  AgentStackCreatorFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.12
+      Timeout: 900
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          import boto3
+          import cfnresponse
+          import time
+          import random
+
+          def handler(event, context):
+              try:
+                  cfn = boto3.client('cloudformation')
+                  agents = event['ResourceProperties']['Agents']
+                  config = event['ResourceProperties']['StackConfiguration']
+                  
+                  # Define max retry attempts
+                  MAX_RETRIES = 2
+                  failed_stacks = []
+
+                  if event['RequestType'] == 'Delete':
+                      sorted_agents = sorted(agents, key=lambda x: 0 if x == 'supervisor_agent' else 1)
+                      print(f"Delete request received, deleting {len(agents)} stacks")
+                      
+                      deleted_stacks = []
+                      
+                      for agent in sorted_agents:
+                          stack_name = f"{config['EnvironmentName']}-{agent}"
+                          try:
+                              cfn.describe_stacks(StackName=stack_name)
+                              print(f"Deleting stack: {stack_name}")
+                              cfn.delete_stack(StackName=stack_name)
+                              deleted_stacks.append(stack_name)
+                          except cfn.exceptions.ClientError as e:
+                              if 'does not exist' in str(e):
+                                  print(f"Stack {stack_name} does not exist, skipping deletion")
+                                  continue
+                              else:
+                                  raise e
+
+                      timeout = time.time() + 900  # 15 minutes
+                      while deleted_stacks and time.time() < timeout:
+                          for stack_name in deleted_stacks[:]:
+                              try:
+                                  status = cfn.describe_stacks(StackName=stack_name)['Stacks'][0]['StackStatus']
+                                  if status == 'DELETE_COMPLETE':
+                                      deleted_stacks.remove(stack_name)
+                                      print(f"Stack {stack_name} deleted successfully")
+                                  elif status.endswith('FAILED'):
+                                      raise Exception(f"Stack {stack_name} deletion failed with status: {status}")
+                              except cfn.exceptions.ClientError as e:
+                                  if 'does not exist' in str(e):
+                                      deleted_stacks.remove(stack_name)
+                                      print(f"Stack {stack_name} deleted successfully")
+                          
+                          if deleted_stacks:
+                              time.sleep(10)
+
+                      if deleted_stacks:
+                          raise Exception(f"Timeout waiting for stacks to delete: {deleted_stacks}")
+                      
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+                      
+                  elif event['RequestType'] in ['Create', 'Update']:
+                      MultiAgentDevModeStatus = event['ResourceProperties']['MultiAgentDevModeStatus']
+                      sorted_agents = sorted(agents, key=lambda x: 1 if x == 'supervisor_agent' else 0)
+                      # Track stacks being created/updated
+                      pending_stacks = []
+                      
+                      for agent in sorted_agents:
+                          stack_name = f"{config['EnvironmentName']}-{agent}"
+                          print(f"Processing stack: {stack_name}")
+                          template_url = f"https://{config['SourceS3Bucket']}.s3.{config['Region']}.amazonaws.com/packaged_{agent}.yaml"
+
+                          print(f"Using template URL: {template_url}")
+                          
+                          try:
+                              base_params = [
+                                  {'ParameterKey': 'BedrockModelId', 'ParameterValue': config['BedrockModelId']},
+                                  {'ParameterKey': 'EnvironmentName', 'ParameterValue': config['EnvironmentName']},
+                                  {'ParameterKey': 'AgentRole', 'ParameterValue': config['AgentRole']},
+                                  {'ParameterKey': 'S3Bucket', 'ParameterValue': config['AgentS3Bucket']},
+                                  {'ParameterKey': 'DevMode', 'ParameterValue': MultiAgentDevModeStatus} 
+                              ]
+                              
+                              try:
+                                  template_summary = cfn.get_template_summary(TemplateURL=template_url)
+                                  print(f"Template summary for {stack_name}:", template_summary)
+                                  
+                                  if 'Parameters' in template_summary:
+                                      template_params = [p['ParameterKey'] for p in template_summary['Parameters']]
+                                      
+                                      if 'VectorStoreName' in template_params:
+                                          if 'VectorStoreName' not in event['ResourceProperties']:
+                                              raise Exception("Template requires VectorStoreName but it's not provided in ResourceProperties")
+                                          base_params.append(
+                                              {'ParameterKey': 'VectorStoreName', 'ParameterValue': event['ResourceProperties']['VectorStoreName']}
+                                          )
+                                      
+                                      if 'ImagingStateMachineName' in template_params:
+                                          if 'ImagingStateMachineName' not in config:
+                                              raise Exception("Template requires ImagingStateMachineName but it's not provided in StackConfiguration")
+                                          base_params.append(
+                                              {'ParameterKey': 'ImagingStateMachineName', 'ParameterValue': config['ImagingStateMachineName']}
+                                          )
+                                      
+                                      if 'ImagingStateMachineArn' in template_params:
+                                          if 'ImagingStateMachineArn' not in config:
+                                              raise Exception("Template requires ImagingStateMachineArn but it's not provided in StackConfiguration")
+                                          base_params.append(
+                                              {'ParameterKey': 'ImagingStateMachineArn', 'ParameterValue': config['ImagingStateMachineArn']}
+                                          )
+                              
+                              except cfn.exceptions.ClientError as e:
+                                  print(f"Error getting template summary for {stack_name}: {str(e)}")
+                                  raise Exception(f"Failed to get template summary for {stack_name}: {str(e)}")
+
+                              create_params = {
+                                  'StackName': stack_name,
+                                  'TemplateURL': template_url,
+                                  'Capabilities': ['CAPABILITY_IAM','CAPABILITY_NAMED_IAM'],
+                                  'TimeoutInMinutes': 30,
+                                  'Parameters': base_params
+                              }
+                              
+                              try:
+                                  print(f"Creating stack {stack_name} with parameters:", create_params)
+                                  cfn.create_stack(**create_params)
+                                  pending_stacks.append({'name': stack_name, 'operation': 'CREATE', 'retries': 0})
+                              except cfn.exceptions.AlreadyExistsException:
+                                  print(f"Stack {stack_name} already exists, updating...")
+                                  update_params = {
+                                      'StackName': stack_name,
+                                      'TemplateURL': template_url,
+                                      'Capabilities': ['CAPABILITY_IAM','CAPABILITY_NAMED_IAM'],
+                                      'Parameters': base_params
+                                  }
+                                  cfn.update_stack(**update_params)
+                                  pending_stacks.append({'name': stack_name, 'operation': 'UPDATE', 'retries': 0})
+                                  
+                          except Exception as e:
+                              print(f"Error processing stack {stack_name}: {str(e)}")
+                              raise e
+
+                      # Wait for all stack operations to complete
+                      timeout = time.time() + 900  # 15 minutes
+                      while pending_stacks and time.time() < timeout:
+                          for stack in pending_stacks[:]:
+                              try:
+                                  status = cfn.describe_stacks(StackName=stack['name'])['Stacks'][0]['StackStatus']
+                                  operation = stack['operation']
+                                  
+                                  if status == f'{operation}_COMPLETE':
+                                      pending_stacks.remove(stack)
+                                      print(f"Stack {stack['name']} {operation.lower()} completed successfully")
+                                  elif status == f'{operation}_IN_PROGRESS':
+                                      print(f"Stack {stack['name']} still in progress...")
+                                  elif status.endswith('FAILED') or status.endswith('ROLLBACK_COMPLETE'):
+                                      # Handle failed stack with retry logic
+                                      if stack['retries'] < MAX_RETRIES:
+                                          retry_attempt = stack['retries'] + 1
+                                          print(f"Stack {stack['name']} failed. Attempting retry {retry_attempt}/{MAX_RETRIES}")
+                                          
+                                          # Add exponential backoff with jitter
+                                          backoff_time = (2 ** retry_attempt) + (random.randint(1, 10))
+                                          print(f"Waiting {backoff_time} seconds before retry...")
+                                          time.sleep(backoff_time)
+                                          
+                                          # Delete the failed stack before retrying
+                                          try:
+                                              print(f"Deleting failed stack {stack['name']} before retry")
+                                              cfn.delete_stack(StackName=stack['name'])
+                                              
+                                              # Wait for deletion to complete
+                                              stack_deleted = False
+                                              delete_timeout = time.time() + 300  # 5 minutes for deletion
+                                              while not stack_deleted and time.time() < delete_timeout:
+                                                  try:
+                                                      delete_status = cfn.describe_stacks(StackName=stack['name'])['Stacks'][0]['StackStatus']
+                                                      if delete_status == 'DELETE_COMPLETE':
+                                                          stack_deleted = True
+                                                          print(f"Failed stack {stack['name']} successfully deleted, proceeding with retry")
+                                                      elif delete_status.endswith('FAILED'):
+                                                          print(f"Failed to delete stack {stack['name']}, skipping retry")
+                                                          failed_stacks.append(stack['name'])
+                                                          pending_stacks.remove(stack)
+                                                          stack_deleted = True  # Exit the loop
+                                                      else:
+                                                          print(f"Waiting for stack {stack['name']} deletion... Current status: {delete_status}")
+                                                          time.sleep(10)
+                                                  except cfn.exceptions.ClientError as e:
+                                                      if 'does not exist' in str(e):
+                                                          stack_deleted = True
+                                                          print(f"Failed stack {stack['name']} successfully deleted, proceeding with retry")
+                                                      else:
+                                                          raise e
+                                              
+                                              if stack_deleted:
+                                                  # Retry the stack creation
+                                                  stack_name = stack['name']
+                                                  template_url = f"https://{config['SourceS3Bucket']}.s3.{config['Region']}.amazonaws.com/packaged_{stack_name.split('-')[-1]}.yaml"
+                                                  
+                                                  create_params = {
+                                                      'StackName': stack_name,
+                                                      'TemplateURL': template_url,
+                                                      'Capabilities': ['CAPABILITY_IAM','CAPABILITY_NAMED_IAM'],
+                                                      'TimeoutInMinutes': 30,
+                                                      'Parameters': base_params
+                                                  }
+                                                  
+                                                  cfn.create_stack(**create_params)
+                                                  pending_stacks.remove(stack)
+                                                  pending_stacks.append({
+                                                      'name': stack_name, 
+                                                      'operation': 'CREATE', 
+                                                      'retries': retry_attempt
+                                                  })
+                                                  print(f"Retry {retry_attempt} initiated for stack {stack_name}")
+                                          
+                                          except Exception as retry_error:
+                                              print(f"Error during retry for stack {stack['name']}: {str(retry_error)}")
+                                              failed_stacks.append(stack['name'])
+                                              pending_stacks.remove(stack)
+                                      else:
+                                          # Max retries reached
+                                          print(f"Stack {stack['name']} failed after {MAX_RETRIES} retries. Marking as failed but continuing with build.")
+                                          failed_stacks.append(stack['name'])
+                                          pending_stacks.remove(stack)
+                              except cfn.exceptions.ClientError as e:
+                                  print(f"Error checking stack {stack['name']} status: {str(e)}")
+                                  if stack['retries'] < MAX_RETRIES:
+                                      # Similar retry logic as above
+                                      retry_attempt = stack['retries'] + 1
+                                      print(f"Client error for stack {stack['name']}. Attempting retry {retry_attempt}/{MAX_RETRIES}")
+                                      stack['retries'] = retry_attempt
+                                  else:
+                                      print(f"Stack {stack['name']} failed after {MAX_RETRIES} retries due to client error. Continuing with build.")
+                                      failed_stacks.append(stack['name'])
+                                      pending_stacks.remove(stack)
+                          
+                          if pending_stacks:
+                              time.sleep(10)
+
+                      if pending_stacks:
+                          print(f"Timeout waiting for stacks to complete: {[s['name'] for s in pending_stacks]}")
+                          failed_stacks.extend([s['name'] for s in pending_stacks])
+
+                      # Report any failed stacks but don't fail the entire build
+                      if failed_stacks:
+                          print(f"The following stacks failed to deploy even after retries: {failed_stacks}")
+                          print("Continuing with build despite these failures")
+                          
+                      # Send success response even if some stacks failed
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {
+                          'FailedStacks': failed_stacks,
+                          'Message': 'Deployment completed with some failed stacks' if failed_stacks else 'All stacks deployed successfully'
+                      })
+
+              except Exception as e:
+                  print(f"Unhandled error in Lambda function: {str(e)}")
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {
+                      'Error': str(e)
+                  })
+
+  # Supervisor Agent (kept separate since it depends on other agents)
+  SupervisorAgent:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: AgentStacks
+    Condition: AutoCreateAgents
+    Properties:
+      TemplateURL: !Sub https://${SubAgentS3Bucket}.s3.${AWS::Region}.amazonaws.com/packaged_supervisor_agent.yaml
+      Parameters:
+        EnvironmentName: !Ref EnvironmentName
+        S3Bucket: !Ref S3Bucket
+        AgentRole: !GetAtt AgentRole.Arn
+        BedrockModelId: !Ref BedrockModelId
+      TimeoutInMinutes: 30

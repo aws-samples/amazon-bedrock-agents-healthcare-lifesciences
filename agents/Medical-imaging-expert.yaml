@@ -1,0 +1,171 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Creates a Medical imaging Agent and action group
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Description: The unique EnvironmentName for the application
+    Default: env1
+
+  S3Bucket:
+    Type: String
+    Description: The S3 bucket containing the lambda function for the agent
+
+  BedrockModelId:
+    Type: String
+    Description: The ID of the Foundation Model to use for the Agent
+    Default: us.anthropic.claude-3-5-sonnet-20241022-v2:0
+  DevMode:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: The flag to check if multi agent dev mode is enabled
+    
+  AgentRole:
+    Type: String
+    Description: The arn for the agent
+  
+  ImagingStateMachineName:
+    Type: String
+    Description: Name of the State Machine
+  
+  ImagingStateMachineArn:
+    Type: String
+    Description: ARN of the State Machine
+
+
+Mappings:
+  RegionMap:
+    us-east-1:
+      PandasLayer: 'arn:aws:lambda:us-east-1:336392948345:layer:AWSSDKPandas-Python312:12'
+    us-east-2:
+      PandasLayer: 'arn:aws:lambda:us-east-2:336392948345:layer:AWSSDKPandas-Python312:12'
+    us-west-1:
+      PandasLayer: 'arn:aws:lambda:us-west-1:336392948345:layer:AWSSDKPandas-Python312:12'
+    us-west-2:
+      PandasLayer: 'arn:aws:lambda:us-west-2:336392948345:layer:AWSSDKPandas-Python312:12'
+Conditions:
+  CreateAgentResources: !Equals [!Ref DevMode, "false"]
+
+Resources:
+  ImagingAgentResource:
+    Type: AWS::Bedrock::Agent
+    Condition: CreateAgentResources
+    Properties:
+      AgentName: !Sub Medical-Imaging-Expert-${EnvironmentName}
+      AgentResourceRoleArn: !Ref AgentRole
+      AutoPrepare : True
+      FoundationModel: !Ref BedrockModelId
+      Instruction: |
+       You are a medical research assistant AI specialized in processing medical imaging scans of patients. 
+       Your primary task is to create medical imaging jobs, or provide relevant medical insights after the jobs have completed execution. 
+       Use only the appropriate tools as required by the specific question. Follow these instructions carefully: 
+       1. For computed tomographic (CT) lung imaging biomarker analysis: a. Identify the patient subject ID(s) based on the conversation. b. Use the compute_imaging_biomarker tool to trigger the long-running job, passing the subject ID(s) as an array of strings (for example, ["R01-043", "R01-93"]). c. Only if specifically asked for an analysis, use the analyze_imaging_biomarker tool to process the results from the previous job. 
+       2. When providing your response: a. Start with a brief summary of your understanding of the user's query. b. Explain the steps you're taking to address the query. Ask for clarifications from the user if required. c. Present the results of the medical imaging jobs if complete. 
+      Description: "Agent for CT scan analysis."
+      ActionGroups:
+        - ActionGroupName: 'UserInputAction'
+          ParentActionGroupSignature: 'AMAZON.UserInput'
+          ActionGroupState: 'ENABLED'
+        - ActionGroupName: imagingBiomarkerProcessing
+          Description: Actions for processing imaging biomarker within CT scans for a list of subjects
+          ActionGroupExecutor: 
+            Lambda: !GetAtt ImagingBiomarkerLambda.Arn
+          FunctionSchema:
+            Functions:
+              - Description: "compute the imaging biomarker features from lung CT scans within the tumor for a list of patient subject ID"
+                Name: "compute_imaging_biomarker"
+                Parameters:
+                  subject_id:
+                    Type: "array"
+                    Description: "an array of patient subject ID"
+                    Required: true
+              - Description: "analyze the result imaging biomarker features from lung CT scans within the tumor for a list of patient subject ID"
+                Name: "analyze_imaging_biomarker"
+                Parameters:
+                  subject_id:
+                    Type: "array"
+                    Description: "an array of patient subject ID"
+                    Required: true     
+  
+  AgentAliasResource:
+    Type: AWS::Bedrock::AgentAlias
+    Condition: CreateAgentResources
+    Properties:
+      AgentId: !GetAtt ImagingAgentResource.AgentId
+      AgentAliasName: !Sub ImagingAgent-alias
+  
+  ImagingBiomarkerLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: imaging-biomarker-lambda
+      Handler: dummy_lambda.lambda_handler
+      Role: !GetAtt ImagingLambdaExecutionRole.Arn
+      Code:
+        S3Bucket: !Ref S3Bucket 
+        S3Key: Imaginglambdafunction.zip  
+      Runtime: python3.12
+      Timeout: 300
+      MemorySize: 256
+      Environment:
+        Variables:
+          SFN_STATEMACHINE_NAME: !Ref ImagingStateMachineName
+          REGION: !Sub ${AWS::Region}
+          ACCOUNTID: !Sub ${AWS::AccountId}
+          S3BUCKET: !Sub s3://${S3Bucket}
+      Layers:
+        - !FindInMap [RegionMap, !Ref 'AWS::Region', PandasLayer]
+
+  ImagingLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub 'ImagingBiomarkerLambdaExecutionRole-${AWS::Region}'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: ImagingLambdaExecutionPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: arn:aws:logs:*:*:*
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub arn:aws:s3:::${S3Bucket}
+                  - !Sub arn:aws:s3:::${S3Bucket}/*
+              - Effect: Allow
+                Action:
+                  - kms:RetireGrant
+                Resource:
+                  - !Sub arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/*
+              - Effect: Allow
+                Action:
+                  - states:StartExecution
+                Resource: !Ref ImagingStateMachineArn
+    
+  ImagingLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Condition: CreateAgentResources
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt ImagingBiomarkerLambda.Arn
+      Principal: bedrock.amazonaws.com
+      SourceArn: !GetAtt ImagingAgentResource.AgentArn
+      
+
+  

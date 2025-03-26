@@ -1,0 +1,271 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Creates a Statistician Agent and action group
+# Look at all depends on logic and clean up 
+Parameters:
+  EnvironmentName:
+    Type: String
+    Description: The unique EnvironmentName for the application
+    Default: env1
+
+  S3Bucket:
+    Type: String
+    Description: The S3 bucket containing the lambda function for the agent
+  
+  DevMode:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: The flag to check if multi agent dev mode is enabled
+    
+  BedrockModelId:
+    Type: String
+    Description: The ID of the Foundation Model to use for the Agent
+    Default: anthropic.claude-3-sonnet-20240229-v1:0
+  AgentRole:
+    Type: String
+    Description: The arn for the agent 
+  ImageTag:
+    Type: String
+    Default: latest
+    Description: Tag for the Docker image
+  ECRRepository:
+    Type: String
+    Default: lifelines-lambda-sample
+    Description: ECR repository name
+
+Conditions:
+  CreateAgentResources: !Equals [!Ref DevMode, "false"]
+
+Resources:
+  StatisticianAgentResource:
+    Condition: CreateAgentResources
+    Type: AWS::Bedrock::Agent
+    Properties:
+      AgentName: !Sub Statistician-agent-${EnvironmentName}
+      AgentResourceRoleArn: !Ref AgentRole
+      AutoPrepare : True
+      FoundationModel: !Ref BedrockModelId
+      Instruction: |
+        You are a medical research assistant AI specialized in survival analysis with biomarkers. 
+        Your primary job is to interpret user queries, run scientific analysis tasks, and provide relevant medical insights with available visualization tools. 
+        Use only the appropriate tools as required by the specific question. Follow these instructions carefully: 
+        1. If the user query requires a Kaplan-Meier chart: a. Map survival status as 0 for Alive and 1 for Dead for the event parameter. b. Use survival duration as the duration parameter. c. Use the /group_survival_data tool to create baseline and condition group based on expression value threshold provided by the user. 
+        2. If a survival regression analysis is needed: a. You need access to all records with columns start with survival status as first column, then survival duration, and the required biomarkers. b. Use the /fit_survival_regression tool to identify the best-performing biomarker based on the p-value summary. c. Ask for S3 data location if not provided, do not assume S3 bucket names or object names. 
+        3. When you need to create a bar chart or plot: a. Always pass x_values and y_values in Array type to the function. If the user says x values are apple,egg and y values are 3,4 or as [apple,egg] and [3,4] pass their value as ['apple', 'banana'] and [3,4] 4. When providing your response: a. Start with a brief summary of your understanding of the user's query. b. Explain the steps you're taking to address the query. Ask for clarifications from the user if required. c. If you generate any charts or perform statistical analyses, explain their significance in the context of the user's query. d. Conclude with a concise summary of the findings and their potential implications for medical research. e. Make sure to explain any medical or statistical concepts in a clear, accessible manner. 
+
+      Description: "scientific analyst for survival analysis."
+      ActionGroups:
+        - ActionGroupName: 'UserInputAction'
+          ParentActionGroupSignature: 'AMAZON.UserInput'
+          ActionGroupState: 'ENABLED'
+        - ActionGroupName: scientificAnalysisActionGroup
+          Description: Actions for scientific analysis with lifelines library
+          ActionGroupExecutor: 
+            Lambda: !GetAtt ScientificPlotLambdaFunction.Arn
+          FunctionSchema:
+            Functions:
+              - Description: "Plots a Kaplan-Meier survival chart"
+                Name: "plot_kaplan_meier"
+                Parameters:
+                  biomarker_name:
+                    Type: "string"
+                    Description: "name of the biomarker"
+                    Required: true
+                  duration_baseline:
+                    Type: "array"
+                    Description: "duration in number of days for baseline"
+                    Required: true
+                  duration_condition:
+                    Type: "array"
+                    Description: "duration in number of days for condition"
+                    Required: true
+                  event_baseline:
+                    Type: "array"
+                    Description: "survival event for baseline"
+                    Required: true
+                  event_condition:
+                    Type: "array"
+                    Description: "survival event for condition"
+                    Required: true
+              - Description: "Fit a survival regression model with data in a S3 object"
+                Name: "fit_survival_regression"
+                Parameters:
+                  bucket:
+                    Type: "string"
+                    Description: "s3 bucket where the data is stored by the database query tool"
+                    Required: true
+                  key:
+                    Type: "string"
+                    Description: "json file name that is located in the s3 bucket and contains the data for fitting the model"
+                    Required: true
+        - ActionGroupName: matplotbarchart
+          Description: Creates a bar chart from the given input values
+          ActionGroupExecutor: 
+            Lambda: !GetAtt MatPlotBarChartLambdaFunction.Arn
+          FunctionSchema:
+            Functions:
+              - Description: "create a bar chart"
+                Name: "bar_chart"
+                Parameters:
+                  title:
+                    Type: "string"
+                    Description: "title of the bar chart"
+                    Required: true
+                  x_values:
+                    Type: "array"
+                    Description: "values for the x a xis"
+                    Required: true
+                  y_values:
+                    Type: "array"
+                    Description: "values for the y axis"
+                    Required: true
+                  x_label:
+                    Type: "string"
+                    Description: "title of the x axis"
+                    Required: true
+                  y_label:
+                    Type: "string"
+                    Description: "title of the y axis"
+                    Required: true
+
+    
+  
+  AgentAliasResource:
+    Type: AWS::Bedrock::AgentAlias
+    Condition: CreateAgentResources 
+    Properties:
+      AgentId: !GetAtt StatisticianAgentResource.AgentId
+      AgentAliasName: !Sub Statistician-alias
+      
+
+  
+  MatPlotBarChartLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: MatPlotBarChartLambdaPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource: 
+                - !Sub 'arn:aws:s3:::${S3Bucket}'
+                - !Sub 'arn:aws:s3:::${S3Bucket}/*'
+
+  MatplotlibLayer:
+    Type: AWS::Lambda::LayerVersion
+    DependsOn: ScientificPlotLambdaFunction
+    Properties:
+      LayerName: matplotliblayer
+      Description: Layer containing matplotlib and its dependencies
+      Content:
+        S3Bucket: !Ref S3Bucket
+        S3Key: lambda-layer.zip
+      CompatibleRuntimes:
+        - python3.12
+    
+
+  MatPlotBarChartLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: MatPlotBarChartLambda
+      Handler: matplotbarchartlambda.handler  
+      Role: !GetAtt MatPlotBarChartLambdaExecutionRole.Arn  
+      Code:
+        S3Bucket: !Ref S3Bucket 
+        S3Key: matplotbarchartlambda.zip  
+      Runtime: python3.11  
+      Timeout: 500
+      MemorySize: 128
+      Layers:
+        - !Ref MatplotlibLayer
+      Environment:
+        Variables:
+          S3_BUCKET: !Ref S3Bucket
+
+
+  MatPlotBarChartLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Condition: CreateAgentResources 
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt MatPlotBarChartLambdaFunction.Arn
+      Principal: bedrock.amazonaws.com
+      SourceArn: !GetAtt StatisticianAgentResource.AgentArn
+  
+  ScientificPlotLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/AmazonBedrockFullAccess
+      Policies:
+        - PolicyName: S3ObjectPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                Resource: !Sub 'arn:aws:s3:::${S3Bucket}/*'
+        - PolicyName: ECRAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - ecr:BatchGetImage
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchCheckLayerAvailability
+                Resource:
+                  - !Sub 'arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/${ECRRepository}'
+
+  ScientificPlotLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: ScientificPlotLambda
+      PackageType: Image
+      Code:
+        ImageUri: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ECRRepository}:${ImageTag}
+      Role: !GetAtt ScientificPlotLambdaExecutionRole.Arn
+      MemorySize: 512
+      Timeout: 900
+      Environment:
+        Variables:
+          S3_BUCKET: !Ref S3Bucket
+  
+  ScientificPlotLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Condition: CreateAgentResources 
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt ScientificPlotLambdaFunction.Arn
+      Principal: bedrock.amazonaws.com
+      SourceArn: !GetAtt StatisticianAgentResource.AgentArn

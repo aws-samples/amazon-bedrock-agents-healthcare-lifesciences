@@ -1,0 +1,270 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Creates a Bedrock Agent and action group
+# Look at all depends on logic and clean up 
+Parameters:
+  EnvironmentName:
+    Type: String
+    Description: The unique EnvironmentName for the application
+    Default: env1
+  S3Bucket:
+    Type: String
+    Description: The S3 bucket containing the lambda function for the agent
+  BedrockModelId:
+    Type: String
+    Description: The ID of the Foundation Model to use for the Agent
+    Default: anthropic.claude-3-sonnet-20240229-v1:0
+  AgentRole:
+    Type: String
+    Description: The arn for the agent
+  DevMode:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: The flag to check if multi agent dev mode is enabled
+Conditions:
+  CreateAgentResources: !Equals [!Ref DevMode, "false"]
+
+Resources:
+  DatabaseAgentResource:
+    Type: AWS::Bedrock::Agent
+    Condition: CreateAgentResources
+    Properties:
+      AgentName: !Sub biomarker-database-analyst-${EnvironmentName}
+      AgentResourceRoleArn: !Ref AgentRole
+      AutoPrepare : True
+      FoundationModel: !Ref BedrockModelId
+      Instruction: |
+        You are a medical research assistant AI specialized in generating SQL queries for a database containing medical biomarker information. 
+        Your primary task is to interpret user queries, generate appropriate SQL queries, and provide relevant medical insights based on the data. 
+        Use only the appropriate tools as required by the specific question. Follow these instructions carefully: 
+        1. Before generating any SQL query, use the /getschema tool to familiarize yourself with the database structure. This will ensure your queries are correctly formatted and target the appropriate columns. 
+        2. When generating an SQL query: a. Write the query as a single line, removing all newline ("\n") characters. b. Column names should remain consistent, do not modify the column names in the generated SQL query. 
+        3. Before execution of a step, a. Evaluate the SQL query with the rationale of the specific step by using the /refinesql tool. Provide both the SQL query and a brief rationale for the specific step you're taking. Do not share the original user question with the tool. b. Only proceed to execute the query using the /queryredshift tool after receiving the evaluated and potentially optimized version from the /refinesql tool. c. If there is an explicit need for retrieving all the data in S3, avoid optimized query recommendations that aggregate the data. 
+        4. When providing your response: a. Start with a brief summary of your understanding of the user's query. b. Explain the steps you're taking to address the query. c. Ask for clarifications from the user if required.
+      Description: "Agent for querying biomaker database."
+      ActionGroups:
+        - ActionGroupName: 'UserInputAction'
+          ParentActionGroupSignature: 'AMAZON.UserInput'
+          ActionGroupState: 'ENABLED'
+        - ActionGroupName: sqlActionGroup
+          Description: Action for getting the database schema and querying the database
+          ActionGroupExecutor: 
+            Lambda: !GetAtt AgentLambdaFunction.Arn
+          ApiSchema:
+            Payload: |
+              {
+                "openapi": "3.0.1",
+                "info": {
+                  "title": "Database schema look up and query APIs",
+                  "version": "1.0.0",
+                  "description": "APIs for looking up database table schemas and making queries to database tables."
+                },
+                "paths": {
+                  "/getschema": {
+                    "get": {
+                      "summary": "Get a list of all columns in the redshift database",
+                      "description": "Get the list of all columns in the redshift database table. Return all the column information in database table.",
+                      "operationId": "getschema",
+                      "responses": {
+                        "200": {
+                          "description": "Gets the list of table names and their schemas in the database",
+                          "content": {
+                            "application/json": {
+                              "schema": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "Table": {
+                                      "type": "string",
+                                      "description": "The name of the table in the database."
+                                    },
+                                    "Schema": {
+                                      "type": "string",
+                                      "description": "The schema of the table in the database. Contains all columns needed for making queries."
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "/queryredshift": {
+                    "get": {
+                      "summary": "API to send query to the redshift database table",
+                      "description": "Send a query to the database table to retrieve information pertaining to the users question. The API takes in only one SQL query at a time, sends the SQL statement and returns the query results from the table. This API should be called for each SQL query to a database table.",
+                      "operationId": "queryredshift",
+                      "parameters": [
+                        {
+                          "name": "query",
+                          "in": "query",
+                          "required": true,
+                          "schema": {
+                            "type": "string"
+                          },
+                          "description": "SQL statement to query database table."
+                        }
+                      ],
+                      "responses": {
+                        "200": {
+                          "description": "Query sent successfully",
+                          "content": {
+                            "application/json": {
+                              "schema": {
+                                "type": "object",
+                                "properties": {
+                                  "responseBody": {
+                                    "type": "string",
+                                    "description": "The query response from the database."
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "400": {
+                          "description": "Bad request. One or more required fields are missing or invalid."
+                        }
+                      }
+                    }
+                  },
+                  "/refinesql": {
+                    "get": {
+                      "summary": "Evaluate SQL query efficiency",
+                      "description": "Evaluate the efficiency of an SQL query based on the provided schema, query, and question.",
+                      "operationId": "refinesql",
+                      "parameters": [
+                        {
+                          "name": "sql",
+                          "in": "query",
+                          "required": true,
+                          "schema": {
+                            "type": "string"
+                          },
+                          "description": "The SQL query to evaluate."
+                        },
+                        {
+                          "name": "question",
+                          "in": "query",
+                          "required": true,
+                          "schema": {
+                            "type": "string"
+                          },
+                          "description": "The question related to the rationale of the specific step."
+                        }
+                      ],
+                      "responses": {
+                        "200": {
+                          "description": "Successful response",
+                          "content": {
+                            "application/json": {
+                              "schema": {
+                                "type": "object",
+                                "properties": {
+                                  "evaluatedQuery": {
+                                    "type": "string",
+                                    "description": "The evaluated SQL query, or the original query if it is efficient."
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "400": {
+                          "description": "Bad request. One or more required fields are missing or invalid."
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+  
+  AgentAliasResource:
+    Type: AWS::Bedrock::AgentAlias
+    Condition: CreateAgentResources
+    Properties:
+      AgentId: !GetAtt DatabaseAgentResource.AgentId
+      AgentAliasName: !Sub biomakers-alias
+      
+  AgentLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.12
+      FunctionName: !Sub biomarker-agent-${EnvironmentName}
+      Handler: querydatabaselambda.lambda_handler
+      Role: !GetAtt AgentLambdaRole.Arn
+      Timeout: 900
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref S3Bucket
+      Code:
+        S3Bucket: !Ref S3Bucket
+        S3Key: querydatabaselambda.zip
+      
+  AgentLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: AgentLambdaPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: LambdaExecution
+                Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*
+              - Sid: RedshiftDataAccess
+                Effect: Allow
+                Action:
+                  - redshift-data:ExecuteStatement
+                  - redshift-data:DescribeStatement
+                  - redshift-data:GetStatementResult
+                  - redshift-data:ListStatements
+                Resource: '*'
+              - Sid: RedshiftCredentials
+                Effect: Allow
+                Action:
+                  - redshift:GetClusterCredentials
+                Resource: 
+                  - !Sub arn:aws:redshift:${AWS::Region}:${AWS::AccountId}:dbuser:biomarker-redshift-cluster/admin
+                  - !Sub arn:aws:redshift:${AWS::Region}:${AWS::AccountId}:dbname:biomarker-redshift-cluster/dev
+              - Sid: S3Access
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                Resource: 
+                  - !Sub arn:aws:s3:::${S3Bucket}/*
+              - Sid: BedrockAccess
+                Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                Resource: !Sub arn:aws:bedrock:${AWS::Region}::foundation-model/anthropic.claude-3-5-sonnet-20240620-v1:0
+                    
+                
+  AgentLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Condition: CreateAgentResources
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt AgentLambdaFunction.Arn
+      Principal: bedrock.amazonaws.com
+      SourceArn: !GetAtt DatabaseAgentResource.AgentArn
+             

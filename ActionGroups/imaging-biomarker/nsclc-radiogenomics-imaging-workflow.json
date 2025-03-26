@@ -1,0 +1,121 @@
+{
+  "StartAt": "iterate_over_subjects",
+  "States": {
+    "iterate_over_subjects": {
+      "ItemsPath": "$.Subject",
+      "MaxConcurrency": 50,
+      "Type": "Map",
+      "Next": "Finish",
+      "Iterator": {
+        "StartAt": "DICOM/NIfTI Conversion and Radiomic Feature Extraction",
+        "States": {
+          "Fallback": {
+            "Type": "Pass",
+            "Result": "This iteration failed for some reason",
+            "End": true
+          },
+          "DICOM/NIfTI Conversion and Radiomic Feature Extraction": {
+            "Type": "Task",
+            "OutputPath": "$.ProcessingJobArn",
+            "Resource": "arn:aws:states:::sagemaker:createProcessingJob.sync",
+            "Retry": [
+              {
+                "ErrorEquals": [
+                  "SageMaker.AmazonSageMakerException"
+                ],
+                "IntervalSeconds": 15,
+                "MaxAttempts": 8,
+                "BackoffRate": 1.5
+              }
+            ],
+            "Catch": [
+              {
+                "ErrorEquals": [
+                  "States.TaskFailed"
+                ],
+                "Next": "Fallback"
+              }
+            ],
+            "Parameters": {
+              "ProcessingJobName.$": "States.Format('{}-{}', $$.Execution.Input['PreprocessingJobName'], $)",
+              "ProcessingInputs": [
+                {
+                  "InputName": "DICOM",
+                  "AppManaged": false,
+                  "S3Input": {
+                    "S3Uri.$": "States.Format('##INPUT_DATA_S3URI##/{}' , $)",
+                    "LocalPath": "/opt/ml/processing/input",
+                    "S3DataType": "S3Prefix",
+                    "S3InputMode": "File",
+                    "S3DataDistributionType": "FullyReplicated",
+                    "S3CompressionType": "None"
+                  }
+                }
+              ],
+              "ProcessingOutputConfig": {
+                "Outputs": [
+                  {
+                    "OutputName": "CT-Nifti",
+                    "AppManaged": false,
+                    "S3Output": {
+                      "S3Uri": "##OUTPUT_DATA_S3URI##/CT-Nifti",
+                      "LocalPath": "/opt/ml/processing/output/CT-Nifti",
+                      "S3UploadMode": "EndOfJob"
+                    }
+                  },
+                  {
+                    "OutputName": "CT-SEG",
+                    "AppManaged": false,
+                    "S3Output": {
+                      "S3Uri": "##OUTPUT_DATA_S3URI##/CT-SEG",
+                      "LocalPath": "/opt/ml/processing/output/CT-SEG",
+                      "S3UploadMode": "EndOfJob"
+                    }
+                  },
+                  {
+                    "OutputName": "PNG",
+                    "AppManaged": false,
+                    "S3Output": {
+                      "S3Uri": "##OUTPUT_DATA_S3URI##/PNG",
+                      "LocalPath": "/opt/ml/processing/output/PNG",
+                      "S3UploadMode": "EndOfJob"
+                    }
+                  },
+                  {
+                    "OutputName": "CSV",
+                    "AppManaged": false,
+                    "S3Output": {
+                      "S3Uri": "##OUTPUT_DATA_S3URI##/CSV",
+                      "LocalPath": "/opt/ml/processing/output/CSV",
+                      "S3UploadMode": "EndOfJob"
+                    }
+                  }
+                ]
+              },
+              "AppSpecification": {
+                "ImageUri": "##ECR_IMAGE_URI##",
+                "ContainerArguments.$": "States.Array('--subject', $)",
+                "ContainerEntrypoint": [
+                  "python3",
+                  "/opt/dcm2nifti_processing.py"
+                ]
+              },
+              "RoleArn": "##IAM_ROLE_ARN##",
+              "ProcessingResources": {
+                "ClusterConfig": {
+                  "InstanceCount": 1,
+                  "InstanceType": "ml.m5.xlarge",
+                  "VolumeSizeInGB": 5
+                }
+              }
+            },
+            "End": true
+          }
+        }
+      }
+    },
+    "Finish": {
+      "Type": "Succeed"
+    }
+  }
+}

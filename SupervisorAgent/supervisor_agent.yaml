@@ -1,0 +1,338 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudFormation template for Bedrock Agent deployment using custom resource'
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Description: The unique EnvironmentName for the application
+    Default: env1
+  S3Bucket:
+    Type: String
+    Description: The S3 bucket containing the lambda function for the agent
+  AgentRole:
+    Type: String
+    Description: The arn for the agent
+  BedrockModelId:
+    Type: String
+    Description: Model ID for the Supervisor Agent
+
+Resources:
+  BedrockAgentRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: bedrock.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: BedrockAgentCustomPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: AmazonBedrockAgentBedrockFoundationModelPolicy
+                Effect: Allow
+                Action: 
+                  - bedrock:InvokeModel*
+                  - bedrock:CreateInferenceProfile
+                Resource:
+                  - !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/*'
+                  - !Sub 'arn:aws:bedrock:${AWS::Region}::inference-profile/*'
+                  - !Sub 'arn:aws:bedrock:${AWS::Region}::application-inference-profile/*'
+              - Sid: SupervisorAgentPolicy
+                Effect: Allow
+                Action:
+                  - bedrock:*
+                Resource:
+                  - arn:aws:bedrock:*:*:agent/*
+                  - arn:aws:bedrock:*:*:agent-alias/*
+                  - arn:aws:bedrock:*:*:application-inference-profile/*
+                  - arn:aws:bedrock:*:*:inference-profile/*
+              - Sid: InferenceProfileManagementPolicy
+                Effect: Allow
+                Action:
+                  - bedrock:GetInferenceProfile
+                  - bedrock:ListInferenceProfiles
+                  - bedrock:DeleteInferenceProfile
+                  - bedrock:TagResource
+                  - bedrock:UntagResource
+                  - bedrock:ListTagsForResource
+                Resource:
+                  - arn:aws:bedrock:*:*:inference-profile/*
+                  - arn:aws:bedrock:*:*:application-inference-profile/*
+
+  LambdaLayer:
+    Type: AWS::Lambda::LayerVersion
+    Properties:
+      CompatibleRuntimes:
+        - python3.12
+      Content:
+        S3Bucket: !Ref S3Bucket
+        S3Key: lambda-layer.zip
+      Description: Layer containing latest boto3
+      LayerName: BedrockAgentDependencies
+
+  CollaboratorLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+      - PolicyName: BedrockAgentAccess
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+              - bedrock:*
+            Resource:
+              - !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*'
+              - !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent-alias/*'
+              - !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/*'
+              - !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:application-inference-profile/*'
+          - Effect: Allow
+            Action: iam:PassRole
+            Resource: 
+              - !GetAtt BedrockAgentRole.Arn
+              - !Ref AgentRole 
+
+  BedrockAgentFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.13
+      Handler: index.handler
+      Role: !GetAtt CollaboratorLambdaRole.Arn
+      Layers:
+        - !Ref LambdaLayer
+      Code:
+        ZipFile: |
+          import cfnresponse
+          import uuid
+          import time
+          import sys
+          from pip._internal import main
+          main(['install', '-I', '-q', 'boto3', '--target', '/tmp/', '--no-cache-dir', '--disable-pip-version-check'])
+          sys.path.insert(0,'/tmp/')
+          import boto3
+          from botocore.exceptions import ClientError
+
+          client = boto3.client('bedrock-agent')
+
+          def delete_agent_aliases(client, agent_id):
+              try:
+                  # List all aliases for the agent
+                  aliases = client.list_agent_aliases(agentId=agent_id)
+                  
+                  # Delete each alias
+                  for alias in aliases['agentAliasSummaries']:
+                      client.delete_agent_alias(agentId=agent_id, agentAliasId=alias['agentAliasId'])
+                  
+                  print(f"All aliases for agent {agent_id} have been deleted.")
+              except Exception as e:
+                  print(f"Error deleting aliases: {str(e)}")
+                  raise
+          def handler(event, context):
+              try:
+                  if event['RequestType'] in ['Create', 'Update']:
+                      
+                      response = client.create_agent(
+                          agentName='Supervisoragent',
+                          agentResourceRoleArn=event['ResourceProperties']['RoleArn'],
+                          description='Multi-agent collaboration for biomarker discovery',
+                          foundationModel='us.anthropic.claude-3-5-sonnet-20241022-v2:0',
+                          instruction='''You are a medical research assistant AI specialized in cancer biomarker analysis and discovery. Your primary task is to interpret user queries, use relevant agents for specific tasks, and provide consolidated medical insights based on the data. Use only the appropriate agents as required by the specific question. You can provide responses from a prior agent to the next agent in sequence. To analyze patient biomarkers data, you can retrieve relevant records from the database. To find the p-value of biomarkers, a. You need to query and store all records including survival status, survival duration in years, and the required biomarkers and b. You need to fit a surival regression model with that data in S3.  When providing your response: a. Start with a brief summary of your understanding of the user's query. b. Explain the steps you're taking to address the query. Ask for clarifications from the user if required. c. Present the results of individual agents d. Conclude with a concise summary of the findings and their potential implications for medical research. Make sure to explain any medical or statistical concepts in a clear, accessible manner.''',
+                          idleSessionTTLInSeconds=1800,
+                          agentCollaboration='SUPERVISOR',
+                          memoryConfiguration={
+                              'enabledMemoryTypes': ['SESSION_SUMMARY'],
+                              'storageDays': 30
+                          },
+                          orchestrationType='DEFAULT',
+                          clientToken=str(uuid.uuid4())
+                      )
+                      physical_id = response['agent']['agentId']
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, 
+                          {'AgentId': physical_id}, physical_id)
+                  elif event['RequestType'] == 'Delete':
+                      if 'PhysicalResourceId' in event:
+                          agent_id = event['PhysicalResourceId']
+                          try:
+                              # First, attempt to delete aliases
+                              delete_agent_aliases(client, agent_id)
+                              
+                              # Then, attempt to delete the agent
+                              client.delete_agent(agentId=agent_id)
+                          except client.exceptions.ConflictException as ce:
+                              print(f"ConflictException: {str(ce)}")
+                              # If we still get a ConflictException, we can't resolve it automatically
+                              cfnresponse.send(event, context, cfnresponse.FAILED, 
+                                  {'Error': f"Unable to delete agent {agent_id}. Please check and remove any remaining dependencies manually."})
+                              return
+                  #sleeping to allow time for agent build 
+                  time.sleep(15)
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+              except Exception as e:
+                  print(f"Error: {str(e)}")
+                  cfnresponse.send(event, context, cfnresponse.FAILED, 
+                      {'Error': str(e)})
+      Timeout: 300
+
+  BedrockAgentCustomResource:
+    Type: Custom::BedrockAgent
+    Properties:
+      ServiceToken: !GetAtt BedrockAgentFunction.Arn
+      RoleArn: !Ref AgentRole
+
+  CollaboratorAssociationFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.13
+      Layers:
+        - !Ref LambdaLayer
+      Handler: index.handler
+      Role: !GetAtt CollaboratorLambdaRole.Arn
+      Code:
+        ZipFile: !Sub |
+          import cfnresponse
+          import time
+          import sys
+          from pip._internal import main
+          main(['install', '-I', '-q', 'boto3', '--target', '/tmp/', '--no-cache-dir', '--disable-pip-version-check'])
+          sys.path.insert(0,'/tmp/')
+          import boto3
+          from botocore.exceptions import ClientError
+
+          client = boto3.client('bedrock-agent')
+
+          def handler(event, context):
+              try:
+                  if event['RequestType'] in ['Create', 'Update']:
+                      supervisor_agent_id = event['ResourceProperties']['AgentId']
+
+                      # Define sub-agents with their configurations
+                      sub_agents = [
+                          {
+                              "sub_agent_association_name": "Medical-Imaging-Expert-${EnvironmentName}",
+                              "sub_agent_instruction": "You are the medical imaging expert. Analyze and interpret medical images.",
+                              "relay_conversation_history": "TO_COLLABORATOR"
+                          },
+                          {
+                              "sub_agent_association_name": "Clinical-evidence-researcher-${EnvironmentName}",
+                              "sub_agent_instruction": "You are the clinical evidence researcher. Review and analyze clinical evidence.",
+                              "relay_conversation_history": "TO_COLLABORATOR"
+                          },
+                          {
+                              "sub_agent_association_name": "Statistician-agent-${EnvironmentName}",
+                              "sub_agent_instruction": "You are the statistician. Provide statistical analysis and interpretation.",
+                              "relay_conversation_history": "TO_COLLABORATOR"
+                          },
+                          {
+                              "sub_agent_association_name": "biomarker-database-analyst-${EnvironmentName}",
+                              "sub_agent_instruction": "You are the clinical trial analyst. Analyze trial data and outcomes.",
+                              "relay_conversation_history": "TO_COLLABORATOR"
+                          }
+                      ]
+                      # Get all target agents to build alias ARNs
+                      response = client.list_agents(maxResults=100)
+                      agent_map = {}
+                      
+                      #Get each agent alias
+                      for agent in response['agentSummaries']:
+                          if agent['agentName'] in [sa["sub_agent_association_name"] for sa in sub_agents]:
+                          
+                              alias_response = client.list_agent_aliases(
+                                  agentId=agent['agentId']
+                              )
+                              sorted_aliases = sorted(
+                                  alias_response['agentAliasSummaries'],
+                                  key=lambda x: x['createdAt'],
+                                  reverse=True
+                              )
+                              alias_id = next(
+                                  (alias['agentAliasId'] for alias in sorted_aliases if alias['agentAliasId'] != 'TSTALIASID'),
+                                  None
+                              )
+                              if alias_id:
+                                  print(f"Selected alias ID: {alias_id}")
+                        
+                                  alias_arn = f"arn:aws:bedrock:{context.invoked_function_arn.split(':')[3]}:{context.invoked_function_arn.split(':')[4]}:agent-alias/{agent['agentId']}/{alias_id}"
+                                  agent_map[agent['agentName']] = alias_arn
+                              else:
+                                  print(f"No suitable alias found for agent {agent['agentName']}")
+
+                      # Associate sub-agents
+                      for sub_agent in sub_agents:
+                          sub_agent["sub_agent_alias_arn"] = agent_map.get(sub_agent["sub_agent_association_name"])
+                          
+                          association_response = client.associate_agent_collaborator(
+                              agentId=supervisor_agent_id,
+                              agentVersion="DRAFT",
+                              agentDescriptor={"aliasArn": sub_agent["sub_agent_alias_arn"]},
+                              collaboratorName=sub_agent["sub_agent_association_name"],
+                              collaborationInstruction=sub_agent["sub_agent_instruction"],
+                              relayConversationHistory=sub_agent["relay_conversation_history"]
+                          )
+                          
+                          time.sleep(20)  # Wait for agent status update
+                          client.prepare_agent(agentId=supervisor_agent_id)
+                          time.sleep(20)  # Wait for agent status update
+
+                      # Create supervisor agent alias
+                      supervisor_alias = client.create_agent_alias(
+                          agentAliasName="multi-agent",
+                          agentId=supervisor_agent_id
+                      )
+
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, 
+                          {'SupervisorAliasId': supervisor_alias["agentAlias"]["agentAliasId"]})
+                  
+                  elif event['RequestType'] == 'Delete':
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+              
+              except Exception as e:
+                  print(f"Error: {str(e)}")
+                  cfnresponse.send(event, context, cfnresponse.FAILED, 
+                      {'Error': str(e)})
+
+      Timeout: 300
+
+  CollaboratorAssociationCustomResource:
+    Type: Custom::CollaboratorAssociation
+    DependsOn: BedrockAgentCustomResource
+    Properties:
+      ServiceToken: !GetAtt CollaboratorAssociationFunction.Arn
+      AgentId: !GetAtt BedrockAgentCustomResource.AgentId
+  
+  AgentIdSSMParameter:
+    DependsOn: CollaboratorAssociationCustomResource
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /streamlitapp/${EnvironmentName}/AGENT_ID
+      Type: String
+      Value: !GetAtt BedrockAgentCustomResource.AgentId
+      Description: !Sub SSM parameter for AgentId for ${EnvironmentName}
+
+  AgentAliasIdSSMParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /streamlitapp/${EnvironmentName}/AGENT_ALIAS_ID
+      Type: String
+      Value: !GetAtt CollaboratorAssociationCustomResource.SupervisorAliasId
+      Description: !Sub SSM parameter for AgentAliasId for ${EnvironmentName}
+
+Outputs:
+  AgentId:
+    Description: Bedrock Agent ID
+    Value: !GetAtt BedrockAgentCustomResource.AgentId
+  SupervisorAliasId:
+    Description: Supervisor Agent Alias ID
+    Value: !GetAtt CollaboratorAssociationCustomResource.SupervisorAliasId

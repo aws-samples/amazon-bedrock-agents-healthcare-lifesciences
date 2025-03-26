@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Redirecting...</title>
+  <script>
+    const repoName = "amazon-bedrock-agents-healthcare-lifesciences";
+    const path = window.location.pathname;
+    
+    // If path is missing the repo name prefix, add it
+    if (!path.startsWith('/' + repoName + '/')) {
+      const relativePath = path.startsWith('/') ? path.substring(1) : path;
+      window.location.replace('/' + repoName + '/' + relativePath);
+    } else {
+      // If path has the repo name but still 404s, go to homepage
+      window.location.replace('/' + repoName + '/');
+    }
+  </script>
+</head>
+<body>
+  <p>Redirecting...</p>
+</body>
+</html>

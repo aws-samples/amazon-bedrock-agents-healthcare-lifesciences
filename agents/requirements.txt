@@ -1,0 +1,7 @@
+boto3>=1.35.98
+awscli
+botocore
+opensearch-py
+retrying
+termcolor 
+rich
