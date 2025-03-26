@@ -91,15 +91,14 @@ cd create-your-own-agent
 
 When creating agents for healthcare and life sciences applications, consider these best practices:
 
-    Instructions: Be specific about the HCLS domain expertise your agent should have
+    **Instructions**: Be specific about the HCLS domain expertise your agent should have
     Context window usage: Structure prompts efficiently to maximize available context
     Knowledge base optimization: Index documents strategically for relevant retrieval
     Action group design: Create focused, clear API schemas for  data operations
     Security and compliance: Follow data handling best practices. Use public data sources with appropriate license. 
     Testing: Validate responses with domain-specific test cases
 
-Example agent instructions for a medical terminology agent:
-
+**Example agent instructions for a medical terminology agent**:
 You are a healthcare terminology expert specializing in standardized medical coding systems.
 Your primary expertise includes ICD-10, SNOMED CT, LOINC, RxNorm, and CPT codes.
 
@@ -124,26 +123,25 @@ Use API actions to look up specific codes when needed.
 
 Once you've created and tested your agent, follow these steps to contribute to our catalog:
 
-    Fork the repository on GitHub
+    1. Fork the repository on GitHub
 
-    Clone your fork locally:
+    2. Clone your fork locally:
    ```bash
     git clone https://github.com/YOUR-USERNAME/amazon-bedrock-agents-healthcare-lifesciences.git
     cd amazon-bedrock-agents-healthcare-lifesciences
-    git checkout multi-agent-collaboration
 
     #Create a new branch:
 
     git checkout -b add-my-agent-name
    ```
-    Add your agent to the catalog:
-        Create a new directory in agents_catalog/ with your agent's name
-        Include the following files:
-            README.md: Description, use cases, and setup instructions
-            cloudformation/: Templates for one-click deployment
-            notebooks/: Jupyter notebooks for custom setup
-            sample-prompts.md: Example interactions showing capabilities
-            architecture.png: Visual diagram of your agent
+    3. Add your agent to the catalog:
+      - Create a new directory in agents_catalog/ with your agent's name
+      - Include the following files:
+         - README.md: Description, use cases, and setup instructions
+         - cloudformation/*.yaml: Templates for one-click deployment
+         - notebooks/: Jupyter notebooks for custom setup and test cases
+         - sample-prompts.md: Example interactions showing capabilities
+         - architecture.png: Visual diagram of your agent
 
     Submit a pull request:
         Go to the original repository
@@ -161,26 +159,27 @@ Our team will review your submission and provide feedback before merging.
 The Bedrock multi-agent collaboration framework allows multiple specialized agents to collaborate on complex queries.
 - Review Bedrock Agent documentation to [use multi-agent collaboration](https://docs.aws.amazon.com/bedrock/latest/userguide/agents-multi-agent-collaboration.html)
 
-<Tabs> <TabItem label="Using CloudFormation" icon="seti:aws" color="orange">
+<Tabs> <TabItem label="Using Runtime initialization" icon="seti:aws" color="orange">
 
 #### Select agents and configure automatically
 
-1. Launch the Configure Multi-agent collaboration UI
+1. Launch the Configure Multi-agent collaboration UI 
 2. Select agents and hit configure 
 3. Test orchestration with your queries
+
 </TabItem> <TabItem label="Using Jupyter Notebooks" icon="seti:jupyter" color="yellow">
 
 #### Interactive Development
 
 1. Clone the repository branch with multi-agent features:
    ```bash
-   git clone -b multi-agent-collaboration https://github.com/aws-samples/amazon-bedrock-agents-healthcare-lifesciences.git
-   cd amazon-bedrock-agents-healthcare-lifesciences/multi_agent_orchestration
+   git clone https://github.com/aws-samples/amazon-bedrock-agents-healthcare-lifesciences.git
+   cd amazon-bedrock-agents-healthcare-lifesciences/multi_agent_collaboration
    ```
 
 2. Review the directory structure to understand the components:
    ```
-   multi_agent_orchestration/
+   multi_agent_collaboration/
    ├── templates/            # CloudFormation templates
    ├── examples/             # Example implementations
    └── README.md             # Documentation
@@ -210,10 +209,6 @@ The Bedrock multi-agent collaboration framework allows multiple specialized agen
 7. Deploy when satisfied with performance
 
 </TabItem> </Tabs>
-
-## Evaluation of Multi-Agent Collaboration
- 
-TBD
 
 ## Conclusion
 

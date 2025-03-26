@@ -1,0 +1,1035 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Template to deploy gRAG-Pharma solution
+
+Parameters:
+
+  ####################### Start of parameters for Neptune DB ####################################
+  Env:
+    Description: Environment tag, e.g. prod, nonprod.
+    Default: test
+    Type: String
+    AllowedPattern: "[a-z0-9]+"
+    MaxLength: 15
+
+  DbInstanceType:
+    Description: Neptune DB instance type
+    Type: String
+    Default: db.r6g.4xlarge
+    AllowedValues:
+    - db.serverless
+    - db.t3.medium
+    - db.r6g.large
+    - db.r6g.xlarge
+    - db.r6g.2xlarge
+    - db.r6g.4xlarge
+    - db.r6g.8xlarge
+    - db.r5.large
+    - db.r5.xlarge
+    - db.r5.2xlarge
+    - db.r5.4xlarge
+    - db.r5.8xlarge
+    - db.r5.12xlarge
+    ConstraintDescription: Must be a valid Neptune instance type.
+  # MinNCUs:
+  #   Description: Min NCUs to be set on the Neptune cluster(Should be less than or
+  #     equal to MaxNCUs). Required if DBInstance type is db.serverless
+  #   Default: 2.5
+  #   Type: Number
+  #   MinValue: 1
+  #   MaxValue: 128
+  #   ConstraintDescription: Must be a valid value between 1 and 128.
+  # MaxNCUs:
+  #   Description: Max NCUs to be set on the Neptune cluster(Should be greater than
+  #     or equal to MinNCUs). Required if DBInstance type is db.serverless
+  #   Default: 128
+  #   Type: Number
+  #   MinValue: 1
+  #   MaxValue: 128
+  #   ConstraintDescription: Must be a valid value between 1 and 128.
+
+  DBClusterPort:
+    Type: String
+    Default: '8182'
+    Description: Enter the port of your Neptune cluster
+  NeptuneQueryTimeout:
+    Type: Number
+    Default: 600000
+    Description: Neptune Query Time out (in milliseconds)
+  NeptuneEnableAuditLog:
+    Type: Number
+    Default: 0
+    AllowedValues:
+    - 0
+    - 1
+    Description: Enable Audit Log. 0 means disable and 1 means enable.
+  IamAuthEnabled:
+    Type: String
+    Default: 'false'
+    AllowedValues:
+    - 'true'
+    - 'false'
+    Description: Enable IAM Auth for Neptune.
+  AttachBulkloadIAMRoleToNeptuneCluster:
+    Type: String
+    Default: 'true'
+    AllowedValues:
+    - 'true'
+    - 'false'
+    Description: Attach Bulkload IAM role to cluster
+  StorageEncrypted:
+    Description: Enable Encryption for Neptune.
+    Type: String
+    Default: 'true'
+    AllowedValues:
+    - 'true'
+    - 'false'
+  KmsKeyId:
+    Description: 'OPTIONAL: If StorageEncrypted is true, the Amazon KMS key identifier
+      for the encrypted DB cluster.'
+    Type: String
+    Default: ''
+
+  ######################### Start of parameters for Neptune Notebook ####################################
+
+  # Env:
+  #   Description: Environment tag, e.g. prod, nonprod.
+  #   Default: test
+  #   Type: String
+  #   AllowedPattern: "[a-z0-9]+"
+  #   MaxLength: 15
+  NotebookInstanceType:
+    Description: SageMaker Notebook instance type. Please refer https://aws.amazon.com/sagemaker/pricing/
+      for uptodate allowed instance type in aws region and https://aws.amazon.com/neptune/pricing/
+      for pricing.
+    Type: String
+    Default: ml.t3.medium
+    AllowedValues:
+    - ml.t2.medium
+    - ml.t2.large
+    - ml.t2.xlarge
+    - ml.t2.2xlarge
+    - ml.t3.medium
+    - ml.t3.large
+    - ml.t3.xlarge
+    - ml.t3.2xlarge
+    - ml.m4.xlarge
+    - ml.m4.2xlarge
+    - ml.m4.4xlarge
+    - ml.m4.10xlarge
+    - ml.m4.16xlarge
+    - ml.m5.xlarge
+    - ml.m5.2xlarge
+    - ml.m5.4xlarge
+    - ml.m5.12xlarge
+    - ml.m5.24xlarge
+    - ml.c4.large
+    - ml.c4.xlarge
+    - ml.c4.2xlarge
+    - ml.c4.4xlarge
+    - ml.c4.8xlarge
+    - ml.c5.xlarge
+    - ml.c5.2xlarge
+    - ml.c5.4xlarge
+    - ml.c5.9xlarge
+    - ml.c5.18xlarge
+    - ml.c5d.xlarge
+    - ml.c5d.2xlarge
+    - ml.c5d.4xlarge
+    - ml.c5d.9xlarge
+    - ml.c5d.18xlarge
+    - ml.p3.2xlarge
+    - ml.p3.8xlarge
+    - ml.p3.16xlarge
+    - ml.p2.2xlarge
+    - ml.p2.8xlarge
+    - ml.p2.16xlarge
+    ConstraintDescription: Must be a valid SageMaker instance type.
+  # DBClusterId:
+  #   Description: Cluster id of an existing Neptune cluster. This is used for NotebookInstanceName
+  #     (which has 63 char limit) thus MaxLength constraint is used.
+  #   MaxLength: 38
+  #   Type: String
+  # NeptuneClusterEndpoint:
+  #   Description: Cluster endpoint of an existing Neptune cluster.
+  #   Type: String
+  # NeptuneClusterPort:
+  #   Description: 'OPTIONAL: Port of an existing Neptune cluster (default 8182).'
+  #   Type: String
+  #   Default: '8182'
+  # NeptuneClusterVpc:
+  #   Description: VPC Id of the VPC in which your Neptune cluster is running.
+  #   Type: AWS::EC2::VPC::Id
+  # NeptuneClusterSubnetId:
+  #   Description: Id of one of the subnets in which your Neptune cluster is running.
+  #   Type: AWS::EC2::Subnet::Id
+  # NeptuneClientSecurityGroup:
+  #   Description: 'OPTIONAL: A VPC security group with access to your Neptune cluster.
+  #     Leave empty only if the Neptune cluster allows access from anywhere.'
+  #   Type: String
+  # NeptuneLoadFromS3RoleArn:
+  #   Description: ARN of the IAM Role that allows Amazon Neptune to access Amazon S3
+  #     resources.
+  #   Type: String
+  NeptuneMLIAMRoleArn:
+    Description: 'OPTIONAL: ARN of the IAM Role that allows Amazon Neptune to access
+      ML resources.'
+    Type: String
+    Default: ''
+  NeptuneExportApiUri:
+    Description: 'OPTIONAL: Neptune-Export API URI'
+    Type: String
+    Default: ''
+  # NeptuneClusterResourceId:
+  #   Description: Neptune cluster resource ID.
+  #   Type: String
+  StartupScript:
+    Description: 'OPTIONAL: Startup script additions for the notebook instance.'
+    Type: String
+    Default: ''
+  CustomPolicyArn:
+    Description: 'OPTIONAL: Custom managed policy ARN.'
+    Type: String
+    Default: ''
+  EnableIamAuthOnNeptune:
+    Type: String
+    Default: 'false'
+    AllowedValues:
+    - 'true'
+    - 'false'
+    Description: Enable IAM Auth for Neptune.
+
+
+
+Conditions:
+
+  ######################### Start of conditions for Neptune DB ####################################
+  AttachBulkloadIAMRoleToNeptuneClusterCondition:
+    Fn::Equals:
+    - Ref: AttachBulkloadIAMRoleToNeptuneCluster
+    - 'true'
+
+  
+  
+  ######################### Start of conditions for Neptune Notebook ####################################
+
+  # AddNeptuneClientSecurityGroup:
+  #   Fn::Not:
+  #   - Fn::Equals:
+  #     - Ref: NeptuneSG # Edited
+  #     - ''
+  AddCustomPolicy:
+    Fn::Not:
+    - Fn::Equals:
+      - Ref: CustomPolicyArn
+      - ''
+  EnableIAMAuth:
+    Fn::Equals:
+    - Ref: EnableIamAuthOnNeptune
+    - 'true'
+  ValidNeptuneMLIAMRoleArn:
+    Fn::Not:
+    - Fn::Equals:
+      - Ref: NeptuneMLIAMRoleArn
+      - ''
+  IsIadRegion:
+    Fn::Equals:
+    - Ref: AWS::Region
+    - us-east-1
+
+Resources:
+
+  ######################### Start of resources for Neptune DB ####################################
+  
+  NeptuneDBSubnetGroup:
+    Type: AWS::Neptune::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Neptune DB subnet group
+      SubnetIds:
+        - Ref: Subnet1
+        - Ref: Subnet2
+        - Ref: Subnet3
+      Tags:
+      - Key: Name
+        Value:
+          Fn::Sub: Neptune-${Env}
+      - Key: StackId
+        Value:
+          Fn::Sub: "${AWS::StackId}"
+      - Key: Stack
+        Value:
+          Fn::Sub: "${AWS::Region}-${AWS::StackName}"
+      - Key: Application
+        Value: NeptuneCloudformation
+  
+  # Defines endpoint that allows S3 access
+  VPCS3Endpoint:
+    Type: AWS::EC2::VPCEndpoint
+    DependsOn:
+    - VPC
+    Properties:
+      RouteTableIds:
+      - Ref: PublicRouteTable
+      ServiceName:
+        Fn::Join:
+        - ''
+        - - com.amazonaws.
+          - Ref: AWS::Region
+          - ".s3"
+      VpcId:
+        Ref: VPC
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal: "*"
+          Action:
+          - s3:*
+          Resource:
+          - "*"
+  NeptuneSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId:
+        Ref: VPC
+      GroupDescription: Allow Neptune DBPort Access
+      SecurityGroupIngress:
+      - FromPort:
+          Ref: DBClusterPort
+        ToPort:
+          Ref: DBClusterPort
+        IpProtocol: tcp
+        CidrIp: 0.0.0.0/0
+        Description: http access
+      Tags:
+      - Key: Name
+        Value:
+          Fn::Sub: Neptune-${Env}
+      - Key: StackId
+        Value:
+          Fn::Sub: "${AWS::StackId}"
+      - Key: Stack
+        Value:
+          Fn::Sub: "${AWS::Region}-${AWS::StackName}"
+      - Key: Application
+        Value: NeptuneCloudformation
+  NeptuneClientRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal: 
+            Service: 
+            - ec2.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: "/"
+  NeptuneLoadFromS3Role:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - rds.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: "/"
+  NeptuneLoadFromS3Policy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: NeptuneLoadFromS3Policy
+      PolicyDocument:
+        Statement:
+        - Effect: Allow
+          Action:
+          - s3:Get*
+          - s3:List*
+          Resource:
+            - !Sub 'arn:aws:s3:::reactome-data-${AWS::AccountId}-${AWS::Region}'
+            - !Sub 'arn:aws:s3:::reactome-data-${AWS::AccountId}-${AWS::Region}/*'
+      Roles:
+      - Ref: NeptuneLoadFromS3Role
+  NeptuneDBClusterParameterGroup:
+    Type: AWS::Neptune::DBClusterParameterGroup
+    Properties:
+      Family: neptune1.2
+      Description: test-cfn-neptune-db-cluster-parameter-group-description
+      Parameters:
+        neptune_enable_audit_log:
+          Ref: NeptuneEnableAuditLog
+      Tags:
+      - Key: Name
+        Value:
+          Fn::Sub: Neptune-${Env}
+      - Key: StackId
+        Value:
+          Fn::Sub: "${AWS::StackName}"
+      - Key: Stack
+        Value:
+          Fn::Sub: "${AWS::Region}-${AWS::StackId}"
+      - Key: Application
+        Value: NeptuneCloudformation
+  NeptuneDBParameterGroup:
+    Type: AWS::Neptune::DBParameterGroup
+    Properties:
+      Family: neptune1.2
+      Description: test-cfn-neptune-db-parameter-group-description
+      Parameters:
+        neptune_query_timeout:
+          Ref: NeptuneQueryTimeout
+      Tags:
+      - Key: Name
+        Value:
+          Fn::Sub: Neptune-${Env}
+      - Key: StackId
+        Value:
+          Fn::Sub: "${AWS::StackId}"
+      - Key: Stack
+        Value:
+          Fn::Sub: "${AWS::Region}-${AWS::StackName}"
+      - Key: Application
+        Value: NeptuneCloudformation
+  NeptuneDBCluster:
+    Type: AWS::Neptune::DBCluster
+    Properties:
+      EngineVersion: '1.2'
+      DBClusterIdentifier: !Sub "reactome-db-${AWS::AccountId}-${AWS::Region}"
+      # ServerlessScalingConfiguration:
+      #   MinCapacity:
+      #     Ref: MinNCUs
+      #   MaxCapacity:
+      #     Ref: MaxNCUs
+      DBSubnetGroupName:
+        Ref: NeptuneDBSubnetGroup
+      VpcSecurityGroupIds:
+      - Fn::GetAtt:
+        - VPC
+        - DefaultSecurityGroup
+      - Ref: NeptuneSG
+      DBClusterParameterGroupName:
+        Ref: NeptuneDBClusterParameterGroup
+      Port:
+        Ref: DBClusterPort
+      IamAuthEnabled:
+        Ref: IamAuthEnabled
+      StorageEncrypted:
+        Ref: StorageEncrypted
+      KmsKeyId:
+        Ref: KmsKeyId
+      Tags:
+      - Key: Name
+        Value:
+          Fn::Sub: Neptune-${Env}
+      - Key: StackId
+        Value:
+          Fn::Sub: "${AWS::StackId}"
+      - Key: Stack
+        Value:
+          Fn::Sub: "${AWS::Region}-${AWS::StackName}"
+      - Key: Application
+        Value: NeptuneCloudformation
+      AssociatedRoles:
+        Fn::If:
+        - AttachBulkloadIAMRoleToNeptuneClusterCondition
+        - - RoleArn:
+              Fn::GetAtt:
+              - NeptuneLoadFromS3Role
+              - Arn
+        - Ref: AWS::NoValue
+    DependsOn:
+    - NeptuneDBSubnetGroup
+    - NeptuneDBClusterParameterGroup
+  NeptuneDBInstance:
+    Type: AWS::Neptune::DBInstance
+    Properties:
+      DBClusterIdentifier:
+        Ref: NeptuneDBCluster
+      DBInstanceClass:
+        Ref: DbInstanceType
+      DBParameterGroupName:
+        Ref: NeptuneDBParameterGroup
+      Tags:
+      - Key: Name
+        Value:
+          Fn::Sub: Neptune-${Env}
+      - Key: StackId
+        Value:
+          Fn::Sub: "${AWS::StackId}"
+      - Key: Stack
+        Value:
+          Fn::Sub: "${AWS::Region}-${AWS::StackName}"
+      - Key: Application
+        Value: NeptuneCloudformation
+    DependsOn:
+    - NeptuneDBCluster
+    - NeptuneDBParameterGroup
+
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 172.30.0.0/16
+      EnableDnsSupport: 'true'
+      EnableDnsHostnames: 'true'
+      Tags:
+      - Key: Name
+        Value:
+          Fn::Sub: Neptune-${Env}
+      - Key: StackId
+        Value:
+          Fn::Sub: "${AWS::StackId}"
+      - Key: Stack
+        Value:
+          Fn::Sub: "${AWS::Region}-${AWS::StackName}"
+      - Key: Application
+        Value: NeptuneCloudformation
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:
+        Ref: VPC
+    DependsOn:
+    - VPC
+  IGWAtt:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId:
+        Ref: IGW
+      VpcId:
+        Ref: VPC
+    DependsOn:
+    - VPC
+    - IGW
+
+  # Internet Gateway define
+  IGW:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+      - Key: Name
+        Value:
+          Fn::Sub: Neptune-${Env}
+      - Key: StackId
+        Value:
+          Fn::Sub: "${AWS::StackId}"
+      - Key: Stack
+        Value:
+          Fn::Sub: "${AWS::Region}-${AWS::StackName}"
+      - Key: Application
+        Value: NeptuneCloudformation
+
+  # Route for Internet access
+  PublicRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId:
+        Ref: IGW
+      RouteTableId:
+        Ref: PublicRouteTable
+    DependsOn:
+    - IGWAtt
+
+  # Define 6 subnets
+  Subnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 172.30.1.0/24
+      VpcId:
+        Ref: VPC
+      AvailabilityZone:
+        Fn::Select:
+        - 0
+        - Fn::GetAZs: ''
+  Subnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 172.30.2.0/24
+      VpcId:
+        Ref: VPC
+      AvailabilityZone:
+        Fn::Select:
+        - 1
+        - Fn::GetAZs: ''
+  Subnet3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 172.30.3.0/24
+      VpcId:
+        Ref: VPC
+      AvailabilityZone:
+        Fn::Select:
+        - 2
+        - Fn::GetAZs: ''
+  Subnet4:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 172.30.4.0/24
+      MapPublicIpOnLaunch: 'true'
+      VpcId:
+        Ref: VPC
+      AvailabilityZone:
+        Fn::Select:
+        - 0
+        - Fn::GetAZs: ''
+  Subnet5:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 172.30.5.0/24
+      MapPublicIpOnLaunch: 'true'
+      VpcId:
+        Ref: VPC
+      AvailabilityZone:
+        Fn::Select:
+        - 1
+        - Fn::GetAZs: ''
+  Subnet6:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 172.30.6.0/24
+      MapPublicIpOnLaunch: 'true'
+      VpcId:
+        Ref: VPC
+      AvailabilityZone:
+        Fn::Select:
+        - 2
+        - Fn::GetAZs: ''
+
+  # 6 public subnets and their route table associations
+  SubnetRTAssociation1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    DependsOn:
+    - Subnet1
+    - PublicRouteTable
+    Properties:
+      RouteTableId:
+        Ref: PublicRouteTable
+      SubnetId:
+        Ref: Subnet1
+  SubnetRTAssociation2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    DependsOn:
+    - Subnet2
+    - PublicRouteTable
+    Properties:
+      RouteTableId:
+        Ref: PublicRouteTable
+      SubnetId:
+        Ref: Subnet2
+  SubnetRTAssociation3:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    DependsOn:
+    - Subnet3
+    - PublicRouteTable
+    Properties:
+      RouteTableId:
+        Ref: PublicRouteTable
+      SubnetId:
+        Ref: Subnet3
+  SubnetRTAssociation4:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    DependsOn:
+    - Subnet4
+    - PublicRouteTable
+    Properties:
+      RouteTableId:
+        Ref: PublicRouteTable
+      SubnetId:
+        Ref: Subnet4
+  SubnetRTAssociation5:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    DependsOn:
+    - Subnet5
+    - PublicRouteTable
+    Properties:
+      RouteTableId:
+        Ref: PublicRouteTable
+      SubnetId:
+        Ref: Subnet5
+  SubnetRTAssociation6:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    DependsOn:
+    - Subnet6
+    - PublicRouteTable
+    Properties:
+      RouteTableId:
+        Ref: PublicRouteTable
+      SubnetId:
+        Ref: Subnet6
+
+######################### Start of resources for Neptune Notebook ####################################
+  SageMakerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow Access
+      VpcId:
+        Ref: VPC
+      Tags:
+      - Key: Name
+        Value:
+          Fn::Sub: Neptune
+      - Key: StackId
+        Value:
+          Fn::Sub: "${AWS::StackId}"
+      - Key: Stack
+        Value:
+          Fn::Sub: "${AWS::Region}-${AWS::StackName}"
+      - Key: Application
+        Value: NeptuneCloudformation
+    DependsOn:
+    - VPC
+  NeptuneNotebookInstance:
+    Type: AWS::SageMaker::NotebookInstance
+    Properties:
+      InstanceType:
+        Ref: NotebookInstanceType #Edited
+      PlatformIdentifier: notebook-al2-v2
+      NotebookInstanceName:
+        Fn::Join:
+        - ''
+        - - aws-neptune-notebook-for-
+          - Ref: NeptuneDBCluster #Edited
+      SubnetId:
+        Ref: Subnet1 #Edited
+      SecurityGroupIds:
+        - Ref: NeptuneSG #Edited
+        - Fn::GetAtt:
+          - SageMakerSecurityGroup
+          - GroupId
+      RoleArn:
+        Fn::GetAtt:
+        - ExecutionRole
+        - Arn
+      LifecycleConfigName:
+        Fn::GetAtt:
+        - NeptuneNotebookInstanceLifecycleConfig
+        - NotebookInstanceLifecycleConfigName
+      Tags:
+      - Key: Name
+        Value:
+          Fn::Sub: Neptune-${Env}
+      - Key: StackId
+        Value:
+          Fn::Sub: "${AWS::StackId}"
+      - Key: Stack
+        Value:
+          Fn::Sub: "${AWS::Region}-${AWS::StackName}"
+      - Key: Application
+        Value: NeptuneCloudformation
+      - Key: aws-neptune-cluster-id
+        Value:
+          Ref: NeptuneDBCluster # Edited
+      - Key: aws-neptune-resource-id
+        Value:
+          Fn::GetAtt: # Edited
+          - NeptuneDBCluster
+          - ClusterResourceId
+    DependsOn:
+    - NeptuneDBCluster
+    - Subnet1
+    - NeptuneSG
+
+
+  NeptuneNotebookInstanceLifecycleConfig:
+    Type: AWS::SageMaker::NotebookInstanceLifecycleConfig
+    Properties:
+      OnStart:
+      - Content:
+          Fn::Base64:
+            Fn::Join:
+            - ''
+            - - "#!/bin/bash\n"
+              - "sudo -u ec2-user -i <<'EOF'\n\n"
+              - Fn::If:
+                - EnableIAMAuth
+                - 'echo "export GRAPH_NOTEBOOK_AUTH_MODE=IAM" >> ~/.bashrc
+
+                  '
+                - 'echo "export GRAPH_NOTEBOOK_AUTH_MODE=DEFAULT" >> ~/.bashrc
+
+                  '
+              - 'echo "export GRAPH_NOTEBOOK_IAM_PROVIDER=ROLE" >> ~/.bashrc
+
+                '
+              - 'echo "export GRAPH_NOTEBOOK_SSL=True" >> ~/.bashrc
+
+                '
+              - echo "export GRAPH_NOTEBOOK_HOST=
+              #need from other 
+              - Fn::GetAtt: [NeptuneDBCluster, Endpoint] #Edited
+              - "\" >> ~/.bashrc\n"
+              - echo "export GRAPH_NOTEBOOK_PORT=
+              - Fn::GetAtt: [NeptuneDBCluster, Port] # Edited
+              - "\" >> ~/.bashrc\n"
+              - echo "export NEPTUNE_LOAD_FROM_S3_ROLE_ARN=
+              - Fn::GetAtt: [NeptuneLoadFromS3Role, Arn] # Edited
+              - "\" >> ~/.bashrc\n"
+              - echo "export AWS_REGION=
+              - Ref: AWS::Region
+              - "\" >> ~/.bashrc\n\n"
+              - echo "export NEPTUNE_ML_ROLE_ARN=
+              - Ref: NeptuneMLIAMRoleArn
+              - "\" >> ~/.bashrc\n\n"
+              - echo "export NEPTUNE_EXPORT_API_URI=
+              - Ref: NeptuneExportApiUri
+              - "\" >> ~/.bashrc\n\n"
+              - aws s3 cp s3://
+              - Fn::If:
+                - IsIadRegion
+                - aws-neptune-notebook
+                - Fn::Sub: aws-neptune-notebook-${AWS::Region}
+              - "/graph_notebook.tar.gz /tmp/graph_notebook.tar.gz\n"
+              - 'rm -rf /tmp/graph_notebook
+
+                '
+              - 'tar -zxvf /tmp/graph_notebook.tar.gz -C /tmp
+
+                '
+              - "/tmp/graph_notebook/install.sh\n\n"
+              - Ref: StartupScript
+              - "\n\n"
+              - EOF
+    DependsOn:
+    - NeptuneDBCluster
+    - NeptuneLoadFromS3Role
+
+  ExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - sagemaker.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: "/"
+      ManagedPolicyArns:
+        Fn::If:
+        - AddCustomPolicy
+        - - Ref: CustomPolicyArn
+        - Ref: AWS::NoValue
+      Policies:
+      - PolicyName: SagemakerNotebookNeptunePolicy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - cloudwatch:PutMetricData
+            Resource:
+              Fn::Sub: arn:${AWS::Partition}:cloudwatch:${AWS::Region}:${AWS::AccountId}:*
+          - Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:DescribeLogStreams
+            - logs:PutLogEvents
+            - logs:GetLogEvents
+            Resource:
+              Fn::Sub: arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:*
+          - Effect: Allow
+            Action: neptune-db:*
+            Resource: # Fat Edit
+              # Fn::Sub: arn:${AWS::Partition}:neptune-db:${AWS::Region}:${AWS::AccountId}:${NeptuneClusterResourceId}/*
+              Fn::Sub:
+                - "arn:${AWS::Partition}:neptune-db:${AWS::Region}:${AWS::AccountId}:${NeptuneClusterResourceId}/*"
+                - NeptuneClusterResourceId: 
+                    Fn::GetAtt: 
+                      - NeptuneDBCluster
+                      - ClusterResourceId
+          - Effect: Allow
+            Action:
+            - s3:Put*
+            - s3:Get*
+            - s3:List*
+            Resource:
+              Fn::Sub: arn:${AWS::Partition}:s3:::*
+          - Effect: Allow
+            Action: execute-api:Invoke
+            Resource:
+              Fn::Sub: arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:*/*
+          - Effect: Allow
+            Action:
+            - sagemaker:CreateModel
+            - sagemaker:CreateEndpointConfig
+            - sagemaker:CreateEndpoint
+            - sagemaker:DescribeModel
+            - sagemaker:DescribeEndpointConfig
+            - sagemaker:DescribeEndpoint
+            - sagemaker:DeleteModel
+            - sagemaker:DeleteEndpointConfig
+            - sagemaker:DeleteEndpoint
+            Resource:
+              Fn::Sub: arn:${AWS::Partition}:sagemaker:${AWS::Region}:${AWS::AccountId}:*/*
+          - Fn::If:
+            - ValidNeptuneMLIAMRoleArn
+            - Action:
+              - iam:PassRole
+              Resource:
+                Ref: NeptuneMLIAMRoleArn
+              Effect: Allow
+            - Ref: AWS::NoValue
+
+######################### Start of resources for Amazon S3 ####################################
+
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "reactome-data-${AWS::AccountId}-${AWS::Region}"
+      # Restrict public access
+      PublicAccessBlockConfiguration:
+        RestrictPublicBuckets: true  
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        BlockPublicAcls: true
+      # Versioning enable
+      VersioningConfiguration:
+        Status: Enabled
+      # Encrypt bucket contents
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - BucketKeyEnabled: true
+            ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+
+Outputs:
+
+  ######################### Start of outputs for Neptune DB ####################################
+  
+  # Output relevant variables in CloudFormation
+
+  # Unique identifier
+  DBClusterId:
+    Description: Neptune Cluster Identifier
+    Value:
+      Ref: NeptuneDBCluster
+  DBSubnetGroupId:
+    Description: Neptune DBSubnetGroup Identifier
+    Value:
+      Ref: NeptuneDBSubnetGroup
+  DBClusterResourceId:
+    Description: Neptune Cluster Resource Identifier
+    Value:
+      Fn::GetAtt:
+      - NeptuneDBCluster
+      - ClusterResourceId
+  DBClusterEndpoint:
+    Description: Master Endpoint for Neptune Cluster
+    Value:
+      Fn::GetAtt:
+      - NeptuneDBCluster
+      - Endpoint
+  DBInstanceEndpoint:
+    Description: Master Instance Endpoint
+    Value:
+      Fn::GetAtt:
+      - NeptuneDBInstance
+      - Endpoint
+
+  LoaderEndpoint:
+    Description: Loader Endpoint for Neptune
+    Value:
+      Fn::Join:
+      - ''
+      - - https://
+        - Fn::GetAtt:
+          - NeptuneDBCluster
+          - Endpoint
+        - ":"
+        - Fn::GetAtt:
+          - NeptuneDBCluster
+          - Port
+        - "/loader"
+  DBClusterReadEndpoint:
+    Description: DB cluster Read Endpoint
+    Value:
+      Fn::GetAtt:
+      - NeptuneDBCluster
+      - ReadEndpoint
+  DBClusterPort:
+    Description: Port for the Neptune Cluster
+    Value:
+      Fn::GetAtt:
+      - NeptuneDBCluster
+      - Port
+
+  # Allows for getting data from S3
+  NeptuneLoadFromS3IAMRoleArn:
+    Description: IAM Role for loading data in Neptune
+    Value:
+      Fn::GetAtt:
+      - NeptuneLoadFromS3Role
+      - Arn
+
+  # 6 public subnets that Neptune instance resides in
+  PublicSubnet1:
+    Description: Subnet Id
+    Value:
+      Ref: Subnet1
+  PublicSubnet2:
+    Description: Subnet Id
+    Value:
+      Ref: Subnet2
+  PublicSubnet3:
+    Description: Subnet Id
+    Value:
+      Ref: Subnet3
+  PublicSubnet4:
+    Description: Subnet Id
+    Value:
+      Ref: Subnet4
+  PublicSubnet5:
+    Description: Subnet Id
+    Value:
+      Ref: Subnet5
+  PublicSubnet6:
+    Description: Subnet Id
+    Value:
+      Ref: Subnet6
+  NeptuneClientRole:
+    Description: Neptune Client Role
+    Value:
+      Ref: NeptuneClientRole
+  VPC:
+    Description: VPC
+    Value:
+      Ref: VPC
+  NeptuneSG:
+    Description: Neptune Security Group
+    Value:
+      Ref: NeptuneSG
+  InternetGateway:
+    Description: 'Neptune InternetGateway '
+    Value:
+      Ref: IGW
+
+ ######################### Start of outputs for Neptune Notebook ####################################
+  NeptuneNotebookInstanceId:
+    Value:
+      Ref: NeptuneNotebookInstance
+  NeptuneSagemakerNotebook:
+    Value:
+      Fn::Join:
+      - ''
+      - - https://
+        - Fn::Select:
+          - 1
+          - Fn::Split:
+            - "/"
+            - Ref: NeptuneNotebookInstance
+        - ".notebook."
+        - Ref: AWS::Region
+        - ".sagemaker.aws/"
+  NeptuneNotebookInstanceLifecycleConfigId:
+    Value:
+      Ref: NeptuneNotebookInstanceLifecycleConfig
+  AmazonS3BucketName:
+    Value:
+      Ref: S3Bucket

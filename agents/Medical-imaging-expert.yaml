@@ -14,7 +14,7 @@ Parameters:
   BedrockModelId:
     Type: String
     Description: The ID of the Foundation Model to use for the Agent
-    Default: anthropic.claude-3-sonnet-20240229-v1:0
+    Default: us.anthropic.claude-3-5-sonnet-20241022-v2:0
   DevMode:
     Type: String
     Default: "false"

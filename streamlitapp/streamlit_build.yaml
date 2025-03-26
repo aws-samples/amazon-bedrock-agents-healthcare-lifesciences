@@ -676,7 +676,7 @@ Resources:
               commands:
                 - echo "Starting build phase"
                 - echo "Cloning Git repository..."
-                - git clone -b ${GitBranch} --single-branch ${GitRepoURL} repo
+                - GIT_LFS_SKIP_SMUDGE=1 git clone -b ${GitBranch} --single-branch ${GitRepoURL} repo
                 - cd repo/streamlitapp
                 - echo Build started on `date`
                 - echo "Renaming Dockerfile.txt to Dockerfile"

@@ -38,7 +38,7 @@ Parameters:
   GitBranch:
     Type: String
     Description: The github branch to clone
-    Default: multi-agent-collaboration
+    Default: main
   SubAgentS3Bucket:
     Type: String
     Description: 'The S3 bucket containing the Subagents'
@@ -289,6 +289,8 @@ Resources:
           phases:
             pre_build:
               commands:
+                - yum install -y git-lfs
+                - git lfs install
                 - echo "downloading Ncbi article for KB ingestion"
                 - yum install -y wget
                 - python -m pip install --upgrade pip
@@ -302,7 +304,7 @@ Resources:
                 - aws s3 cp ncbi_article.pdf s3://${S3Bucket}/ncbi_article.pdf
                 - echo "NCBI article uploaded to S3"
                 - echo "Cloning Git repository..."
-                - git clone -b ${GitBranch} --single-branch ${GitRepoURL} repo
+                - GIT_LFS_SKIP_SMUDGE=1 git clone -b ${GitBranch} --single-branch ${GitRepoURL} repo
                 - echo "Zipping Lambda function..."
                 - cd ActionGroups/matplotbarchartlambda
                 - echo "Creating list of items to zip..."
@@ -373,6 +375,8 @@ Resources:
           phases:
             pre_build:
               commands:
+                - yum install -y git-lfs
+                - git lfs install
                 - echo "Starting pre_build phase"
                 - echo "Logging into Amazon ECR..."
                 - aws ecr get-login-password --region ${AWS::Region} | docker login --username AWS --password-stdin ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com
@@ -381,7 +385,7 @@ Resources:
               commands:
                 - echo "Starting build phase"
                 - echo "Cloning Git repository..."
-                - git clone -b ${GitBranch} --single-branch ${GitRepoURL} repo
+                - GIT_LFS_SKIP_SMUDGE=1 git clone -b ${GitBranch} --single-branch ${GitRepoURL} repo
                 - cd repo/ActionGroups/scientific-plots-with-lifelines
                 - echo "Building Docker image..."
                 - docker build -t lifelines-python3.12-v2 .
@@ -1218,6 +1222,16 @@ Resources:
                 Resource:
                   - !Sub arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/*
                   - !Sub arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/medical-image-processing-smstudio
+        - PolicyName: CreateServiceLinkedRole
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: iam:CreateServiceLinkedRole
+                Resource: !Sub 'arn:aws:iam::${AWS::AccountId}:role/aws-service-role/observability.aoss.amazonaws.com/AWSServiceRoleForAmazonOpenSearchServerless'
+              - Effect: Allow
+                Action: iam:GetRole
+                Resource: !Sub 'arn:aws:iam::${AWS::AccountId}:role/aws-service-role/observability.aoss.amazonaws.com/AWSServiceRoleForAmazonOpenSearchServerless'
       
   
   AgentDiscoveryFunction:
@@ -1299,12 +1313,17 @@ Resources:
           import boto3
           import cfnresponse
           import time
+          import random
 
           def handler(event, context):
               try:
                   cfn = boto3.client('cloudformation')
                   agents = event['ResourceProperties']['Agents']
                   config = event['ResourceProperties']['StackConfiguration']
+                  
+                  # Define max retry attempts
+                  MAX_RETRIES = 2
+                  failed_stacks = []
 
                   if event['RequestType'] == 'Delete':
                       sorted_agents = sorted(agents, key=lambda x: 0 if x == 'supervisor_agent' else 1)
@@ -1414,7 +1433,7 @@ Resources:
                               try:
                                   print(f"Creating stack {stack_name} with parameters:", create_params)
                                   cfn.create_stack(**create_params)
-                                  pending_stacks.append({'name': stack_name, 'operation': 'CREATE'})
+                                  pending_stacks.append({'name': stack_name, 'operation': 'CREATE', 'retries': 0})
                               except cfn.exceptions.AlreadyExistsException:
                                   print(f"Stack {stack_name} already exists, updating...")
                                   update_params = {
@@ -1424,7 +1443,7 @@ Resources:
                                       'Parameters': base_params
                                   }
                                   cfn.update_stack(**update_params)
-                                  pending_stacks.append({'name': stack_name, 'operation': 'UPDATE'})
+                                  pending_stacks.append({'name': stack_name, 'operation': 'UPDATE', 'retries': 0})
                                   
                           except Exception as e:
                               print(f"Error processing stack {stack_name}: {str(e)}")
@@ -1444,24 +1463,108 @@ Resources:
                                   elif status == f'{operation}_IN_PROGRESS':
                                       print(f"Stack {stack['name']} still in progress...")
                                   elif status.endswith('FAILED') or status.endswith('ROLLBACK_COMPLETE'):
-                                      raise Exception(f"Stack {stack['name']} {operation.lower()} failed with status: {status}")
-                                      
+                                      # Handle failed stack with retry logic
+                                      if stack['retries'] < MAX_RETRIES:
+                                          retry_attempt = stack['retries'] + 1
+                                          print(f"Stack {stack['name']} failed. Attempting retry {retry_attempt}/{MAX_RETRIES}")
+                                          
+                                          # Add exponential backoff with jitter
+                                          backoff_time = (2 ** retry_attempt) + (random.randint(1, 10))
+                                          print(f"Waiting {backoff_time} seconds before retry...")
+                                          time.sleep(backoff_time)
+                                          
+                                          # Delete the failed stack before retrying
+                                          try:
+                                              print(f"Deleting failed stack {stack['name']} before retry")
+                                              cfn.delete_stack(StackName=stack['name'])
+                                              
+                                              # Wait for deletion to complete
+                                              stack_deleted = False
+                                              delete_timeout = time.time() + 300  # 5 minutes for deletion
+                                              while not stack_deleted and time.time() < delete_timeout:
+                                                  try:
+                                                      delete_status = cfn.describe_stacks(StackName=stack['name'])['Stacks'][0]['StackStatus']
+                                                      if delete_status == 'DELETE_COMPLETE':
+                                                          stack_deleted = True
+                                                          print(f"Failed stack {stack['name']} successfully deleted, proceeding with retry")
+                                                      elif delete_status.endswith('FAILED'):
+                                                          print(f"Failed to delete stack {stack['name']}, skipping retry")
+                                                          failed_stacks.append(stack['name'])
+                                                          pending_stacks.remove(stack)
+                                                          stack_deleted = True  # Exit the loop
+                                                      else:
+                                                          print(f"Waiting for stack {stack['name']} deletion... Current status: {delete_status}")
+                                                          time.sleep(10)
+                                                  except cfn.exceptions.ClientError as e:
+                                                      if 'does not exist' in str(e):
+                                                          stack_deleted = True
+                                                          print(f"Failed stack {stack['name']} successfully deleted, proceeding with retry")
+                                                      else:
+                                                          raise e
+                                              
+                                              if stack_deleted:
+                                                  # Retry the stack creation
+                                                  stack_name = stack['name']
+                                                  template_url = f"https://{config['SourceS3Bucket']}.s3.{config['Region']}.amazonaws.com/packaged_{stack_name.split('-')[-1]}.yaml"
+                                                  
+                                                  create_params = {
+                                                      'StackName': stack_name,
+                                                      'TemplateURL': template_url,
+                                                      'Capabilities': ['CAPABILITY_IAM','CAPABILITY_NAMED_IAM'],
+                                                      'TimeoutInMinutes': 30,
+                                                      'Parameters': base_params
+                                                  }
+                                                  
+                                                  cfn.create_stack(**create_params)
+                                                  pending_stacks.remove(stack)
+                                                  pending_stacks.append({
+                                                      'name': stack_name, 
+                                                      'operation': 'CREATE', 
+                                                      'retries': retry_attempt
+                                                  })
+                                                  print(f"Retry {retry_attempt} initiated for stack {stack_name}")
+                                          
+                                          except Exception as retry_error:
+                                              print(f"Error during retry for stack {stack['name']}: {str(retry_error)}")
+                                              failed_stacks.append(stack['name'])
+                                              pending_stacks.remove(stack)
+                                      else:
+                                          # Max retries reached
+                                          print(f"Stack {stack['name']} failed after {MAX_RETRIES} retries. Marking as failed but continuing with build.")
+                                          failed_stacks.append(stack['name'])
+                                          pending_stacks.remove(stack)
                               except cfn.exceptions.ClientError as e:
                                   print(f"Error checking stack {stack['name']} status: {str(e)}")
-                                  raise e
+                                  if stack['retries'] < MAX_RETRIES:
+                                      # Similar retry logic as above
+                                      retry_attempt = stack['retries'] + 1
+                                      print(f"Client error for stack {stack['name']}. Attempting retry {retry_attempt}/{MAX_RETRIES}")
+                                      stack['retries'] = retry_attempt
+                                  else:
+                                      print(f"Stack {stack['name']} failed after {MAX_RETRIES} retries due to client error. Continuing with build.")
+                                      failed_stacks.append(stack['name'])
+                                      pending_stacks.remove(stack)
                           
                           if pending_stacks:
                               time.sleep(10)
 
                       if pending_stacks:
-                          raise Exception(f"Timeout waiting for stacks to complete: {[s['name'] for s in pending_stacks]}")
+                          print(f"Timeout waiting for stacks to complete: {[s['name'] for s in pending_stacks]}")
+                          failed_stacks.extend([s['name'] for s in pending_stacks])
 
-                      # Only send success response after all stacks are confirmed complete
-                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
-
+                      # Report any failed stacks but don't fail the entire build
+                      if failed_stacks:
+                          print(f"The following stacks failed to deploy even after retries: {failed_stacks}")
+                          print("Continuing with build despite these failures")
+                          
+                      # Send success response even if some stacks failed
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {
+                          'FailedStacks': failed_stacks,
+                          'Message': 'Deployment completed with some failed stacks' if failed_stacks else 'All stacks deployed successfully'
+                      })
 
               except Exception as e:
-                  print(f"Error: {str(e)}")
+                  print(f"Unhandled error in Lambda function: {str(e)}")
                   cfnresponse.send(event, context, cfnresponse.FAILED, {
                       'Error': str(e)
                   })

@@ -3,7 +3,7 @@ name: Build and Deploy Documentation
 on:
   push:
     branches:
-      - multi-agent-collaboration
+      - main
     paths:
       - 'docs/**'
   workflow_dispatch:
