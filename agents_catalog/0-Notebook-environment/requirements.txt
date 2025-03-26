@@ -1,9 +1,0 @@
-boto3
-awscli
-botocore
-opensearch-py
-retrying
-termcolor 
-rich
-datasets
-matplotlib

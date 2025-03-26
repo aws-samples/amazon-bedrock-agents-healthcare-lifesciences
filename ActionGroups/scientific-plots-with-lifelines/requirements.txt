@@ -1,5 +1,0 @@
-lifelines
-pandas
-plotly
-kaleido
-scipy==1.13.1
