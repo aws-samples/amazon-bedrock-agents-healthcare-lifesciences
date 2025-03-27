@@ -48,8 +48,10 @@ This Text-to-Cypher solution enables researchers to perform:
 ### Prerequisites
 
 - Deploy the 'text2cypher_infra.yaml' file provided in the folder using your AWS account's CloudFormation service to deploy the Neptune database and the S3 buckets
-- Create a SageMaker notebook instance in your AWS account (NOTE: MAKE SURE THE SAGEMAKER NOTEBOOK INSTANCE IS PLACED IN THE SAME VPC AS THE NEPTUNE DATABASE THAT WAS CREATED THROUGH THE YAML FILE)
 - Enable model access to all Bedrock models from the AWS console
+- Create a SageMaker notebook instance in your AWS account (NOTE: MAKE SURE THE SAGEMAKER NOTEBOOK INSTANCE IS PLACED IN THE SAME VPC AS THE NEPTUNE DATABASE THAT WAS CREATED THROUGH THE YAML FILE)
+
+
 
 ### Deployment
 

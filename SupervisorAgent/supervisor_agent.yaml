@@ -222,22 +222,22 @@ Resources:
                       sub_agents = [
                           {
                               "sub_agent_association_name": "Medical-Imaging-Expert-${EnvironmentName}",
-                              "sub_agent_instruction": "You are the medical imaging expert. Analyze and interpret medical images.",
+                              "sub_agent_instruction": "Use this agent specialized in processing medical imaging scans of patients. Its primary task is to create medical imaging jobs or provide relevant medical insights after jobs complete execution.",
                               "relay_conversation_history": "TO_COLLABORATOR"
                           },
                           {
                               "sub_agent_association_name": "Clinical-evidence-researcher-${EnvironmentName}",
-                              "sub_agent_instruction": "You are the clinical evidence researcher. Review and analyze clinical evidence.",
+                              "sub_agent_instruction": "Use this agent specialized in summarizing internal and external evidence related to cancer biomarkers. Its primary task is to interpret user queries, gather internal and external evidence, and provide relevant medical insights based on the results.",
                               "relay_conversation_history": "TO_COLLABORATOR"
                           },
                           {
                               "sub_agent_association_name": "Statistician-agent-${EnvironmentName}",
-                              "sub_agent_instruction": "You are the statistician. Provide statistical analysis and interpretation.",
+                              "sub_agent_instruction": "Use this agent specialized in in survival analysis with biomarkers. Its primary job is to interpret user queries, run scientific analysis tasks, and provide relevant medical insights with available visualization tools.",
                               "relay_conversation_history": "TO_COLLABORATOR"
                           },
                           {
                               "sub_agent_association_name": "biomarker-database-analyst-${EnvironmentName}",
-                              "sub_agent_instruction": "You are the clinical trial analyst. Analyze trial data and outcomes.",
+                              "sub_agent_instruction": "Use this agent specialized in generating and executing SQL queries for a database containing medical biomarker information. Its primary task is to interpret user queries, generate and execute appropriate SQL queries.",
                               "relay_conversation_history": "TO_COLLABORATOR"
                           }
                       ]
