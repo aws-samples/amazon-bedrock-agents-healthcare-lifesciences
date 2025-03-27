@@ -62,7 +62,7 @@ Resources:
           TAVILY_API_KEY_NAME: !Sub
             - "TAVILY_API_KEY_${StackId}"
             - StackId: !Select [2, !Split ["/", !Ref AWS::StackId]]
-      Code: "../../ActionGroups/web-search"
+      Code: "action-groups/web-search"
 
   WebSearchLambdaRole:
     Type: AWS::IAM::Role
