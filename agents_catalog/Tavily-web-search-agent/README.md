@@ -55,34 +55,22 @@ Answer questions using up-to-date information retrieved by the [Tavily Search AP
 
 ### 2.3. Tools
 
-#### 2.3.1. Builtin Action Groups
-
-- UserInputAction
-
-#### 2.3.2. Custom Action Groups
-
-- WebSearch
-  - Description: Actions for answering questions with information from the internet
-  - Functions
-    - web_search
-      - Description: Execute an internet search query using Tavily Search.
-      - Parameters
-        - search_query
-          - Description: The search query to execute with Tavily. Example: 'Who is Leo Messi?'
-          - Type: string
-          - Required: True
-        - target_website
-          - Description: "The specific website to search including its domain name. If not provided, the most relevant website will be used"
-          - Type: string
-          - Required: False
-        - topic
-          - Description: "The topic being searched. 'news' or 'general'. Helps narrow the search when news is the focus."
-          - Type: string
-          - Required: False
-        - days
-          - Description: "The number of days of history to search. Helps when looking for recent events or news."
-          - Type: string
-          - Required: False
+```json
+{
+  name: "web_search",
+  description: "Execute an internet search query using Tavily Search.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      search_query: { type: "string", description: "The search query to execute with Tavily. Example: 'Who is Leo Messi?'"},
+      target_website: { type: "string", description: "The specific website to search including its domain name. If not provided, the most relevant website will be used"},
+      topic: { type: "string", description: "The topic being searched. 'news' or 'general'. Helps narrow the search when news is the focus." },
+      days: { type: "string", description: "The number of days of history to search. Helps when looking for recent events or news."}
+    },
+    required: ["search_query"]
+  }
+}
+```
 
 ## 3. Installation
 
