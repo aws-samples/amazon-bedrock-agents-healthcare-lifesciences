@@ -1,0 +1,22 @@
+evaluator:
+  model: claude-3
+target:
+  type: bedrock-agent
+  bedrock_agent_id: YNTFMSTEHU
+  bedrock_agent_alias_id: LJKJFJNZVN
+tests:
+  stock_price:
+    steps:
+    - Ask agent, "What was the closing stock price of AMZN on March 25, 2025"?
+    expected_results:
+    - The agent answers, "$205.71"
+  michigan:
+    steps:
+    - Ask agent, "When did michigan last win a national basketball championship"?
+    expected_results:
+    - The agent answers, "1989"
+  atp:
+    steps:
+    - Ask agent, "which organelle is the site of atp production and storage"?
+    expected_results:
+    - The agent answers, "mitochondrion"

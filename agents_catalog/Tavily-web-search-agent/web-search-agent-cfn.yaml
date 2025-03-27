@@ -1,0 +1,191 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Creates the web search agent agent.
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Web Search API keys
+        Parameters:
+          - TavilyApiKey
+Parameters:
+  AgentAliasName:
+    Type: String
+    Default: ""
+  BedrockModelId:
+    Type: String
+    Description: The ID of the Foundation Model to use for the Agent
+    Default: us.amazon.nova-pro-v1:0
+  AgentIAMRoleArn:
+    Type: String
+    Description: The arn for the agent IAM role
+  TavilyApiKey:
+    Type: String
+    NoEcho: true
+    Description: Provide TavilyApiKey API Key to utilize /web_search path
+    MinLength: 1
+
+Conditions:
+  HasTavilyApiKeyCondition: !Not [!Equals [!Ref TavilyApiKey, ""]]
+  CreateAgentAliasCondition: !Not [!Equals [!Ref AgentAliasName, ""]]
+
+Resources:
+  #####################
+  ##### API Keys #####
+  ###################
+
+  TavilyApiKeySecret:
+    Type: "AWS::SecretsManager::Secret"
+    Condition: HasTavilyApiKeyCondition
+    DeletionPolicy: Retain
+    Properties:
+      Name: !Sub
+        - "TAVILY_API_KEY_${StackId}"
+        - StackId: !Select [2, !Split ["/", !Ref AWS::StackId]]
+      Description: "API Key for Tavily service"
+      SecretString: !Ref TavilyApiKey
+
+  ########################
+  ##### WebSearch #####
+  ######################
+
+  WebSearchLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.12
+      Handler: index.lambda_handler
+      Role: !GetAtt WebSearchLambdaRole.Arn
+      Timeout: 30
+      MemorySize: 128
+      Environment:
+        Variables:
+          ACTION_GROUP: "WebSearchActionGroup"
+          TAVILY_API_KEY_NAME: !Sub
+            - "TAVILY_API_KEY_${StackId}"
+            - StackId: !Select [2, !Split ["/", !Ref AWS::StackId]]
+      Code: "../../ActionGroups/web-search"
+
+  WebSearchLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: GetSecretsManagerSecret
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  - !Sub arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:TAVILY_API_KEY_*
+
+  WebSearchLambdaAgentPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt WebSearchLambdaFunction.Arn
+      Principal: bedrock.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+      SourceArn: !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent-alias/*
+
+  WebSearchLambdaAgentAliasPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt WebSearchLambdaFunction.Arn
+      Principal: bedrock.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+      SourceArn: !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*
+
+  #####################
+  ##### Agent #####
+  ###################
+
+  WebSearchAgent:
+    Type: AWS::Bedrock::Agent
+    Properties:
+      AgentName:
+        !Join [
+          "-",
+          [
+            "web-search-agent",
+            !Select [
+              4,
+              !Split ["-", !Select [2, !Split ["/", !Ref "AWS::StackId"]]],
+            ],
+          ],
+        ]
+      AgentResourceRoleArn: !Ref AgentIAMRoleArn
+      AutoPrepare: True
+      FoundationModel: !Ref BedrockModelId
+      Instruction: |
+        You are a knowledgeable research assistant who helps users find accurate information by searching the internet. Your role is to:
+
+        1. Carefully analyze user questions to understand their core information needs
+        2. Plan and execute targeted web searches to find relevant, current information
+        3. Synthesize search results into clear, factual responses
+        4. Cite your sources and explain your reasoning
+
+        When responding:
+        1. First confirm your understanding of the user's question
+        2. Explain your search strategy before executing it
+        3. Present information in a structured, easy-to-read format
+        4. Distinguish between factual information and interpretations
+        5. Acknowledge any limitations or uncertainties in the search results
+        6. Offer to refine the search if the results don't fully address the question
+
+        Guidelines:
+        - Adopt a professional, approachable, and conversational tone. Avoid idioms, regionalisms, and slang.
+        - Focus on finding objective, reliable sources
+        - Prioritize recent information when relevance depends on timeliness
+        - Break complex questions into smaller searchable components
+        - Maintain transparency about your search process
+        - Ask for clarification when the question is ambiguous
+      Description: "Answer questions by searching the internet."
+      ActionGroups:
+        - ActionGroupName: "UserInputAction"
+          ParentActionGroupSignature: "AMAZON.UserInput"
+          ActionGroupState: "ENABLED"
+        - ActionGroupName: WebSearch
+          Description: Actions for answering questions with information from the internet
+          ActionGroupExecutor:
+            Lambda: !GetAtt WebSearchLambdaFunction.Arn
+          ActionGroupState: ENABLED
+          FunctionSchema:
+            Functions:
+              - Name: web_search
+                Description: Execute an internet search query using Tavily Search.
+                Parameters:
+                  search_query:
+                    Description: "The search query to execute with Tavily. Example: 'Who is Leo Messi?'"
+                    Type: string
+                    Required: True
+                  target_website:
+                    Description: "The specific website to search including its domain name. If not provided, the most relevant website will be used"
+                    Type: string
+                    Required: False
+                  topic:
+                    Description: "The topic being searched. 'news' or 'general'. Helps narrow the search when news is the focus."
+                    Type: string
+                    Required: False
+                  days:
+                    Description: "The number of days of history to search. Helps when looking for recent events or news."
+                    Type: string
+                    Required: False
+
+  AgentAliasResource:
+    Type: AWS::Bedrock::AgentAlias
+    Condition: CreateAgentAliasCondition
+    Properties:
+      AgentId: !GetAtt WebSearchAgent.AgentId
+      AgentAliasName: !Ref AgentAliasName
