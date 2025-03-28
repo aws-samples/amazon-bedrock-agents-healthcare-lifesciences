@@ -37,6 +37,7 @@ try:
     TAVILY_API_KEY_NAME = os.environ.get("TAVILY_API_KEY_NAME", "")
     TAVILY_API_KEY = get_from_secretstore_or_env(SecretId=TAVILY_API_KEY_NAME)
     FUNCTION_NAMES.append("web_search")
+# amazonq-ignore-next-line
 except Exception as e:
     TAVILY_API_KEY = None
 
@@ -44,7 +45,7 @@ except Exception as e:
 def web_search(
     search_query: str, target_website: str = "", topic: str = None, days: int = None
 ) -> str:
-    logger.info(f"executing Tavily AI search with {search_query=}")
+    logger.info(f"executing Tavily AI search with {urllib.parse.quote(search_query)=}")
 
     base_url = "https://api.tavily.com/search"
     headers = {"Content-Type": "application/json", "Accept": "application/json"}
