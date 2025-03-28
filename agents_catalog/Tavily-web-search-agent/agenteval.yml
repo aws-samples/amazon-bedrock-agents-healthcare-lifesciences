@@ -19,13 +19,13 @@ tests:
     - The agent includes a source url
   stock_price:
     steps:
-    - Ask agent, "What was the closing stock price for Amazon on March 25, 2024"?
+    - The current date is March 28, 2025. Ask the agent, "What was the closing stock price for Amazon on March 26, 2025"?
     expected_results:
-    - The agent answers, "$179.71" plus or minus 0.01
+    - The agent answers with a value between $201.10 and $201.20
     - The agent includes a source url
   executive_profile:
     steps:
-    - Please write 3 bullets identifying the CEO, CSO, and CTO of Pfizer
+    - Ask the agent to write 3 bullets identifying the CEO, CSO, and CTO of Pfizer
     expected_results:
     - The agent generates 3 bullet points
     - The agent correctly identifies Albert Bourla, Chief Executive Officer

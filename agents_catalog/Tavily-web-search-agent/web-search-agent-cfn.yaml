@@ -14,7 +14,7 @@ Parameters:
   BedrockModelId:
     Type: String
     Description: The ID of the Foundation Model to use for the Agent
-    Default: us.anthropic.claude-3-7-sonnet-20250219-v1:0
+    Default: us.anthropic.claude-3-5-sonnet-20240620-v1:0
   AgentIAMRoleArn:
     Type: String
     Description: The arn for the agent IAM role
@@ -36,7 +36,6 @@ Resources:
   TavilyApiKeySecret:
     Type: "AWS::SecretsManager::Secret"
     Condition: HasTavilyApiKeyCondition
-    DeletionPolicy: Retain
     Properties:
       Name: !Sub
         - "TAVILY_API_KEY_${StackId}"
@@ -231,3 +230,13 @@ Resources:
       WordPolicyConfig:
         ManagedWordListsConfig:
           - Type: PROFANITY
+
+Outputs:
+  AgentId: 
+    Description: Agent ID
+    Value: !Ref WebSearchAgent
+  AgentAliasId: 
+    Description: Agent Alias ID
+    Value: !GetAtt  AgentAliasResource.AgentAliasId
+    Condition: CreateAgentAliasCondition
+
