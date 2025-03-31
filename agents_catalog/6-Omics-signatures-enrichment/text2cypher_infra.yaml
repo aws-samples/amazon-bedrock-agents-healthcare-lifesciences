@@ -1,0 +1,570 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Template to deploy infrastructure for Text2Cypher Agent
+
+Parameters:
+
+  ####################### Start of parameters for Neptune DB ####################################
+  Env:
+    Description: Environment tag, e.g. prod, nonprod.
+    Default: test
+    Type: String
+    AllowedPattern: "[a-z0-9]+"
+    MaxLength: 15
+
+  DbInstanceType:
+    Description: Neptune DB instance type
+    Type: String
+    Default: db.r6g.4xlarge
+    AllowedValues:
+    - db.serverless
+    - db.t3.medium
+    - db.r6g.large
+    - db.r6g.xlarge
+    - db.r6g.2xlarge
+    - db.r6g.4xlarge
+    - db.r6g.8xlarge
+    - db.r5.large
+    - db.r5.xlarge
+    - db.r5.2xlarge
+    - db.r5.4xlarge
+    - db.r5.8xlarge
+    - db.r5.12xlarge
+    ConstraintDescription: Must be a valid Neptune instance type.
+
+  DBClusterPort:
+    Type: String
+    Default: '8182'
+    Description: Enter the port of your Neptune cluster
+  NeptuneQueryTimeout:
+    Type: Number
+    Default: 600000
+    Description: Neptune Query Time out (in milliseconds)
+  NeptuneEnableAuditLog:
+    Type: Number
+    Default: 0
+    AllowedValues:
+    - 0
+    - 1
+    Description: Enable Audit Log. 0 means disable and 1 means enable.
+  IamAuthEnabled:
+    Type: String
+    Default: 'false'
+    AllowedValues:
+    - 'true'
+    - 'false'
+    Description: Enable IAM Auth for Neptune.
+  AttachBulkloadIAMRoleToNeptuneCluster:
+    Type: String
+    Default: 'true'
+    AllowedValues:
+    - 'true'
+    - 'false'
+    Description: Attach Bulkload IAM role to cluster
+  StorageEncrypted:
+    Description: Enable Encryption for Neptune.
+    Type: String
+    Default: 'true'
+    AllowedValues:
+    - 'true'
+    - 'false'
+  KmsKeyId:
+    Description: 'OPTIONAL: If StorageEncrypted is true, the Amazon KMS key identifier
+      for the encrypted DB cluster.'
+    Type: String
+    Default: ''
+
+  
+
+Conditions:
+
+  ######################### Start of conditions for Neptune DB ####################################
+  AttachBulkloadIAMRoleToNeptuneClusterCondition:
+    Fn::Equals:
+    - Ref: AttachBulkloadIAMRoleToNeptuneCluster
+    - 'true'
+
+  
+
+Resources:
+
+  ######################### Start of resources for Neptune DB ####################################
+  
+  NeptuneDBSubnetGroup:
+    Type: AWS::Neptune::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Neptune DB subnet group
+      SubnetIds:
+        - Ref: Subnet1
+        - Ref: Subnet2
+        - Ref: Subnet3
+      Tags:
+      - Key: Name
+        Value:
+          Fn::Sub: Neptune-${Env}
+      - Key: StackId
+        Value:
+          Fn::Sub: "${AWS::StackId}"
+      - Key: Stack
+        Value:
+          Fn::Sub: "${AWS::Region}-${AWS::StackName}"
+      - Key: Application
+        Value: NeptuneCloudformation
+  
+  # Defines endpoint that allows S3 access
+  VPCS3Endpoint:
+    Type: AWS::EC2::VPCEndpoint
+    DependsOn:
+    - VPC
+    Properties:
+      RouteTableIds:
+      - Ref: PublicRouteTable
+      ServiceName:
+        Fn::Join:
+        - ''
+        - - com.amazonaws.
+          - Ref: AWS::Region
+          - ".s3"
+      VpcId:
+        Ref: VPC
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal: "*"
+          Action:
+          - s3:*
+          Resource:
+          - "*"
+  NeptuneSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId:
+        Ref: VPC
+      GroupDescription: Allow Neptune DBPort Access
+      SecurityGroupIngress:
+      - FromPort:
+          Ref: DBClusterPort
+        ToPort:
+          Ref: DBClusterPort
+        IpProtocol: tcp
+        CidrIp: 0.0.0.0/0
+        Description: http access
+      Tags:
+      - Key: Name
+        Value:
+          Fn::Sub: Neptune-${Env}
+      - Key: StackId
+        Value:
+          Fn::Sub: "${AWS::StackId}"
+      - Key: Stack
+        Value:
+          Fn::Sub: "${AWS::Region}-${AWS::StackName}"
+      - Key: Application
+        Value: NeptuneCloudformation
+  NeptuneClientRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal: 
+            Service: 
+            - ec2.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: "/"
+  NeptuneLoadFromS3Role:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - rds.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: "/"
+  NeptuneLoadFromS3Policy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: NeptuneLoadFromS3Policy
+      PolicyDocument:
+        Statement:
+        - Effect: Allow
+          Action:
+          - s3:Get*
+          - s3:List*
+          Resource:
+            - !Sub 'arn:aws:s3:::reactome-data-${AWS::AccountId}-${AWS::Region}'
+            - !Sub 'arn:aws:s3:::reactome-data-${AWS::AccountId}-${AWS::Region}/*'
+      Roles:
+      - Ref: NeptuneLoadFromS3Role
+  NeptuneDBClusterParameterGroup:
+    Type: AWS::Neptune::DBClusterParameterGroup
+    Properties:
+      Family: neptune1.2
+      Description: test-cfn-neptune-db-cluster-parameter-group-description
+      Parameters:
+        neptune_enable_audit_log:
+          Ref: NeptuneEnableAuditLog
+      Tags:
+      - Key: Name
+        Value:
+          Fn::Sub: Neptune-${Env}
+      - Key: StackId
+        Value:
+          Fn::Sub: "${AWS::StackName}"
+      - Key: Stack
+        Value:
+          Fn::Sub: "${AWS::Region}-${AWS::StackId}"
+      - Key: Application
+        Value: NeptuneCloudformation
+  NeptuneDBParameterGroup:
+    Type: AWS::Neptune::DBParameterGroup
+    Properties:
+      Family: neptune1.2
+      Description: test-cfn-neptune-db-parameter-group-description
+      Parameters:
+        neptune_query_timeout:
+          Ref: NeptuneQueryTimeout
+      Tags:
+      - Key: Name
+        Value:
+          Fn::Sub: Neptune-${Env}
+      - Key: StackId
+        Value:
+          Fn::Sub: "${AWS::StackId}"
+      - Key: Stack
+        Value:
+          Fn::Sub: "${AWS::Region}-${AWS::StackName}"
+      - Key: Application
+        Value: NeptuneCloudformation
+  NeptuneDBCluster:
+    Type: AWS::Neptune::DBCluster
+    Properties:
+      EngineVersion: '1.2'
+      DBClusterIdentifier: !Sub "reactome-db-${AWS::AccountId}-${AWS::Region}"
+      DBSubnetGroupName:
+        Ref: NeptuneDBSubnetGroup
+      VpcSecurityGroupIds:
+      - Fn::GetAtt:
+        - VPC
+        - DefaultSecurityGroup
+      - Ref: NeptuneSG
+      DBClusterParameterGroupName:
+        Ref: NeptuneDBClusterParameterGroup
+      Port:
+        Ref: DBClusterPort
+      IamAuthEnabled:
+        Ref: IamAuthEnabled
+      StorageEncrypted:
+        Ref: StorageEncrypted
+      KmsKeyId:
+        Ref: KmsKeyId
+      Tags:
+      - Key: Name
+        Value:
+          Fn::Sub: Neptune-${Env}
+      - Key: StackId
+        Value:
+          Fn::Sub: "${AWS::StackId}"
+      - Key: Stack
+        Value:
+          Fn::Sub: "${AWS::Region}-${AWS::StackName}"
+      - Key: Application
+        Value: NeptuneCloudformation
+      AssociatedRoles:
+        Fn::If:
+        - AttachBulkloadIAMRoleToNeptuneClusterCondition
+        - - RoleArn:
+              Fn::GetAtt:
+              - NeptuneLoadFromS3Role
+              - Arn
+        - Ref: AWS::NoValue
+    DependsOn:
+    - NeptuneDBSubnetGroup
+    - NeptuneDBClusterParameterGroup
+  NeptuneDBInstance:
+    Type: AWS::Neptune::DBInstance
+    Properties:
+      DBClusterIdentifier:
+        Ref: NeptuneDBCluster
+      DBInstanceClass:
+        Ref: DbInstanceType
+      DBParameterGroupName:
+        Ref: NeptuneDBParameterGroup
+      Tags:
+      - Key: Name
+        Value:
+          Fn::Sub: Neptune-${Env}
+      - Key: StackId
+        Value:
+          Fn::Sub: "${AWS::StackId}"
+      - Key: Stack
+        Value:
+          Fn::Sub: "${AWS::Region}-${AWS::StackName}"
+      - Key: Application
+        Value: NeptuneCloudformation
+    DependsOn:
+    - NeptuneDBCluster
+    - NeptuneDBParameterGroup
+
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 172.30.0.0/16
+      EnableDnsSupport: 'true'
+      EnableDnsHostnames: 'true'
+      Tags:
+      - Key: Name
+        Value:
+          Fn::Sub: Neptune-${Env}
+      - Key: StackId
+        Value:
+          Fn::Sub: "${AWS::StackId}"
+      - Key: Stack
+        Value:
+          Fn::Sub: "${AWS::Region}-${AWS::StackName}"
+      - Key: Application
+        Value: NeptuneCloudformation
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:
+        Ref: VPC
+    DependsOn:
+    - VPC
+  IGWAtt:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId:
+        Ref: IGW
+      VpcId:
+        Ref: VPC
+    DependsOn:
+    - VPC
+    - IGW
+
+  # Internet Gateway define
+  IGW:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+      - Key: Name
+        Value:
+          Fn::Sub: Neptune-${Env}
+      - Key: StackId
+        Value:
+          Fn::Sub: "${AWS::StackId}"
+      - Key: Stack
+        Value:
+          Fn::Sub: "${AWS::Region}-${AWS::StackName}"
+      - Key: Application
+        Value: NeptuneCloudformation
+
+  # Route for Internet access
+  PublicRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId:
+        Ref: IGW
+      RouteTableId:
+        Ref: PublicRouteTable
+    DependsOn:
+    - IGWAtt
+
+  # Define 3 subnets
+  Subnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 172.30.1.0/24
+      VpcId:
+        Ref: VPC
+      AvailabilityZone:
+        Fn::Select:
+        - 0
+        - Fn::GetAZs: ''
+  Subnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 172.30.2.0/24
+      VpcId:
+        Ref: VPC
+      AvailabilityZone:
+        Fn::Select:
+        - 1
+        - Fn::GetAZs: ''
+  Subnet3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 172.30.3.0/24
+      VpcId:
+        Ref: VPC
+      AvailabilityZone:
+        Fn::Select:
+        - 2
+        - Fn::GetAZs: ''
+
+  # 3 public subnets and their route table associations
+  SubnetRTAssociation1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    DependsOn:
+    - Subnet1
+    - PublicRouteTable
+    Properties:
+      RouteTableId:
+        Ref: PublicRouteTable
+      SubnetId:
+        Ref: Subnet1
+  SubnetRTAssociation2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    DependsOn:
+    - Subnet2
+    - PublicRouteTable
+    Properties:
+      RouteTableId:
+        Ref: PublicRouteTable
+      SubnetId:
+        Ref: Subnet2
+  SubnetRTAssociation3:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    DependsOn:
+    - Subnet3
+    - PublicRouteTable
+    Properties:
+      RouteTableId:
+        Ref: PublicRouteTable
+      SubnetId:
+        Ref: Subnet3
+  
+
+######################### Start of resources for Amazon S3 ####################################
+
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "reactome-data-${AWS::AccountId}-${AWS::Region}"
+      # Restrict public access
+      PublicAccessBlockConfiguration:
+        RestrictPublicBuckets: true  
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        BlockPublicAcls: true
+      # Versioning enable
+      VersioningConfiguration:
+        Status: Enabled
+      # Encrypt bucket contents
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - BucketKeyEnabled: true
+            ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+
+Outputs:
+
+  ######################### Start of outputs for Neptune DB ####################################
+  
+  # Output relevant variables in CloudFormation
+
+  # Unique identifier
+  DBClusterId:
+    Description: Neptune Cluster Identifier
+    Value:
+      Ref: NeptuneDBCluster
+  DBSubnetGroupId:
+    Description: Neptune DBSubnetGroup Identifier
+    Value:
+      Ref: NeptuneDBSubnetGroup
+  DBClusterResourceId:
+    Description: Neptune Cluster Resource Identifier
+    Value:
+      Fn::GetAtt:
+      - NeptuneDBCluster
+      - ClusterResourceId
+  DBClusterEndpoint:
+    Description: Master Endpoint for Neptune Cluster
+    Value:
+      Fn::GetAtt:
+      - NeptuneDBCluster
+      - Endpoint
+  DBInstanceEndpoint:
+    Description: Master Instance Endpoint
+    Value:
+      Fn::GetAtt:
+      - NeptuneDBInstance
+      - Endpoint
+
+  LoaderEndpoint:
+    Description: Loader Endpoint for Neptune
+    Value:
+      Fn::Join:
+      - ''
+      - - https://
+        - Fn::GetAtt:
+          - NeptuneDBCluster
+          - Endpoint
+        - ":"
+        - Fn::GetAtt:
+          - NeptuneDBCluster
+          - Port
+        - "/loader"
+  DBClusterReadEndpoint:
+    Description: DB cluster Read Endpoint
+    Value:
+      Fn::GetAtt:
+      - NeptuneDBCluster
+      - ReadEndpoint
+  DBClusterPort:
+    Description: Port for the Neptune Cluster
+    Value:
+      Fn::GetAtt:
+      - NeptuneDBCluster
+      - Port
+
+  # Allows for getting data from S3
+  NeptuneLoadFromS3IAMRoleArn:
+    Description: IAM Role for loading data in Neptune
+    Value:
+      Fn::GetAtt:
+      - NeptuneLoadFromS3Role
+      - Arn
+
+  # 3 public subnets that Neptune instance resides in
+  PublicSubnet1:
+    Description: Subnet Id
+    Value:
+      Ref: Subnet1
+  PublicSubnet2:
+    Description: Subnet Id
+    Value:
+      Ref: Subnet2
+  PublicSubnet3:
+    Description: Subnet Id
+    Value:
+      Ref: Subnet3
+  NeptuneClientRole:
+    Description: Neptune Client Role
+    Value:
+      Ref: NeptuneClientRole
+  VPC:
+    Description: VPC
+    Value:
+      Ref: VPC
+  NeptuneSG:
+    Description: Neptune Security Group
+    Value:
+      Ref: NeptuneSG
+  InternetGateway:
+    Description: 'Neptune InternetGateway '
+    Value:
+      Ref: IGW
+
+ ######################### Start of outputs for Stack ####################################
+  AmazonS3BucketName:
+    Value:
+      Ref: S3Bucket
