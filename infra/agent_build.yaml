@@ -63,7 +63,7 @@ Mappings:
       PandasLayer: 'arn:aws:lambda:us-west-2:336392948345:layer:AWSSDKPandas-Python312:12'
 
 Conditions:
-  AutoCreateAgents: !Equals [!Ref MultiAgentDevMode, "False"]
+  AutoCreateAgents: !Equals [!Ref MultiAgentDevMode, "false"]
 
 Resources:
   # S3 Bucket for storing agent artifacts
