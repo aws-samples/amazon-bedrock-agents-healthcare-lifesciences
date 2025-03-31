@@ -306,7 +306,7 @@ Resources:
                 - echo "Cloning Git repository..."
                 - GIT_LFS_SKIP_SMUDGE=1 git clone -b ${GitBranch} --single-branch ${GitRepoURL} repo
                 - echo "Zipping Lambda function..."
-                - cd agents_catalog/4-Statistician/ActionGroups/matplotbarchartlambda
+                - cd repo/agents_catalog/4-Statistician/ActionGroups/matplotbarchartlambda
                 - echo "Creating list of items to zip..."
                 - items_to_zip=$(ls -A | tr '\n' ' ')
                 - zip -r matplotbarchartlambda.zip $items_to_zip
