@@ -63,7 +63,7 @@ Mappings:
       PandasLayer: 'arn:aws:lambda:us-west-2:336392948345:layer:AWSSDKPandas-Python312:12'
 
 Conditions:
-  AutoCreateAgents: !Equals [!Ref MultiAgentDevMode, "false"]
+  AutoCreateAgents: !Equals [!Ref MultiAgentDevMode, "False"]
 
 Resources:
   # S3 Bucket for storing agent artifacts
@@ -128,6 +128,205 @@ Resources:
             Resource:
               - !Sub '${S3Bucket.Arn}'
               - !Sub '${S3Bucket.Arn}/*'
+
+  # ECR Repositories
+  LifelinesECRRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: lifelines-lambda-sample
+
+  ImagingECRRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: medical-image-processing-smstudio
+
+  # IAM Role for Bedrock Agents
+  AgentRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub AmazonBedrockExecutionRoleForAgents_${AWS::AccountId}
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - bedrock.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: BedrockInvokeModel
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:*
+                Resource: 
+                  - !Sub arn:aws:bedrock:*::foundation-model/*
+                  - !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:knowledge-base/*
+                  - !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent-alias/*
+                  - !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*
+                  - !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/*
+                  - !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:application-inference-profile/*
+
+  # IAM Roles for Step Functions and SageMaker
+  StepFunctionsExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: states.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StepFunctionsExecutionPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # SageMaker permissions
+              - Effect: Allow
+                Action:
+                  - 'sagemaker:CreateProcessingJob'
+                  - 'sagemaker:DescribeProcessingJob'
+                  - 'sagemaker:StopProcessingJob'
+                  - 'sagemaker:ListTags'
+                  - 'sagemaker:AddTags'
+                Resource: !Sub 'arn:aws:sagemaker:${AWS::Region}:${AWS::AccountId}:processing-job/dcm-nifti-*'
+              # IAM permissions
+              - Effect: Allow
+                Action:
+                  - 'iam:PassRole'
+                Resource: !GetAtt SageMakerExecutionRole.Arn
+              # Step Functions Map state permissions
+              - Effect: Allow
+                Action:
+                  - 'events:PutTargets'
+                  - 'events:PutRule'
+                  - 'events:DescribeRule'
+                  - 'events:DeleteRule'
+                  - 'events:DisableRule'
+                  - 'events:EnableRule'
+                  - 'events:RemoveTargets'
+                Resource:
+                  - !Sub 'arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/StepFunctions-Map-*'
+                  - !Sub 'arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/StepFunctions-*'
+              # States permissions for Map state
+              - Effect: Allow
+                Action:
+                  - 'states:StartExecution'
+                  - 'states:StopExecution'
+                  - 'states:DescribeExecution'
+                  - 'states:CreateStateMachine'
+                  - 'states:DeleteStateMachine'
+                  - 'states:UpdateStateMachine'
+                  - 'states:DescribeStateMachine'
+                  - 'states:DescribeStateMachineForExecution'
+                  - 'states:ListExecutions'
+                Resource: 
+                  - !Sub 'arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:*'
+                  - !Sub 'arn:aws:states:${AWS::Region}:${AWS::AccountId}:execution:*:*'
+              # CloudWatch Logs permissions
+              - Effect: Allow
+                Action:
+                  - 'logs:CreateLogDelivery'
+                  - 'logs:GetLogDelivery'
+                  - 'logs:UpdateLogDelivery'
+                  - 'logs:DeleteLogDelivery'
+                  - 'logs:ListLogDeliveries'
+                  - 'logs:PutLogEvents'
+                  - 'logs:PutResourcePolicy'
+                  - 'logs:DescribeResourcePolicies'
+                  - 'logs:DescribeLogGroups'
+                Resource: 
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*'
+              - Effect: Allow
+                Action:
+                  - 'lambda:InvokeFunction'
+                Resource: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*'
+        - PolicyName: EventsPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'events:PutTargets'
+                  - 'events:PutRule'
+                  - 'events:DescribeRule'
+                Resource:
+                  - !Sub 'arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/*'
+
+  SageMakerExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: sagemaker.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: SageMakerProcessingAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # Processing Job Permissions
+              - Effect: Allow
+                Action:
+                  - 'sagemaker:CreateProcessingJob'
+                  - 'sagemaker:DescribeProcessingJob'
+                  - 'sagemaker:StopProcessingJob'
+                  - 'sagemaker:ListProcessingJobs'
+                Resource: !Sub 'arn:aws:sagemaker:${AWS::Region}:${AWS::AccountId}:processing-job/*'
+              # ECR Access for Container
+              - Effect: Allow
+                Action:
+                  - 'ecr:GetAuthorizationToken'
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - 'ecr:BatchCheckLayerAvailability'
+                  - 'ecr:GetDownloadUrlForLayer'
+                  - 'ecr:BatchGetImage'
+                Resource: 
+                  - !Sub 'arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/${ImagingECRRepository}'
+        - PolicyName: S3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # Input data access
+              - Effect: Allow
+                Action:
+                  - 's3:GetObject'
+                  - 's3:ListBucket'
+                Resource:
+                  - 'arn:aws:s3:::sagemaker-solutions-prod-*'
+                  - 'arn:aws:s3:::sagemaker-solutions-prod-*/sagemaker-lung-cancer-survival-prediction/*'
+              # Output data access
+              - Effect: Allow
+                Action:
+                  - 's3:PutObject'
+                  - 's3:GetObject'
+                  - 's3:ListBucket'
+                Resource: 
+                  - !Sub 'arn:aws:s3:::${S3Bucket}'
+                  - !Sub 'arn:aws:s3:::${S3Bucket}/nsclc_radiogenomics/*'
+        - PolicyName: CloudWatchLogsAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                  - 'logs:DescribeLogStreams'
+                Resource:
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/sagemaker/ProcessingJobs:*'
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/sagemaker/ProcessingJobs:log-stream:*'
 
   # Step Functions State Machine for Medical Imaging
   ImagingStateMachine:
@@ -344,205 +543,8 @@ Resources:
         StatisticianAgentId: !GetAtt StatisticianAgent.Outputs.AgentId
         BiologicalPathwaysAnalystAgentId: !GetAtt BiologicalPathwaysAgent.Outputs.AgentId
 
-  # IAM Role for Bedrock Agents
-  AgentRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Sub AmazonBedrockExecutionRoleForAgents_${AWS::AccountId}
-      AssumeRolePolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - bedrock.amazonaws.com
-            Action:
-              - sts:AssumeRole
-      Policies:
-        - PolicyName: BedrockInvokeModel
-          PolicyDocument:
-            Version: 2012-10-17
-            Statement:
-              - Effect: Allow
-                Action:
-                  - bedrock:*
-                Resource: 
-                  - !Sub arn:aws:bedrock:*::foundation-model/*
-                  - !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:knowledge-base/*
-                  - !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent-alias/*
-                  - !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*
-                  - !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/*
-                  - !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:application-inference-profile/*
-
 Outputs:
   SupervisorAgentId:
     Condition: AutoCreateAgents
     Description: ID of the deployed Supervisor Agent
     Value: !GetAtt SupervisorAgent.Outputs.AgentId
-  # ECR Repositories
-  LifelinesECRRepository:
-    Type: AWS::ECR::Repository
-    Properties:
-      RepositoryName: lifelines-lambda-sample
-
-  ImagingECRRepository:
-    Type: AWS::ECR::Repository
-    Properties:
-      RepositoryName: medical-image-processing-smstudio
-  # IAM Roles for Step Functions and SageMaker
-  StepFunctionsExecutionRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: states.amazonaws.com
-            Action: sts:AssumeRole
-      Policies:
-        - PolicyName: StepFunctionsExecutionPolicy
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              # SageMaker permissions
-              - Effect: Allow
-                Action:
-                  - 'sagemaker:CreateProcessingJob'
-                  - 'sagemaker:DescribeProcessingJob'
-                  - 'sagemaker:StopProcessingJob'
-                  - 'sagemaker:ListTags'
-                  - 'sagemaker:AddTags'
-                Resource: !Sub 'arn:aws:sagemaker:${AWS::Region}:${AWS::AccountId}:processing-job/dcm-nifti-*'
-              # IAM permissions
-              - Effect: Allow
-                Action:
-                  - 'iam:PassRole'
-                Resource: !GetAtt SageMakerExecutionRole.Arn
-              # Step Functions Map state permissions
-              - Effect: Allow
-                Action:
-                  - 'events:PutTargets'
-                  - 'events:PutRule'
-                  - 'events:DescribeRule'
-                  - 'events:DeleteRule'
-                  - 'events:DisableRule'
-                  - 'events:EnableRule'
-                  - 'events:RemoveTargets'
-                Resource:
-                  - !Sub 'arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/StepFunctions-Map-*'
-                  - !Sub 'arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/StepFunctions-*'
-              # States permissions for Map state
-              - Effect: Allow
-                Action:
-                  - 'states:StartExecution'
-                  - 'states:StopExecution'
-                  - 'states:DescribeExecution'
-                  - 'states:CreateStateMachine'
-                  - 'states:DeleteStateMachine'
-                  - 'states:UpdateStateMachine'
-                  - 'states:DescribeStateMachine'
-                  - 'states:DescribeStateMachineForExecution'
-                  - 'states:ListExecutions'
-                Resource: 
-                  - !Sub 'arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:*'
-                  - !Sub 'arn:aws:states:${AWS::Region}:${AWS::AccountId}:execution:*:*'
-              # CloudWatch Logs permissions
-              - Effect: Allow
-                Action:
-                  - 'logs:CreateLogDelivery'
-                  - 'logs:GetLogDelivery'
-                  - 'logs:UpdateLogDelivery'
-                  - 'logs:DeleteLogDelivery'
-                  - 'logs:ListLogDeliveries'
-                  - 'logs:PutLogEvents'
-                  - 'logs:PutResourcePolicy'
-                  - 'logs:DescribeResourcePolicies'
-                  - 'logs:DescribeLogGroups'
-                Resource: 
-                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*'
-              - Effect: Allow
-                Action:
-                  - 'lambda:InvokeFunction'
-                Resource: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*'
-        - PolicyName: EventsPolicy
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - 'events:PutTargets'
-                  - 'events:PutRule'
-                  - 'events:DescribeRule'
-                Resource:
-                  - !Sub 'arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/*'
-
-  SageMakerExecutionRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: sagemaker.amazonaws.com
-            Action: sts:AssumeRole
-      Policies:
-        - PolicyName: SageMakerProcessingAccess
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              # Processing Job Permissions
-              - Effect: Allow
-                Action:
-                  - 'sagemaker:CreateProcessingJob'
-                  - 'sagemaker:DescribeProcessingJob'
-                  - 'sagemaker:StopProcessingJob'
-                  - 'sagemaker:ListProcessingJobs'
-                Resource: !Sub 'arn:aws:sagemaker:${AWS::Region}:${AWS::AccountId}:processing-job/*'
-              # ECR Access for Container
-              - Effect: Allow
-                Action:
-                  - 'ecr:GetAuthorizationToken'
-                Resource: '*'
-              - Effect: Allow
-                Action:
-                  - 'ecr:BatchCheckLayerAvailability'
-                  - 'ecr:GetDownloadUrlForLayer'
-                  - 'ecr:BatchGetImage'
-                Resource: 
-                  - !Sub 'arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/${ImagingECRRepository}'
-        - PolicyName: S3Access
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              # Input data access
-              - Effect: Allow
-                Action:
-                  - 's3:GetObject'
-                  - 's3:ListBucket'
-                Resource:
-                  - 'arn:aws:s3:::sagemaker-solutions-prod-*'
-                  - 'arn:aws:s3:::sagemaker-solutions-prod-*/sagemaker-lung-cancer-survival-prediction/*'
-              # Output data access
-              - Effect: Allow
-                Action:
-                  - 's3:PutObject'
-                  - 's3:GetObject'
-                  - 's3:ListBucket'
-                Resource: 
-                  - !Sub 'arn:aws:s3:::${S3Bucket}'
-                  - !Sub 'arn:aws:s3:::${S3Bucket}/nsclc_radiogenomics/*'
-        - PolicyName: CloudWatchLogsAccess
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - 'logs:CreateLogGroup'
-                  - 'logs:CreateLogStream'
-                  - 'logs:PutLogEvents'
-                  - 'logs:DescribeLogStreams'
-                Resource:
-                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/sagemaker/ProcessingJobs:*'
-                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/sagemaker/ProcessingJobs:log-stream:*'
