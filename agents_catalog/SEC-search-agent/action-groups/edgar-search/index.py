@@ -64,7 +64,7 @@ class TagSearchEngine:
         self.embeddings.index(self.index_data)
 
 
-def get_fact_tags(query: str, data_file: Path, n: int = 3) -> List[Dict]:
+def get_fact_tags(query: str, data_file: Path, n: int = 5) -> List[Dict]:
     """
     Find the n most relevant fact tags for a given query based on a similarity search with the description
 
