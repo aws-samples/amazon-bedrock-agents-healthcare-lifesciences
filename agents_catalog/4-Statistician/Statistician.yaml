@@ -253,7 +253,7 @@ Resources:
       FunctionName: ScientificPlotLambda
       PackageType: Image
       Code:
-        ImageUri: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ECRRepository}:${ImageTag}
+        ImageUri: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ECRRepository}
       Role: !GetAtt ScientificPlotLambdaExecutionRole.Arn
       MemorySize: 512
       Timeout: 900

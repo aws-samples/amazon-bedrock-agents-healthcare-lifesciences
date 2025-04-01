@@ -314,7 +314,7 @@ Resources:
                 - echo "Moving zip file to project root..."
                 - mv agents_catalog/4-Statistician/ActionGroups/matplotbarchartlambda/matplotbarchartlambda.zip .
                 - aws s3 cp matplotbarchartlambda.zip s3://${S3Bucket}/matplotbarchartlambda.zip
-                - cd repo/agents_catalog/2-Clinical-evidence-researcher/ActionGroups/pubmed-lambda-function
+                - cd agents_catalog/2-Clinical-evidence-researcher/ActionGroups/pubmed-lambda-function
                 - echo "Creating list of items to zip..."
                 - items_to_zip=$(ls -A | tr '\n' ' ')
                 - echo "Creating zip pubmed lambda file..."
@@ -332,6 +332,7 @@ Resources:
                 - echo "Moving zip file to project root..."
                 - mv agents_catalog/1-Biomarker-database-analyst/ActionGroups/querydatabaselambda/querydatabaselambda.zip .
                 - aws s3 cp querydatabaselambda.zip s3://${S3Bucket}/querydatabaselambda.zip
+                - cd ../../../..
                 - cd agents_catalog/4-Statistician/ActionGroups/survivaldataprocessinglambda
                 - echo "Creating list of items to zip..."
                 - items_to_zip=$(ls -A | tr '\n' ' ')
@@ -1614,18 +1615,6 @@ Resources:
         EnvironmentName: !Ref EnvironmentName
         S3Bucket: !Ref S3Bucket
         AgentRole: !GetAtt AgentRole.Arn
-
-  BiologicalPathwaysAgent:
-    Type: AWS::CloudFormation::Stack
-    Condition: AutoCreateAgents
-    Properties:
-      TemplateURL: !Sub https://${SubAgentS3Bucket}.s3.${AWS::Region}.amazonaws.com/packaged_Biological-pathways-analyst.yaml
-      Parameters:
-        BedrockModelId: !Ref BedrockModelId
-        EnvironmentName: !Ref EnvironmentName
-        S3Bucket: !Ref S3Bucket
-        AgentRole: !GetAtt AgentRole.Arn
-        VectorStoreName: !Ref VectorStoreName
 
   SupervisorAgent:
     Type: AWS::CloudFormation::Stack
