@@ -31,14 +31,14 @@ Resources:
       Runtime: python3.13
       Handler: index.lambda_handler
       Role: !GetAtt SEC10KSearchLambdaRole.Arn
-      Timeout: 30
+      Timeout: 60
       MemorySize: 128
       Environment:
         Variables:
           ACTION_GROUP: "SEC10KSearchLambdaActionGroup"
           LOG_LEVEL: "DEBUG"
           USER_AGENT: !Ref UserAgentString
-      Code: "action-groups/SEC-10-K-search/my_deployment_package.zip"
+      Code: "action-groups/SEC-10-K-search/deployment.zip"
 
   SEC10KSearchLambdaRole:
     Type: AWS::IAM::Role
@@ -80,6 +80,11 @@ Resources:
   SEC10KSearchAgent:
     Type: AWS::Bedrock::Agent
     Properties:
+      KnowledgeBases: 
+        - Description: Taxonomy and Tag values for concepts in the SEC EDGAR 10-K database. Use this resource to identify the best concept to request when answering user queries.
+          KnowledgeBaseId: 6ONRDECZAL
+          KnowledgeBaseState: "ENABLED"
+
       ActionGroups:
         - ActionGroupName: "UserInputAction"
           ParentActionGroupSignature: "AMAZON.UserInput"
