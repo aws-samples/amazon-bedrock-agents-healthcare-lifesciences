@@ -1,14 +1,14 @@
 ---
-title: Research Agents for Lifesciences
-description: Accelerating R&D workflows through multi-agent collaboration with Amazon Bedrock
+title: Agents for Healthcare and Lifesciences
+description: Accelerating HCLS workflows through multi-agent collaboration with Amazon Bedrock
 template: splash
 hero:
-  tagline: Harness the power of AI agents for cancer biomarker discovery and other R&D workflows
+  tagline: Harness the power of AI agents across R&D, clinical and commercial workflows
   image:
     file: ../../assets/architecture.jpg
     alt: AI agents working together on cancer biomarker discovery
   actions:
-    - text: Get Started
+    - text: Develop your own agent
       link: ./guides/
       icon: right-arrow
       variant: primary
@@ -16,29 +16,139 @@ hero:
       link: https://github.com/aws-samples/amazon-bedrock-agents-healthcare-lifesciences/tree/main
       icon: github
 ---
+import { Image } from 'astro:assets';
+import HCLSagents from '../../../src/assets/HCLSagents.jpg';
 import { Card, CardGrid } from '@astrojs/starlight/components';
 import { Tabs, TabItem } from '@astrojs/starlight/components';
 
-## Accelerate R&D workflows with AI Agents
+## Accelerate R&D, clinical and commercial workflows with AI Agents
 
-Explore the Components
+<div style="text-align: center; margin: 2rem 0;">
+  <Image 
+    src={HCLSagents} 
+    alt="Capabilities Overview" 
+    width={1200}
+    height={600}
+    style="max-width: 100%;"
+  />
+</div>
 <CardGrid> 
- <Card title="Agents Catalog" icon="puzzle"> Library of specialized agents for different R&D workflows. [Learn more](agents_catalog/) </Card> 
- <Card title="Multi-Agent Collaboration" icon="setting"> Framework for agent collaboration and knowledge sharing. End to end example for cancer biomarker discovery. [Learn more](multi_agent_collaboration/) </Card> 
- <Card title="Deployment" icon="laptop"> One-click deployment of infrastructure and Interactive interface for human-agent chat. [Learn more](deployment/) </Card> 
- <Card title="Evaluations" icon="check"> Methods for assessing agent performance and result quality. Ent to end example for cancer biomarker discovery. [Learn more](evaluations/) </Card> 
+ <Card title="Agents Catalog" icon="puzzle"> Select and customize from a library of specialized agents across the value chain. [Learn more](https://github.com/aws-samples/amazon-bedrock-agents-healthcare-lifesciences/tree/main/agents_catalog) </Card> 
+ <Card title="Multi-Agent Collaboration" icon="setting"> Framework for agent collaboration and knowledge sharing. Try pre-built examples for cancer biomarker discovery or build your own custom orchestration. [Learn more](https://github.com/aws-samples/amazon-bedrock-agents-healthcare-lifesciences/tree/main/multi_agent_collaboration/cancer_biomarker_discovery) </Card> 
+ <Card title="Deployment" icon="laptop"> One-click deployment of infrastructure and Interactive interface for human-agent chat with pre-built agents. [Learn more](https://github.com/aws-samples/amazon-bedrock-agents-healthcare-lifesciences/tree/main?tab=readme-ov-file#deployment) </Card> 
+ <Card title="Evaluations" icon="check"> Obervability and evaluation of Agents using Langfuse and custom metrics [Learn more](https://github.com/aws-samples/amazon-bedrock-agents-healthcare-lifesciences/tree/main/evaluations) </Card> 
 </CardGrid>
 **Built with Amazon Bedrock Agents**
 
-This project leverages Amazon Bedrock's powerful foundation models to create specialized agents for biomedical research tasks. The integration enables:
+## See HCLS agents in Action 
+<div style="text-align: center; margin: 2rem 0;">
+  <video 
+    controls 
+    width="800" 
+    style="max-width: 100%; border-radius: 8px;"
+  >
+    <source src="https://d2908q01vomqb2.cloudfront.net/artifacts/DBSBlogs/ML-16901/biomarker_muli_agent_personas.mp4?_=1" type="video/mp4" />
+    Your browser does not support the video tag.
+  </video>
+</div>
 
-    1. Access to state-of-the-art language models
+## Learning Library
 
-    2. Secure and scalable AI infrastructure
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; margin: 2rem 0;">
+  <div style={{
+    background: '#f8f9fa',
+    borderRadius: '12px',
+    padding: '2rem',
+    border: '1px solid #e9ecef',
+    transition: 'transform 0.2s, box-shadow 0.2s',
+    ':hover': {
+      transform: 'translateY(-4px)',
+      boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+    }
+  }}>
+    <div style="display: flex; align-items: start; gap: 1rem;">
+      <div style="background: #232f3e; padding: 0.8rem; border-radius: 8px;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+          <path d="M14 2H6C4.9 2 4 2.9 4 4V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V8L14 2Z"/>
+        </svg>
+      </div>
+      <div>
+        <h3 style="margin: 0; color: #232f3e; font-size: 1.2rem;">Developer Guide</h3>
+        <p style="margin-top: 0.5rem; color: #666;">
+          **Documentation**  
+          Access the comprehensive guide to get started with building your own agent for Healthcare and Life Sciences workflows.
+        </p>
+        <a href="http://localhost:4321/amazon-bedrock-agents-healthcare-lifesciences/guides/" 
+           style="color: #0073bb; text-decoration: none; font-weight: 500;">
+          Learn More →
+        </a>
+      </div>
+    </div>
+  </div>
 
-    3. Customization for domain-specific tasks
+  <div style={{
+    background: '#f8f9fa',
+    borderRadius: '12px',
+    padding: '2rem',
+    border: '1px solid #e9ecef',
+    transition: 'transform 0.2s, box-shadow 0.2s',
+    ':hover': {
+      transform: 'translateY(-4px)',
+      boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+    }
+  }}>
+    <div style="display: flex; align-items: start; gap: 1rem;">
+      <div style="background: #232f3e; padding: 0.8rem; border-radius: 8px;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+          <path d="M8 5V19L19 12L8 5Z"/>
+        </svg>
+      </div>
+      <div>
+        <h3 style="margin: 0; color: #232f3e; font-size: 1.2rem;">Blog</h3>
+        <p style="margin-top: 0.5rem; color: #666;">
+          **BLog**  
+          Read how to accelerate analysis and discovery of cancer biomarkers with Amazon Bedrock Agents
+        </p>
+        <a href="https://aws.amazon.com/blogs/machine-learning/accelerate-analysis-and-discovery-of-cancer-biomarkers-with-amazon-bedrock-agents/" 
+           style="color: #0073bb; text-decoration: none; font-weight: 500;">
+          Read Now →
+        </a>
+      </div>
+    </div>
+  </div>
 
-    4. Multi-modal capabilities for diverse research data
+  <div style={{
+    background: '#f8f9fa',
+    borderRadius: '12px',
+    padding: '2rem',
+    border: '1px solid #e9ecef',
+    transition: 'transform 0.2s, box-shadow 0.2s',
+    ':hover': {
+      transform: 'translateY(-4px)',
+      boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+    }
+  }}>
+    <div style="display: flex; align-items: start; gap: 1rem;">
+      <div style="background: #232f3e; padding: 0.8rem; border-radius: 8px;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+          <path d="M20.5 11H19V7C19 5.9 18.1 5 17 5H13V3.5C13 2.12 11.88 1 10.5 1C9.12 1 8 2.12 8 3.5V5H4C2.9 5 2 5.9 2 7V10.8H3.5C5 10.8 6.2 12 6.2 13.5C6.2 15 5 16.2 3.5 16.2H2V20C2 21.1 2.9 22 4 22H7.8V20.5C7.8 19 9 17.8 10.5 17.8C12 17.8 13.2 19 13.2 20.5V22H17C18.1 22 19 21.1 19 20V16H20.5C21.88 16 23 14.88 23 13.5C23 12.12 21.88 11 20.5 11Z"/>
+        </svg>
+      </div>
+      <div>
+        <h3 style="margin: 0; color: #232f3e; font-size: 1.2rem;">Interoperability</h3>
+        <p style="margin-top: 0.5rem; color: #666;">
+          **MCP**  
+          Bedrock Agents now supports MCP tools through our new Inline Agents API 
+        </p>
+        <a href="https://aws.amazon.com/blogs/machine-learning/harness-the-power-of-mcp-servers-with-amazon-bedrock-agents/" 
+           style="color: #0073bb; text-decoration: none; font-weight: 500;">
+          View Blog and Examples →
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
 
-## Get started now and use existing agents and orchestrators or customize with your own datasets
+
+## Get started now and try out existing agents and orchestrators or customize and build with your own datasets
 

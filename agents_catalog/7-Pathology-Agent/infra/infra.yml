@@ -1,0 +1,420 @@
+Parameters:
+  FeatureExtractionImageRepo:
+    Type: String
+    Description: Name of the ECR repository 
+    Default: trident-feature-extractor
+  MSIClassificationImageRepo:
+    Type: String
+    Description: Name of the ECR repository 
+    Default: trident-msi-classifier
+  WSIViewerRepo: 
+    Type: String
+    Description: Name of the ECR repository 
+    Default: wsi-viewer
+  DefaultSubnets:
+    Type: CommaDelimitedList
+    Description: List of subnets to deploy the lambda function
+    Default: subnet-0d7b5b5d29f23cc5f,subnet-049ba300f52e6e291,subnet-03eeac0278a3e46e8,subnet-03355968a02cde68a
+  DefaultSecurityGroupID:
+    Description: The default security group ID for the VPC
+    Type: String
+    Default: sg-04091454222d09722
+  ArtifactsBucket:
+    Type: String
+    Description: Name of the S3 bucket to store artifacts
+    Default: pathology-agents-048051882663
+
+Resources:
+  CodeBuildServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser
+        - arn:aws:iam::aws:policy/AWSCodeBuildDeveloperAccess
+        - arn:aws:iam::aws:policy/CloudWatchFullAccess
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+
+  DockerBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub ${AWS::StackName}-docker-build
+      ServiceRole: !GetAtt CodeBuildServiceRole.Arn
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Environment:
+        Type: LINUX_GPU_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:5.0
+        PrivilegedMode: true
+        EnvironmentVariables:
+          - Name: FEATURE_EXTRACTION_REPO
+            Value: !Ref FeatureExtractionImageRepo
+          - Name: MSI_CLASSIFICATION_REPO
+            Value: !Ref MSIClassificationImageRepo
+          - Name: IMAGE_TAG
+            Value: latest
+          - Name: AWS_ACCOUNT_ID
+            Value: !Ref AWS::AccountId
+      Source:
+        Type: S3
+        Location: !Sub ${ArtifactsBucket}/docker/
+        BuildSpec: |
+          version: 0.2
+          phases:
+            pre_build:
+              commands:
+                - echo Printing environment variables...
+                - echo AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION
+                - echo AWS_ACCOUNT_ID=$AWS_ACCOUNT_ID
+                - echo FEATURE_EXTRACTION_REPO=$FEATURE_EXTRACTION_REPO
+                - echo MSI_CLASSIFICATION_REPO=$MSI_CLASSIFICATION_REPO
+                - echo IMAGE_TAG=$IMAGE_TAG
+                - echo Logging in to Amazon ECR...
+                - REGISTRY_URL="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com"
+                - echo Registry URL=$REGISTRY_URL
+                - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $REGISTRY_URL
+
+            build:
+              commands:
+                - echo Building the Feature Extraction Docker image...
+                - cd feature-extraction
+                - docker build -t $FEATURE_EXTRACTION_REPO:$IMAGE_TAG .
+                - docker tag $FEATURE_EXTRACTION_REPO:$IMAGE_TAG $REGISTRY_URL/$FEATURE_EXTRACTION_REPO:$IMAGE_TAG
+                
+                - echo Building the MSI Classification Docker image...
+                - cd ../msi-classification
+                - docker build -t $MSI_CLASSIFICATION_REPO:$IMAGE_TAG .
+                - docker tag $MSI_CLASSIFICATION_REPO:$IMAGE_TAG $REGISTRY_URL/$MSI_CLASSIFICATION_REPO:$IMAGE_TAG
+
+            post_build:
+              commands:
+                - echo Pushing the Docker images...
+                - docker push $REGISTRY_URL/$FEATURE_EXTRACTION_REPO:$IMAGE_TAG
+                - docker push $REGISTRY_URL/$MSI_CLASSIFICATION_REPO:$IMAGE_TAG
+  
+  WSIViewerCodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub ${AWS::StackName}-wsi-viewer-build
+      ServiceRole: !GetAtt CodeBuildServiceRole.Arn
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:5.0
+        PrivilegedMode: true
+        EnvironmentVariables:
+          - Name: ECR_REPO
+            Value: !Ref WSIViewerECRRepository
+          - Name: IMAGE_TAG
+            Value: latest
+          - Name: AWS_ACCOUNT_ID
+            Value: !Ref AWS::AccountId
+      Source:
+        Type: S3
+        Location: !Sub ${ArtifactsBucket}/docker/lambda-wsi-viewer/
+        BuildSpec: |
+          version: 0.2
+          phases:
+            pre_build:
+              commands:
+                - echo Logging in to Amazon ECR...
+                - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+            build:
+              commands:
+                - echo Building the Docker image...
+                - docker build -t $ECR_REPO:$IMAGE_TAG .
+                - docker tag $ECR_REPO:$IMAGE_TAG $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$ECR_REPO:$IMAGE_TAG
+            post_build:
+              commands:
+                - echo Pushing the Docker image...
+                - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$ECR_REPO:$IMAGE_TAG
+
+  ECRRepositoryFeatureExtraction:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Ref FeatureExtractionImageRepo
+
+  ECRRepositoryMSIClassifier:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Ref MSIClassificationImageRepo
+
+  WSIViewerECRRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Ref WSIViewerRepo
+
+  CodeBuildTriggerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: CodeBuildAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - codebuild:StartBuild
+                  - codebuild:BatchGetBuilds
+                Resource: 
+                - !GetAtt DockerBuildProject.Arn
+                - !GetAtt WSIViewerCodeBuildProject.Arn
+  
+  CodeBuildTriggerFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt CodeBuildTriggerRole.Arn
+      Code:
+        ZipFile: |
+          import boto3
+          import cfnresponse
+          import time
+
+          def handler(event, context):
+              try:
+                  if event['RequestType'] in ['Create', 'Update']:
+                      codebuild = boto3.client('codebuild')
+                      projects = event['ResourceProperties']['Projects']
+                      print(f"Building projects: {projects}")
+                      
+                      for project_name in projects:
+                          # Start the build
+                          response = codebuild.start_build(projectName=project_name)
+                          build_id = response['build']['id']
+                          print(f"Started build for {project_name}: {build_id}")
+
+                          # Wait for the build to complete
+                          while True:
+                              build_status = codebuild.batch_get_builds(ids=[build_id])['builds'][0]['buildStatus']
+                              if build_status == 'SUCCEEDED':
+                                  print(f"Build {build_id} for {project_name} completed successfully")
+                                  break
+                              elif build_status in ['FAILED', 'STOPPED']:
+                                  raise Exception(f"Build {build_id} for {project_name} failed or stopped")
+                              time.sleep(10)  # Wait for 10 seconds before checking again
+
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {
+                          'Message': 'All builds completed successfully'
+                      })
+                  elif event['RequestType'] == 'Delete':
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {
+                          'Message': 'Resource deleted successfully'
+                      })
+              except Exception as e:
+                  print(f"Error: {str(e)}")
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {
+                      'Error': str(e)
+                  })
+      Runtime: python3.11
+      Timeout: 300  # 5 minutes
+      MemorySize: 128
+  
+  TriggerCodeBuild:
+    Type: Custom::CodeBuildTrigger
+    Properties:
+      ServiceToken: !GetAtt CodeBuildTriggerFunction.Arn
+      Projects: 
+        # - !Ref DockerBuildProject
+        - !Ref WSIViewerCodeBuildProject
+    DependsOn:
+      - ECRRepositoryFeatureExtraction
+      - ECRRepositoryMSIClassifier
+      - WSIViewerECRRepository
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${AWS::StackName}-LambdaExecutionRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSLambda_FullAccess
+        - arn:aws:iam::aws:policy/AmazonBedrockFullAccess
+        - arn:aws:iam::aws:policy/AWSBatchFullAccess
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+        - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
+  
+  AgentLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-${AWS::AccountId}-Lambda
+      Handler: lambda_function.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          def lambda_handler(event, context):
+              # This is a place holder function that gets overwritten when creating the Agent
+              print("Hello World")
+              return {
+                  'statusCode': 200,
+                  'body': 'Hello World'
+              }
+      Runtime: python3.11
+      Timeout: 300
+      MemorySize: 256
+      Environment:
+        Variables:
+          REGION: !Ref AWS::Region
+          ACCOUNT_ID: !Ref AWS::AccountId
+          BUCKET_NAME: !Sub ${ArtifactsBucket}
+          BATCH_JOB_QUEUE: !Ref BatchJobQueue
+          BATCH_JOB_DEFINITION_FEATURE_EXTRACTION: !Ref FeatureExtractionJobDefinition
+          BATCH_JOB_DEFINITION_CLASSIFIER: !Ref ClassifierJobDefinition
+          LAMBDA_VIEWER_FUNCTION_NAME: !Sub ${AWS::StackName}-WSIViewer
+
+  WSIViewerLambdaFunction:
+    Type: AWS::Lambda::Function
+    DependsOn:
+         - TriggerCodeBuild
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-WSIViewer
+      PackageType: Image
+      Code:
+        ImageUri: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${WSIViewerECRRepository}:latest
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 300
+      MemorySize: 4048
+      EphemeralStorage:
+        Size: 4048
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref ArtifactsBucket
+
+  # Batch 
+  # Create ECS Instance Role
+  EcsInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+        - arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+      Path: /
+
+  EcsInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles:
+        - !Ref EcsInstanceRole
+
+  BatchComputeEnvironment:
+    Type: AWS::Batch::ComputeEnvironment
+    Properties:
+      ComputeEnvironmentName: !Sub ${AWS::StackName}-ComputeEnv
+      Type: MANAGED
+      State: ENABLED
+      ComputeResources:
+        Type: SPOT
+        AllocationStrategy: SPOT_PRICE_CAPACITY_OPTIMIZED
+        MinvCpus: 0
+        MaxvCpus: 256
+        DesiredvCpus: 0
+        InstanceTypes: 
+          - g5.xlarge
+        Subnets: !Ref DefaultSubnets
+        SecurityGroupIds: 
+          - !Ref DefaultSecurityGroupID
+        InstanceRole: !Ref EcsInstanceProfile
+        BidPercentage: 80
+        Ec2Configuration:
+          - ImageType: ECS_AL2_NVIDIA
+            ImageIdOverride: ami-051dabd05e29a4aca
+  
+  # Batch Job Queue
+  BatchJobQueue:
+    Type: AWS::Batch::JobQueue
+    Properties:
+      JobQueueName: !Sub ${AWS::StackName}-JobQueue
+      Priority: 1
+      State: ENABLED
+      ComputeEnvironmentOrder:
+        - ComputeEnvironment: !Ref BatchComputeEnvironment
+          Order: 1
+  
+  FeatureExtractionJobDefinition:
+    Type: AWS::Batch::JobDefinition
+    Properties:
+      JobDefinitionName: !Sub ${AWS::StackName}-FeatureExtraction
+      Type: container
+      PlatformCapabilities: 
+        - EC2
+      ContainerProperties:
+        Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${FeatureExtractionImageRepo}:latest
+        JobRoleArn: !GetAtt EcsInstanceRole.Arn
+        ExecutionRoleArn: !GetAtt EcsInstanceRole.Arn
+        Command:
+          - "echo"
+          - "starting feature extraction"
+        Privileged: true
+        ResourceRequirements:
+          - Type: VCPU
+            Value: "1"
+          - Type: MEMORY
+            Value: "15000"
+          - Type: GPU
+            Value: "1"
+        LinuxParameters:
+          SharedMemorySize: 15000
+          Tmpfs:
+            - ContainerPath: /tmp
+              Size: 15000
+              MountOptions:
+                - rw
+                - nosuid
+                - nodev
+                - noexec
+        LogConfiguration:
+          LogDriver: awslogs
+          Options: {}
+      RetryStrategy:
+        Attempts: 1
+      Timeout:
+        AttemptDurationSeconds: 600
+      Tags: {}
+
+  ClassifierJobDefinition:
+    Type: AWS::Batch::JobDefinition
+    Properties:
+      JobDefinitionName: !Sub ${AWS::StackName}-Classifier
+      Type: container
+      ContainerProperties:
+        Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${MSIClassificationImageRepo}:latest
+        Vcpus: 1
+        Memory: 15000
+        Command:
+          - "echo"
+          - "Starting Classifier"
+      RetryStrategy:
+        Attempts: 1
