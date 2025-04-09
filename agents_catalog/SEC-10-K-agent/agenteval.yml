@@ -1,0 +1,14 @@
+evaluator:
+  model: claude-3
+target:
+  type: bedrock-agent
+  bedrock_agent_id: BEDROCK_AGENT_ID
+  bedrock_agent_alias_id: BEDROCK_AGENT_ALIAS_ID
+tests:
+  michigan:
+    steps:
+    - Ask agent, "What was the overall trend in diluted earnings per share for Amazon between 2015 and 2020"?
+    expected_results:
+    - The agent answers that the value in $1.00 in 2015 and $14.09 in 2020.
+    - The agent mentions that diluted earnings per share strongly increased over the specified time period
+  

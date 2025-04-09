@@ -1,0 +1,348 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  container.yaml: Creates shared resources to build containers with AWS CodeBuild.
+Parameters:
+  S3CodeBucket:
+    Description: Name of the S3 bucket to use for deployment and run storage
+    Type: String
+  S3CodeKey:
+    Description: S3 key for the zip file containing CodeBuild code
+    Type: String
+  Name:
+    Description: Name to use for the Docker container
+    Type: String
+  Timestamp:
+    Description: Timestamp for the cfn deployment
+    Type: Number
+    Default: 9999999999
+  WaitForCodeBuild:
+    Description: Should CloudFormation wait for CodeBuild?
+    Type: String
+    Default: "N"
+    AllowedValues: [Y, N]
+
+Conditions:
+  WaitForCodeBuildCondition:
+    "Fn::Equals": [Ref: "WaitForCodeBuild", "Y"]
+
+Resources:
+  EncryptionKey:
+    Type: "AWS::KMS::Key"
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: 2012-10-17
+        Id: "codebuild-container-build-key"
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:root"
+            Action:
+              [
+                "kms:Create*",
+                "kms:Describe*",
+                "kms:Enable*",
+                "kms:List*",
+                "kms:Put*",
+                "kms:Update*",
+                "kms:Revoke*",
+                "kms:Disable*",
+                "kms:Get*",
+                "kms:Delete*",
+                "kms:TagResource",
+                "kms:UntagResource",
+                "kms:ScheduleKeyDeletion",
+                "kms:CancelKeyDeletion",
+              ]
+            Resource: "*"
+          - Sid: Enable CodeBuild Encryption
+            Effect: Allow
+            Principal:
+              AWS: !GetAtt CodeBuildContainerRole.Arn
+            Action:
+              [
+                "kms:Encrypt",
+                "kms:Decrypt",
+                "kms:ReEncrypt*",
+                "kms:GenerateDataKey*",
+                "kms:DescribeKey",
+              ]
+            Resource: "*"
+          - Sid: Enable CloudWatch Logs Encryption
+            Effect: Allow
+            Principal:
+              Service: "logs.amazonaws.com"
+            Action:
+              [
+                "kms:Encrypt",
+                "kms:Decrypt",
+                "kms:ReEncrypt*",
+                "kms:GenerateDataKey*",
+                "kms:DescribeKey",
+              ]
+            Resource: "*"
+      Tags:
+        - Key: StackId
+          Value: !Ref AWS::StackId
+
+  Repository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Ref Name
+      EmptyOnDelete: True
+      EncryptionConfiguration:
+        EncryptionType: KMS
+        KmsKey: !Ref EncryptionKey
+      ImageScanningConfiguration:
+        ScanOnPush: true
+
+  CodeBuildContainerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: "Required service policies to support building containers"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - codebuild.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser
+      Policies:
+        - PolicyName: CodeBuildContainerPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/CodeBuildContainer*"
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:s3:::${S3CodeBucket}/*"
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:s3:::${S3CodeBucket}"
+              - Effect: Allow
+                Action:
+                  - codebuild:CreateReportGroup
+                  - codebuild:CreateReport
+                  - codebuild:UpdateReport
+                  - codebuild:BatchPutTestCases
+                  - codebuild:BatchPutCodeCoverages
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:s3:::codebuild:${AWS::Region}:${AWS::AccountId}:report-group/*"
+              - Effect: Allow
+                Action:
+                  - codebuild:StartBuild
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:codebuild:${AWS::Region}:${AWS::AccountId}:project/CodeBuildContainerProject"
+              - Effect: Allow
+                Action:
+                  - ecr:GetRepositoryPolicy
+                  - ecr:TagResource
+                  - ecr:SetRepositoryPolicy
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:ecr:${AWS::Region}:${AWS::AccountId}:repository/*"
+      Tags:
+        - Key: StackId
+          Value: !Ref AWS::StackId
+
+  CodeBuildContainerProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Description: Build Docker container
+      EncryptionKey: !Ref EncryptionKey
+      Environment:
+        ComputeType: BUILD_GENERAL1_LARGE
+        EnvironmentVariables:
+          - Name: IMAGE_TAG
+            Value: latest
+          - Name: IMAGE_REPO_NAME
+            Value: !Ref Repository
+          - Name: WAIT_CONDITION_HANDLE
+            Value: !Ref CodeBuildWaitHandle
+          - Name: ACCOUNT_ID
+            Value: !Ref "AWS::AccountId"
+          - Name: REGION
+            Value: !Ref "AWS::Region"
+        Image: aws/codebuild/standard:6.0
+        ImagePullCredentialsType: CODEBUILD
+        PrivilegedMode: true
+        Type: LINUX_CONTAINER
+      ResourceAccessRole: !GetAtt CodeBuildContainerRole.Arn
+      ServiceRole: !GetAtt CodeBuildContainerRole.Arn
+      Source:
+        BuildSpec: |
+          version: 0.2
+          phases:
+            pre_build:
+              commands:
+                - echo Build started on `date`
+                - echo Logging in to Amazon ECR...
+                - aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com
+            build:
+              commands:
+                - echo Building the image
+                - docker buildx build --platform linux/amd64 --provenance=false -t $IMAGE_REPO_NAME:$IMAGE_TAG .
+                - echo tagging the $IMAGE_REPO_NAME image
+                - docker tag $IMAGE_REPO_NAME:$IMAGE_TAG $ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG
+            post_build:
+              commands:
+                - echo Pushing the $NAME image
+                - docker push $ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG
+                - JSON_DATA=$( jq -n --arg uid "$IMAGE_REPO_NAME" '{Status:"SUCCESS", Reason:"Configuration Complete","UniqueId":$uid, "Data":"Application has completed configuration."}' )
+                - curl -X PUT -H "Content-Type:" --data-binary "$JSON_DATA" "$WAIT_CONDITION_HANDLE"
+                - echo Build completed on `date`
+        Location: !Sub "${S3CodeBucket}/${S3CodeKey}"
+        Type: S3
+      Tags:
+        - Key: StackId
+          Value: !Ref AWS::StackId
+
+  StartCodeBuildLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+      Policies:
+        - PolicyName: StartCodeBuildContainerLambdaPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - codebuild:StartBuild
+                Resource: !GetAtt CodeBuildContainerProject.Arn
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+
+  StartCodeBuildLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      ReservedConcurrentExecutions: 10
+      Code:
+        ZipFile: |
+          import boto3
+          import cfnresponse
+          import logging
+
+          LOGGER = logging.getLogger()
+          LOGGER.setLevel(logging.INFO)
+          codebuild = boto3.client("codebuild")
+          def lambda_handler(event, context):
+              try:
+                  LOGGER.info("REQUEST EVENT:\n %s", event)
+                  LOGGER.info("REQUEST CONTEXT:\n %s", context)
+                  if event["RequestType"] in ["Create", "Update"]:
+                      build_project_name = event["ResourceProperties"]["BuildProjectName"]
+                      asset_name = event["ResourceProperties"]["AssetName"]
+                      wait_handle = event["ResourceProperties"]["WaitHandle"] or None
+                      response = codebuild.start_build(
+                          projectName=build_project_name,
+                          environmentVariablesOverride=[
+                              {"name": "NAME", "value": asset_name, "type": "PLAINTEXT"},
+                              {
+                                  "name": "WAIT_CONDITION_HANDLE",
+                                  "value": wait_handle,
+                                  "type": "PLAINTEXT",
+                              },
+                          ],
+                      )
+                      LOGGER.info(response)
+                      cfnresponse.send(
+                          event,
+                          context,
+                          cfnresponse.SUCCESS,
+                          {"response": "Resource creation successful!"},
+                      )
+                  elif event["RequestType"] == "Delete":
+                      LOGGER.info("DELETE!")
+                      cfnresponse.send(
+                          event,
+                          context,
+                          cfnresponse.SUCCESS,
+                          {"response": "No action taken"},
+                      )
+                  else:
+                      LOGGER.error("FAILED!")
+                      cfnresponse.send(
+                          event,
+                          context,
+                          cfnresponse.FAILED,
+                          {"response": "Unexpected event received from CloudFormation"},
+                      )
+              except Exception as e:
+                  LOGGER.info("FAILED!")
+                  cfnresponse.send(event, context, cfnresponse.FAILED, e)
+      Description: Start CodeBuild project
+      Handler: index.lambda_handler
+      MemorySize: 512
+      Role:
+        Fn::GetAtt: StartCodeBuildLambdaExecutionRole.Arn
+      Runtime: python3.13
+      Timeout: 30
+
+  CodeBuildWaitHandle:
+    Type: AWS::CloudFormation::WaitConditionHandle
+
+  StartContainerBuild:
+    Type: Custom::ResourceForBuildingContainer
+    Properties:
+      ServiceToken:
+        Fn::GetAtt: StartCodeBuildLambda.Arn
+      BuildProjectName:
+        Ref: CodeBuildContainerProject
+      AssetName:
+        Ref: Name
+      Timestamp:
+        Ref: Timestamp
+      WaitHandle:
+        Ref: CodeBuildWaitHandle
+
+  CodeBuildWaitCondition:
+    Type: AWS::CloudFormation::WaitCondition
+    Condition: WaitForCodeBuildCondition
+    DependsOn:
+      - CodeBuildContainerProject
+    Properties:
+      Handle: !Ref CodeBuildWaitHandle
+      Timeout: 600
+      Count: 1
+
+Outputs:
+  ContainerURI:
+    Description: The URI of the container
+    Value: !Sub "${Repository.RepositoryUri}:latest"
+  CodeBuildProjectName:
+    Description: The name of the CodeBuild project
+    Value: !Ref CodeBuildContainerProject
+  CodeBuildLambdaArn:
+    Description: The ARN of the CodeBuild lambda trigger
+    Value: !GetAtt StartCodeBuildLambda.Arn

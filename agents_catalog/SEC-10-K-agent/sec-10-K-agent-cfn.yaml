@@ -1,0 +1,232 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Creates the SEC 10-K agent for searching using the EDGAR API.
+Parameters:
+  AgentAliasName:
+    Type: String
+    Default: ""
+  BedrockModelId:
+    Type: String
+    Description: The ID of the Foundation Model to use for the Agent
+    Default: us.anthropic.claude-3-5-sonnet-20240620-v1:0
+  AgentIAMRoleArn:
+    Type: String
+    Description: The arn for the agent IAM role
+  UserAgentString:
+    Type: String
+    NoEcho: true
+    Description: User Agent string for the EDGAR API request
+    Default: "Amazon Web Services aws-hcls-ml-sa@amazon.com"
+  S3CodeBucket:
+    Description: Name of the S3 bucket to use for deployment and run storage
+    Type: String
+  S3CodeKey:
+    Description: S3 key for the zip file containing CodeBuild code
+    Type: String
+  ContainerName:
+    Description: Name of the ECR project
+    Type: String
+  Timestamp:
+    Description: Timestamp for the cfn deployment
+    Type: Number
+    Default: 9999999999
+
+Conditions:
+  CreateAgentAliasCondition: !Not [!Equals [!Ref AgentAliasName, ""]]
+
+Resources:
+  ########################
+  ##### SEC10K Search #####
+  ######################
+
+  SEC10KSearchContainer:
+    Type: "AWS::CloudFormation::Stack"
+    Properties:
+      TemplateURL: container.yaml
+      Parameters:
+        S3CodeBucket:
+          Ref: S3CodeBucket
+        S3CodeKey:
+          Ref: S3CodeKey
+        Name:
+          Ref: ContainerName
+        Timestamp:
+          Ref: Timestamp
+        WaitForCodeBuild: "Y"
+
+  SEC10KSearchLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: CodeBuildContainerPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:bedrock:${AWS::Region}::foundation-model/amazon.titan-embed-text-v2:0"
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:s3:::5d1a4b76751b4c8a994ce96bafd91ec9/us-gaap/*"
+
+  SEC10KSearchLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Role: !GetAtt SEC10KSearchLambdaRole.Arn
+      Timeout: 300
+      MemorySize: 256
+      Environment:
+        Variables:
+          ACTION_GROUP: "SEC10KSearchLambdaActionGroup"
+          LOG_LEVEL: "DEBUG"
+          USER_AGENT: !Ref UserAgentString
+      PackageType: Image
+      Code:
+        ImageUri: !GetAtt SEC10KSearchContainer.Outputs.ContainerURI
+
+  SEC10KSearchLambdaAgentPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt SEC10KSearchLambdaFunction.Arn
+      Principal: bedrock.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+      SourceArn: !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent-alias/*
+
+  SEC10KSearchLambdaAgentAliasPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt SEC10KSearchLambdaFunction.Arn
+      Principal: bedrock.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+      SourceArn: !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*
+
+  #####################
+  ##### Agent #####
+  ###################
+  SEC10KSearchAgent:
+    Type: AWS::Bedrock::Agent
+    Properties:
+      ActionGroups:
+        - ActionGroupName: "UserInputAction"
+          ParentActionGroupSignature: "AMAZON.UserInput"
+          ActionGroupState: "ENABLED"
+        - ActionGroupName: "CodeInterpreterAction"
+          ParentActionGroupSignature: "AMAZON.CodeInterpreter"
+          ActionGroupState: "ENABLED"
+        - ActionGroupName: SEC10KSearch
+          Description: Actions for answering questions with information from the internet
+          ActionGroupExecutor:
+            Lambda: !GetAtt SEC10KSearchLambdaFunction.Arn
+          ActionGroupState: ENABLED
+          FunctionSchema:
+            Functions:
+              - Name: find_relevant_tags
+                Description: Find the most relevant SEC tags for a given query. May be used to identify the input values to the get_company_concept function.
+                Parameters:
+                  query:
+                    Description: "Topic or question to search against all available SEC tags in the us-gaap taxonomy"
+                    Type: string
+                    Required: True                    
+              - Name: get_company_concept
+                Description: Get all the us-gaap disclosures for a single company (CIK) and concept (tag), with a separate array of facts for each unit of measure that the company has chosen to disclose (e.g. net profits reported in U.S. dollars and in Canadian dollars).
+                Parameters:
+                  company_name:
+                    Description: "Company name, e.g. Amazon or Pfizer"
+                    Type: string
+                    Required: True
+                  tag:
+                    Description: An identifier that highlights specific information to EDGAR in the format required by the EDGAR Filer Manual. e.g. 'EntityCommonStockSharesOutstanding', 'AcceleratedShareRepurchasesFinalPricePaidPerShare'
+                    Type: string
+                    Required: True
+      AgentName:
+        !Join [
+          "-",
+          [
+            "sec-10-k-search-agent",
+            !Select [
+              4,
+              !Split ["-", !Select [2, !Split ["/", !Ref "AWS::StackId"]]],
+            ],
+          ],
+        ]
+      AgentResourceRoleArn: !Ref AgentIAMRoleArn
+      AutoPrepare: True
+      Description: "Perform financial analysis of a given company using the their SEC 10-K filings in the EDGAR database"
+      FoundationModel: !Ref BedrockModelId
+      GuardrailConfiguration:
+        GuardrailIdentifier: !GetAtt SEC10KSearchGuardrail.GuardrailId
+        GuardrailVersion: !GetAtt SEC10KSearchGuardrail.Version
+      Instruction: |
+        You are an expert financial analyst specializing in public company analysis using SEC 10-K data. Help users analyze companies by retrieving and interpreting financial data through the SEC EDGAR API tools.
+
+        You have access to the following tools:
+
+          - find_relevant_tags: Find the most relevant SEC EDGAR database tags for a given query. May be used to identify the input values for the get_company_concept function.
+          - get_company_concept: Retrieves us-gaap disclosures from the EDGAR API for a specified company and concept (tag), returning an array of facts organized by units of measure (such as profits in different currencies).
+
+        You also have the ability to generate and run code. This could be useful for statistical analysis or data visualization.
+
+        Analysis Process
+
+          1. Begin by asking which company the user wants to analyze, if not provided.
+          2. Use find_relevant_tags to determine which specific SEC EDGAR database tags are relevant based on the user's goals.
+          3. Use get_company_concept to retrieve targeted financial data.
+          4. Analyze trends, calculate financial ratios, and provide insights. Generate and run code as needed.
+          5. Present your analysis in a clear, structured format with relevant visualizations or tables.
+
+        Response Guidelines
+
+          - Provide concise, actionable insights based on the data
+          - Explain financial concepts in accessible language
+          - Include relevant metrics like revenue growth, profitability ratios, and balance sheet analysis
+          - Highlight notable trends or concerns
+          - Make appropriate comparisons to industry standards when possible
+          - Acknowledge data limitations and gaps where they exist
+
+  AgentAliasResource:
+    Type: AWS::Bedrock::AgentAlias
+    Condition: CreateAgentAliasCondition
+    Properties:
+      AgentId: !GetAtt SEC10KSearchAgent.AgentId
+      AgentAliasName: !Ref AgentAliasName
+
+  SEC10KSearchGuardrail:
+    Type: AWS::Bedrock::Guardrail
+    Properties:
+      BlockedInputMessaging: "Sorry, your query violates our usage policies."
+      BlockedOutputsMessaging: "Sorry, I am unable to reply because the output violates our usage policies."
+      ContentPolicyConfig:
+        FiltersConfig:
+          - InputStrength: "HIGH"
+            OutputStrength: "NONE"
+            Type: "PROMPT_ATTACK"
+      Description: Turn on to block profane words and other harmful content.
+      Name: SEC10KSearchGuardrail
+      WordPolicyConfig:
+        ManagedWordListsConfig:
+          - Type: PROFANITY
+
+Outputs:
+  AgentId:
+    Description: Agent ID
+    Value: !Ref SEC10KSearchAgent
+  AgentAliasId:
+    Description: Agent Alias ID
+    Value: !GetAtt AgentAliasResource.AgentAliasId
+    Condition: CreateAgentAliasCondition

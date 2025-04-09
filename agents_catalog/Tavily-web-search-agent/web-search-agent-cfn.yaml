@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: Creates the web search agent agent.
+Description: Creates the web search agent.
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
