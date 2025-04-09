@@ -1,17 +1,15 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-# try:
-#     import unzip_requirements
-# except ImportError:
-#     pass
+from bedrock_ez_search import SemanticSearch
 
-# from bedrock_search_index import BedrockSearchIndex
+import boto3
 import json
 import logging
 import os
 from pathlib import Path
 from rapidfuzz import process, fuzz, utils
+import re
 import requests
 from sec_edgar_api import EdgarClient
 from typing import Dict, Optional, List
@@ -37,6 +35,16 @@ DEFAULT_SCORE_CUTOFF = (
 # amazonq-ignore-next-line
 edgar = EdgarClient(
     user_agent=os.environ.get("USER_AGENT", "AWS HCLS AGENTS").strip().upper()
+)
+
+s3 = boto3.client("s3")
+s3.download_file(
+    "5d1a4b76751b4c8a994ce96bafd91ec9", "us-gaap/embeddings.npy", "/tmp/embeddings.npy"
+)
+s3.download_file(
+    "5d1a4b76751b4c8a994ce96bafd91ec9",
+    "us-gaap/descriptions.csv",
+    "/tmp/descriptions.csv",
 )
 
 ##############################################################################
@@ -86,7 +94,7 @@ def get_cik(
 
 
 ##############################################################################
-# Get all company facts (all concepts)
+# Get all company facts (all tags)
 ##############################################################################
 
 
@@ -112,97 +120,126 @@ def get_cik(
 
 
 ##############################################################################
-# Find relevant concepts for a given company
+# Find relevant tags for a given query
 ##############################################################################
 
 
-# def handle_find_relevant_concepts(parameters) -> List[Dict]:
-#     """
-#     Handle the find_relevant_concepts function.
+def get_relevant_tags(
+    query: str,
+    top_k: int = 5,
+    index_descriptions: Path = "/tmp/descriptions.csv",
+    index_embeddings: Path = "/tmp/embeddings.npy",
+) -> Dict:
+    with open(index_descriptions, "r") as f:
+        pattern = r"^([^,]+),([^,]+),(.+)$"
+        available_facts = []
+        for line in f:
+            match = re.match(pattern, line.strip())
+            if match:
+                taxonomy, tag, description = match.groups()
+                available_facts.append(
+                    {
+                        "taxonomy": taxonomy,
+                        "tag": tag,
+                        "description": description,
+                    }
+                )
+            else:
+                logger.error(f"Error parsing line: {line.strip()}")
 
-#     Args:
-#         parameters (list): A list of dictionaries containing the function parameters.
+    try:
+        search = SemanticSearch(
+            model_id="amazon.titan-embed-text-v2:0",  # Using v2 model
+        )
+        search.index(
+            [i["description"] for i in available_facts if i["description"] is not None],
+            embeddings_file=index_embeddings,
+        )
+        hits = search.search(query, top_k=top_k)
 
-#     Returns:
-#         dict: A dictionary containing the response body.
-#     """
-#     # return parameters
+        # Get the records in available_facts that correspond to the index values for the records in search_results
+        search_results = [available_facts[i["index"]] for i in hits]
 
-#     required_params = ["company_name", "query"]
-#     missing_params = [
-#         param
-#         for param in required_params
-#         if not next((p["value"] for p in parameters if p["name"] == param), None)
-#     ]
+        return search_results
+    except Exception as e:
+        logger.error(f"Error during search: {str(e)}")
+        return {"TEXT": {"body": f"Error during search: {str(e)}"}}
 
-#     if missing_params:
-#         return {
-#             "TEXT": {
-#                 "body": f"Missing mandatory parameter(s): {', '.join(missing_params)}"
-#             }
-#         }
 
-#     # amazonq-ignore-next-line
-#     company_name = next(
-#         (param["value"] for param in parameters if param["name"] == "company_name"),
-#         None,
-#     )
+def format_relevant_tag_response(response: Dict) -> Dict:
+    """
+    Format the get relevant tags response into a human-readable string.
 
-#     query = next(
-#         (param["value"] for param in parameters if param["name"] == "query"),
-#         None,
-#     )
+    Args:
+        response (dict): The relevant tags response dictionary
 
-#     # try:
-#     cik_info = get_cik(company_name, "cik-ref.json")
-#     if cik_info is None:
-#         return {"TEXT": {"body": f"Could not find CIK for company: {company_name}"}}
-#     cik = cik_info.get("cik_str", "")
-#     facts = get_company_facts(cik)
+    Returns:
+        Dict: A dictionary containing the formatted response body
+    """
 
-#     available_facts = [
-#         {
-#             "taxonomy": taxonomy,
-#             "tag": tag,
-#             "label": values.get("label"),
-#             "description": values.get("description"),
-#             "units": next(iter(values.get("units", {})), ""),
-#             "size": len(next(iter(values.get("units", {}).values()), [])),
-#         }
-#         for taxonomy, tags in facts.get("facts", {}).items()
-#         for tag, values in tags.items()
-#     ]
+    formatted_response = [
+        {
+            "tag": result.get("tag", ""),
+            "description": result.get("description", ""),
+        }
+        for result in response
+    ]
+    return json.dumps(formatted_response, separators=(",", ":"))
 
-#     if Path("index.pkl").exists():
-#         fact_index = BedrockSearchIndex(index_path="index.pkl")
-#     else:
-#         fact_index = BedrockSearchIndex(
-#             [i["description"] for i in available_facts if i["description"] is not None]
-#         )
-#     search_results = fact_index.search(query, k=5)
 
-#     return [
-#         {
-#             "tag": available_facts[result["index_id"]]["tag"],
-#             "description": result["text"],
-#         }
-#         for result in search_results
-#     ]
+def handle_find_relevant_tags(parameters) -> List[Dict]:
+    """
+    Handle the find_relevant_tags function.
+
+    Args:
+        parameters (list): A list of dictionaries containing the function parameters.
+
+    Returns:
+        dict: A dictionary containing the response body.
+    """
+
+    required_params = ["query"]
+    missing_params = [
+        param
+        for param in required_params
+        if not next((p["value"] for p in parameters if p["name"] == param), None)
+    ]
+
+    if missing_params:
+        return {
+            "TEXT": {
+                "body": f"Missing mandatory parameter(s): {', '.join(missing_params)}"
+            }
+        }
+
+    query = next(
+        (param["value"] for param in parameters if param["name"] == "query"),
+        None,
+    )
+
+    try:
+        relevant_tags = get_relevant_tags(query, top_k=5)
+        formatted_response = format_relevant_tag_response(relevant_tags)
+        return {"TEXT": {"body": formatted_response}}
+    except Exception as e:
+        logger.error(f"Error in find_relevant_tags: {str(e)}")
+        return {"TEXT": {"body": f"An error occurred: {str(e)}"}}
 
 
 ##############################################################################
-# Get company facts for a specific concepts
+# Get company facts for a specific tags
 ##############################################################################
 
 
-def get_company_concept(cik: str, taxonomy: str, tag: str) -> Dict:
+def get_company_concept(cik: str, tag: str, taxonomy: str = "us-gaap") -> Dict:
     """
     Retrieve company concept information for a given CIK, taxonomy, and tag.
 
     Args:
         cik (str): The company CIK
-        taxonomy (str): The taxonomy to search in
         tag (str): The tag to search for
+        taxonomy (str): The taxonomy to search in ("us-gaap" by default)
+
 
     Returns:
         Dict: A dictionary containing the company concept information
@@ -255,7 +292,7 @@ def format_concept_response(response: Dict) -> Dict:
 
 
 def handle_get_company_concept(parameters: Dict):
-    required_params = ["company_name", "taxonomy", "tag"]
+    required_params = ["company_name", "tag"]
     missing_params = [
         param
         for param in required_params
@@ -273,9 +310,7 @@ def handle_get_company_concept(parameters: Dict):
         (param["value"] for param in parameters if param["name"] == "company_name"),
         None,
     )
-    taxonomy = next(
-        (param["value"] for param in parameters if param["name"] == "taxonomy"), None
-    )
+
     tag = next((param["value"] for param in parameters if param["name"] == "tag"), None)
 
     try:
@@ -283,7 +318,7 @@ def handle_get_company_concept(parameters: Dict):
         if cik_info is None:
             return {"TEXT": {"body": f"Could not find CIK for company: {company_name}"}}
         cik = cik_info.get("cik_str", "")
-        response = get_company_concept(cik, taxonomy, tag)
+        response = get_company_concept(cik, tag)
         formatted_response = format_concept_response(response)
         return {"TEXT": {"body": formatted_response}}
     except Exception as e:
@@ -324,9 +359,9 @@ def process_event(event):
         f"Agent: {urllib.parse.quote(agent['name'])}, ActionGroup: {urllib.parse.quote(actionGroup)}, Function: {urllib.parse.quote(function)}"
     )
 
-    # if function == "find_relevant_concepts":
-    #     responseBody = handle_find_relevant_concepts(parameters)
-    if function == "get_company_concept":
+    if function == "find_relevant_tags":
+        responseBody = handle_find_relevant_tags(parameters)
+    elif function == "get_company_concept":
         responseBody = handle_get_company_concept(parameters)
     else:
         responseBody = {"TEXT": {"body": f"Function {function} not implemented"}}
@@ -347,33 +382,35 @@ def process_event(event):
     return function_response
 
 
-def lambda_handler(event, context):
+def handler(event, context):
     logger.debug(f"Event: {event}")
 
     return process_event(event)
 
 
 if __name__ == "__main__":
-    # print("Testing find_relevant_concepts")
-    # event = {
-    #     "messageVersion": "1.0",
-    #     "agent": {
-    #         "name": "SEC-10-K-search-agent",
-    #         "id": "ABCDEF",
-    #         "alias": "123456",
-    #         "version": "1",
-    #     },
-    #     "sessionId": "123456789",
-    #     "actionGroup": "sec-10-k-search",
-    #     "function": "find_relevant_concepts",
-    #     "parameters": [
-    #         {"name": "company_name", "type": "string", "value": "amazon"},
-    #         {"name": "query", "type": "string", "value": "Total new profit"},
-    #     ],
-    # }
-    # response = lambda_handler(event, None)
-    # print(response)
-    # assert len(response["response"]["functionResponse"]["responseBody"]) == 5
+    print("Testing find_relevant_tags")
+    event = {
+        "messageVersion": "1.0",
+        "agent": {
+            "name": "SEC-10-K-search-agent",
+            "id": "ABCDEF",
+            "alias": "123456",
+            "version": "1",
+        },
+        "sessionId": "123456789",
+        "actionGroup": "sec-10-k-search",
+        "function": "find_relevant_tags",
+        "parameters": [
+            {"name": "query", "type": "string", "value": "Accounts payable"},
+        ],
+    }
+    response = handler(event, None)
+    print(response)
+    assert (
+        "AccountsPayableCurrent"
+        in response["response"]["functionResponse"]["responseBody"]["TEXT"]["body"]
+    )
 
     print("Testing get_company_concept")
     event = {
@@ -389,11 +426,10 @@ if __name__ == "__main__":
         "function": "get_company_concept",
         "parameters": [
             {"name": "company_name", "type": "string", "value": "amazon"},
-            {"name": "taxonomy", "type": "string", "value": "us-gaap"},
             {"name": "tag", "type": "string", "value": "AccountsPayableCurrent"},
         ],
     }
-    response = lambda_handler(event, None)
+    response = handler(event, None)
     print(response)
     assert (
         "AMAZON.COM, INC."
