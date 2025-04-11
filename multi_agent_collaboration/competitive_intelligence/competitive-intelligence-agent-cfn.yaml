@@ -1,0 +1,178 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Creates the Competitive Intelligence supervisor agent.
+Parameters:
+  AgentAliasName:
+    Type: String
+    Default: ""
+  BedrockModelId:
+    Type: String
+    Description: The ID of the Foundation Model to use for the Agent
+    Default: us.anthropic.claude-3-5-sonnet-20240620-v1:0
+  AgentIAMRoleArn:
+    Type: String
+    Description: The arn for the agent IAM role
+  WebSearchAgentAliasArn:
+    Type: String
+    Description: The arn for the web search sub agent
+  SEC10kAgentAliasArn:
+    Type: String
+    Description: The arn for the SE 10-K search sub agent
+
+Conditions:
+  CreateAgentAliasCondition: !Not [!Equals [!Ref AgentAliasName, ""]]
+
+Resources:
+  #####################
+  ##### Agent #####
+  ###################
+
+  CompetitiveIntelligenceAgent:
+    Type: AWS::Bedrock::Agent
+    Properties:
+      ActionGroups:
+        - ActionGroupName: "UserInputAction"
+          ParentActionGroupSignature: "AMAZON.UserInput"
+          ActionGroupState: "ENABLED"
+      AgentCollaboration: "SUPERVISOR"
+      AgentCollaborators:
+        - CollaboratorName: Web-Search-Agent
+          AgentDescriptor:
+            AliasArn: !Ref WebSearchAgentAliasArn
+          CollaborationInstruction: |
+            Use the Web Search Agent to:
+              - Find breaking news and recent developments
+              - Track mergers, acquisitions, and partnership announcements
+              - Monitor leadership changes and executive statements
+              - Identify new product launches or service offerings
+              - Gather analyst opinions and market reactions
+              - Research competitor moves affecting the target company
+              - Track regulatory developments or legal challenges
+              - Find recent earnings call summaries and guidance updates
+            Focus searches on content from the past 3-6 months to complement the historical data from SEC filings with current market context.
+        - CollaboratorName: SEC-10-K-Search-Agent
+          AgentDescriptor:
+            AliasArn: !Ref SEC10kAgentAliasArn
+          CollaborationInstruction: |
+            Use SEC 10-K Search Agent when you need specific quantitative financial information such as:
+              - Revenue figures and year-over-year growth
+              - Profit margins and earnings data
+              - Balance sheet metrics
+              - Cash flow information
+              - Debt levels and financing activities
+
+      AgentName:
+        !Join [
+          "-",
+          [
+            "competitive-intelligence-agent",
+            !Select [
+              4,
+              !Split ["-", !Select [2, !Split ["/", !Ref "AWS::StackId"]]],
+            ],
+          ],
+        ]
+      AgentResourceRoleArn: !Ref AgentIAMRoleArn
+      AutoPrepare: True
+      Description: "Analyze business news and SEC 10-K filings"
+      FoundationModel: !Ref BedrockModelId
+      GuardrailConfiguration:
+        GuardrailIdentifier: !GetAtt Guardrail.GuardrailId
+        GuardrailVersion: !GetAtt Guardrail.Version
+      Instruction: |
+        You are an expert Corporate Competitive Intelligence Analyst powered by AI. Your purpose is to create comprehensive competitive 
+        intelligence reports on major US corporations by analyzing recent activities, market positioning, and financial trends.
+
+        Your Capabilities:
+
+        You can coordinate two specialized sub-agents to gather information:
+
+            - Web Search Agent: Can retrieve recent news articles, press releases, analyst reports, and media coverage about target companies
+            - SEC Filing Agent: Can extract and analyze data from SEC 10-K filings
+
+        Report Structure:
+
+        Your competitive intelligence reports should follow this format:
+
+            1. Executive Summary (Key findings and strategic implications in 2-3 paragraphs)
+            2. Company Overview (Brief description, sector, market cap, core business lines)
+            3. Recent Developments (Key news, product launches, leadership changes, strategic shifts)
+            4. Financial Performance Analysis
+                - Revenue trends and growth rates
+                - Profitability metrics (margins, ROI, etc.)
+                - Balance sheet health
+                - Cash flow patterns
+                - Key financial ratios compared to industry benchmarks
+            5. Strategic Initiatives (Recent or ongoing)
+            6. Competitive Position (Market share, positioning relative to key competitors)
+            7. Risk Factors (Regulatory, market, operational challenges)
+            8. Future Outlook (Analyst projections, guidance, growth vectors)
+
+        Working Process:
+
+            1. First, understand the specific company the user wants analyzed
+            2. Instruct the Web Search Agent to find recent news about the company (last 3-6 months)
+            3. Direct the SEC Filing Agent to retrieve relevant data about profit and loss from the previous 5 years of 10-K filings
+            4. Synthesize information from both sources into a cohesive narrative
+            5. Identify patterns, anomalies, and strategically significant insights
+            6. Present findings objectively with relevant quantitative data
+            7. Format the report professionally with clear section headings
+
+        Guidelines:
+
+            - Maintain objectivity and avoid speculation
+            - Support claims with specific data points and citations
+            - Highlight the strategic implications of financial trends
+            - Compare financial metrics to relevant industry benchmarks
+            - Focus on material developments that impact company valuation or strategic position
+            - Provide proper attribution for all information sources
+            - Note any significant data limitations or areas requiring further research
+            - Use professional, clear language appropriate for business executives
+
+        When a user requests a competitive intelligence report, ask clarifying questions if needed to understand exactly which company to analyze and any specific aspects of interest.
+
+  AgentAliasResource:
+    Type: AWS::Bedrock::AgentAlias
+    Condition: CreateAgentAliasCondition
+    Properties:
+      AgentId: !GetAtt CompetitiveIntelligenceAgent.AgentId
+      AgentAliasName: !Ref AgentAliasName
+
+  Guardrail:
+    Type: AWS::Bedrock::Guardrail
+    Properties:
+      BlockedInputMessaging: "Sorry, your query violates our usage policies."
+      BlockedOutputsMessaging: "Sorry, I am unable to reply because the output violates our usage policies."
+      ContentPolicyConfig:
+        FiltersConfig:
+          - InputStrength: "LOW"
+            OutputStrength: "LOW"
+            Type: "SEXUAL"
+          - InputStrength: "LOW"
+            OutputStrength: "LOW"
+            Type: "VIOLENCE"
+          - InputStrength: "LOW"
+            OutputStrength: "LOW"
+            Type: "HATE"
+          - InputStrength: "LOW"
+            OutputStrength: "LOW"
+            Type: "INSULTS"
+          - InputStrength: "LOW"
+            OutputStrength: "LOW"
+            Type: "MISCONDUCT"
+          - InputStrength: "LOW"
+            OutputStrength: "NONE"
+            Type: "PROMPT_ATTACK"
+      Description: Turn on to block profane words and other harmful content.
+      Name: Guardrail
+      WordPolicyConfig:
+        ManagedWordListsConfig:
+          - Type: PROFANITY
+
+Outputs:
+  AgentId:
+    Description: Agent ID
+    Value: !Ref CompetitiveIntelligenceAgent
+  AgentAliasId:
+    Description: Agent Alias ID
+    Value: !GetAtt AgentAliasResource.AgentAliasId
+    Condition: CreateAgentAliasCondition
