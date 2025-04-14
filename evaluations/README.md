@@ -1,6 +1,6 @@
 # Biomarker Multi-Agent Evaluation
 
-This folder provides resources needed to evaluate the Biomarker Supervisor Agent against the [Bedrock Agent Evaluation Framework](https://github.com/aws-samples/amazon-bedrock-agent-evaluation-framework/tree/main).
+This folder provides resources needed to evaluate the Biomarker Supervisor Agent against the [Open Source Bedrock Agent Evaluation](https://github.com/aws-samples/open-source-bedrock-agent-evaluation/tree/main).
 
 The framework has the following features: 
 * Evaluate Bedrock Agent on its capabilities (RAG, Text-to-SQL, Custom tool use) and overall Chain-of-Thought

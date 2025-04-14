@@ -1,0 +1,21 @@
+name: EvoProtGrad
+description: "This workflow generates variations of a given protein amino acid sequence given one or more 'expert' models."
+engine: NEXTFLOW
+main: main.nf
+parameterTemplate:
+  seed_sequence:
+    description: The full sequence of the protein of interest. This is the sequence that gets modified.
+    optional: false
+  esm_model_files:
+    description: "S3 URI of folder containinng ESM model files"
+    optional: true
+  onehotcnn_model_files:
+    description: S3 directory storing Onehot CNN predictor model files.
+    optional: true
+  container_image:
+    description: ECR container image URI
+    optional: false
+storageCapacity: 1200
+tags:
+  Name: "EvoProtGrad"
+accelerators: GPU

@@ -462,7 +462,7 @@ with col2:
 # Sample questions
 questions = [
     "How many patients with diagnosis age greater than 50 years and what are their smoking status",
-    "What is the survival status for patients who have undergone chemotherapy",
+    "What is the average age of patients diagnosed with Adenocarcinoma",
     "Can you search pubmed for evidence around the effects of biomarker use in oncology on clinical trial failure risk",
     "Can you search pubmed for FDA approved biomarkers for non small cell lung cancer",
     "What is the best gene biomarker (lowest p value) with overall survival for patients that have undergone chemotherapy, graph the top 5 biomarkers in a bar chart",

@@ -1,0 +1,18 @@
+{
+  "seed_sequence": {
+      "description": "The full sequence of the protein of interest. This is the sequence that gets modified.",
+      "optional": false
+  },
+  "esm_model_files": {
+      "description": "S3 directory storing ESM pLM model files.",
+      "optional": true
+  },
+  "onehotcnn_model_files":{
+      "description": "S3 directory storing Onehot CNN predictor model files.",
+      "optional": true
+  },
+  "container_image": {
+        "description": "ECR container image URI",
+        "optional": false
+  }
+}

@@ -1,0 +1,817 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Template for ECR repository, HealthOmics workflow, and Lambda trigger'
+
+Parameters:
+  WorkflowPath:
+    Type: String
+    Description: Path to the Nextflow workflow files
+    Default: workflow
+
+  S3BucketName:
+    Type: String
+    Description: S3 bucket for storing workflow definition files
+
+  StackPrefix:
+    Type: String
+    Description: Prefix for stack resources
+    Default: protein-design
+
+  ApplicationName:
+    Type: String
+    Description: Name of the application
+    Default: HealthOmics-Workflow
+
+  SecretName:
+    Type: String
+    Description: Name of the secret in Secrets Manager (if needed)
+    Default: protein-design-secret
+
+Resources:
+  # ECR Repository
+  ECRRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub ${StackPrefix}-evoprotgrad
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      ImageTagMutability: IMMUTABLE
+      RepositoryPolicyText:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowHealthOmicsPull
+            Effect: Allow
+            Principal:
+              Service: omics.amazonaws.com
+            Action:
+              - ecr:GetDownloadUrlForLayer
+              - ecr:BatchGetImage
+              - ecr:BatchCheckLayerAvailability
+
+  # S3 bucket policy
+  S3BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    DependsOn: 
+      - CodeBuildContainerRole
+      - CodeBuildWorkflowRole
+    Properties:
+      Bucket: !Ref S3BucketName
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCodeBuildServiceRole
+            Effect: Allow
+            Principal:
+              AWS: 
+                - !GetAtt CodeBuildContainerRole.Arn
+                - !GetAtt CodeBuildWorkflowRole.Arn
+            Action:
+              - s3:GetObject
+              - s3:GetObjectVersion
+              - s3:ListBucket
+              - s3:PutObject
+            Resource:
+              - !Sub "arn:${AWS::Partition}:s3:::${S3BucketName}"
+              - !Sub "arn:${AWS::Partition}:s3:::${S3BucketName}/*"
+          - Sid: AllowOmicsService
+            Effect: Allow
+            Principal:
+              Service: omics.amazonaws.com
+            Action:
+              - s3:GetObject
+              - s3:GetObjectVersion
+              - s3:ListBucket
+            Resource:
+              - !Sub "arn:${AWS::Partition}:s3:::${S3BucketName}"
+              - !Sub "arn:${AWS::Partition}:s3:::${S3BucketName}/*"
+
+  # IAM Roles
+  CodeBuildContainerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: "Required service policies to support building containers"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - codebuild.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser
+      Policies:
+        - PolicyName: CodeBuildContainerPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:*"
+                  - !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-stream:*"
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:s3:::${S3BucketName}/*"
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:s3:::${S3BucketName}"
+              - Effect: Allow
+                Action:
+                  - codebuild:CreateReportGroup
+                  - codebuild:CreateReport
+                  - codebuild:UpdateReport
+                  - codebuild:BatchPutTestCases
+                  - codebuild:BatchPutCodeCoverages
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:codebuild:${AWS::Region}:${AWS::AccountId}:report-group/*" 
+              - Effect: Allow
+                Action:
+                  - codebuild:StartBuild
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:codebuild:${AWS::Region}:${AWS::AccountId}:project/${StackPrefix}-CodeBuildContainerProject"
+              - Effect: Allow
+                Action:
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:CompleteLayerUpload
+                  - ecr:GetAuthorizationToken
+                  - ecr:InitiateLayerUpload
+                  - ecr:PutImage
+                  - ecr:UploadLayerPart
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${SecretName}*"                  
+      Tags:
+        - Key: Application
+          Value: !Ref ApplicationName
+        - Key: StackPrefix
+          Value: !Ref StackPrefix
+
+  CodeBuildWorkflowRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${StackPrefix}-CodeBuildWorkflowRole"
+      Description: "Required service policies to support building workflows"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - codebuild.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser
+      Policies:
+        - PolicyName: CodeBuildWorkflowPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:*"
+                  - !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-stream:*"
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:ListBucket
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:s3:::${S3BucketName}"
+                  - !Sub "arn:${AWS::Partition}:s3:::${S3BucketName}/*"
+              - Effect: Allow
+                Action:
+                  - codebuild:CreateReportGroup
+                  - codebuild:CreateReport
+                  - codebuild:UpdateReport
+                  - codebuild:BatchPutTestCases
+                  - codebuild:BatchPutCodeCoverages
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:codebuild:${AWS::Region}:${AWS::AccountId}:report-group/*" 
+              - Effect: Allow
+                Action:
+                  - codebuild:StartBuild
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:codebuild:${AWS::Region}:${AWS::AccountId}:project/${StackPrefix}-CodeBuildWorkflowProject"
+              - Effect: Allow
+                Action:
+                  - omics:TagResource
+                  - omics:CreateRun
+                  - omics:DeleteRun
+                  - omics:GetRun
+                  - omics:ListRuns
+                  - omics:CreateRunGroup
+                  - omics:DeleteRunGroup
+                  - omics:GetRunGroup
+                  - omics:ListRunGroups
+                  - omics:GetRunTask
+                  - omics:ListRunTasks
+                  - omics:CreateWorkflow
+                  - omics:DeleteWorkflow
+                  - omics:GetWorkflow
+                  - omics:ListWorkflows
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:omics:${AWS::Region}:${AWS::AccountId}:workflow/*"
+              - Effect: Allow
+                Action:
+                  - iam:PassRole
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    iam:PassedToService: omics.amazonaws.com
+      Tags:
+        - Key: Application
+          Value: !Ref ApplicationName
+        - Key: StackPrefix
+          Value: !Ref StackPrefix
+
+  # CodeBuild Project
+  # DockerBuildLogGroup:
+  #   Type: AWS::Logs::LogGroup
+  #   Properties:
+  #     LogGroupName: !Sub /aws/codebuild/${StackPrefix}-docker-build
+  #     RetentionInDays: 30
+
+  DockerBuildProject:
+    Type: AWS::CodeBuild::Project
+    DependsOn:
+      - ECRRepository
+    Properties:
+      Name: !Sub "${StackPrefix}-docker-build"
+      Description: Build Docker container
+      ServiceRole: !GetAtt CodeBuildContainerRole.Arn
+      ResourceAccessRole: !GetAtt CodeBuildContainerRole.Arn
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_LARGE
+        Image: aws/codebuild/standard:7.0
+        ImagePullCredentialsType: CODEBUILD
+        PrivilegedMode: true
+        EnvironmentVariables:
+          - Name: AWS_ACCOUNT_ID
+            Value: !Ref AWS::AccountId
+          - Name: AWS_REGION
+            Value: !Ref AWS::Region
+          - Name: ECR_REPOSITORY
+            Value: !Ref ECRRepository
+      Source:
+        Type: S3
+        Location: !Sub "${S3BucketName}/code.zip"
+        BuildSpec: |
+          version: 0.2
+          phases:
+            pre_build:
+              commands:
+                - echo Build started on `date` for $NAME
+                - echo Logging in to AWS Deep Learning Containers ECR...
+                - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin 763104351884.dkr.ecr.$AWS_REGION.amazonaws.com
+                - echo "Listing build context contents:"
+                - ls -la
+                - echo "Current working directory:"
+                - REPOSITORY_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY
+            build:
+              commands:
+                - echo Build started on `date`
+                - echo Building the Docker image...
+                - docker build -t $REPOSITORY_URI:latest .
+            post_build:
+              commands:
+                - echo Build completed on `date`
+                - echo Logging in to Amazon ECR...
+                - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com                 
+                - echo Pushing the Docker image...
+                - docker push $REPOSITORY_URI:latest
+                - echo Writing image definitions file...
+                - printf '{"ImageURI":"%s"}' $REPOSITORY_URI:latest > imageDefinitions.json
+          artifacts:
+            files:
+              - imageDefinitions.json
+      LogsConfig:
+        CloudWatchLogs:
+          Status: ENABLED
+          GroupName: !Sub /aws/codebuild/${StackPrefix}-docker-build
+          StreamName: !Sub build-log-${AWS::StackName}
+
+  CodeBuildWorkflowProject:
+      Type: AWS::CodeBuild::Project
+      DependsOn:
+        - DockerBuildProject
+        - ECRRepository
+      Properties:
+        Name: !Sub "${StackPrefix}-CodeBuildWorkflowProject"
+        Description: Build Amazon HealthOmics workflow
+        ServiceRole: !GetAtt CodeBuildWorkflowRole.Arn
+        ResourceAccessRole: !GetAtt CodeBuildWorkflowRole.Arn
+        Artifacts:
+          Type: NO_ARTIFACTS
+        Environment:
+          Type: LINUX_CONTAINER
+          ComputeType: BUILD_GENERAL1_MEDIUM
+          Image: aws/codebuild/standard:7.0
+          ImagePullCredentialsType: CODEBUILD
+          PrivilegedMode: false
+          EnvironmentVariables:
+            - Name: ACCOUNT_ID
+              Value: !Ref "AWS::AccountId"
+            - Name: REGION
+              Value: !Ref "AWS::Region"
+            - Name: STACK_PREFIX
+              Value: !Ref StackPrefix
+            - Name: S3_BUCKET_NAME
+              Value: !Ref S3BucketName
+            - Name: ECR_REPO
+              Value: !Ref ECRRepository
+        Source:
+          Type: NO_SOURCE
+          BuildSpec: |
+            version: 0.2
+            phases:
+              pre_build:
+                commands:
+                  - 'echo "Build started on $(date)"'
+                  - 'echo "Using ECR repository: ${ECR_REPO}"'
+                  - 'echo "Creating temporary directory"'
+                  - 'mkdir -p workflow_temp'
+                  - 'echo "Downloading workflow files"'
+                  - 'aws s3 cp "s3://${S3_BUCKET_NAME}/workflow/main.nf" workflow_temp/'
+                  - 'aws s3 cp "s3://${S3_BUCKET_NAME}/workflow/nextflow.config" workflow_temp/'
+                  - 'aws s3 cp "s3://${S3_BUCKET_NAME}/workflow/config.yaml" workflow_temp/'
+                  - 'aws s3 cp "s3://${S3_BUCKET_NAME}/workflow/parameter-template.json" workflow_temp/'
+                  - 'echo "Creating workflow ZIP"'
+                  - 'cd workflow_temp'
+                  - 'zip -r ../workflow.zip .'
+                  - 'cd ..'
+              build:
+                commands:
+                  - 'echo "Creating workflow"'
+                  - 'BUILD_CONTEXT=workflow_temp'
+                  - 'aws omics create-workflow --cli-input-yaml file://${BUILD_CONTEXT}/config.yaml --definition-zip fileb://workflow.zip --region $REGION'
+              post_build:
+                commands:
+                  - 'echo "Build completed on $(date)"'
+                  - 'rm -rf workflow_temp workflow.zip'
+        LogsConfig:
+          CloudWatchLogs:
+            Status: ENABLED
+            GroupName: !Sub "/aws/codebuild/${StackPrefix}-workflow-build"
+            StreamName: !Sub build-log-${AWS::StackName}
+        TimeoutInMinutes: 60
+        Tags:
+          - Key: Application
+            Value: !Ref ApplicationName
+          - Key: StackPrefix
+            Value: !Ref StackPrefix
+
+  WorkflowBuildCustomResource:
+    Type: Custom::WorkflowBuild
+    Properties:
+      ServiceToken: !GetAtt CustomResourceFunction.Arn
+      ProjectName: !Ref CodeBuildWorkflowProject
+      ProjectType: workflow
+
+  WorkflowExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: omics.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: OmicsWorkflowPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                  - s3:PutObject
+                Resource:
+                  - !Sub arn:aws:s3:::${S3BucketName}
+                  - !Sub arn:aws:s3:::${S3BucketName}/*
+              - Effect: Allow
+                Action:
+                  - ecr:BatchGetImage
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchCheckLayerAvailability
+                Resource: !GetAtt ECRRepository.Arn
+              - Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: 
+                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/omics/*
+              - Effect: Allow
+                Action:
+                  - omics:GetRun
+                  - omics:ListRuns
+                  - omics:StartRun
+                  - omics:StopRun
+                Resource: "*"
+
+  # Custom Resource Lambda
+  CustomResourceFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt CustomResourceFunctionRole.Arn
+      Code:
+        ZipFile: |
+          import boto3
+          import json
+          import time
+          
+          def send_response(event, context, response_status, response_data, physical_resource_id=None):
+              response_body = {
+                  'Status': response_status,
+                  'Reason': f'See details in CloudWatch Log Stream: {context.log_stream_name}',
+                  'PhysicalResourceId': physical_resource_id or context.log_stream_name,
+                  'StackId': event['StackId'],
+                  'RequestId': event['RequestId'],
+                  'LogicalResourceId': event['LogicalResourceId'],
+                  'NoEcho': False,
+                  'Data': response_data
+              }
+              
+              response_body_str = json.dumps(response_body)
+              
+              headers = {
+                  'content-type': '',
+                  'content-length': str(len(response_body_str))
+              }
+              
+              try:
+                  import urllib3
+                  http = urllib3.PoolManager(timeout=urllib3.Timeout(connect=5, read=30))
+                  response = http.request('PUT', event['ResponseURL'],
+                                       body=response_body_str,
+                                       headers=headers)
+                  print(f"Status code: {response.status}")
+              except Exception as e:
+                  print(f"Failed to send response: {str(e)}")
+
+          def get_build_logs(codebuild, build_id):
+            try:
+                logs = []
+                max_retries = 5
+                retry_delay = 10  # seconds
+                
+                for attempt in range(max_retries):
+                    try:
+                        build = codebuild.batch_get_builds(ids=[build_id])['builds'][0]
+                        if 'logs' in build and 'cloudWatchLogs' in build['logs']:
+                            log_group = build['logs']['cloudWatchLogs'].get('groupName')
+                            log_stream = build['logs']['cloudWatchLogs'].get('streamName')
+                            
+                            if not log_group or not log_stream:
+                                if attempt < max_retries - 1:
+                                    print(f"Log group or stream name not available yet, waiting {retry_delay} seconds... (attempt {attempt + 1}/{max_retries})")
+                                    time.sleep(retry_delay)
+                                    continue
+                                else:
+                                    return "Build logs not available: Log group or stream name missing"
+                            
+                            logs_client = boto3.client('logs')
+                            print(f"Attempting to get logs from group: {log_group}, stream: {log_stream}")
+                            
+                            try:
+                                # List log streams to verify existence
+                                streams = logs_client.describe_log_streams(
+                                    logGroupName=log_group,
+                                    logStreamNamePrefix=log_stream,
+                                    limit=1
+                                )
+                                
+                                if not streams.get('logStreams'):
+                                    if attempt < max_retries - 1:
+                                        print(f"Log stream not found, waiting {retry_delay} seconds... (attempt {attempt + 1}/{max_retries})")
+                                        time.sleep(retry_delay)
+                                        continue
+                                    else:
+                                        return f"Log stream {log_stream} not found in group {log_group}"
+                                
+                                response = logs_client.get_log_events(
+                                    logGroupName=log_group,
+                                    logStreamName=log_stream
+                                )
+                                
+                                for event in response['events']:
+                                    logs.append(event['message'])
+                                
+                                if logs:
+                                    return '\n'.join(logs)
+                                else:
+                                    return "No log events found in the stream"
+                                    
+                            except logs_client.exceptions.ResourceNotFoundException as e:
+                                if attempt < max_retries - 1:
+                                    print(f"Resource not found, waiting {retry_delay} seconds... (attempt {attempt + 1}/{max_retries})")
+                                    time.sleep(retry_delay)
+                                    continue
+                                else:
+                                    return f"Logs not available: {str(e)}"
+                        else:
+                            if attempt < max_retries - 1:
+                                print(f"Build logs not available yet, waiting {retry_delay} seconds... (attempt {attempt + 1}/{max_retries})")
+                                time.sleep(retry_delay)
+                                continue
+                            else:
+                                return "Build completed but no logs configuration found"
+                                
+                    except Exception as e:
+                        print(f"Error getting build info: {str(e)}")
+                        if attempt < max_retries - 1:
+                            time.sleep(retry_delay)
+                            continue
+                        else:
+                            raise
+                
+                return "No logs available after all retries"
+                
+            except Exception as e:
+                return f"Failed to get build logs after {max_retries} attempts: {str(e)}"
+
+
+          def handler(event, context):
+            print(f"Received event: {json.dumps(event)}")  # Debug full event
+            
+            try:
+                if event['RequestType'] in ['Create', 'Update']:
+                    codebuild = boto3.client('codebuild')
+                    
+                    # Debug print the ResourceProperties
+                    print(f"ResourceProperties: {json.dumps(event.get('ResourceProperties', {}))}")
+                    
+                    # Validate required properties
+                    if 'ProjectName' not in event.get('ResourceProperties', {}):
+                        raise ValueError("ProjectName is required in ResourceProperties")
+                        
+                    project_name = event['ResourceProperties']['ProjectName']
+                    project_type = event['ResourceProperties'].get('ProjectType', 'container')
+                    
+                    print(f"Starting {project_type} build for project: {project_name}")
+                    
+                    # Verify project exists before starting build
+                    try:
+                        project_info = codebuild.batch_get_projects(names=[project_name])
+                        print(f"Project info: {json.dumps(project_info, default=str)}")
+                        
+                        if not project_info['projects']:
+                            raise Exception(f"CodeBuild project {project_name} not found")
+                    except Exception as e:
+                        print(f"Error checking project: {str(e)}")
+                        raise
+                    
+                    # Start build with error handling
+                    try:
+                        response = codebuild.start_build(
+                            projectName=project_name
+                        )
+                        print(f"Start build response: {json.dumps(response, default=str)}")
+                        
+                        build_id = response['build']['id']
+                        print(f"Started build with ID: {build_id}")
+                        
+                        # Wait for build completion
+                        while True:
+                            build = codebuild.batch_get_builds(ids=[build_id])['builds'][0]
+                            status = build['buildStatus']
+                            phase = build.get('currentPhase', 'UNKNOWN')
+                            print(f"Build status: {status}, Phase: {phase}")
+                            
+                            if status in ['SUCCEEDED', 'FAILED', 'STOPPED']:
+                                break
+                            time.sleep(10)
+                        
+                        if status == 'SUCCEEDED':
+                            message = 'Workflow deployed successfully' if project_type == 'workflow' else 'Docker image built and pushed successfully'
+                            send_response(event, context, 'SUCCESS', {
+                                'Message': message,
+                                'BuildId': build_id
+                            })
+                        else:
+                            build_logs = get_build_logs(codebuild, build_id)
+                            error_message = f"Build failed with status: {status}\nPhase: {phase}\nLogs:\n{build_logs}"
+                            print(error_message)
+                            raise Exception(error_message)
+                            
+                    except codebuild.exceptions.ResourceNotFoundException as e:
+                        print(f"Project not found error: {str(e)}")
+                        raise
+                    except Exception as e:
+                        print(f"Error starting/monitoring build: {str(e)}")
+                        raise
+                        
+                elif event['RequestType'] == 'Delete':
+                    send_response(event, context, 'SUCCESS', {
+                        'Message': 'Nothing to do for DELETE'
+                    })
+                    
+            except Exception as e:
+                print(f"Error: {str(e)}")
+                print(f"Full error context: {json.dumps(event, default=str)}")
+                send_response(event, context, 'FAILED', {
+                    'Error': str(e)
+                })
+
+      Runtime: python3.9
+      Timeout: 900
+      MemorySize: 256
+
+  CustomResourceFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${StackPrefix}-CustomResourceFunctionRole"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: CodeBuildAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - codebuild:CreateProject
+                  - codebuild:DeleteProject
+                  - codebuild:StartBuild
+                  - codebuild:BatchGetBuilds
+                  - codebuild:BatchGetProjects
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:s3:::${S3BucketName}/*"
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:s3:::${S3BucketName}"
+        - PolicyName: CodeBuildLogsAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:GetLogEvents
+                  - logs:DescribeLogStreams
+                Resource: 
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${StackPrefix}-docker-build:log-stream:*'
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${StackPrefix}-*:log-stream:*'
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*'
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${StackPrefix}-*'
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${StackPrefix}-*:*'
+
+  DockerBuildCustomResource:
+    Type: Custom::DockerBuild
+    Properties:
+      ServiceToken: !GetAtt CustomResourceFunction.Arn
+      ProjectName: !Ref DockerBuildProject
+      ProjectType: container
+
+  # Workflow Trigger Lambda
+  WorkflowTriggerFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.9
+      Handler: index.handler
+      Role: !GetAtt WorkflowTriggerRole.Arn
+      Code:
+        ZipFile: |
+          import boto3
+          import json
+
+          def handler(event, context):
+              print(f"Received event: {json.dumps(event)}")
+              client = boto3.client('omics')
+              
+              try:
+                  # Extract parameters from the Bedrock Agent event structure
+                  # The parameters will be nested under 'parameters' in the event
+                  params = event.get('parameters', {})
+                  
+                  # Reconstruct the parameters object for HealthOmics
+                  workflow_parameters = {
+                      "container_image": params.get('container_image'),
+                      "seed_sequence": params.get('seed_sequence')
+                  }
+                  
+                  response = client.start_run(
+                      workflowId=params['workflowId'],
+                      name=params.get('runName', 'workflow-run'),
+                      parameters=workflow_parameters,
+                      outputUri=params['outputUri'],
+                      roleArn=params['roleArn']
+                  )
+                  
+                  return {
+                      'statusCode': 200,
+                      'body': json.dumps({
+                          'runId': response['id'],
+                          'status': response['status']
+                      })
+                  }
+              except Exception as e:
+                  print(f"Error: {str(e)}")
+                  return {
+                      'statusCode': 500,
+                      'body': json.dumps({
+                          'error': str(e)
+                      })
+                  }
+      Timeout: 900
+      MemorySize: 128
+
+  WorkflowTriggerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: OmicsAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - omics:StartRun
+                  - omics:TagResource
+                  - omics:CreateRun
+                  - omics:DeleteRun
+                  - omics:GetRun
+                  - omics:ListRuns
+                  - omics:CreateRunGroup
+                  - omics:DeleteRunGroup
+                  - omics:GetRunGroup
+                  - omics:ListRunGroups
+                  - omics:GetRunTask
+                  - omics:ListRunTasks
+                  - omics:CreateWorkflow
+                  - omics:DeleteWorkflow
+                  - omics:GetWorkflow
+                  - omics:ListWorkflows
+                Resource: '*'
+        - PolicyName: PassRolePolicy  # New policy for PassRole
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: iam:PassRole
+                Resource: !GetAtt WorkflowExecutionRole.Arn
+                Condition:
+                  StringEquals:
+                    'iam:PassedToService': 'omics.amazonaws.com'
+
+Outputs:
+  ECRRepositoryUri:
+    Description: URI of the ECR repository
+    Value: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ECRRepository}
+
+  TriggerFunctionArn:
+    Description: ARN of the workflow trigger Lambda function
+    Value: !GetAtt WorkflowTriggerFunction.Arn
+
+  WorkflowExecutionRoleArn:
+    Description: ARN of the workflow execution role
+    Value: !GetAtt WorkflowExecutionRole.Arn
