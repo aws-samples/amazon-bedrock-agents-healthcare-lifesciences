@@ -1,0 +1,20 @@
+evaluator:
+  model: claude-3
+target:
+  type: bedrock-agent
+  bedrock_agent_id: BEDROCK_AGENT_ID
+  bedrock_agent_alias_id: BEDROCK_AGENT_ALIAS_ID
+tests:
+  icd10:
+    steps:
+    - Ask the agent to extract the ICD-10 codes from medical text.
+    initial_prompt: Extract the ICD-10 codes from this text, "I was asked by Dr. X to see the patient in consultation for a new diagnosis of colon cancer. The patient presented to medical attention after she noticed mild abdominal cramping in February 2007. At that time, she was pregnant and was unsure if her symptoms might have been due to the pregnancy. Unfortunately, she had miscarriage at about seven weeks. She again had abdominal cramping, severe, in late March 2007. She underwent colonoscopy on 04/30/2007 by Dr. Y. Of note, she is with a family history of early colon cancers and had her first colonoscopy at age 35 and no polyps were seen at that time. On colonoscopy, she was found to have a near-obstructing lesion at the splenic flexure. She was not able to have the scope passed past this lesion. Pathology showed a colon cancer, although I do not have a copy of that report at this time. She had surgical resection done yesterday. The surgery was laparoscopic assisted with anastomosis. At the time of surgery, lymph nodes were palpable. Pathology showed colon adenocarcinoma, low grade, measuring 3.8 x 1.7 cm, circumferential and invading in to the subserosal mucosa greater than 5 mm, 13 lymph nodes were negative for metastasis. There was no angiolymphatic invasion noted. Radial margin was 0.1 mm. Other margins were 5 and 6 mm. Testing for microsatellite instability is still pending."?
+    expected_results:
+    - The agent identifies several concept codes.
+    - The list of identified concept codes includes "C18.9", representing colon cancer.
+  social:
+    steps:
+    - Ask the agent to extract any social determinants of health from medical text
+    initial_prompt: Extract any social determinants of health from this text, "I was asked by Dr. X to see the patient in consultation for a new diagnosis of colon cancer. The patient presented to medical attention after she noticed mild abdominal cramping in February 2007. At that time, she was pregnant and was unsure if her symptoms might have been due to the pregnancy. Unfortunately, she had miscarriage at about seven weeks. She again had abdominal cramping, severe, in late March 2007. She underwent colonoscopy on 04/30/2007 by Dr. Y. Of note, she is with a family history of early colon cancers and had her first colonoscopy at age 35 and no polyps were seen at that time. On colonoscopy, she was found to have a near-obstructing lesion at the splenic flexure. She was not able to have the scope passed past this lesion. Pathology showed a colon cancer, although I do not have a copy of that report at this time. She had surgical resection done yesterday. The surgery was laparoscopic assisted with anastomosis. At the time of surgery, lymph nodes were palpable. Pathology showed colon adenocarcinoma, low grade, measuring 3.8 x 1.7 cm, circumferential and invading in to the subserosal mucosa greater than 5 mm, 13 lymph nodes were negative for metastasis. There was no angiolymphatic invasion noted. Radial margin was 0.1 mm. Other margins were 5 and 6 mm. Testing for microsatellite instability is still pending."?
+    expected_results:
+    - The agent identifies a family history of early colon cancers.
