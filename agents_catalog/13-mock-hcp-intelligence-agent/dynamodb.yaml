@@ -1,0 +1,85 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "CloudFormation template for creating a DynamoDB table for HCP Intelligence Agent with PAY_PER_REQUEST billing mode"
+
+Parameters:
+  TableName:
+    Type: String
+    Default: HCPIntelligenceTable
+    Description: Name of the DynamoDB table
+
+Resources:
+  HCPIntelligenceTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Ref TableName
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: HcpId
+          AttributeType: S
+        - AttributeName: FullName
+          AttributeType: S
+      KeySchema:
+        - AttributeName: HcpId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: FullNameIndex
+          KeySchema:
+            - AttributeName: FullName
+              KeyType: HASH
+            - AttributeName: HcpId
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      TimeToLiveSpecification:
+        AttributeName: ExpirationTime
+        Enabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEEnabled: true
+      Tags:
+        - Key: Purpose
+          Value: HCPIntelligence
+        - Key: Environment
+          Value: Development
+
+  # IAM Role for accessing the DynamoDB table
+  DynamoDBAccessRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: DynamoDBAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                Resource: !GetAtt HCPIntelligenceTable.Arn
+
+Outputs:
+  TableName:
+    Description: Name of the DynamoDB table
+    Value: !Ref HCPIntelligenceTable
+
+  TableArn:
+    Description: ARN of the DynamoDB table
+    Value: !GetAtt HCPIntelligenceTable.Arn
+
+  AccessRoleArn:
+    Description: ARN of the IAM role for accessing the DynamoDB table
+    Value: !GetAtt DynamoDBAccessRole.Arn
