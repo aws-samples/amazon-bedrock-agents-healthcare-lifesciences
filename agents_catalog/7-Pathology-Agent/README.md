@@ -30,7 +30,7 @@ Follow the `create_agent.ipynb` protocol to deploy your agent
 ```
     1. What is the pathology report of patient "TCGA-3L"?
     2. Was the MSI status mentioned in the report of patient "TCGA-4N"?
-    3. Can you run the MSI classification for patient "TCHA-5M"?
+    3. Can you run the MSI classification for patient "TCGA-5M"?
     4. What is the status of the job classification? 
     5. What does the WSI image for patient "TCGA-5M" look like?
 ```
