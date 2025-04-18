@@ -75,9 +75,9 @@ Analyze medical text using John Snow Labs medical LLMs deployed on Amazon SageMa
 
 `aws s3 mb s3://YOUR_S3_BUCKET_NAME`
 
-4. Navigate to the `JSL-analyze-medical-reports` folder
+4. Navigate to the `12-JSL-analyze-medical-reports` folder
 
-`cd agents_catalog/JSL-analyze-medical-reports`
+`cd agents_catalog/12-JSL-analyze-medical-reports`
 
 5. Package and deploy the agent template
 

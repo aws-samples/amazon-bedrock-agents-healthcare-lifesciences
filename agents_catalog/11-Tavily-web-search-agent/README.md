@@ -83,9 +83,9 @@ Answer questions using up-to-date information retrieved by the [Tavily Search AP
 
 `aws s3 mb s3://YOUR_S3_BUCKET_NAME`
 
-4. Navigate to the `Tavily-web-search-agent` folder
+4. Navigate to the `11-Tavily-web-search-agent` folder
 
-`cd agents_catalog/Tavily-web-search-agent`
+`cd agents_catalog/11-Tavily-web-search-agent`
 
 5. Package and deploy the agent template
 
@@ -96,15 +96,15 @@ export REGION="<REPLACE>"
 export BEDROCK_AGENT_SERVICE_ROLE_ARM="<REPLACE>"
 export TAVILY_API_KEY="<REPLACE>"
 
-aws cloudformation package --template-file agents_catalog/Tavily-web-search-agent/web-search-agent-cfn.yaml \
+aws cloudformation package --template-file web-search-agent-cfn.yaml \
   --s3-bucket $BUCKET_NAME \
-  --output-template-file "agents_catalog/Tavily-web-search-agent/packaged-web-search-agent-cfn.yaml"
-aws cloudformation deploy --template-file agents_catalog/Tavily-web-search-agent/packaged-web-search-agent-cfn.yaml \
+  --output-template-file "packaged-web-search-agent-cfn.yaml"
+aws cloudformation deploy --template-file packaged-web-search-agent-cfn.yaml \
   --capabilities CAPABILITY_IAM \
   --stack-name $STACK_NAME \
   --region $REGION \
   --parameter-overrides \
     AgentIAMRoleArn=$BEDROCK_AGENT_SERVICE_ROLE_ARM \
     TavilyApiKey=$TAVILY_API_KEY
-rm agents_catalog/Tavily-web-search-agent/packaged-web-search-agent-cfn.yaml
+rm packaged-web-search-agent-cfn.yaml
 ```
