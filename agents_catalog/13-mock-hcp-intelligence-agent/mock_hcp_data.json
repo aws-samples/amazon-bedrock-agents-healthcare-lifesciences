@@ -1,7 +1,7 @@
 [
     {
         "Id": "d1f2539a-0fb2-4fb6-9f6d-fc3299dc589f",
-        "FullName": "Sarah Johnson",
+        "FullName": "Alejandro Rosalez",
         "Specialty": "Cardiology",
         "Hospital": "Memorial Hospital",
         "YearsExperience": 15,
@@ -10,7 +10,7 @@
             "FACC"
         ],
         "ContactInfo": {
-            "Email": "sjohnson@example.com",
+            "Email": "aaosalez@example.com",
             "Phone": "555-123-4567"
         },
         "ChannelPreference": "email",
@@ -23,17 +23,17 @@
         "FieldInteractionNotes": [
             {
                 "NoteId": "cbac8400-a50a-4747-ba24-2087765aca92",
-                "Note": "Sarah is a board certified cardiologist with 15 years of experience in cardiac assessments and cholesterol management. She is currently working with patients who have arrhythmia. Please reach out to her for any questions or concerns.",
+                "Note": "Alejandro is a board certified cardiologist with 15 years of experience in cardiac assessments and cholesterol management. He is currently working with patients who have arrhythmia. Please reach out to him for any questions or concerns.",
                 "Timestamp": 1678173889
             },
             {
                 "NoteId": "8910e5a5-9db0-4c31-856a-ce88442eba7c",
-                "Note": "Sarah has been working with patients who have arrhythmia. Please reach out to her for any questions or concerns.",
+                "Note": "Alejandro has been working with patients who have arrhythmia. Please reach out to him for any questions or concerns.",
                 "Timestamp": 1675056690
             },
             {
                 "NoteId": "4837d4e5-f0ab-4130-94b0-0d2a58f74918",
-                "Note": "Please reach out to Sarah for any questions or concerns.",
+                "Note": "Please reach out to Alejandro for any questions or concerns.",
                 "Timestamp": 1681550757
             }
         ],
@@ -51,8 +51,8 @@
                 "PublicationId": "8436bd74-f493-4323-95be-83cf3a372c81",
                 "Title": "Cardiac Assessments",
                 "Authors": [
-                    "Sarah Johnson",
-                    "Dr. Jane Smith"
+                    "Alejandro Rosalez",
+                    "Dr. Jane Doe"
                 ],
                 "Journal": "Journal of Cardiology",
                 "PublicationDate": 1676907841,
@@ -63,19 +63,19 @@
             {
                 "PostId": "5e256340-2ee4-42c9-85c3-591baf0fdd50",
                 "Platform": "LinkedIn",
-                "Content": "I'm happy to announce a new member of our practice, Dr. Beverly Crusher. We're excited to have her expertise!",
+                "Content": "I'm happy to announce a new member of our practice, Dr. Jane Doe. We're excited to have her expertise!",
                 "Timestamp": 1682629138
             },
             {
                 "PostId": "95aed28d-92b6-4c80-afce-91cd19f4bd1a",
                 "Platform": "Twitter",
-                "Content": "Excited to be working with Dr. Beverly Crusher! #Cardiology #Healthcare",
+                "Content": "Excited to be working with Dr. Jane Doe! #Cardiology #Healthcare",
                 "Timestamp": 1676813341
             },
             {
                 "PostId": "ccf79154-c0f8-4ef3-a8c1-3f2486bc881d",
                 "Platform": "Facebook",
-                "Content": "Join us in the new practice room! Dr. Beverly Crusher is here to help.",
+                "Content": "Join us in the new practice room! Dr. Jane Doe is here to help.",
                 "Timestamp": 1676768895
             }
         ],
@@ -83,7 +83,7 @@
     },
     {
         "Id": "a611b447-9f8c-4010-94c5-70360e1f39d7",
-        "FullName": "Michael Chen",
+        "FullName": "Akua Mansa",
         "Specialty": "Neurology",
         "Hospital": "University Medical Center",
         "YearsExperience": 8,
@@ -92,7 +92,7 @@
             "AAN Member"
         ],
         "ContactInfo": {
-            "Email": "mchen@example.com",
+            "Email": "amansa@example.com",
             "Phone": "555-234-5678"
         },
         "ChannelPreference": "in-person",
@@ -105,17 +105,17 @@
         "FieldInteractionNotes": [
             {
                 "NoteId": "1fff14e3-aa13-4fe5-ad59-e020c4d1318f",
-                "Note": "Michael is a board certified neurologist with 8 years of experience in neurological disorders and sleep disorders. He is currently working with patients who have Alzheimer's disease. Please reach out to him for any questions or concerns.",
+                "Note": "Akua is a board certified neurologist with 8 years of experience in neurological disorders and sleep disorders. She is currently working with patients who have Alzheimer's disease. Please reach out to her for any questions or concerns.",
                 "Timestamp": 1675436852
             },
             {
                 "NoteId": "020bacd1-97c5-4d11-b661-f3d321c1c8e8",
-                "Note": "Michael has been working with patients who have Alzheimer's disease. Please reach out to him for any questions or concerns.",
+                "Note": "Akua has been working with patients who have Alzheimer's disease. Please reach out to her for any questions or concerns.",
                 "Timestamp": 1676113572
             },
             {
                 "NoteId": "a5b142cf-c179-44b1-b2f0-683c33012e2e",
-                "Note": "Please reach out to Michael for any questions or concerns.",
+                "Note": "Please reach out to Akua for any questions or concerns.",
                 "Timestamp": 1674773737
             }
         ],
@@ -133,8 +133,8 @@
                 "PublicationId": "7d57a29b-a172-4e27-b5ea-47cd7d1143dc",
                 "Title": "Neurological Disorders",
                 "Authors": [
-                    "Michael Chen",
-                    "Dr. Jane Smith"
+                    "Dr. Akua Mansa",
+                    "Dr. Ana Carolina Silva"
                 ],
                 "Journal": "Journal of Neurology",
                 "PublicationDate": 1678228837,
@@ -159,7 +159,7 @@
     },
     {
         "Id": "58e4d179-d74b-44a8-8541-3f0f37275a6d",
-        "FullName": "Emily Rodriguez",
+        "FullName": "Juan Li",
         "Specialty": "Pediatrics",
         "Hospital": "Children's Hospital",
         "YearsExperience": 12,
@@ -168,7 +168,7 @@
             "AAP Fellow"
         ],
         "ContactInfo": {
-            "Email": "erodriguez@example.com",
+            "Email": "jli@example.com",
             "Phone": "555-345-6789"
         },
         "ChannelPreference": "email",
@@ -181,17 +181,17 @@
         "FieldInteractionNotes": [
             {
                 "NoteId": "5095cdb9-770d-466a-b2a7-97de09beb232",
-                "Note": "Emily is a board certified pediatrician with 12 years of experience in pediatric check-ups and immunizations. She is currently working with patients who have developmental issues. Please reach out to her for any questions or concerns.",
+                "Note": "Juan is a board certified pediatrician with 12 years of experience in pediatric check-ups and immunizations. She is currently working with patients who have developmental issues. Please reach out to her for any questions or concerns.",
                 "Timestamp": 1675372575
             },
             {
                 "NoteId": "00750068-c175-4968-9b84-003da4722f0c",
-                "Note": "Emily has been working with patients who have developmental issues. Please reach out to her for any questions or concerns.",
+                "Note": "Juan has been working with patients who have developmental issues. Please reach out to her for any questions or concerns.",
                 "Timestamp": 1677331075
             },
             {
                 "NoteId": "f53d1e57-1991-4493-a086-bb31ca52095b",
-                "Note": "Please reach out to Emily for any questions or concerns.",
+                "Note": "Please reach out to Juan for any questions or concerns.",
                 "Timestamp": 1683437654
             }
         ],
@@ -200,7 +200,7 @@
     },
     {
         "Id": "747e2525-2949-41c6-8124-a21b8373c842",
-        "FullName": "David Wilson",
+        "FullName": "John Stiles",
         "Specialty": "Oncology",
         "Hospital": "Cancer Treatment Center",
         "YearsExperience": 20,
@@ -209,7 +209,7 @@
             "ASCO Member"
         ],
         "ContactInfo": {
-            "Email": "dwilson@example.com",
+            "Email": "jstiles@example.com",
             "Phone": "555-456-7890"
         },
         "ChannelPreference": "in-person",
@@ -224,7 +224,7 @@
     },
     {
         "Id": "08fed8f7-53fb-40f5-bb74-07925b0db59c",
-        "FullName": "Jennifer Lee",
+        "FullName": "Martha Rivera",
         "Specialty": "Dermatology",
         "Hospital": "Skin Health Clinic",
         "YearsExperience": 10,
@@ -233,7 +233,7 @@
             "AAD Member"
         ],
         "ContactInfo": {
-            "Email": "jlee@example.com",
+            "Email": "mrivera@example.com",
             "Phone": "555-567-8901"
         },
         "WebSiteOptIn": false,
@@ -242,8 +242,8 @@
                 "PublicationId": "afaf52d7-2c42-42c7-b211-c911080ca727",
                 "Title": "Dermatology",
                 "Authors": [
-                    "Jennifer Lee",
-                    "Dr. Jane Smith"
+                    "Martha Rivera",
+                    "Dr. Mary Major"
                 ],
                 "Journal": "Journal of Dermatology",
                 "PublicationDate": 1683642858,

@@ -6,6 +6,10 @@ Parameters:
     Type: String
     Default: MyTable
     Description: Name of the DynamoDB table
+  SecondaryKey:
+    Type: String
+    Default: ""
+    Description: Optional secondary key for table query
 
   S3BucketName:
     Type: String
@@ -22,9 +26,13 @@ Conditions:
     - !Not [!Equals ["", !Ref S3BucketName]]
     - !Not [!Equals ["", !Ref S3ObjectKey]]
 
+  NoCreateGSI: !Equals ["", !Ref SecondaryKey]
+  CreateGSI: !Not [!Equals ["", !Ref SecondaryKey]]
+
 Resources:
   DynamoDbTable:
     Type: AWS::DynamoDB::Table
+    Condition: NoCreateGSI
     Properties:
       TableName: !Ref TableName
       BillingMode: PAY_PER_REQUEST
@@ -34,6 +42,36 @@ Resources:
       KeySchema:
         - AttributeName: Id
           KeyType: HASH
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEEnabled: true
+
+  DynamoDbTableWithGSI:
+    Type: AWS::DynamoDB::Table
+    Condition: CreateGSI
+    Properties:
+      TableName: !Ref TableName
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: Id
+          AttributeType: S
+        - AttributeName: !Ref SecondaryKey
+          AttributeType: S
+      KeySchema:
+        - AttributeName: Id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: !Ref SecondaryKey
+          KeySchema:
+            - AttributeName: !Ref SecondaryKey
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEEnabled: true
 
   PopulateTableFunction:
     Type: AWS::Lambda::Function
@@ -106,7 +144,13 @@ Resources:
                 Action:
                   - dynamodb:BatchWriteItem
                   - dynamodb:PutItem
-                Resource: !GetAtt DynamoDbTable.Arn
+                # Resource: !GetAtt DynamoDbTable.Arn
+                Resource:
+                  !If [
+                    CreateGSI,
+                    !GetAtt DynamoDbTableWithGSI.Arn,
+                    !GetAtt DynamoDbTable.Arn,
+                  ]
         - PolicyName: S3Access
           PolicyDocument:
             Version: "2012-10-17"
@@ -119,17 +163,21 @@ Resources:
   PopulateTable:
     Type: Custom::PopulateTable
     Condition: PrepopulateDataCondition
-    DependsOn: DynamoDbTable
     Properties:
       ServiceToken: !GetAtt PopulateTableFunction.Arn
-      TableName: !Ref TableName
+      TableName: !If [CreateGSI, !Ref DynamoDbTableWithGSI, !Ref DynamoDbTable]
       S3BucketName: !Ref S3BucketName
       S3ObjectKey: !Ref S3ObjectKey
 
 Outputs:
   TableName:
     Description: Name of the created DynamoDB table
-    Value: !Ref DynamoDbTable
+    Value: !If [CreateGSI, !Ref DynamoDbTableWithGSI, !Ref DynamoDbTable]
   TableArn:
     Description: ARN of the created DynamoDB table
-    Value: !GetAtt DynamoDbTable.Arn
+    Value:
+      !If [
+        CreateGSI,
+        !GetAtt DynamoDbTableWithGSI.Arn,
+        !GetAtt DynamoDbTable.Arn,
+      ]
