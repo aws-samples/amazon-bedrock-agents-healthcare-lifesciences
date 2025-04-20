@@ -127,6 +127,7 @@ def run_validator(text):
         }
         ]
         inf_params = {"maxTokens": 200, "topP": 0.1, "temperature": 0.3}
+        model_id = "us.amazon.nova-lite-v1:0"
         model_response = bedrock_agent_client.converse(modelId=MODEL_ID, messages=messages, inferenceConfig=inf_params)
         response_text = model_response['output']['message']['content'][0]['text']
         print("***************Tested***************")
