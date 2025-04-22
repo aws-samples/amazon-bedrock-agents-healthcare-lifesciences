@@ -1,0 +1,89 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "This AWS CloudFormation template creates an SageMaker realtime inference endpoint endpoint for a SageMaker marketplace model."
+Parameters:
+  EndPointName:
+    Type: String
+    Description: Specify suitable name to host the model endpoint. This is a mandatory field.
+  ProductARN:
+    Type: String
+    Description: Product identifier based on software version and region.
+  InstanceType:
+    Type: String
+    Description: The deployment instance type.
+  InstanceCount:
+    Type: Number
+    Default: "1"
+    Description: Initial instance count for the endpoint.
+
+Resources:
+  IAMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - "sagemaker.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Policies:
+        - PolicyName: createModelPermissions
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Sid: AllowS3
+                Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricData
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:CreateLogGroup
+                  - logs:DescribeLogStreams
+                  - s3:GetObject
+                  - s3:ListBucket
+                  - ecr:GetAuthorizationToken
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchGetImage
+                Resource: "*"
+
+  Model:
+    Type: "AWS::SageMaker::Model"
+    Properties:
+      EnableNetworkIsolation: True
+      ExecutionRoleArn: !GetAtt IAMRole.Arn
+      PrimaryContainer:
+        ModelPackageName: !Ref ProductARN
+
+  EndPointConfig:
+    Type: "AWS::SageMaker::EndpointConfig"
+    Properties:
+      ProductionVariants:
+        - ModelName: !GetAtt Model.ModelName
+          VariantName: AllTraffic
+          InitialInstanceCount: !Ref InstanceCount
+          InstanceType: !Ref InstanceType
+          InitialVariantWeight: 1
+          ModelDataDownloadTimeoutInSeconds: 3600
+
+  EndPoint:
+    Type: "AWS::SageMaker::Endpoint"
+    Properties:
+      EndpointName: !Ref EndPointName
+      EndpointConfigName: !GetAtt EndPointConfig.EndpointConfigName
+
+Outputs:
+  EndPointConfigName:
+    Description: Endpoint confirmation.
+    Value: !GetAtt "EndPointConfig.EndpointConfigName"
+  EndpointName:
+    Description: Endpoint Name.
+    Value: !Ref EndPointName
+  EndPointURL:
+    Description: Please use the URL only after endpoint has been created. Endpoint creation can take time. Use SageMaker console to check the status.
+    Value: !Sub "https://runtime.sagemaker.${AWS::Region}.amazonaws.com/endpoints/${EndPointName}/invocations"
+  EndpointArn:
+    Description: Endpoint ARN.
+    Value: !Ref EndPoint

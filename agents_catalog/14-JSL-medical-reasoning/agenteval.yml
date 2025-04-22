@@ -1,0 +1,14 @@
+evaluator:
+  model: claude-3
+target:
+  type: bedrock-agent
+  bedrock_agent_id: BEDROCK_AGENT_ID
+  bedrock_agent_alias_id: BEDROCK_AGENT_ALIAS_ID
+tests:
+  icd10:
+    steps:
+    - Ask the agent how emerging mRNA technologies compare to traditional vaccine approaches for disease prevention.
+    expected_results:
+    - The agent describes the mechanisms by which traditional and mRNA vaccines work
+    - The agent describes rapid development as one potential benefit of mRNA vaccines
+    - The agent describes the need for cold storage as one potential challenge of mRNA vaccines

@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: Creates an Amazon Bedrock Agent for analyzing medical reports using one or more language models from John Snow Laboratories.
+Description: Creates an Amazon Bedrock Agent for interacting with medical reasoning LLM from John Snow Laboratories.
 Parameters:
   AgentAliasName:
     Type: String
@@ -7,18 +7,14 @@ Parameters:
   BedrockModelId:
     Type: String
     Description: The ID of the Foundation Model to use for the Agent
-    Default: us.anthropic.claude-3-5-sonnet-20240620-v1:0
+    Default: us.anthropic.claude-3-5-sonnet-20241022-v2:0
   AgentIAMRoleArn:
     Type: String
     Description: The arn for the agent IAM role
-  ExtractSocialDeterminantsofHealthModelProductArn:
+  MedicalReasoningModelProductArn:
     Type: String
-    Default: "arn:aws:sagemaker:us-west-2:594846645681:model-package/explain-clinical-doc-sdoh-smal-fab58541a660355ebc1955b85ed4925d"
-    Description: The arn for the Extract Social Determinants of Health Model
-  ICD10CMSentenceEntityResolverModelProductArn:
-    Type: String
-    Default: "arn:aws:sagemaker:us-west-2:594846645681:model-package/icd10cm-vdb-resolver-5-5-4-2f17a4cf4c9a3d5c9c77b1fe0ed78900"
-    Description: The arn for the ICD10CM Sentence Entity Resolver Model
+    Default: "arn:aws:sagemaker:us-west-2:594846645681:model-package/jsl-medical-reasoning-llm-14b-8f795c2bda713329bfbcd4afd409158d"
+    Description: The arn for the Medical Reasoning Model
 
 Conditions:
   CreateAgentAliasCondition: !Not [!Equals [!Ref AgentAliasName, ""]]
@@ -28,24 +24,14 @@ Resources:
   ##### Endpoint #####
   ####################
 
-  ExtractSocialDeterminantsofHealthModelEndpoint:
+  MedicalReasoningEndpoint:
     Type: "AWS::CloudFormation::Stack"
     Properties:
       TemplateURL: "sagemaker-marketplace-endpoint.yaml"
       Parameters:
-        EndPointName: "JSL-Extract-Social-Determinants-of-Health"
-        ProductARN: !Ref ExtractSocialDeterminantsofHealthModelProductArn
-        InstanceType: "ml.m4.xlarge"
-        InstanceCount: "1"
-
-  ICD10CMSentenceEntityResolver:
-    Type: "AWS::CloudFormation::Stack"
-    Properties:
-      TemplateURL: "sagemaker-marketplace-endpoint.yaml"
-      Parameters:
-        EndPointName: "ICD-10-CM-Sentence-Entity-Resolver"
-        ProductARN: !Ref ICD10CMSentenceEntityResolverModelProductArn
-        InstanceType: "ml.m4.xlarge"
+        EndPointName: "Endpoint-Medical-Reasoning-LLM-14B-1"
+        ProductARN: !Ref MedicalReasoningModelProductArn
+        InstanceType: "ml.g4dn.12xlarge"
         InstanceCount: "1"
 
   #######################
@@ -74,8 +60,7 @@ Resources:
               - Effect: Allow
                 Action: sagemaker:InvokeEndpoint
                 Resource:
-                  - !GetAtt ExtractSocialDeterminantsofHealthModelEndpoint.Outputs.EndpointArn
-                  - !GetAtt ICD10CMSentenceEntityResolver.Outputs.EndpointArn
+                  - !GetAtt MedicalReasoningEndpoint.Outputs.EndpointArn
 
   LambdaFunction:
     Type: AWS::Lambda::Function
@@ -83,16 +68,15 @@ Resources:
       Runtime: python3.13
       Handler: index.lambda_handler
       Role: !GetAtt LambdaRole.Arn
-      Timeout: 30
+      Timeout: 60
       MemorySize: 128
       Environment:
         Variables:
           ACTION_GROUP: "SearchLambdaActionGroup"
           LOG_LEVEL: "DEBUG"
-          ENDPOINT_NAME_1: !GetAtt ExtractSocialDeterminantsofHealthModelEndpoint.Outputs.EndpointName
-          ENDPOINT_NAME_2: !GetAtt ICD10CMSentenceEntityResolver.Outputs.EndpointName
+          ENDPOINT_NAME_1: !GetAtt MedicalReasoningEndpoint.Outputs.EndpointName
       PackageType: Zip
-      Code: "action-groups/analyze-medical-reports"
+      Code: "action-groups/medical-reasoning"
 
   LambdaAgentPermission:
     Type: AWS::Lambda::Permission
@@ -123,48 +107,30 @@ Resources:
         - ActionGroupName: "UserInputAction"
           ParentActionGroupSignature: "AMAZON.UserInput"
           ActionGroupState: "ENABLED"
-        - ActionGroupName: AnalyzeMedicalReports
-          Description: Analyze medical reports using one or more language models from John Snow Laboratories.
+        - ActionGroupName: MedicalReasoning
+          Description: Process patient symptoms, test results, and medical histories, employing structured reasoning patterns to recommend subsequent actions aligned with clinical guidelines.
           ActionGroupExecutor:
             Lambda: !GetAtt LambdaFunction.Arn
           ActionGroupState: ENABLED
           FunctionSchema:
             Functions:
-              - Name: extract_social_determinants_of_health
-                Description: Identify socio-environmental health determinants like access to care, diet, employment, and housing from health records. Tailored for professionals and researchers, this pipeline extracts key factors influencing health in social, economic, and environmental contexts. Process up to 2.8 M chars per hour for real-time and up to 12 M chars per hour for batch mode.
+              - Name: consult_with_medical_reasoning_model
+                Description: "Consult with a healthcare-specific LLM that provides advanced clinical decision support. Use this tol wihen you need to mimics a clinician's thought process rather than simple information lookup. This model excels at analyzing complex patient cases by evaluating multiple diagnostic hypotheses, acknowledging medical uncertainties, and following structured reasoning frameworks. Healthcare professionals should deploy it when transparency in decision-making is crucial, as it provides clear explanations for its conclusions while incorporating up-to-date medical knowledge. Unlike reference tools, this cognitive assistant supports nuanced diagnostic and treatment decisions by processing symptoms, test results, and patient histories to recommend evidence-based next steps aligned with clinical guidelines."
                 Parameters:
                   medical_text:
                     Description: "Unstructured medical text"
                     Type: string
                     Required: True
-              - Name: extract_icd_10_cm_sentence_entities
-                Description: "This model extracts the following entities and maps them to their ICD-10-CM codes using sbiobert_base_cased_mli sentence embeddings. It predicts ICD-10-CM codes up to 3 characters (according to ICD-10-CM code structure the first three characters represent the general type of injury or disease)."
-                Parameters:
-                  medical_text:
-                    Description: "Unstructured medical text"
-                    Type: string
-                    Required: True
-      AgentName: jsl-analyze-medical-reports
+      AgentName: jsl-medical-reasoning
       AgentResourceRoleArn: !Ref AgentIAMRoleArn
       AutoPrepare: True
-      Description: "Extract adverse drug events from unstructured clinical texts"
+      Description: "Use clinical guidelines and structured reasoning patterns to process patient information and recommend next steps."
       FoundationModel: !Ref BedrockModelId
       GuardrailConfiguration:
         GuardrailIdentifier: !GetAtt Guardrail.GuardrailId
         GuardrailVersion: !GetAtt Guardrail.Version
       Instruction: |
-        You are a medical text analysis assistant powered by a large language model.
-        You help analyze clinical and medical documentation using specialized NLP tools, but you DO NOT provide clinical guidance, diagnosis, treatment recommendations, or interpret medical implications for individual patients.
-        Guidelines for Use:
-        <guidelines>
-          <guideline id="1">Always clarify that you are performing text analysis, not providing medical advice</guideline>
-          <guideline id="2">When analyzing clinical text, suggest de-identification first if text might contain PHI</guideline>
-          <guideline id="3">Explain which tool you're using and why it's appropriate for the task</guideline>
-          <guideline id="4">Present analysis results clearly with appropriate context and limitations</guideline>
-          <guideline id="5">Never interpret clinical implications for individual patients</guideline>
-          <guideline id="6">Do not make diagnostic or treatment suggestions</guideline>
-          <guideline id="7">Refer users to qualified healthcare professionals for clinical questions</guideline>
-        <guidlines>
+        You are a helpful AI assistant designed to help physicians answer questions. You have access to a medical reasoning LLM that was specially training to handle healthcare-specific questions. As an AI medical assistant, always consult the medical reasoning LLM (Model 14 B) for any healthcare-specific questions before responding. When doing so, provide all relevant patient information available. Present the medical reasoning LLM's structured analysis clearly, emphasizing when information comes from this specialized system rather than your general knowledge. Include the reasoning pathways, alternative hypotheses, and any uncertainties identified by the medical reasoning LLM. Never provide medical advice based solely on your general knowledge. For non-medical questions, respond using your general capabilities while maintaining patient confidentiality at all times.
   AgentAliasResource:
     Type: AWS::Bedrock::AgentAlias
     Condition: CreateAgentAliasCondition
@@ -186,7 +152,7 @@ Resources:
             OutputStrength: "NONE"
             Type: "PROMPT_ATTACK"
       Description: Turn on to block profane words and other harmful content.
-      Name: ADEGuardrail
+      Name: MedicalReasoningGuardrail
       WordPolicyConfig:
         ManagedWordListsConfig:
           - Type: PROFANITY
