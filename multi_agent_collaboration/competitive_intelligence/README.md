@@ -1,6 +1,4 @@
-# Accelerate analysis and discovery of cancer biomarkers with Bedrock Agents
-
-Read more about these agents here: <https://aws.amazon.com/blogs/machine-learning/accelerate-analysis-and-discovery-of-cancer-biomarkers-with-amazon-bedrock-agents/>
+# Perform Competitive Intelligence Analysis
 
 ## Overview
 
