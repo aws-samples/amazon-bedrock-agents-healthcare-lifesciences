@@ -2,12 +2,12 @@ openapi: 3.0.0
 info:
   title: Wiley API
   version: 1.0.0
-  description: API to get articles from Wiley Online Library
+  description: API to get articles from an Open Access subset of Wiley Online Library related to Health Sciences
 paths:
   /get-articles-from-wiley:
     get:
-      summary: Gets scientific articles from the Wiley Online Library
-      description: This endpoint retrieves articles from Wiley Online Library based on a human query.
+      summary: Gets scientific articles from an Open Access subset of Wiley Online Library related to Health Sciences
+      description: This endpoint retrieves from an Open Access subset of Wiley Online Library related to Health Sciences based on a human query.
       operationId: getArticlesFromWiley
       parameters:
         - name: question
@@ -18,7 +18,7 @@ paths:
             type: string
       responses:
         '200':
-          description: Gets scientific articles from the Wiley Online Library
+          description: Gets scientific articles from an Open Access subset of Wiley Online Library related to Health Sciences
           content:
             'application/json':
               schema:
@@ -29,4 +29,4 @@ paths:
                     description: A list of citations and extracted text from the articles
                   wol_link:
                     type: string
-                    description: The link to the Wiley Online Library page containing the articles
+                    description: The link to the Wiley Online Library page containing the article

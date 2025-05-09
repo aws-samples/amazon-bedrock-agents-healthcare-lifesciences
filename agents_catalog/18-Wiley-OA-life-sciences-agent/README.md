@@ -2,7 +2,7 @@
 
 ## 1. Summary
 
-Answer questions using information retrieved by the [Wiley Oline Library](https://onlinelibrary.wiley.com/).
+Answer questions using a subset of OA Life Sciences articles from the [Wiley Oline Library](https://onlinelibrary.wiley.com/).
 
 ## 2. Agent Details
 
@@ -30,7 +30,7 @@ Answer questions using information retrieved by the [Wiley Oline Library](https:
 > Your responses should be informative, well-structured, and helpful, ensuring the user feels supported and informed. Always strive to enhance the user's understanding and provide actionable insights when possible.
 > 
 > Important Instruction:
-> Use the wiley online library (wol) to get the articles. It will return high quality article excerpts based on the query.
+> Use the OA subset of life sciences data got from wiley online library (wol) to get the articles. It will return high quality article excerpts based on the query.
 > Make sure to add the hyperlink to the https://doi.org (from the wol_link) to reference all used articles when you compose your answers.
 > It is imperative to include the doi.org hyperlinks in your final response.
 > 

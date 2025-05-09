@@ -75,7 +75,7 @@ Resources:
           ParentActionGroupSignature: "AMAZON.UserInput"
           ActionGroupState: "ENABLED"
         - ActionGroupName: WileySearch
-          Description: Actions for answering questions with information from the Wiley
+          Description: Actions for answering questions with information from an Open Access subset of Wiley Online Library related to Health Sciences
           ActionGroupExecutor:
             Lambda: !GetAtt WileySearchLambdaFunction.Arn
           ActionGroupState: ENABLED
