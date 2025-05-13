@@ -16,7 +16,7 @@ Methods for assessing agent performance and result quality. Agent task and goal 
 
 The key components are illustrated in the diagram below:
 
-![flow](docs/src/assets/HCLSagents.jpg)
+![flow](docs/src/assets/HCLS-agents-toolkit.png)
 
 ## Deployment
 
@@ -77,7 +77,7 @@ This template will set up:
    3. In the Outputs tab, find the `ReactAppExternalURL` link and add 'https://' to the beginning of the URL and paste in your browser
    4. You should be able to see a landing page with all (or a subset) deployed agents as shown in the screenshot below:
    
-   ![react-app-landing-page](docs/src/assets/agents_list_react_app.png) 
+   ![react-app-landing-page](https://d2dnsxs0d2upyb.cloudfront.net/agents-demo/agents_toolkit_overview.mp4) 
 
 ## Multi-agent collaboration for cancer biomarker discovery
 
