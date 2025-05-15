@@ -1,5 +1,5 @@
 pydicom == 2.1.2
-numpy == 1.21.0
+numpy == 1.22.0
 nibabel == 3.2.1
 nilearn == 0.7.0
 matplotlib == 3.1.3
