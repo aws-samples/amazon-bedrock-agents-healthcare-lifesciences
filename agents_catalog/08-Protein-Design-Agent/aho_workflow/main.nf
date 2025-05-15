@@ -38,19 +38,20 @@ process RunDirectedEvolution {
         path 'output/*.csv', emit: csvs
 
     script:
-    def esm_arg = esm_model_files.name != 'null_esm' ? "--esm_expert_path=${esm_model_files}" : ''
+    def esm_arg = esm_model_files.name != 'null_esm' ? "--esm_expert_name_or_path=${esm_model_files}" : ''
     def onehotcnn_arg = onehotcnn_model_files.name != 'null_onehotcnn' ? "--scorer_expert_name_or_path=${onehotcnn_model_files}" : ''
     
     """
     set -euxo pipefail
-    mkdir output
+    mkdir -p output
+    
     /opt/conda/bin/python /home/scripts/directed_evolution.py ${seed_sequence} \
         output/ \
         ${esm_arg} \
         ${onehotcnn_arg} \
-        --output_type ${output_type}\
-        --parallel_chains ${parallel_chains}\
-        --n_steps ${n_steps}\
+        --output_type ${output_type} \
+        --parallel_chains ${parallel_chains} \
+        --n_steps ${n_steps} \
         --max_mutations ${max_mutations}
     """
 }

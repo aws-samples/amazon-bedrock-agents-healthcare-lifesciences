@@ -2,6 +2,8 @@ import argparse
 import json
 import os
 import logging
+import boto3
+import subprocess
 from tqdm import tqdm
 
 import torch
@@ -18,6 +20,30 @@ logging.basicConfig(
     datefmt="%m/%d/%Y %H:%M:%S",
     level=logging.INFO,
 )
+
+def download_s3_folder(s3_uri, local_dir):
+    """
+    Download a folder from S3 to a local directory
+    """
+    # Parse the S3 URI
+    if not s3_uri.endswith('/'):
+        s3_uri += '/'
+    
+    bucket_name = s3_uri.split('//')[1].split('/')[0]
+    prefix = '/'.join(s3_uri.split('//')[1].split('/')[1:])
+    
+    logging.info(f"Downloading from bucket: {bucket_name}, prefix: {prefix} to {local_dir}")
+    
+    # Use AWS CLI for efficient recursive download
+    cmd = f"aws s3 cp --recursive s3://{bucket_name}/{prefix} {local_dir}"
+    logging.info(f"Running command: {cmd}")
+    
+    try:
+        subprocess.check_call(cmd, shell=True)
+        logging.info(f"Successfully downloaded S3 folder to {local_dir}")
+    except subprocess.CalledProcessError as e:
+        logging.error(f"Failed to download S3 folder: {e}")
+        raise
 
 def _parse_args():
     parser = argparse.ArgumentParser()
@@ -42,7 +68,7 @@ def _parse_args():
     parser.add_argument(
         "--scorer_expert_name_or_path",
         help="Scoring model to use, specify 'None' to skip",
-        default='NREL/avGFP-fluorescence-onehot-cnn',
+        default='None',
         type=str,
     )
     parser.add_argument(
@@ -79,12 +105,34 @@ def get_expert_list(args):
     '''
     Define the chain of experts to run directed evolution with.
     '''
-    device = "cuda" if torch.cuda else "cpu"
+    # Handle S3 paths for ESM model
+    if args.esm_expert_name_or_path is not None and args.esm_expert_name_or_path != "None":
+        if args.esm_expert_name_or_path.startswith('s3://'):
+            # Create a temporary directory for the model
+            tmp_dir = os.environ.get('TMPDIR', '/tmp')
+            esm_model_dir = os.path.join(tmp_dir, 
+                                os.path.basename(os.path.dirname(args.esm_expert_name_or_path.rstrip('/'))))
+            if not os.path.exists(esm_model_dir):
+                os.makedirs(esm_model_dir, exist_ok=True)
+            
+            logging.info(f'Downloading ESM model files from {args.esm_expert_name_or_path} to {esm_model_dir}')
+            download_s3_folder(args.esm_expert_name_or_path, esm_model_dir)
+            logging.info(f'Downloaded files: {os.listdir(esm_model_dir)}')
+            
+            # Update the path to use the local directory
+            args.esm_expert_name_or_path = esm_model_dir
+            logging.info(f'Using local ESM model path: {args.esm_expert_name_or_path}')
+    
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    logging.info(f"Using device: {device}")
+    
     expert_list = []
     assert ((args.esm_expert_name_or_path != 'None') ^ (args.bert_expert_name_or_path != 'None')),\
         "Currently support ONLY ONE generator model (EITHER ESM or Bert) in the expert chain"
+    
     if args.esm_expert_name_or_path != "None":
         # Load the ESM-2 model and tokenizer as the expert
+        logging.info(f"Loading ESM model from {args.esm_expert_name_or_path}")
         esm2_expert = evo_prot_grad.get_expert(
             'esm',
             model=EsmForMaskedLM.from_pretrained(args.esm_expert_name_or_path, trust_remote_code=True),
@@ -95,6 +143,7 @@ def get_expert_list(args):
         )
         expert_list.append(esm2_expert)
     elif args.bert_expert_name_or_path != "None":
+        logging.info(f"Loading BERT model from {args.bert_expert_name_or_path}")
         bert_expert = evo_prot_grad.get_expert(
             'bert',
             scoring_strategy='pseudolikelihood_ratio', 
@@ -105,6 +154,7 @@ def get_expert_list(args):
         expert_list.append(bert_expert)
     
     if args.scorer_expert_name_or_path != "None":
+        logging.info(f"Loading scorer model from {args.scorer_expert_name_or_path}")
         scorer_expert = evo_prot_grad.get_expert(
             'onehot_downstream_regression',
             scoring_strategy='attribute_value',

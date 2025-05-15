@@ -321,7 +321,12 @@ Resources:
         ServiceRole: !GetAtt CodeBuildWorkflowRole.Arn
         ResourceAccessRole: !GetAtt CodeBuildWorkflowRole.Arn
         Artifacts:
-          Type: NO_ARTIFACTS
+          Type: S3
+          Location: !Ref S3BucketName
+          Path: artifacts
+          Name: workflow-artifacts
+          NamespaceType: BUILD_ID
+          Packaging: ZIP
         Environment:
           Type: LINUX_CONTAINER
           ComputeType: BUILD_GENERAL1_MEDIUM
@@ -363,11 +368,30 @@ Resources:
                 commands:
                   - 'echo "Creating workflow"'
                   - 'BUILD_CONTEXT=workflow_temp'
-                  - 'aws omics create-workflow --cli-input-yaml file://${BUILD_CONTEXT}/config.yaml --definition-zip fileb://workflow.zip --region $REGION'
+                  - 'WORKFLOW_RESPONSE=$(aws omics create-workflow --cli-input-yaml file://${BUILD_CONTEXT}/config.yaml --definition-zip fileb://workflow.zip --region $REGION --output json)'
+                  - 'echo "Workflow creation response: $WORKFLOW_RESPONSE"'
+                  - 'WORKFLOW_ID=$(echo $WORKFLOW_RESPONSE | jq -r .id)'
+                  - 'echo "Created workflow with ID: $WORKFLOW_ID"'
+                  - 'echo $WORKFLOW_ID > workflow_id.txt'
+                  # Export the workflow ID as a CodeBuild exported variable
+                  - 'export WORKFLOW_ID=$WORKFLOW_ID'
+                  - 'echo "##vso[task.setvariable variable=WORKFLOW_ID;isOutput=true]$WORKFLOW_ID"'
+                  # Write to a file in S3 as a backup method
+                  - 'echo "{\"workflowId\":\"$WORKFLOW_ID\"}" > workflow_output.json'
+                  - 'aws s3 cp workflow_output.json s3://${S3_BUCKET_NAME}/workflow_output.json'
               post_build:
                 commands:
                   - 'echo "Build completed on $(date)"'
+                  - 'echo "Workflow ID: $WORKFLOW_ID"'
+                  # Export as a CodeBuild exported variable again to ensure it's captured
+                  - 'export CODEBUILD_WORKFLOW_ID=$WORKFLOW_ID'
+                  - 'echo "##vso[task.setvariable variable=CODEBUILD_WORKFLOW_ID;isOutput=true]$WORKFLOW_ID"'
                   - 'rm -rf workflow_temp workflow.zip'
+            artifacts:
+              files:
+                - workflow_id.txt
+                - workflow_output.json
+              discard-paths: yes
         LogsConfig:
           CloudWatchLogs:
             Status: ENABLED
@@ -382,10 +406,14 @@ Resources:
 
   WorkflowBuildCustomResource:
     Type: Custom::WorkflowBuild
+    DependsOn:
+      - DockerBuildCustomResource
+      - ECRRepository
     Properties:
       ServiceToken: !GetAtt CustomResourceFunction.Arn
       ProjectName: !Ref CodeBuildWorkflowProject
       ProjectType: workflow
+      S3BucketName: !Ref S3BucketName
 
   WorkflowExecutionRole:
     Type: AWS::IAM::Role
@@ -446,6 +474,7 @@ Resources:
           import boto3
           import json
           import time
+          import re
           
           def send_response(event, context, response_status, response_data, physical_resource_id=None):
               response_body = {
@@ -574,6 +603,7 @@ Resources:
                         
                     project_name = event['ResourceProperties']['ProjectName']
                     project_type = event['ResourceProperties'].get('ProjectType', 'container')
+                    s3_bucket_name = event['ResourceProperties'].get('S3BucketName')
                     
                     print(f"Starting {project_type} build for project: {project_name}")
                     
@@ -599,6 +629,7 @@ Resources:
                         print(f"Started build with ID: {build_id}")
                         
                         # Wait for build completion
+                        workflow_id = None
                         while True:
                             build = codebuild.batch_get_builds(ids=[build_id])['builds'][0]
                             status = build['buildStatus']
@@ -606,15 +637,90 @@ Resources:
                             print(f"Build status: {status}, Phase: {phase}")
                             
                             if status in ['SUCCEEDED', 'FAILED', 'STOPPED']:
+                                # If workflow build succeeded, try multiple methods to get the workflow ID
+                                if status == 'SUCCEEDED' and project_type == 'workflow':
+                                    # Method 1: Check for exported environment variables
+                                    if 'exportedEnvironmentVariables' in build:
+                                        for env_var in build.get('exportedEnvironmentVariables', []):
+                                            if env_var.get('name') in ['WORKFLOW_ID', 'CODEBUILD_WORKFLOW_ID']:
+                                                workflow_id = env_var.get('value')
+                                                print(f"Found workflow ID in exported variables: {workflow_id}")
+                                                break
+                                    
+                                    # Method 2: Check build artifacts in S3
+                                    if not workflow_id and 'artifacts' in build and build['artifacts'].get('location'):
+                                        try:
+                                            s3_client = boto3.client('s3')
+                                            artifact_location = build['artifacts'].get('location', '')
+                                            
+                                            if artifact_location.startswith('arn:aws:s3:::'):
+                                                # Parse the S3 location
+                                                parts = artifact_location.replace('arn:aws:s3:::', '').split('/')
+                                                s3_bucket = parts[0]
+                                                s3_key = '/'.join(parts[1:]) + '/workflow_output.json'
+                                                
+                                                try:
+                                                    response = s3_client.get_object(Bucket=s3_bucket, Key=s3_key)
+                                                    workflow_data = json.loads(response['Body'].read().decode('utf-8'))
+                                                    workflow_id = workflow_data.get('workflowId')
+                                                    print(f"Retrieved workflow ID from S3 artifact: {workflow_id}")
+                                                except Exception as e:
+                                                    print(f"Error retrieving workflow ID from artifact: {str(e)}")
+                                        except Exception as e:
+                                            print(f"Error processing artifact location: {str(e)}")
+                                    
+                                    # Method 3: Try to get from S3 directly (backup method)
+                                    if not workflow_id and s3_bucket_name:
+                                        try:
+                                            s3_client = boto3.client('s3')
+                                            
+                                            response = s3_client.get_object(Bucket=s3_bucket_name, Key='workflow_output.json')
+                                            workflow_data = json.loads(response['Body'].read().decode('utf-8'))
+                                            workflow_id = workflow_data.get('workflowId')
+                                            print(f"Retrieved workflow ID from S3 bucket: {workflow_id}")
+                                        except Exception as e:
+                                            print(f"Error retrieving workflow ID from S3 bucket: {str(e)}")
+                                    
+                                    # Method 4: Extract from logs as last resort
+                                    if not workflow_id:
+                                        try:
+                                            logs = get_build_logs(codebuild, build_id)
+                                            # Try multiple regex patterns to find the workflow ID
+                                            patterns = [
+                                                r'Created workflow with ID: ([a-zA-Z0-9-]+)',
+                                                r'WORKFLOW_ID=([a-zA-Z0-9-]+)',
+                                                r'"workflowId":"([a-zA-Z0-9-]+)"',
+                                                r'Workflow ID: ([a-zA-Z0-9-]+)'
+                                            ]
+                                            
+                                            for pattern in patterns:
+                                                workflow_id_match = re.search(pattern, logs)
+                                                if workflow_id_match:
+                                                    workflow_id = workflow_id_match.group(1)
+                                                    print(f"Extracted workflow ID from logs using pattern '{pattern}': {workflow_id}")
+                                                    break
+                                        except Exception as e:
+                                            print(f"Error extracting workflow ID from logs: {str(e)}")
                                 break
                             time.sleep(10)
                         
                         if status == 'SUCCEEDED':
                             message = 'Workflow deployed successfully' if project_type == 'workflow' else 'Docker image built and pushed successfully'
-                            send_response(event, context, 'SUCCESS', {
+                            response_data = {
                                 'Message': message,
                                 'BuildId': build_id
-                            })
+                            }
+                            
+                            # Add workflow ID to response if available
+                            if workflow_id:
+                                response_data['workflowId'] = workflow_id
+                                print(f"Returning workflow ID in response: {workflow_id}")
+                            else:
+                                print("WARNING: No workflow ID found to return")
+                                if project_type == 'workflow':
+                                    raise Exception("Failed to extract workflow ID from build output")
+                                    
+                            send_response(event, context, 'SUCCESS', response_data)
                         else:
                             build_logs = get_build_logs(codebuild, build_id)
                             error_message = f"Build failed with status: {status}\nPhase: {phase}\nLogs:\n{build_logs}"
@@ -669,6 +775,7 @@ Resources:
                   - codebuild:StartBuild
                   - codebuild:BatchGetBuilds
                   - codebuild:BatchGetProjects
+                  - codebuild:ListBuildsForProject
                 Resource: '*'
               - Effect: Allow
                 Action:
@@ -681,6 +788,7 @@ Resources:
                   - s3:ListBucket
                 Resource:
                   - !Sub "arn:${AWS::Partition}:s3:::${S3BucketName}"
+                  - !Sub "arn:${AWS::Partition}:s3:::codebuild-*"
         - PolicyName: CodeBuildLogsAccess
           PolicyDocument:
             Version: '2012-10-17'
@@ -706,59 +814,273 @@ Resources:
   # Workflow Trigger Lambda
   WorkflowTriggerFunction:
     Type: AWS::Lambda::Function
+    DependsOn: 
+      - WorkflowBuildCustomResource
+      - DockerBuildCustomResource
+      - WorkflowExecutionRole
+      - ECRRepository
     Properties:
       Runtime: python3.9
       Handler: index.handler
       Role: !GetAtt WorkflowTriggerRole.Arn
+      Environment:
+        Variables:
+          DEFAULT_WORKFLOW_ID: !GetAtt WorkflowBuildCustomResource.workflowId
+          DEFAULT_ROLE_ARN: !GetAtt WorkflowExecutionRole.Arn
+          DEFAULT_ECR_URI: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ECRRepository}:latest
+          DEFAULT_S3_BUCKET: !Ref S3BucketName
+          DEFAULT_ESM_MODEL_FILES: "s3://hcls-bedrock-agents-byot-aho-20240506-west2/models/esm2_t33_650M_UR50D/"
+          DEFAULT_OUTPUT_TYPE: "all"
+          DEFAULT_PARALLEL_CHAINS: "10"
+          DEFAULT_N_STEPS: "100"
+          DEFAULT_MAX_MUTATIONS: "15"
       Code:
         ZipFile: |
           import boto3
           import json
+          import os
+          import uuid
+          import time
+
+          # Get environment variables
+          DEFAULT_WORKFLOW_ID = os.environ.get('DEFAULT_WORKFLOW_ID')
+          DEFAULT_ROLE_ARN = os.environ.get('DEFAULT_ROLE_ARN')
+          DEFAULT_ECR_URI = os.environ.get('DEFAULT_ECR_URI')
+          DEFAULT_S3_BUCKET = os.environ.get('DEFAULT_S3_BUCKET')
+          DEFAULT_ESM_MODEL_FILES = os.environ.get('DEFAULT_ESM_MODEL_FILES')
+          DEFAULT_OUTPUT_TYPE = os.environ.get('DEFAULT_OUTPUT_TYPE', 'all')
+          DEFAULT_PARALLEL_CHAINS = os.environ.get('DEFAULT_PARALLEL_CHAINS', '10')
+          DEFAULT_N_STEPS = os.environ.get('DEFAULT_N_STEPS', '100')
+          DEFAULT_MAX_MUTATIONS = os.environ.get('DEFAULT_MAX_MUTATIONS', '15')
+
+          def validate_resources():
+              """Validate that all required resources exist and are accessible"""
+              # Check if workflow ID is available
+              if not DEFAULT_WORKFLOW_ID:
+                  raise ValueError("DEFAULT_WORKFLOW_ID environment variable is not set")
+              
+              # Check if role ARN is available
+              if not DEFAULT_ROLE_ARN:
+                  raise ValueError("DEFAULT_ROLE_ARN environment variable is not set")
+              
+              # Check if ECR URI is available
+              if not DEFAULT_ECR_URI:
+                  raise ValueError("DEFAULT_ECR_URI environment variable is not set")
+              
+              # Check if S3 bucket is available
+              if not DEFAULT_S3_BUCKET:
+                  raise ValueError("DEFAULT_S3_BUCKET environment variable is not set")
+              
+              # Verify workflow exists
+              try:
+                  omics_client = boto3.client('omics')
+                  omics_client.get_workflow(id=DEFAULT_WORKFLOW_ID)
+              except Exception as e:
+                  raise ValueError(f"Failed to verify workflow with ID {DEFAULT_WORKFLOW_ID}: {str(e)}")
+              
+              # Verify role exists
+              try:
+                  iam_client = boto3.client('iam')
+                  role_name = DEFAULT_ROLE_ARN.split('/')[-1]
+                  iam_client.get_role(RoleName=role_name)
+              except Exception as e:
+                  raise ValueError(f"Failed to verify IAM role {DEFAULT_ROLE_ARN}: {str(e)}")
+              
+              # Verify S3 bucket exists
+              try:
+                  s3_client = boto3.client('s3')
+                  s3_client.head_bucket(Bucket=DEFAULT_S3_BUCKET)
+              except Exception as e:
+                  raise ValueError(f"Failed to verify S3 bucket {DEFAULT_S3_BUCKET}: {str(e)}")
+              
+              # Verify ECR repository exists (extract repo name from URI)
+              try:
+                  ecr_client = boto3.client('ecr')
+                  repo_name = DEFAULT_ECR_URI.split('/')[-1].split(':')[0]
+                  ecr_client.describe_repositories(repositoryNames=[repo_name])
+              except Exception as e:
+                  raise ValueError(f"Failed to verify ECR repository for {DEFAULT_ECR_URI}: {str(e)}")
+              
+              return True
 
           def handler(event, context):
               print(f"Received event: {json.dumps(event)}")
+              
+              # Extract event information
+              agent = event.get("agent", {})
+              action_group = event.get("actionGroup", "")
+              function_name = event.get("function", "")
+              parameters = event.get("parameters", [])
+              message_version = event.get("messageVersion", "1.0")
+              
+              # Extract parameters from Bedrock agent format
+              params = {}
+              for param in parameters:
+                  if "name" in param and "value" in param:
+                      params[param["name"]] = param["value"]
+              
+              # Validate resources on first invocation (with retry logic)
+              max_retries = 3
+              retry_delay = 5  # seconds
+              
+              for attempt in range(max_retries):
+                  try:
+                      validate_resources()
+                      break
+                  except Exception as e:
+                      if attempt < max_retries - 1:
+                          print(f"Resource validation failed (attempt {attempt+1}/{max_retries}): {str(e)}. Retrying in {retry_delay} seconds...")
+                          time.sleep(retry_delay)
+                      else:
+                          print(f"Resource validation failed after {max_retries} attempts: {str(e)}")
+                          response_body = {
+                              "TEXT": {
+                                  "body": f"Error: Required resources not available: {str(e)}"
+                              }
+                          }
+                          
+                          action_response = {
+                              "actionGroup": action_group,
+                              "function": function_name,
+                              "functionResponse": {
+                                  "responseBody": response_body
+                              }
+                          }
+                          
+                          return {
+                              "messageVersion": message_version,
+                              "response": action_response
+                          }
+              
               client = boto3.client('omics')
               
               try:
-                  # Extract parameters from the Bedrock Agent event structure
-                  # The parameters will be nested under 'parameters' in the event
-                  params = event.get('parameters', {})
+                  # Always use the default values from environment variables for these parameters
+                  workflow_id = DEFAULT_WORKFLOW_ID
+                  role_arn = DEFAULT_ROLE_ARN
+                  container_image = DEFAULT_ECR_URI
+                  
+                  # Generate a unique run name if not provided
+                  run_name = params.get('runName', f'workflow-run-{uuid.uuid4().hex[:8]}')
+                  
+                  # Use default S3 output location if not provided
+                  output_uri = params.get('outputUri', f's3://{DEFAULT_S3_BUCKET}/outputs/{run_name}/')
+                  
+                  # Get all workflow parameters with defaults
+                  seed_sequence = params.get('seed_sequence', 'ACDEFGHIKLMNPQRSTVWY')
+                  esm_model_files = params.get('esm_model_files', DEFAULT_ESM_MODEL_FILES)
+                  onehotcnn_model_files = params.get('onehotcnn_model_files', None)
+                  output_type = params.get('output_type', DEFAULT_OUTPUT_TYPE)
+                  
+                  # Convert numeric parameters to integers
+                  try:
+                      parallel_chains = int(params.get('parallel_chains', DEFAULT_PARALLEL_CHAINS))
+                  except ValueError:
+                      parallel_chains = 10  # Fallback default if conversion fails
+
+                  try:
+                      n_steps = int(params.get('n_steps', DEFAULT_N_STEPS))
+                  except ValueError:
+                      n_steps = 100  # Fallback default if conversion fails
+
+                  try:
+                      max_mutations = int(params.get('max_mutations', DEFAULT_MAX_MUTATIONS))
+                  except ValueError:
+                      max_mutations = 15  # Fallback default if conversion fails
                   
                   # Reconstruct the parameters object for HealthOmics
                   workflow_parameters = {
-                      "container_image": params.get('container_image'),
-                      "seed_sequence": params.get('seed_sequence')
+                      "container_image": container_image,
+                      "seed_sequence": seed_sequence
                   }
+                  
+                  # Add optional parameters if provided
+                  if esm_model_files:
+                      workflow_parameters["esm_model_files"] = esm_model_files
+                  
+                  if onehotcnn_model_files:
+                      workflow_parameters["onehotcnn_model_files"] = onehotcnn_model_files
+                  
+                  workflow_parameters["output_type"] = output_type
+                  workflow_parameters["parallel_chains"] = parallel_chains
+                  workflow_parameters["n_steps"] = n_steps
+                  workflow_parameters["max_mutations"] = max_mutations
+                  
+                  print(f"Starting workflow run with ID: {workflow_id}")
+                  print(f"Role ARN: {role_arn}")
+                  print(f"Container image: {container_image}")
+                  print(f"Output URI: {output_uri}")
+                  print(f"Seed sequence: {seed_sequence}")
+                  print(f"ESM model files: {esm_model_files}")
+                  print(f"Output type: {output_type}")
+                  print(f"Parallel chains: {parallel_chains}")
+                  print(f"N steps: {n_steps}")
+                  print(f"Max mutations: {max_mutations}")
                   
                   response = client.start_run(
-                      workflowId=params['workflowId'],
-                      name=params.get('runName', 'workflow-run'),
+                      workflowId=workflow_id,
+                      name=run_name,
                       parameters=workflow_parameters,
-                      outputUri=params['outputUri'],
-                      roleArn=params['roleArn']
+                      outputUri=output_uri,
+                      roleArn=role_arn
                   )
                   
-                  return {
-                      'statusCode': 200,
-                      'body': json.dumps({
-                          'runId': response['id'],
-                          'status': response['status']
-                      })
+                  # Format response for Bedrock agent
+                  response_body = {
+                      "TEXT": {
+                          "body": f"Successfully started protein optimization workflow.\n\nRun ID: {response['id']}\nStatus: {response['status']}\nOutput URI: {output_uri}\n\nOptimization parameters:\n- Seed sequence: {seed_sequence[:20]}... ({len(seed_sequence)} amino acids)\n- Parallel chains: {parallel_chains}\n- Steps per chain: {n_steps}\n- Max mutations: {max_mutations}\n- Output type: {output_type}\n\nYou can check the status later by asking me to 'monitor workflow run {response['id']}'"
+                      }
                   }
+                  
+                  action_response = {
+                      "actionGroup": action_group,
+                      "function": function_name,
+                      "functionResponse": {
+                          "responseBody": response_body
+                      }
+                  }
+                  
+                  function_response = {
+                      "messageVersion": message_version,
+                      "response": action_response
+                  }
+                  
+                  print(f"Returning response: {json.dumps(function_response)}")
+                  return function_response
+                  
               except Exception as e:
                   print(f"Error: {str(e)}")
-                  return {
-                      'statusCode': 500,
-                      'body': json.dumps({
-                          'error': str(e)
-                      })
+                  
+                  response_body = {
+                      "TEXT": {
+                          "body": f"Error: {str(e)}"
+                      }
                   }
+                  
+                  action_response = {
+                      "actionGroup": action_group,
+                      "function": function_name,
+                      "functionResponse": {
+                          "responseBody": response_body
+                      }
+                  }
+                  
+                  function_response = {
+                      "messageVersion": message_version,
+                      "response": action_response
+                  }
+                  
+                  print(f"Returning error response: {json.dumps(function_response)}")
+                  return function_response
       Timeout: 900
       MemorySize: 128
 
   WorkflowTriggerRole:
     Type: AWS::IAM::Role
+    DependsOn:
+      - WorkflowExecutionRole
     Properties:
+      RoleName: !Sub "${StackPrefix}-WorkflowTriggerRole"
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -792,7 +1114,32 @@ Resources:
                   - omics:GetWorkflow
                   - omics:ListWorkflows
                 Resource: '*'
-        - PolicyName: PassRolePolicy  # New policy for PassRole
+        - PolicyName: IAMAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - iam:GetRole
+                Resource: '*'
+        - PolicyName: ECRAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecr:DescribeRepositories
+                  - ecr:DescribeImages
+                  - ecr:ListImages
+                  - ecr:BatchGetImage
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchCheckLayerAvailability
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                Resource: '*'
+        - PolicyName: PassRolePolicy
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
@@ -802,6 +1149,240 @@ Resources:
                 Condition:
                   StringEquals:
                     'iam:PassedToService': 'omics.amazonaws.com'
+        - PolicyName: S3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:s3:::${S3BucketName}"
+                  - !Sub "arn:${AWS::Partition}:s3:::${S3BucketName}/*"
+
+  # Workflow Monitor Lambda
+  WorkflowMonitorRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${StackPrefix}-WorkflowMonitorRole"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: OmicsMonitorAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - omics:GetRun
+                  - omics:ListRuns
+                  - omics:GetRunTask
+                  - omics:ListRunTasks
+                  - omics:GetWorkflow
+                  - omics:ListWorkflows
+                Resource: '*'
+        - PolicyName: CloudWatchLogsAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:GetLogEvents
+                  - logs:DescribeLogStreams
+                  - logs:DescribeLogGroups
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/omics/*:*"
+                  - !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/omics/*"
+        - PolicyName: S3ResultsAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:s3:::${S3BucketName}"
+                  - !Sub "arn:${AWS::Partition}:s3:::${S3BucketName}/*"
+
+  WorkflowMonitorFunction:
+    Type: AWS::Lambda::Function
+    DependsOn:
+      - WorkflowMonitorRole
+      - WorkflowTriggerFunction
+    Properties:
+      Runtime: python3.9
+      Handler: index.handler
+      Role: !GetAtt WorkflowMonitorRole.Arn
+      Environment:
+        Variables:
+          DEFAULT_S3_BUCKET: !Ref S3BucketName
+      Code:
+        ZipFile: |
+          import boto3
+          import json
+          import os
+          from urllib.parse import urlparse
+
+          def format_success_response(text, action_group, function_name, message_version):
+              response_body = {
+                  "TEXT": {
+                      "body": text
+                  }
+              }
+              
+              action_response = {
+                  "actionGroup": action_group,
+                  "function": function_name,
+                  "functionResponse": {
+                      "responseBody": response_body
+                  }
+              }
+              
+              return {
+                  "messageVersion": message_version,
+                  "response": action_response
+              }
+              
+          def format_error_response(error_text, action_group, function_name, message_version):
+              response_body = {
+                  "TEXT": {
+                      "body": f"Error: {error_text}"
+                  }
+              }
+              
+              action_response = {
+                  "actionGroup": action_group,
+                  "function": function_name,
+                  "functionResponse": {
+                      "responseBody": response_body
+                  }
+              }
+              
+              return {
+                  "messageVersion": message_version,
+                  "response": action_response
+              }
+              
+          def get_run_results(client, run_response):
+              output_text = f"Completed at: {run_response.get('stopTime', '').isoformat() if run_response.get('stopTime') else None}\n\n"
+              
+              # Get output files
+              output_uri = run_response.get('outputUri')
+              if not output_uri:
+                  return output_text + "No output URI provided."
+                  
+              # Parse the S3 URI
+              parsed_uri = urlparse(output_uri)
+              bucket = parsed_uri.netloc
+              prefix = parsed_uri.path.lstrip('/')
+              
+              # List objects in the output location
+              s3_client = boto3.client('s3')
+              try:
+                  s3_response = s3_client.list_objects_v2(
+                      Bucket=bucket,
+                      Prefix=prefix
+                  )
+                  
+                  # Add output files to the response
+                  output_files = []
+                  for obj in s3_response.get('Contents', []):
+                      if obj['Key'].endswith('.json') or obj['Key'].endswith('.txt') or obj['Key'].endswith('.csv'):
+                          file_key = obj['Key']
+                          file_size = obj['Size']
+                          
+                          # For small text files, we can include the content
+                          if file_size < 10240 and (file_key.endswith('.json') or file_key.endswith('.txt') or file_key.endswith('.csv')):
+                              try:
+                                  file_obj = s3_client.get_object(Bucket=bucket, Key=file_key)
+                                  file_content = file_obj['Body'].read().decode('utf-8')
+                                  
+                                  output_files.append({
+                                      'key': file_key,
+                                      'size': file_size,
+                                      'content': file_content
+                                  })
+                              except Exception as e:
+                                  output_files.append({
+                                      'key': file_key,
+                                      'size': file_size,
+                                      'error': str(e)
+                                  })
+                          else:
+                              output_files.append({
+                                  'key': file_key,
+                                  'size': file_size,
+                                  'url': f"s3://{bucket}/{file_key}"
+                              })
+                  
+                  if output_files:
+                      output_text += "Output files:\n"
+                      for file in output_files:
+                          output_text += f"- {file.get('key')} ({file.get('size')} bytes)\n"
+                          if 'content' in file and file.get('key').endswith('de_results.csv'):
+                              output_text += f"Results summary:\n{file.get('content')[:1000]}...\n\n"
+                  else:
+                      output_text += "No output files found."
+              except Exception as e:
+                  output_text += f"Error listing S3 objects: {str(e)}"
+                  
+              return output_text
+
+          def handler(event, context):
+              print(f"Received event: {json.dumps(event)}")
+              
+              # Extract parameters
+              params = {}
+              for param in event.get('parameters', []):
+                  if "name" in param and "value" in param:
+                      params[param["name"]] = param["value"]
+              
+              # Get action group and function name
+              action_group = event.get("actionGroup", "")
+              function_name = event.get("function", "")
+              message_version = event.get("messageVersion", "1.0")
+              
+              run_id = params.get('runId')
+              if not run_id:
+                  return format_error_response("runId parameter is required", action_group, function_name, message_version)
+              
+              # Get the current status without waiting
+              client = boto3.client('omics')
+              try:
+                  run_response = client.get_run(id=run_id)
+                  status = run_response.get('status')
+                  
+                  # Format a response with the current status
+                  response_text = f"Run ID: {run_id}\nCurrent Status: {status}\n"
+                  if run_response.get('name'):
+                      response_text += f"Run Name: {run_response.get('name')}\n"
+                  if run_response.get('startTime'):
+                      response_text += f"Start Time: {run_response.get('startTime', '').isoformat() if run_response.get('startTime') else None}\n"
+                  
+                  if status == 'COMPLETED':
+                      # Include results if completed
+                      response_text += get_run_results(client, run_response)
+                  elif status == 'FAILED':
+                      response_text += f"Failed with message: {run_response.get('statusMessage')}\n"
+                  else:
+                      response_text += "\nThe workflow is still running. You can check again later with the same run ID.\n"
+                      response_text += f"To check again, ask me to 'monitor workflow run {run_id}'."
+                  
+                  return format_success_response(response_text, action_group, function_name, message_version)
+              except Exception as e:
+                  return format_error_response(f"Error monitoring workflow: {str(e)}", action_group, function_name, message_version)
+      Timeout: 30  # Reduced timeout since we're not waiting for completion
+      MemorySize: 256
 
 Outputs:
   ECRRepositoryUri:
@@ -811,7 +1392,25 @@ Outputs:
   TriggerFunctionArn:
     Description: ARN of the workflow trigger Lambda function
     Value: !GetAtt WorkflowTriggerFunction.Arn
+    
+  MonitorFunctionArn:
+    Description: ARN of the workflow monitor Lambda function
+    Value: !GetAtt WorkflowMonitorFunction.Arn
 
   WorkflowExecutionRoleArn:
     Description: ARN of the workflow execution role
     Value: !GetAtt WorkflowExecutionRole.Arn
+    
+  WorkflowId:
+    Description: ID of the created HealthOmics workflow
+    Value: !GetAtt WorkflowBuildCustomResource.workflowId
+    
+  TriggerFunctionInvocationExample:
+    Description: Example command to invoke the workflow trigger function
+    Value: !Sub |
+      aws lambda invoke --function-name ${WorkflowTriggerFunction} --payload '{"parameters":{"seed_sequence":"ACDEFGHIKLMNPQRSTVWY"}}' response.json
+      
+  MonitorFunctionInvocationExample:
+    Description: Example command to invoke the workflow monitor function
+    Value: !Sub |
+      aws lambda invoke --function-name ${WorkflowMonitorFunction} --payload '{"parameters":{"runId":"<RUN_ID>","waitForCompletion":true}}' monitor_response.json
