@@ -21,7 +21,7 @@ if __name__ == "__main__":
     bucket_name = 'radiology-report-agent-guidance-documents'
     region = 'us-west-2'
 
-   # check if the bucket exists if not create it
+    # check if the bucket exists if not create it
     s3_client = boto3.client('s3', region_name=region)
     try:
         s3_client.head_bucket(Bucket=bucket_name)
@@ -32,4 +32,3 @@ if __name__ == "__main__":
     # Upload the guidance document
     folder_path = './ACRdocs'
     upload_folder_to_s3(bucket_name, folder_path)
-    

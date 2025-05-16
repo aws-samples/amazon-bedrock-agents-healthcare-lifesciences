@@ -34,7 +34,7 @@ def get_radiology_report(pat_id):
     """
     from boto3.dynamodb.conditions import Key
     dynamodb_client = boto3.client('dynamodb')
-    dynamodb_table_name = "RadiologyReportDB"
+    dynamodb_table_name = "RadiologyReports"
     dynamodb = boto3.resource('dynamodb')
     table = dynamodb.Table(dynamodb_table_name)
     print("Patient ID: ", pat_id)
@@ -59,7 +59,7 @@ def download_guidance_document(anatomical_structure):
     import os
     # Get list of all files in the S3 bucket
     s3 = boto3.client('s3')
-    bucket_name = "radiologyreport-validator"
+    bucket_name = "radiology-report-agent-guidance-documents"
     response = s3.list_objects_v2(Bucket=bucket_name)
     files = [obj['Key'] for obj in response['Contents']]
 
