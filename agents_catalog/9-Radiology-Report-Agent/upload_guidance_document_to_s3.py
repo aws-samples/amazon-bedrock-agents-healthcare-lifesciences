@@ -1,5 +1,5 @@
 import boto3
-import os
+import os, argparse
 
 def create_s3_bucket(bucket_name, region):
     s3_client = boto3.client('s3', region_name=region)
@@ -18,8 +18,14 @@ def upload_folder_to_s3(bucket_name, folder_path):
 
             
 if __name__ == "__main__":
-    bucket_name = 'radiology-report-agent-guidance-documents'
-    region = 'us-west-2'
+    
+    parser = argparse.ArgumentParser(description='Upload guidance documents to S3 bucket.')
+    parser.add_argument('--bucket-name', type=str, required=True, help='S3 bucket name')
+    parser.add_argument('--region', type=str, required=True, help='AWS region for the S3 bucket')
+    args = parser.parse_args()
+
+    bucket_name = args.bucket_name
+    region = args.region
 
     # check if the bucket exists if not create it
     s3_client = boto3.client('s3', region_name=region)

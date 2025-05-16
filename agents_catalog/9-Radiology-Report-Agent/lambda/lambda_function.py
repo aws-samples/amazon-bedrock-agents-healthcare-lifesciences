@@ -14,6 +14,9 @@ BATCH_JOB_DEFINITION_FEATURE_EXTRACTION = os.environ.get('BATCH_JOB_DEFINITION_F
 BATCH_JOB_DEFINITION_CLASSIFIER = os.environ.get('BATCH_JOB_DEFINITION_CLASSIFIER')
 LAMBDA_VIEWER_FUNCTION_NAME = os.environ.get('LAMBDA_VIEWER_FUNCTION_NAME')
 
+# Change the s3 bucket 
+S3_bucket_name = "radiology-report-agent-guidance-documents"
+
 # Bedrock configuration
 BEDROCK_CONFIG = Config(connect_timeout=120, read_timeout=120, retries={'max_attempts': 0})
 
@@ -60,7 +63,7 @@ def download_guidance_document(anatomical_structure):
     import os
     # Get list of all files in the S3 bucket
     s3 = boto3.client('s3')
-    bucket_name = "radiology-report-agent-guidance-documents"
+    bucket_name = S3_bucket_name
     response = s3.list_objects_v2(Bucket=bucket_name)
     files = [obj['Key'] for obj in response['Contents']]
 
@@ -123,18 +126,12 @@ def run_validator(text):
                 }
             }
         },
-        {"text": prompt        }
-        ]
-        }
-        ]
+        {"text": prompt}]}]
         inf_params = {"maxTokens": 200, "topP": 0.1, "temperature": 0.3}
         model_id = "us.amazon.nova-lite-v1:0"
         model_response = bedrock_agent_client.converse(modelId=model_id, messages=messages, inferenceConfig=inf_params)
         response_text = model_response['output']['message']['content'][0]['text']
-        print("***************Tested***************")
         return response_text
-
-
 
 
 def create_response(status_code, body):
