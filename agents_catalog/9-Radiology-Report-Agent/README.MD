@@ -1,7 +1,19 @@
 ## Create an agent for Validating Radiology Report 
-A solution has been developed using Amazon Nova and Bedrock to revolutionize radiology reporting workflows. This system automates two critical tasks: validating reports against ACR guidelines and generating accurate impression summaries from findings. Using Retrieval Augmented Generation with a knowledge base of 90,000+ radiology reports, the solution ensures high-quality, compliant reporting. The system's effectiveness is validated through a comprehensive LLM-as-a-judge evaluation framework using Claude 3 Haiku, demonstrating consistent performance across multiple quality metrics. This automation can save radiologists 1-2 hours daily while being 75% more cost-effective than comparable solutions, ultimately improving healthcare delivery and reducing burnout.
+Using Amazon Nova Micro, a multi-modal foundational model (FM) with document understanding capabilities, on Amazon Bedrock, a radiology report validation tool was created. First, we enable the large language model to parse the guidance document, allowing it to understand the criteria for appropriate imaging. A prompt is then passed to the FM along with the radiology report for validation, assessing ACR guideline adherence, diagnostic completeness, and missing anatomical structures.
 
-Please run the python notebook `create_agent.ipynb` for 
+## Step 0: Manage IAM Permissions
+
+
+## Step 1: Upload the guidance document
+Run the following command which uploads the guidance documents contained in the folder ACRdocs to a s3 bucket
+`python upload_guidance_document_to_s3.py`
+
+## Step 2: Create a DynamoDB table using the sample reports
+`python create_dynamodb_table.py`
+Now that we have the data prepared, we are ready to create an agent.py
+
+## Step 3: Create an agent
+Run all the cells in the python notebook `create_agent.ipynb`. A point to note that 
 
 ## Test Case1: Chest Radiology Report
 Here is the radiology report: FINAL REPORT EXAMINATION : CHEST ( PORTABLE AP ) INDICATION : History :___ F with ett placement TECHNIQUE : Upright AP view of the chest COMPARISON : None . Patient is currently listed as EU critical . 
