@@ -40,7 +40,8 @@ def get_radiology_report(pat_id):
     print("Patient ID: ", pat_id)
 
     try:
-        response = table.query(KeyConditionExpression=Key('PatientId').eq(str(pat_id)))
+        response = table.query(KeyConditionExpression=Key('PatientID').eq(str(pat_id)))
+        print(response)
         report = response['Items'][0]['Report']
     except Exception as e:
         print("Patient ID not found in DynamoDB: ")
