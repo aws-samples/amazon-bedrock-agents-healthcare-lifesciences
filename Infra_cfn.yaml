@@ -35,9 +35,10 @@ Parameters:
   MultiAgentDevMode:
     Type: String
     Description: Select True to use a python notebook to manually create the agents step by step. Select false to auto create all agents. 
+    Default: "False"
     AllowedValues: 
-     - True
-     - False
+     - "True"
+     - "False"
   GitBranch:
     Type: String
     Description: The github branch to clone 
