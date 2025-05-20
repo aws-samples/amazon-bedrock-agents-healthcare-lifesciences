@@ -40,11 +40,10 @@ Resources:
   ClinicalTrialProtocolGeneratorAgentStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/packaged_clinical-trial-protocol-agent.yaml
+      TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/packaged_clinical-trial-protocol-generator-agent.yaml
       Parameters:
         AgentAliasName: "Latest"
         AgentIAMRoleArn: !Ref AgentIAMRoleArn
-        LayersBucketName: !Ref S3Bucket
       TimeoutInMinutes: 35
 
   ClinicalTrialProtocolAssistantAgent:

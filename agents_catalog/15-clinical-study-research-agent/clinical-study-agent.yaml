@@ -24,7 +24,6 @@ Conditions:
   CreateAgentAliasCondition: !Not [!Equals [!Ref AgentAliasName, ""]]
   AgentIAMRoleCondition: !Not [!Equals [!Ref AgentIAMRoleArn, ""]]
 
-
 Resources:
   ####################
   ##### Storage #####
