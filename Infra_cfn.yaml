@@ -19,29 +19,29 @@ Parameters:
   RedshiftPassword:
     Type: String
     NoEcho: true
-    Description: 'STORE SECURELY - The password for the Redshift master user. Must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, and one number.'
+    Description: "STORE SECURELY - The password for the Redshift master user. Must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, and one number."
     MinLength: 8
     MaxLength: 64
     AllowedPattern: ^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d!@#$%^&*()_+\-=\[\]{};:'",.<>?]{8,64}$
-    ConstraintDescription: 'Password must be between 8 and 64 characters, and contain at least one uppercase letter, one lowercase letter, and one number.'
+    ConstraintDescription: "Password must be between 8 and 64 characters, and contain at least one uppercase letter, one lowercase letter, and one number."
   GithubLink:
-   Type: String
-   Description: 'The link to the agent build cloudformation stack'
-   Default: 'https://github.com/aws-samples/amazon-bedrock-agents-healthcare-lifesciences.git'
+    Type: String
+    Description: "The link to the agent build cloudformation stack"
+    Default: "https://github.com/aws-samples/amazon-bedrock-agents-healthcare-lifesciences.git"
   ImageTag:
     Type: String
     Default: latest
     Description: Tag of the Docker image to deploy Streamlit UI
   MultiAgentDevMode:
     Type: String
-    Description: Select True to use a python notebook to manually create the agents step by step. Select false to auto create all agents. 
+    Description: Select True to use a python notebook to manually create the agents step by step. Select false to auto create all agents.
     Default: "false"
-    AllowedValues: 
-     - "true"
-     - "false"
+    AllowedValues:
+      - "true"
+      - "false"
   GitBranch:
     Type: String
-    Description: The github branch to clone 
+    Description: The github branch to clone
     Default: main
   ReactAppAllowedCidr:
     Type: String
@@ -52,13 +52,13 @@ Parameters:
 Mappings:
   RegionMap:
     us-east-1:
-      PandasLayer: 'arn:aws:lambda:us-east-1:336392948345:layer:AWSSDKPandas-Python39:20'
+      PandasLayer: "arn:aws:lambda:us-east-1:336392948345:layer:AWSSDKPandas-Python39:20"
     us-east-2:
-      PandasLayer: 'arn:aws:lambda:us-east-2:336392948345:layer:AWSSDKPandas-Python39:20'
+      PandasLayer: "arn:aws:lambda:us-east-2:336392948345:layer:AWSSDKPandas-Python39:20"
     us-west-1:
-      PandasLayer: 'arn:aws:lambda:us-west-1:336392948345:layer:AWSSDKPandas-Python39:20'
+      PandasLayer: "arn:aws:lambda:us-west-1:336392948345:layer:AWSSDKPandas-Python39:20"
     us-west-2:
-      PandasLayer: 'arn:aws:lambda:us-west-2:336392948345:layer:AWSSDKPandas-Python39:20'
+      PandasLayer: "arn:aws:lambda:us-west-2:336392948345:layer:AWSSDKPandas-Python39:20"
 
 Resources:
   # Redshift Cluster
@@ -89,16 +89,16 @@ Resources:
       Encrypted: true
       LoggingProperties:
         BucketName: !Ref S3Bucket
-        S3KeyPrefix: 'redshift-logs/'
+        S3KeyPrefix: "redshift-logs/"
         LogDestinationType: s3
-      IamRoles: 
+      IamRoles:
         - !GetAtt RedshiftRole.Arn
-  
+
   RedshiftRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
@@ -109,7 +109,7 @@ Resources:
       Policies:
         - PolicyName: RedshiftS3LoggingPolicy
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
@@ -121,30 +121,28 @@ Resources:
                 Resource:
                   - !Sub arn:aws:s3:::${S3Bucket}
                   - !Sub arn:aws:s3:::${S3Bucket}/*
-      
 
   # Glue Connection
   JDBCConnection:
     Type: AWS::Glue::Connection
     Properties:
-      CatalogId: !Ref 'AWS::AccountId'
+      CatalogId: !Ref "AWS::AccountId"
       ConnectionInput:
         Name: jdbc_connector_biomarkers
         Description: JDBC connection for Redshift
         ConnectionType: JDBC
         ConnectionProperties:
-          JDBC_CONNECTION_URL: !Sub 'jdbc:redshift://${RedshiftCluster.Endpoint.Address}:5439/${RedshiftDatabaseName}'
+          JDBC_CONNECTION_URL: !Sub "jdbc:redshift://${RedshiftCluster.Endpoint.Address}:5439/${RedshiftDatabaseName}"
           USERNAME: !Ref RedshiftUserName
           PASSWORD: !Ref RedshiftPassword
         PhysicalConnectionRequirements:
           SubnetId: !Ref PrivateSubnet1
           SecurityGroupIdList: [!Ref SecurityGroup]
-          AvailabilityZone: !Select 
+          AvailabilityZone: !Select
             - 0
-            - !GetAZs 
-              Ref: 'AWS::Region'
+            - !GetAZs
+              Ref: "AWS::Region"
 
-  
   SecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -154,7 +152,7 @@ Resources:
         - IpProtocol: tcp
           FromPort: 5439
           ToPort: 5439
-          CidrIp: 10.0.0.0/16  # Only allow access from within VPC
+          CidrIp: 10.0.0.0/16 # Only allow access from within VPC
       SecurityGroupEgress:
         - IpProtocol: All
           FromPort: 0
@@ -188,10 +186,10 @@ Resources:
     Properties:
       VpcId: !Ref VPC
       CidrBlock: 10.0.1.0/24
-      AvailabilityZone: !Select 
+      AvailabilityZone: !Select
         - 0
-        - !GetAZs 
-          Ref: 'AWS::Region'
+        - !GetAZs
+          Ref: "AWS::Region"
       Tags:
         - Key: Name
           Value: !Sub ${AWS::StackName}-PrivateSubnet1
@@ -200,10 +198,10 @@ Resources:
     Properties:
       VpcId: !Ref VPC
       CidrBlock: 10.0.2.0/24
-      AvailabilityZone: !Select 
+      AvailabilityZone: !Select
         - 1
-        - !GetAZs 
-          Ref: 'AWS::Region'
+        - !GetAZs
+          Ref: "AWS::Region"
       Tags:
         - Key: Name
           Value: !Sub ${AWS::StackName}-PrivateSubnet2
@@ -212,10 +210,10 @@ Resources:
     Properties:
       VpcId: !Ref VPC
       CidrBlock: 10.0.3.0/24
-      AvailabilityZone: !Select 
+      AvailabilityZone: !Select
         - 0
-        - !GetAZs 
-          Ref: 'AWS::Region'
+        - !GetAZs
+          Ref: "AWS::Region"
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
@@ -225,10 +223,10 @@ Resources:
     Properties:
       VpcId: !Ref VPC
       CidrBlock: 10.0.4.0/24
-      AvailabilityZone: !Select 
+      AvailabilityZone: !Select
         - 1
-        - !GetAZs 
-          Ref: 'AWS::Region'
+        - !GetAZs
+          Ref: "AWS::Region"
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
@@ -291,8 +289,6 @@ Resources:
       SubnetId: !Ref PublicSubnet1
       RouteTableId: !Ref PublicRouteTable
 
-
-
   # Internet Gateway
   InternetGateway:
     Type: AWS::EC2::InternetGateway
@@ -303,11 +299,11 @@ Resources:
     Properties:
       VpcId: !Ref VPC
       InternetGatewayId: !Ref InternetGateway
-  
+
   S3Bucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub '${AWS::StackName}-${AWS::AccountId}-${AWS::Region}'
+      BucketName: !Sub "${AWS::StackName}-${AWS::AccountId}-${AWS::Region}"
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
@@ -317,7 +313,7 @@ Resources:
     Properties:
       Bucket: !Ref S3Bucket
       PolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Sid: AllowCloudFormationReadAccess
             Effect: Allow
@@ -329,7 +325,7 @@ Resources:
           - Sid: AllowCodeBuildAndLambdaAccess
             Effect: Allow
             Principal:
-              AWS: 
+              AWS:
                 - !GetAtt CodeBuildServiceRole.Arn
                 - !GetAtt TriggerAgentBuildLambdaRole.Arn
             Action:
@@ -353,40 +349,40 @@ Resources:
               - !Sub arn:aws:s3:::${S3Bucket}
               - !Sub arn:aws:s3:::${S3Bucket}/*
   S3DataProcessingLambdaRole:
-    Type: 'AWS::IAM::Role'
+    Type: "AWS::IAM::Role"
     Properties:
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
               Service: lambda.amazonaws.com
-            Action: 'sts:AssumeRole'
+            Action: "sts:AssumeRole"
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       Policies:
         - PolicyName: S3Access
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
-                  - 's3:CreateBucket'
-                  - 's3:PutObject'
-                Resource: 
-                  - !Sub 'arn:aws:s3:::biomarkers-discovery-agent-test-${AWS::Region}-${AWS::AccountId}'
-                  - !Sub 'arn:aws:s3:::biomarkers-discovery-agent-test-${AWS::Region}-${AWS::AccountId}/*'
+                  - "s3:CreateBucket"
+                  - "s3:PutObject"
+                Resource:
+                  - !Sub "arn:aws:s3:::biomarkers-discovery-agent-test-${AWS::Region}-${AWS::AccountId}"
+                  - !Sub "arn:aws:s3:::biomarkers-discovery-agent-test-${AWS::Region}-${AWS::AccountId}/*"
         - PolicyName: STSAccess
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
-                  - 'sts:GetCallerIdentity'
-                Resource: '*'
+                  - "sts:GetCallerIdentity"
+                Resource: "*"
 
   S3DataProcessingLambda:
-    Type: 'AWS::Lambda::Function'
+    Type: "AWS::Lambda::Function"
     Properties:
       Handler: index.lambda_handler
       Role: !GetAtt S3DataProcessingLambdaRole.Arn
@@ -478,7 +474,7 @@ Resources:
                       s3.put_object(Body=data_clinical.to_csv(index=False), Bucket=setup_Bucket_Name, Key=f'data/{solution_name}/clinical/{clinical_dataset_name}')
                   else:
                       raise Exception('Failed to download clinical data')
- 
+
                   # Process the data
                   data_clinical = data_clinical[~data_clinical["Case ID"].str.contains("AMC")]
 
@@ -538,83 +534,82 @@ Resources:
       Timeout: 900
       MemorySize: 3008
       Layers:
-        - !FindInMap [RegionMap, !Ref 'AWS::Region', PandasLayer]
+        - !FindInMap [RegionMap, !Ref "AWS::Region", PandasLayer]
 
   S3DataProcessingCustomResource:
-    Type: 'Custom::S3DataProcessing'
+    Type: "Custom::S3DataProcessing"
     Properties:
       ServiceToken: !GetAtt S3DataProcessingLambda.Arn
-  
 
   # Lambda Function to Load Data
   LambdaExecutionRole:
-    Type: 'AWS::IAM::Role'
-    Properties: 
-      AssumeRolePolicyDocument: 
-        Version: '2012-10-17'
-        Statement: 
-          - Effect: 'Allow'
-            Principal: 
-              Service: 
-                - 'lambda.amazonaws.com'
-            Action: 
-              - 'sts:AssumeRole'
-      Policies: 
-        - PolicyName: 'LambdaExecutionPolicy'
-          PolicyDocument: 
-            Version: '2012-10-17'
-            Statement: 
-              - Effect: 'Allow'
-                Action: 
-                  - 'logs:CreateLogGroup'
-                  - 'logs:CreateLogStream'
-                  - 'logs:PutLogEvents'
-                Resource: 
-                  - 'arn:aws:logs:*:*:*'
-              - Effect: 'Allow'
-                Action: 
-                  - 's3:GetObject'
-                  - 's3:ListBucket'
-                  - 's3:HeadObject'
-                  - 's3:GetObjectAttributes'
-                Resource: 
-                  - !Sub 'arn:aws:s3:::biomarkers-discovery-agent-test-${AWS::Region}-${AWS::AccountId}'
-                  - !Sub 'arn:aws:s3:::biomarkers-discovery-agent-test-${AWS::Region}-${AWS::AccountId}/*'
-              - Effect: 'Allow'
-                Action: 
-                  - 'ec2:CreateNetworkInterface'
-                  - 'ec2:DeleteNetworkInterface'
-                  - 'ec2:DescribeNetworkInterfaces'
-                Resource: 
-                  - !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:network-interface/*'
-              - Effect: 'Allow'
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - "lambda.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Policies:
+        - PolicyName: "LambdaExecutionPolicy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
                 Action:
-                  - 'ec2:DescribeSecurityGroups'
-                  - 'ec2:DescribeSubnets'
-                  - 'ec2:DescribeVpcs'
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
                 Resource:
-                  - !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:security-group/${SecurityGroup}'
-                  - !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:subnet/${PrivateSubnet1}'
-                  - !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:subnet/${PrivateSubnet2}'
-                  - !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:vpc/${VPC}'
-              - Effect: 'Allow'
-                Action: 
-                  - 'redshift-data:ExecuteStatement'
-                  - 'redshift-data:GetStatementResult'
-                Resource: 
+                  - "arn:aws:logs:*:*:*"
+              - Effect: "Allow"
+                Action:
+                  - "s3:GetObject"
+                  - "s3:ListBucket"
+                  - "s3:HeadObject"
+                  - "s3:GetObjectAttributes"
+                Resource:
+                  - !Sub "arn:aws:s3:::biomarkers-discovery-agent-test-${AWS::Region}-${AWS::AccountId}"
+                  - !Sub "arn:aws:s3:::biomarkers-discovery-agent-test-${AWS::Region}-${AWS::AccountId}/*"
+              - Effect: "Allow"
+                Action:
+                  - "ec2:CreateNetworkInterface"
+                  - "ec2:DeleteNetworkInterface"
+                  - "ec2:DescribeNetworkInterfaces"
+                Resource:
+                  - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:network-interface/*"
+              - Effect: "Allow"
+                Action:
+                  - "ec2:DescribeSecurityGroups"
+                  - "ec2:DescribeSubnets"
+                  - "ec2:DescribeVpcs"
+                Resource:
+                  - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:security-group/${SecurityGroup}"
+                  - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:subnet/${PrivateSubnet1}"
+                  - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:subnet/${PrivateSubnet2}"
+                  - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:vpc/${VPC}"
+              - Effect: "Allow"
+                Action:
+                  - "redshift-data:ExecuteStatement"
+                  - "redshift-data:GetStatementResult"
+                Resource:
                   - !Sub arn:aws:redshift:${AWS::Region}:${AWS::AccountId}:cluster:biomarker-redshift-cluster
                   - !Sub arn:aws:redshift:${AWS::Region}:${AWS::AccountId}:dbname:biomarker-redshift-cluster/${RedshiftDatabaseName}
-              - Effect: 'Allow'
-                Action: 
-                  - 'redshift:GetClusterCredentials'
-                Resource: 
+              - Effect: "Allow"
+                Action:
+                  - "redshift:GetClusterCredentials"
+                Resource:
                   - !Sub arn:aws:redshift:${AWS::Region}:${AWS::AccountId}:dbuser:biomarker-redshift-cluster/${RedshiftUserName}
                   - !Sub arn:aws:redshift:${AWS::Region}:${AWS::AccountId}:dbname:biomarker-redshift-cluster/${RedshiftDatabaseName}
-              
+
   LambdaFunction:
-    Type: 'AWS::Lambda::Function'
+    Type: "AWS::Lambda::Function"
     Properties:
-      Handler: 'index.lambda_handler'
+      Handler: "index.lambda_handler"
       Role: !GetAtt LambdaExecutionRole.Arn
       Code:
         ZipFile: |
@@ -634,7 +629,7 @@ Resources:
           database = os.environ['REDSHIFT_DATABASE']
           cluster_id = os.environ['REDSHIFT_CLUSTER_ID']
           DbUser = os.environ['REDSHIFT_USER']
-         
+
 
 
           def send_response(event, context, response_status, response_data, physical_resource_id=None):
@@ -880,13 +875,13 @@ Resources:
             if 'Error' in response:
                 print("Error:", response['Error'])
             return response
-          
+
           def lambda_handler(event, context):
             try:
                 if event['RequestType'] == 'Delete':
                     send_response(event, context, 'SUCCESS', {})
                     return
-    
+
                 s3_bucket = event['ResourceProperties']['S3Bucket']
                 s3_key_clinical_genomic_data = event['ResourceProperties']['ClinicalGenomicKey']
                 s3_key_chemotherapy_survival_data = event['ResourceProperties']['ChemotherapySurvivalKey']
@@ -922,27 +917,27 @@ Resources:
             except Exception as e:
                 send_response(event, context, 'FAILED', {'Status': 'Failure', 'Error': str(e)})
                 print(e)
-      Runtime: 'python3.9'
-      Timeout: 900 
+      Runtime: "python3.9"
+      Timeout: 900
       MemorySize: 512
       Layers:
-        - !FindInMap [RegionMap, !Ref 'AWS::Region', PandasLayer]
+        - !FindInMap [RegionMap, !Ref "AWS::Region", PandasLayer]
       Environment:
         Variables:
-          REDSHIFT_CLUSTER_ID: 'biomarker-redshift-cluster'
+          REDSHIFT_CLUSTER_ID: "biomarker-redshift-cluster"
           REDSHIFT_DATABASE: !Ref RedshiftDatabaseName
-          REDSHIFT_USER: 'admin'
+          REDSHIFT_USER: "admin"
 
   LambdaFunctionInvokePermission:
-    Type: 'AWS::Lambda::Permission'
+    Type: "AWS::Lambda::Permission"
     Properties:
-      Action: 'lambda:InvokeFunction'
-      Principal: 'cloudformation.amazonaws.com'
+      Action: "lambda:InvokeFunction"
+      Principal: "cloudformation.amazonaws.com"
       FunctionName: !GetAtt LambdaFunction.Arn
 
   # Custom Resource to Load Data to Redshift
   LoadDataToRedshift:
-    DependsOn: 
+    DependsOn:
       - RedshiftCluster
       - S3DataProcessingCustomResource
     Type: Custom::LoadDataToRedshift
@@ -951,18 +946,18 @@ Resources:
       S3Bucket: !GetAtt S3DataProcessingCustomResource.BucketName
       ClinicalGenomicKey: !GetAtt S3DataProcessingCustomResource.ClinicalGenomicKey
       ChemotherapySurvivalKey: !GetAtt S3DataProcessingCustomResource.ChemotherapySurvivalKey
-  
+
   TriggerAgentBuildCustomResource:
-      Type: Custom::TriggerAgentBuild
-      Properties:
-        ServiceToken: !GetAtt TriggerAgentBuildLambda.Arn
-        ProjectName: !Ref AgentCodeBuild
-  
+    Type: Custom::TriggerAgentBuild
+    Properties:
+      ServiceToken: !GetAtt TriggerAgentBuildLambda.Arn
+      ProjectName: !Ref AgentCodeBuild
+
   TriggerReactAppBuildCustomResource:
-      Type: Custom::TriggerAgentBuild
-      Properties:
-        ServiceToken: !GetAtt TriggerAgentBuildLambda.Arn
-        ProjectName: !Ref ReactAppCodeBuild
+    Type: Custom::TriggerAgentBuild
+    Properties:
+      ServiceToken: !GetAtt TriggerAgentBuildLambda.Arn
+      ProjectName: !Ref ReactAppCodeBuild
 
   TriggerAgentBuildLambda:
     Type: AWS::Lambda::Function
@@ -992,7 +987,7 @@ Resources:
                   cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
       Runtime: python3.8
       Timeout: 300
-  
+
   CleanupLambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
@@ -1029,7 +1024,7 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
@@ -1038,7 +1033,7 @@ Resources:
       Policies:
         - PolicyName: S3DeletePolicy
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
@@ -1049,7 +1044,7 @@ Resources:
                   - !Sub arn:aws:s3:::${S3Bucket}/*
         - PolicyName: CloudWatchLogsPolicy
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
@@ -1063,13 +1058,13 @@ Resources:
     Properties:
       ServiceToken: !GetAtt CleanupLambdaFunction.Arn
       S3Bucket: !Ref S3Bucket
-      S3Prefix: ''
+      S3Prefix: ""
 
   TriggerAgentBuildLambdaRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
@@ -1078,17 +1073,17 @@ Resources:
       Policies:
         - PolicyName: CodeBuildStartBuildPolicy
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
-                Action: 
+                Action:
                   - codebuild:StartBuild
-                Resource: 
+                Resource:
                   - !GetAtt AgentCodeBuild.Arn
                   - !GetAtt ReactAppCodeBuild.Arn
         - PolicyName: CloudWatchLogsPolicy
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
@@ -1100,7 +1095,7 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
@@ -1109,7 +1104,7 @@ Resources:
       Policies:
         - PolicyName: CodeBuildAccessPolicy
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
@@ -1133,7 +1128,7 @@ Resources:
                 Resource:
                   - !Sub arn:aws:s3:::${S3Bucket}
                   - !Sub arn:aws:s3:::${S3Bucket}/*
-  
+
   AgentCodeBuild:
     Type: AWS::CodeBuild::Project
     Properties:
@@ -1179,7 +1174,7 @@ Resources:
                 - echo Build completed on `date`
   AgentBuildNestedStack:
     Type: AWS::CloudFormation::Stack
-    DependsOn: 
+    DependsOn:
       - TriggerAgentBuildCustomResource
       - CleanupCustomResource
       - RedshiftCluster
@@ -1193,18 +1188,6 @@ Resources:
         GitBranch: !Ref GitBranch
         SubAgentS3Bucket: !Ref S3Bucket
       TimeoutInMinutes: 30
-  # StreamlitBuildNestedStack:
-  #   Type: AWS::CloudFormation::Stack
-  #   DependsOn: 
-  #     - AgentBuildNestedStack
-  #   Properties:
-  #     TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/packaged_streamlit_build.yaml
-  #     Parameters:
-  #       EnvironmentName: !Ref EnvironmentName
-  #       GitRepoURL: !Ref GithubLink
-  #       ImageTag: !Ref ImageTag
-  #       GitBranch: !Ref GitBranch
-  #     TimeoutInMinutes: 35
 
   ReactAppCodeBuild:
     Type: AWS::CodeBuild::Project
@@ -1252,7 +1235,7 @@ Resources:
                 - echo Build completed on `date`
   ReactAppDockerBuildNestedStack:
     Type: AWS::CloudFormation::Stack
-    DependsOn: 
+    DependsOn:
       - ReactAppCodeBuild
       - TriggerReactAppBuildCustomResource
     Properties:
@@ -1264,7 +1247,7 @@ Resources:
       TimeoutInMinutes: 35
   ReactAppEcsBuildNestedStack:
     Type: AWS::CloudFormation::Stack
-    DependsOn: 
+    DependsOn:
       - ReactAppDockerBuildNestedStack
     Properties:
       TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/ui/ecs.yml
@@ -1284,6 +1267,6 @@ Outputs:
   ReactAppExternalURL:
     Value:
       Fn::GetAtt:
-        - ReactAppEcsBuildNestedStack 
+        - ReactAppEcsBuildNestedStack
         - Outputs.ExternalUrl
-    Description: ALB DNS for the React App 
+    Description: ALB DNS for the React App
