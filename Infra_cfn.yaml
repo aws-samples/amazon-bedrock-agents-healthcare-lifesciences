@@ -1189,6 +1189,7 @@ Resources:
         BedrockModelId: !Ref BedrockModelId
         MultiAgentDevMode: !Ref MultiAgentDevMode
         EnvironmentName: !Ref EnvironmentName
+        GitRepoURL: !Ref GithubLink
         GitBranch: !Ref GitBranch
         SubAgentS3Bucket: !Ref S3Bucket
       TimeoutInMinutes: 30
