@@ -28,10 +28,6 @@ Parameters:
     Type: String
     Description: "The link to the agent build cloudformation stack"
     Default: "https://github.com/aws-samples/amazon-bedrock-agents-healthcare-lifesciences.git"
-  ImageTag:
-    Type: String
-    Default: latest
-    Description: Tag of the Docker image to deploy Streamlit UI
   MultiAgentDevMode:
     Type: String
     Description: Select True to use a python notebook to manually create the agents step by step. Select false to auto create all agents.
@@ -1260,6 +1256,7 @@ Resources:
           - ReactAppDockerBuildNestedStack
           - Outputs.ECRRepositoryURI
       TimeoutInMinutes: 35
+
 Outputs:
   RedshiftClusterEndpoint:
     Description: Redshift Cluster Endpoint
@@ -1270,3 +1267,9 @@ Outputs:
         - ReactAppEcsBuildNestedStack
         - Outputs.ExternalUrl
     Description: ALB DNS for the React App
+  AgentRole:
+    Value:
+      Fn::GetAtt:
+        - AgentBuildNestedStack
+        - Outputs.AgentRole
+    Description: Amazon Bedrock Agents Service Role ARN

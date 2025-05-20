@@ -1580,3 +1580,9 @@ Resources:
         AgentRole: !GetAtt AgentRole.Arn
         BedrockModelId: !Ref BedrockModelId
       TimeoutInMinutes: 30
+
+Outputs:
+  AgentRole:
+    Value:
+      Fn::GetAtt: AgentRole.Arn
+    Description: Amazon Bedrock Agents Service Role ARN
