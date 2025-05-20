@@ -1,4 +1,4 @@
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: "2010-09-09"
 Description: Creates a Bedrock Agent and action group
 
 Parameters:
@@ -15,14 +15,14 @@ Parameters:
     ConstraintDescription: Must be lowercase, contain one number at the end, and be no more than 5 characters long.
   MultiAgentDevMode:
     Type: String
-    Description: Select True to use a python notebook to manually create the agents step by step. Select false to auto create all agents. 
+    Description: Select True to use a python notebook to manually create the agents step by step. Select false to auto create all agents.
     Default: "false"
-    AllowedValues: 
-     - "true"
-     - "false"
+    AllowedValues:
+      - "true"
+      - "false"
   GitRepoURL:
     Type: String
-    Default: 'https://github.com/aws-samples/amazon-bedrock-agents-cancer-biomarker-discovery.git'
+    Default: "https://github.com/aws-samples/amazon-bedrock-agents-cancer-biomarker-discovery.git"
     Description: Git repository URL where the code files are stored
   ImageTag:
     Type: String
@@ -42,20 +42,18 @@ Parameters:
     Default: main
   SubAgentS3Bucket:
     Type: String
-    Description: 'The S3 bucket containing the Subagents'
-    
-
+    Description: "The S3 bucket containing the Subagents"
 
 Mappings:
   RegionMap:
     us-east-1:
-      PandasLayer: 'arn:aws:lambda:us-east-1:336392948345:layer:AWSSDKPandas-Python312:12'
+      PandasLayer: "arn:aws:lambda:us-east-1:336392948345:layer:AWSSDKPandas-Python312:12"
     us-east-2:
-      PandasLayer: 'arn:aws:lambda:us-east-2:336392948345:layer:AWSSDKPandas-Python312:12'
+      PandasLayer: "arn:aws:lambda:us-east-2:336392948345:layer:AWSSDKPandas-Python312:12"
     us-west-1:
-      PandasLayer: 'arn:aws:lambda:us-west-1:336392948345:layer:AWSSDKPandas-Python312:12'
+      PandasLayer: "arn:aws:lambda:us-west-1:336392948345:layer:AWSSDKPandas-Python312:12"
     us-west-2:
-      PandasLayer: 'arn:aws:lambda:us-west-2:336392948345:layer:AWSSDKPandas-Python312:12'
+      PandasLayer: "arn:aws:lambda:us-west-2:336392948345:layer:AWSSDKPandas-Python312:12"
 
 Conditions:
   AutoCreateAgents: !Equals [!Ref MultiAgentDevMode, "false"]
@@ -69,24 +67,23 @@ Resources:
 
   EnsureECRImagePushed:
     Type: Custom::EnsureECRImagePushed
-    DependsOn: 
+    DependsOn:
       - TriggerBuildCustomResource
       - TriggerImagingDockerBuild
     Properties:
       ServiceToken: !GetAtt TriggerBuildLambda.Arn
       ECRRepository: !Ref ECRRepository
       ImageTag: !Ref ImageTag
-  
+
   EnsureImagingDockerImagePushed:
     Type: Custom::EnsureECRImagePushed
-    DependsOn: 
+    DependsOn:
       - TriggerBuildCustomResource
       - TriggerImagingDockerBuild
     Properties:
       ServiceToken: !GetAtt TriggerBuildLambda.Arn
       ECRRepository: !Ref ImagingECRRepository
       ImageTag: !Ref ImageTag
-      
 
   CleanupLambdaFunction:
     Type: AWS::Lambda::Function
@@ -97,7 +94,7 @@ Resources:
         ZipFile: |
           import boto3
           import cfnresponse
-          
+
           def delete_ecr_images(repository_name):
               ecr = boto3.client('ecr')
               paginator = ecr.get_paginator('list_images')
@@ -148,7 +145,7 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
@@ -157,36 +154,36 @@ Resources:
       Policies:
         - PolicyName: !Sub CleanupPolicy-${EnvironmentName}
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
-                  - 's3:ListBucket'
-                  - 's3:DeleteObject'
-                Resource: 
-                  - !Sub 'arn:aws:s3:::${S3Bucket}'
-                  - !Sub 'arn:aws:s3:::${S3Bucket}/*'
-                  - !Sub 'arn:aws:s3:::${LogBucket}'
-                  - !Sub 'arn:aws:s3:::${LogBucket}/*'
+                  - "s3:ListBucket"
+                  - "s3:DeleteObject"
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3Bucket}"
+                  - !Sub "arn:aws:s3:::${S3Bucket}/*"
+                  - !Sub "arn:aws:s3:::${LogBucket}"
+                  - !Sub "arn:aws:s3:::${LogBucket}/*"
               - Effect: Allow
                 Action:
-                  - 'ecr:ListImages'
-                  - 'ecr:BatchDeleteImage'
-                  - 'ecr:DeleteRepository'
-                  - 'ecr:DescribeRepositories'
-                Resource: 
-                  - !Sub 'arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/${ECRRepository}'
-                  - !Sub 'arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/medical-image-processing-smstudio'
+                  - "ecr:ListImages"
+                  - "ecr:BatchDeleteImage"
+                  - "ecr:DeleteRepository"
+                  - "ecr:DescribeRepositories"
+                Resource:
+                  - !Sub "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/${ECRRepository}"
+                  - !Sub "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/medical-image-processing-smstudio"
               - Effect: Allow
                 Action:
-                  - 'logs:CreateLogGroup'
-                  - 'logs:CreateLogStream'
-                  - 'logs:PutLogEvents'
-                Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*'
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*"
 
   CleanupCustomResource:
     Type: Custom::Cleanup
-    DependsOn: 
+    DependsOn:
       - S3Bucket
       - ECRRepository
     Properties:
@@ -194,38 +191,37 @@ Resources:
       ECRRepositoryName: !Ref ECRRepository
       S3BucketName: !Ref S3Bucket
       LogBucketName: !Ref LogBucket
-  
-  
-  S3Bucket: 
-     Type: AWS::S3::Bucket
-     Properties:
-       BucketName: !Sub '${EnvironmentName}-${AWS::AccountId}-${AWS::Region}-agent-build-bucket'
-       BucketEncryption:
-         ServerSideEncryptionConfiguration:
-           - ServerSideEncryptionByDefault:
-               SSEAlgorithm: AES256
-       LoggingConfiguration:
-         DestinationBucketName: !Ref LogBucket
-         LogFilePrefix: 'access-logs/'
 
-#Forces SSL/TLS encryption for all S3 operations on the S3 Bucket
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${EnvironmentName}-${AWS::AccountId}-${AWS::Region}-agent-build-bucket"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      LoggingConfiguration:
+        DestinationBucketName: !Ref LogBucket
+        LogFilePrefix: "access-logs/"
+
+  #Forces SSL/TLS encryption for all S3 operations on the S3 Bucket
   S3BucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
       Bucket: !Ref S3Bucket
       PolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Sid: ForceSSLOnlyAccess
             Effect: Deny
-            Principal: '*'
-            Action: 's3:*'
-            Resource: 
-              - !Sub '${S3Bucket.Arn}'
-              - !Sub '${S3Bucket.Arn}/*'
+            Principal: "*"
+            Action: "s3:*"
+            Resource:
+              - !Sub "${S3Bucket.Arn}"
+              - !Sub "${S3Bucket.Arn}/*"
             Condition:
               Bool:
-                'aws:SecureTransport': false
+                "aws:SecureTransport": false
           - Sid: AllowCloudFormationAccess
             Effect: Allow
             Principal:
@@ -234,20 +230,20 @@ Resources:
               - s3:GetObject
               - s3:ListBucket
             Resource:
-              - !Sub '${S3Bucket.Arn}'
-              - !Sub '${S3Bucket.Arn}/*'
+              - !Sub "${S3Bucket.Arn}"
+              - !Sub "${S3Bucket.Arn}/*"
 
   LogBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub '${EnvironmentName}-${AWS::AccountId}-${AWS::Region}-log-bucket'
-  
+      BucketName: !Sub "${EnvironmentName}-${AWS::AccountId}-${AWS::Region}-log-bucket"
+
   LogBucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
       Bucket: !Ref LogBucket
       PolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Sid: AllowLogDeliveryWrite
             Effect: Allow
@@ -255,16 +251,15 @@ Resources:
               Service: logging.s3.amazonaws.com
             Action:
               - s3:PutObject
-            Resource: !Sub '${LogBucket.Arn}/*'
+            Resource: !Sub "${LogBucket.Arn}/*"
 
   # Create CloudWatch Log Group
   CodeBuildLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub '/aws/codebuild/${AWS::StackName}-DockerPushProject'
+      LogGroupName: !Sub "/aws/codebuild/${AWS::StackName}-DockerPushProject"
       RetentionInDays: 14
-  
-  
+
   #Gather Assets for pubmed lambda function, knowledgebase and survival data processing lambda
   DataRetrievalLogic:
     Type: AWS::CodeBuild::Project
@@ -349,7 +344,6 @@ Resources:
                 - aws s3 cp lambda-layer.zip s3://${S3Bucket}/lambda-layer.zip
 
       TimeoutInMinutes: 10
-
 
   # Log into ECR and push scientific-plots-with-lifelines Docker image
   DockerPushLogic:
@@ -454,7 +448,7 @@ Resources:
                 - echo Pushing the Docker image...
                 - docker push ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ImagingECRRepository}:${ImageTag}
       SourceVersion: main
-  
+
   ImagingStateMachine:
     Type: AWS::StepFunctions::StateMachine
     Properties:
@@ -585,13 +579,13 @@ Resources:
 
         - {
             S3Bucket: !Sub "s3://${S3Bucket}",
-            SageMakerExecutionRoleArn: !GetAtt SageMakerExecutionRole.Arn
+            SageMakerExecutionRoleArn: !GetAtt SageMakerExecutionRole.Arn,
           }
   DataRetrievalRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
@@ -600,32 +594,32 @@ Resources:
       Policies:
         - PolicyName: S3Access
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
                   - s3:PutObject
                   - s3:GetObject
-                Resource: 
+                Resource:
                   - !GetAtt S3Bucket.Arn
                   - !Sub "${S3Bucket.Arn}/*"
         - PolicyName: CloudWatchLogs
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: 
-                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*'
-                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*:*'
+                Resource:
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*"
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*:*"
   DockerPushRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
@@ -634,12 +628,12 @@ Resources:
       Policies:
         - PolicyName: ECRAccess
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
                   - ecr:GetAuthorizationToken
-                Resource: '*'  # This action requires resource '*'
+                Resource: "*" # This action requires resource '*'
               - Effect: Allow
                 Action:
                   - ecr:ListImages
@@ -650,33 +644,33 @@ Resources:
                   - ecr:UploadLayerPart
                   - ecr:CompleteLayerUpload
                   - ecr:PutImage
-                Resource: 
-                  - !Sub 'arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/${ECRRepository}'
+                Resource:
+                  - !Sub "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/${ECRRepository}"
         - PolicyName: CloudWatchLogs
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: 
-                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*'
-                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*:*'
+                Resource:
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*"
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*:*"
         - PolicyName: GitCloneAccess
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
                   - codecommit:GitPull
-                Resource: !Sub 'arn:aws:codecommit:${AWS::Region}:${AWS::AccountId}:${GitRepoURL}'
+                Resource: !Sub "arn:aws:codecommit:${AWS::Region}:${AWS::AccountId}:${GitRepoURL}"
   ImagingDockerBuildRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
@@ -685,12 +679,12 @@ Resources:
       Policies:
         - PolicyName: ECRAccess
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
                   - ecr:GetAuthorizationToken
-                Resource: '*'
+                Resource: "*"
               - Effect: Allow
                 Action:
                   - ecr:ListImages
@@ -701,34 +695,34 @@ Resources:
                   - ecr:UploadLayerPart
                   - ecr:CompleteLayerUpload
                   - ecr:PutImage
-                Resource: 
-                  - !Sub 'arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/medical-image-processing-smstudio'
+                Resource:
+                  - !Sub "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/medical-image-processing-smstudio"
         - PolicyName: S3Access
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
                   - s3:PutObject
-                Resource: 
+                Resource:
                   - !Sub "${S3Bucket.Arn}/Imaginglambdafunction.zip"
         - PolicyName: CloudWatchLogs
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: 
-                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*'
-                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*:*'
+                Resource:
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*"
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*:*"
   StepFunctionsExecutionRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
@@ -737,84 +731,84 @@ Resources:
       Policies:
         - PolicyName: StepFunctionsExecutionPolicy
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               # SageMaker permissions
               - Effect: Allow
                 Action:
-                  - 'sagemaker:CreateProcessingJob'
-                  - 'sagemaker:DescribeProcessingJob'
-                  - 'sagemaker:StopProcessingJob'
-                  - 'sagemaker:ListTags'
-                  - 'sagemaker:AddTags'
-                Resource: !Sub 'arn:aws:sagemaker:${AWS::Region}:${AWS::AccountId}:processing-job/dcm-nifti-*'
+                  - "sagemaker:CreateProcessingJob"
+                  - "sagemaker:DescribeProcessingJob"
+                  - "sagemaker:StopProcessingJob"
+                  - "sagemaker:ListTags"
+                  - "sagemaker:AddTags"
+                Resource: !Sub "arn:aws:sagemaker:${AWS::Region}:${AWS::AccountId}:processing-job/dcm-nifti-*"
               # IAM permissions
               - Effect: Allow
                 Action:
-                  - 'iam:PassRole'
+                  - "iam:PassRole"
                 Resource: !GetAtt SageMakerExecutionRole.Arn
               # Step Functions Map state permissions
               - Effect: Allow
                 Action:
-                  - 'events:PutTargets'
-                  - 'events:PutRule'
-                  - 'events:DescribeRule'
-                  - 'events:DeleteRule'
-                  - 'events:DisableRule'
-                  - 'events:EnableRule'
-                  - 'events:RemoveTargets'
+                  - "events:PutTargets"
+                  - "events:PutRule"
+                  - "events:DescribeRule"
+                  - "events:DeleteRule"
+                  - "events:DisableRule"
+                  - "events:EnableRule"
+                  - "events:RemoveTargets"
                 Resource:
-                  - !Sub 'arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/StepFunctions-Map-*'
-                  - !Sub 'arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/StepFunctions-*'
+                  - !Sub "arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/StepFunctions-Map-*"
+                  - !Sub "arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/StepFunctions-*"
               # States permissions for Map state
               - Effect: Allow
                 Action:
-                  - 'states:StartExecution'
-                  - 'states:StopExecution'
-                  - 'states:DescribeExecution'
-                  - 'states:CreateStateMachine'
-                  - 'states:DeleteStateMachine'
-                  - 'states:UpdateStateMachine'
-                  - 'states:DescribeStateMachine'
-                  - 'states:DescribeStateMachineForExecution'
-                  - 'states:ListExecutions'
-                Resource: 
-                  - !Sub 'arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:*'
-                  - !Sub 'arn:aws:states:${AWS::Region}:${AWS::AccountId}:execution:*:*'
+                  - "states:StartExecution"
+                  - "states:StopExecution"
+                  - "states:DescribeExecution"
+                  - "states:CreateStateMachine"
+                  - "states:DeleteStateMachine"
+                  - "states:UpdateStateMachine"
+                  - "states:DescribeStateMachine"
+                  - "states:DescribeStateMachineForExecution"
+                  - "states:ListExecutions"
+                Resource:
+                  - !Sub "arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:*"
+                  - !Sub "arn:aws:states:${AWS::Region}:${AWS::AccountId}:execution:*:*"
               # CloudWatch Logs permissions
               - Effect: Allow
                 Action:
-                  - 'logs:CreateLogDelivery'
-                  - 'logs:GetLogDelivery'
-                  - 'logs:UpdateLogDelivery'
-                  - 'logs:DeleteLogDelivery'
-                  - 'logs:ListLogDeliveries'
-                  - 'logs:PutLogEvents'
-                  - 'logs:PutResourcePolicy'
-                  - 'logs:DescribeResourcePolicies'
-                  - 'logs:DescribeLogGroups'
-                Resource: 
-                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*'
+                  - "logs:CreateLogDelivery"
+                  - "logs:GetLogDelivery"
+                  - "logs:UpdateLogDelivery"
+                  - "logs:DeleteLogDelivery"
+                  - "logs:ListLogDeliveries"
+                  - "logs:PutLogEvents"
+                  - "logs:PutResourcePolicy"
+                  - "logs:DescribeResourcePolicies"
+                  - "logs:DescribeLogGroups"
+                Resource:
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*"
               - Effect: Allow
                 Action:
-                  - 'lambda:InvokeFunction'
-                Resource: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*'
+                  - "lambda:InvokeFunction"
+                Resource: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*"
         - PolicyName: EventsPolicy
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
-                  - 'events:PutTargets'
-                  - 'events:PutRule'
-                  - 'events:DescribeRule'
+                  - "events:PutTargets"
+                  - "events:PutRule"
+                  - "events:DescribeRule"
                 Resource:
-                  - !Sub 'arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/*'
+                  - !Sub "arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/*"
   SageMakerExecutionRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
@@ -823,94 +817,94 @@ Resources:
       Policies:
         - PolicyName: SageMakerProcessingAccess
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               # Processing Job Permissions
               - Effect: Allow
                 Action:
-                  - 'sagemaker:CreateProcessingJob'
-                  - 'sagemaker:DescribeProcessingJob'
-                  - 'sagemaker:StopProcessingJob'
-                  - 'sagemaker:ListProcessingJobs'
-                Resource: !Sub 'arn:aws:sagemaker:${AWS::Region}:${AWS::AccountId}:processing-job/*'
+                  - "sagemaker:CreateProcessingJob"
+                  - "sagemaker:DescribeProcessingJob"
+                  - "sagemaker:StopProcessingJob"
+                  - "sagemaker:ListProcessingJobs"
+                Resource: !Sub "arn:aws:sagemaker:${AWS::Region}:${AWS::AccountId}:processing-job/*"
               # ECR Access for Container
               - Effect: Allow
                 Action:
-                  - 'ecr:GetAuthorizationToken'
-                Resource: '*'
+                  - "ecr:GetAuthorizationToken"
+                Resource: "*"
               - Effect: Allow
                 Action:
-                  - 'ecr:BatchCheckLayerAvailability'
-                  - 'ecr:GetDownloadUrlForLayer'
-                  - 'ecr:BatchGetImage'
-                Resource: 
-                  - !Sub 'arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/${ImagingECRRepository}'
+                  - "ecr:BatchCheckLayerAvailability"
+                  - "ecr:GetDownloadUrlForLayer"
+                  - "ecr:BatchGetImage"
+                Resource:
+                  - !Sub "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/${ImagingECRRepository}"
         - PolicyName: S3Access
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               # Input data access
               - Effect: Allow
                 Action:
-                  - 's3:GetObject'
-                  - 's3:ListBucket'
+                  - "s3:GetObject"
+                  - "s3:ListBucket"
                 Resource:
-                  - 'arn:aws:s3:::sagemaker-solutions-prod-*'
-                  - 'arn:aws:s3:::sagemaker-solutions-prod-*/sagemaker-lung-cancer-survival-prediction/*'
+                  - "arn:aws:s3:::sagemaker-solutions-prod-*"
+                  - "arn:aws:s3:::sagemaker-solutions-prod-*/sagemaker-lung-cancer-survival-prediction/*"
               # Output data access
               - Effect: Allow
                 Action:
-                  - 's3:PutObject'
-                  - 's3:GetObject'
-                  - 's3:ListBucket'
-                Resource: 
-                  - !Sub 'arn:aws:s3:::${S3Bucket}'
-                  - !Sub 'arn:aws:s3:::${S3Bucket}/nsclc_radiogenomics/*'
+                  - "s3:PutObject"
+                  - "s3:GetObject"
+                  - "s3:ListBucket"
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3Bucket}"
+                  - !Sub "arn:aws:s3:::${S3Bucket}/nsclc_radiogenomics/*"
         - PolicyName: CloudWatchLogsAccess
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
-                  - 'logs:CreateLogGroup'
-                  - 'logs:CreateLogStream'
-                  - 'logs:PutLogEvents'
-                  - 'logs:DescribeLogStreams'
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                  - "logs:DescribeLogStreams"
                 Resource:
-                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/sagemaker/ProcessingJobs:*'
-                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/sagemaker/ProcessingJobs:log-stream:*'
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/sagemaker/ProcessingJobs:*"
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/sagemaker/ProcessingJobs:log-stream:*"
         - PolicyName: KMSAccess
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
-                  - 'kms:Decrypt'
-                  - 'kms:GenerateDataKey'
-                Resource: !Sub 'arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/*'
+                  - "kms:Decrypt"
+                  - "kms:GenerateDataKey"
+                Resource: !Sub "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/*"
                 Condition:
                   StringEquals:
-                    'kms:ViaService': !Sub 'sagemaker.${AWS::Region}.amazonaws.com'
+                    "kms:ViaService": !Sub "sagemaker.${AWS::Region}.amazonaws.com"
 
         - PolicyName: NetworkAccess
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
-                  - 'ec2:CreateNetworkInterface'
-                  - 'ec2:CreateNetworkInterfacePermission'
-                  - 'ec2:DeleteNetworkInterface'
-                  - 'ec2:DeleteNetworkInterfacePermission'
-                  - 'ec2:DescribeNetworkInterfaces'
-                  - 'ec2:DescribeVpcs'
-                  - 'ec2:DescribeDhcpOptions'
-                  - 'ec2:DescribeSubnets'
-                  - 'ec2:DescribeSecurityGroups'
-                Resource: '*'
+                  - "ec2:CreateNetworkInterface"
+                  - "ec2:CreateNetworkInterfacePermission"
+                  - "ec2:DeleteNetworkInterface"
+                  - "ec2:DeleteNetworkInterfacePermission"
+                  - "ec2:DescribeNetworkInterfaces"
+                  - "ec2:DescribeVpcs"
+                  - "ec2:DescribeDhcpOptions"
+                  - "ec2:DescribeSubnets"
+                  - "ec2:DescribeSecurityGroups"
+                Resource: "*"
                 Condition:
                   StringEquals:
-                    'aws:RequestedRegion': !Ref 'AWS::Region'
+                    "aws:RequestedRegion": !Ref "AWS::Region"
   TriggerBuildLambda:
     Type: AWS::Lambda::Function
     Properties:
@@ -982,7 +976,7 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
@@ -991,66 +985,64 @@ Resources:
       Policies:
         - PolicyName: CodeBuildAccess
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
-                Action: 
+                Action:
                   - codebuild:StartBuild
                   - codebuild:BatchGetBuilds
-                Resource: 
+                Resource:
                   - !GetAtt DockerPushLogic.Arn
                   - !GetAtt DataRetrievalLogic.Arn
-                  - !Sub 'arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:project/ImagingDockerBuildProject-*'
+                  - !Sub "arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:project/ImagingDockerBuildProject-*"
         - PolicyName: CloudWatchLogs
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: 
-                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${AWS::StackName}-TriggerBuildLambda-*'
+                Resource:
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${AWS::StackName}-TriggerBuildLambda-*"
         - PolicyName: ECRDescribeAccess
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action: ecr:DescribeImages
-                Resource: 
-                  - !Sub 'arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/${ECRRepository}'
-                  - !Sub 'arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/medical-image-processing-smstudio'
-  
-  
+                Resource:
+                  - !Sub "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/${ECRRepository}"
+                  - !Sub "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/medical-image-processing-smstudio"
+
   TriggerBuildCustomResource:
     Type: Custom::TriggerBuild
     DependsOn: DockerPushLogic
     Properties:
       ServiceToken: !GetAtt TriggerBuildLambda.Arn
       ProjectName: !Ref DockerPushLogic
-  
+
   TriggerImagingDockerBuild:
     Type: Custom::TriggerBuild
     DependsOn: ImagingDockerBuildProject
     Properties:
       ServiceToken: !GetAtt TriggerBuildLambda.Arn
       ProjectName: !Ref ImagingDockerBuildProject
-  
+
   TriggerDataRetrievalLogic:
     Type: Custom::TriggerBuild
     DependsOn: DataRetrievalLogic
     Properties:
       ServiceToken: !GetAtt TriggerBuildLambda.Arn
       ProjectName: !Ref DataRetrievalLogic
-  
-
-      
 
   AgentRole:
     Type: AWS::IAM::Role
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
-      RoleName: !Sub AmazonBedrockExecutionRoleForAgents_${AWS::AccountId}
+      # RoleName: !Sub AmazonBedrockExecutionRoleForAgents_${AWS::AccountId}
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -1068,15 +1060,21 @@ Resources:
               - Effect: Allow
                 Action:
                   - bedrock:*
-                Resource: 
-                  - !Sub arn:aws:bedrock:*::foundation-model/*
-                  - !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:knowledge-base/*
-                  - !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent-alias/*
-                  - !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*
-                  - !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/*
-                  - !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:application-inference-profile/*
-            
-                
+                Resource:
+                  - !Sub arn:${AWS::Partition}:bedrock:*::foundation-model/*
+                  - !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:knowledge-base/*
+                  - !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:agent-alias/*
+                  - !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*
+                  - !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/*
+                  - !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:application-inference-profile/*
+
+  AgentRoleARNParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /bedrock/agent/role/arn
+      Type: String
+      Value: !GetAtt AgentRole.Arn
+      Description: Amazon Bedrock Agents Service Role ARN
 
   S3BucketNameSSMParameter:
     Type: AWS::SSM::Parameter
@@ -1108,12 +1106,12 @@ Resources:
                   - s3:ListBucket
                   - s3:GetObject
                   - s3:PutObject
-                Resource: 
+                Resource:
                   - !Sub arn:aws:s3:::${SubAgentS3Bucket}
                   - !Sub arn:aws:s3:::${SubAgentS3Bucket}/*
                   - !Sub arn:aws:s3:::${S3Bucket}
                   - !Sub arn:aws:s3:::${S3Bucket}/*
-      
+
               - Effect: Allow
                 Action:
                   - cloudformation:CreateStack
@@ -1127,7 +1125,7 @@ Resources:
                   - cloudformation:TagResource
                   - cloudformation:UntagResource
                   - aoss:*
-                Resource: 
+                Resource:
                   - !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${EnvironmentName}-*/*
                   - "*"
               - Effect: Allow
@@ -1149,7 +1147,7 @@ Resources:
                   - iam:CreatePolicy
                   - iam:GetPolicy
                   - iam:ListPolicyVersions
-                Resource: 
+                Resource:
                   - !Sub arn:aws:iam::${AWS::AccountId}:role/${EnvironmentName}-*
                   - !Sub arn:aws:iam::${AWS::AccountId}:role/ImagingBiomarkerLambdaExecutionRole-*
                   - !Sub arn:aws:iam::${AWS::AccountId}:role/*-AgentLambdaRole-*
@@ -1219,22 +1217,21 @@ Resources:
                   - ecr:ListTagsForResource
                   - ecr:DescribeImageScanFindings
                   - ecr:GetAuthorizationToken
-                  - ecr:SetRepositoryPolicy  
+                  - ecr:SetRepositoryPolicy
                 Resource:
                   - !Sub arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/*
                   - !Sub arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/medical-image-processing-smstudio
         - PolicyName: CreateServiceLinkedRole
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action: iam:CreateServiceLinkedRole
-                Resource: !Sub 'arn:aws:iam::${AWS::AccountId}:role/aws-service-role/observability.aoss.amazonaws.com/AWSServiceRoleForAmazonOpenSearchServerless'
+                Resource: !Sub "arn:aws:iam::${AWS::AccountId}:role/aws-service-role/observability.aoss.amazonaws.com/AWSServiceRoleForAmazonOpenSearchServerless"
               - Effect: Allow
                 Action: iam:GetRole
-                Resource: !Sub 'arn:aws:iam::${AWS::AccountId}:role/aws-service-role/observability.aoss.amazonaws.com/AWSServiceRoleForAmazonOpenSearchServerless'
-      
-  
+                Resource: !Sub "arn:aws:iam::${AWS::AccountId}:role/aws-service-role/observability.aoss.amazonaws.com/AWSServiceRoleForAmazonOpenSearchServerless"
+
   AgentDiscoveryFunction:
     Type: AWS::Lambda::Function
     Properties:
@@ -1246,7 +1243,7 @@ Resources:
         ZipFile: |
           import boto3
           import cfnresponse
-          
+
           def handler(event, context):
             try:
               if event['RequestType'] in ['Create', 'Update']:
