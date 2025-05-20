@@ -11,7 +11,8 @@ Parameters:
     Default: anthropic.claude-3-5-sonnet-20240620-v1:0
   AgentIAMRoleArn:
     Type: String
-    Description: The ARN for the agent IAM role
+    Description: (Optional) Amazon Bedrock Agents service role ARN
+    Default: ""
   ChartImageBucketName:
     Type: String
     Description: S3 bucket name for storing chart images
@@ -21,21 +22,23 @@ Parameters:
 
 Conditions:
   CreateAgentAliasCondition: !Not [!Equals [!Ref AgentAliasName, ""]]
+  AgentIAMRoleCondition: !Not [!Equals [!Ref AgentIAMRoleArn, ""]]
+
 
 Resources:
   ####################
   ##### Storage #####
   ####################
 
-  ChartImageBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: !Ref ChartImageBucketName
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: true
-        BlockPublicPolicy: true
-        IgnorePublicAcls: true
-        RestrictPublicBuckets: true
+  # ChartImageBucket:
+  #   Type: AWS::S3::Bucket
+  #   Properties:
+  #     BucketName: !Ref ChartImageBucketName
+  #     PublicAccessBlockConfiguration:
+  #       BlockPublicAcls: true
+  #       BlockPublicPolicy: true
+  #       IgnorePublicAcls: true
+  #       RestrictPublicBuckets: true
 
   #######################
   ##### Lambda Roles #####
@@ -110,7 +113,7 @@ Resources:
       Content:
         S3Bucket:
           Ref: LayersBucketName
-        S3Key: lambdalayers/matplotlib.zip 
+        S3Key: matplotlib.zip
 
   #######################
   ##### Lambda Functions #####
@@ -331,7 +334,12 @@ Resources:
                     Description: Optional route of administration to narrow the search (e.g., "nasal", "oral", "intravenous").
                     Required: false
       AgentName: clinical-study-research-agent
-      AgentResourceRoleArn: !Ref AgentIAMRoleArn
+      # If an IAM role ARN is passed as a paremter, use it. Otherwise look in SSM parameter store
+      AgentResourceRoleArn:
+        "Fn::If":
+          - AgentIAMRoleCondition
+          - !Ref AgentIAMRoleArn
+          - "{{resolve:ssm:/bedrock/agent/role/arn:1}}"
       AutoPrepare: True
       Description: "Agent that helps users explore, filter, and analyze clinical trial data"
       FoundationModel: !Ref BedrockModelId
@@ -344,16 +352,16 @@ Resources:
 
         You accept both structured inputs (e.g., condition, intervention, outcome) and natural language queries (e.g., "Find double-arm diabetes trials in males under 60") 
         and convert them into valid API queries using the ClinicalTrials.gov v2 syntax.
-        
+
         When analyzing clinical trial data, follow these steps:
-        
+
         1. Understand the user's specific research question or information need
         2. Identify the appropriate search parameters (condition, intervention, outcome, etc.)
         3. Execute the appropriate search function with these parameters
         4. Present results in a clear, organized manner
         5. Offer to create visualizations when appropriate
         6. Suggest related drug information when relevant
-        
+
         Always prioritize accuracy and relevance in your responses, and be prepared to refine searches based on user feedback.
 
   AgentAliasResource:
@@ -371,6 +379,10 @@ Outputs:
     Description: Agent Alias ID
     Value: !GetAtt AgentAliasResource.AgentAliasId
     Condition: CreateAgentAliasCondition
+  AgentAliasArn:
+    Description: Agent Alias ARN
+    Value: !GetAtt AgentAliasResource.AgentAliasArn
+    Condition: CreateAgentAliasCondition
   ClinicalStudySearchLambdaArn:
     Description: ARN of the Clinical Study Search Lambda function
     Value: !GetAtt ClinicalStudySearchLambda.Arn
@@ -382,4 +394,4 @@ Outputs:
     Value: !GetAtt DrugInformationLambda.Arn
   ChartImageBucketName:
     Description: Name of the S3 bucket for chart images
-    Value: !Ref ChartImageBucket
+    Value: !Ref ChartImageBucketName
