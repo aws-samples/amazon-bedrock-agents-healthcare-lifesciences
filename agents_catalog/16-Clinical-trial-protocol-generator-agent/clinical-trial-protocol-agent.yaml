@@ -116,7 +116,7 @@ Resources:
   ##### Guardrail #####
   ###################
 
-  Guardrail:
+  ClinicalTrialProtocolGuardrail:
     Type: AWS::Bedrock::Guardrail
     Properties:
       BlockedInputMessaging: "Sorry, your query violates our usage policies."
@@ -223,8 +223,8 @@ Resources:
       Description: "Agent that helps users create, review, and optimize clinical trial protocols based on best practices and common data models"
       FoundationModel: !Ref BedrockModelId
       GuardrailConfiguration:
-        GuardrailIdentifier: !GetAtt Guardrail.GuardrailId
-        GuardrailVersion: !GetAtt Guardrail.Version
+        GuardrailIdentifier: !GetAtt ClinicalTrialProtocolGuardrail.GuardrailId
+        GuardrailVersion: !GetAtt ClinicalTrialProtocolGuardrail.Version
       Instruction: |
         You are a Clinical Trial Protocol Generator Agent that helps users create, review, and optimize clinical trial protocols based on best practices, common data models (CDM), regulatory guidelines, and similar studies. 
         You assist with protocol design, inclusion/exclusion criteria development, endpoint selection, and statistical considerations.

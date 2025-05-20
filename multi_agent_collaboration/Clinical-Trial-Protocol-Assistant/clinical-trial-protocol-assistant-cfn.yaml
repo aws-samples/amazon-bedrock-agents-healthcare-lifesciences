@@ -61,8 +61,8 @@ Resources:
       Description: "Clinical Trial Protocol Assistant for developing comprehensive clinical trial protocols"
       FoundationModel: !Ref BedrockModelId
       GuardrailConfiguration:
-        GuardrailIdentifier: !GetAtt Guardrail.GuardrailId
-        GuardrailVersion: !GetAtt Guardrail.Version
+        GuardrailIdentifier: !GetAtt ClinicalTrialProtocolGuardrail.GuardrailId
+        GuardrailVersion: !GetAtt ClinicalTrialProtocolGuardrail.Version
       Instruction: |
         You are an intelligent Clinical Protocol Builder Assistant powered by AI. Your purpose is to help trial sponsors, clinical operations teams, and medical writers create high-quality clinical trial protocol documents efficiently, using evidence from previous studies and a regulatory-aligned structure.
 
@@ -113,7 +113,7 @@ Resources:
       AgentId: !GetAtt ClinicalTrialProtocolAssistantAgent.AgentId
       AgentAliasName: !Ref AgentAliasName
 
-  Guardrail:
+  ClinicalTrialProtocolGuardrail:
     Type: AWS::Bedrock::Guardrail
     Properties:
       BlockedInputMessaging: "Sorry, your query violates our usage policies."
@@ -139,7 +139,7 @@ Resources:
             OutputStrength: "NONE"
             Type: "PROMPT_ATTACK"
       Description: Turn on to block profane words and other harmful content.
-      Name: Guardrail
+      Name: ClinicalTrialProtocolGuardrail
       WordPolicyConfig:
         ManagedWordListsConfig:
           - Type: PROFANITY

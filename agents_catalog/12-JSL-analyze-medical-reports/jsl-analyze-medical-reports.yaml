@@ -150,8 +150,8 @@ Resources:
       Description: "Extract adverse drug events from unstructured clinical texts"
       FoundationModel: !Ref BedrockModelId
       GuardrailConfiguration:
-        GuardrailIdentifier: !GetAtt Guardrail.GuardrailId
-        GuardrailVersion: !GetAtt Guardrail.Version
+        GuardrailIdentifier: !GetAtt JSLAnalyzeMedicalReportsGuardrail.GuardrailId
+        GuardrailVersion: !GetAtt JSLAnalyzeMedicalReportsGuardrail.Version
       Instruction: |
         You are a medical text analysis assistant powered by a large language model.
         You help analyze clinical and medical documentation using specialized NLP tools, but you DO NOT provide clinical guidance, diagnosis, treatment recommendations, or interpret medical implications for individual patients.
@@ -172,7 +172,7 @@ Resources:
       AgentId: !GetAtt Agent.AgentId
       AgentAliasName: !Ref AgentAliasName
 
-  Guardrail:
+  JSLAnalyzeMedicalReportsGuardrail:
     Type: AWS::Bedrock::Guardrail
     Properties:
       BlockedInputMessaging: "Sorry, your query violates our usage policies."
@@ -186,7 +186,7 @@ Resources:
             OutputStrength: "NONE"
             Type: "PROMPT_ATTACK"
       Description: Turn on to block profane words and other harmful content.
-      Name: ADEGuardrail
+      Name: JSLAnalyzeMedicalReportsGuardrail
       WordPolicyConfig:
         ManagedWordListsConfig:
           - Type: PROFANITY

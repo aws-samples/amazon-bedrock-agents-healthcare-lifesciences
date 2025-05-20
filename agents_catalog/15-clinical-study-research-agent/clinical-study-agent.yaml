@@ -208,7 +208,7 @@ Resources:
   ##### Guardrail #####
   ###################
 
-  Guardrail:
+  ClinicalStudyResearchGuardrail:
     Type: AWS::Bedrock::Guardrail
     Properties:
       BlockedInputMessaging: "Sorry, your query violates our usage policies."
@@ -336,8 +336,8 @@ Resources:
       Description: "Agent that helps users explore, filter, and analyze clinical trial data"
       FoundationModel: !Ref BedrockModelId
       GuardrailConfiguration:
-        GuardrailIdentifier: !GetAtt Guardrail.GuardrailId
-        GuardrailVersion: !GetAtt Guardrail.Version
+        GuardrailIdentifier: !GetAtt ClinicalStudyResearchGuardrail.GuardrailId
+        GuardrailVersion: !GetAtt ClinicalStudyResearchGuardrail.Version
       Instruction: |
         You are a Clinical Study Search Agent that helps users explore, filter, and analyze clinical trial data from public registries like ClinicalTrials.gov. 
         You assist with condition-specific study identification, intervention tracking, sponsor profiling, and outcome analysis using structured search criteria.

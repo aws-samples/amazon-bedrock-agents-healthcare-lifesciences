@@ -127,8 +127,8 @@ Resources:
       Description: "Use clinical guidelines and structured reasoning patterns to process patient information and recommend next steps."
       FoundationModel: !Ref BedrockModelId
       GuardrailConfiguration:
-        GuardrailIdentifier: !GetAtt Guardrail.GuardrailId
-        GuardrailVersion: !GetAtt Guardrail.Version
+        GuardrailIdentifier: !GetAtt JSLMedicalReasoningGuardrail.GuardrailId
+        GuardrailVersion: !GetAtt JSLMedicalReasoningGuardrail.Version
       Instruction: |
         You are a helpful AI assistant designed to help physicians answer questions. You have access to a medical reasoning LLM that was specially training to handle healthcare-specific questions. As an AI medical assistant, always consult the medical reasoning LLM (Model 14 B) for any healthcare-specific questions before responding. When doing so, provide all relevant patient information available. Present the medical reasoning LLM's structured analysis clearly, emphasizing when information comes from this specialized system rather than your general knowledge. Include the reasoning pathways, alternative hypotheses, and any uncertainties identified by the medical reasoning LLM. Never provide medical advice based solely on your general knowledge. For non-medical questions, respond using your general capabilities while maintaining patient confidentiality at all times.
   AgentAliasResource:
@@ -138,7 +138,7 @@ Resources:
       AgentId: !GetAtt Agent.AgentId
       AgentAliasName: !Ref AgentAliasName
 
-  Guardrail:
+  JSLMedicalReasoningGuardrail:
     Type: AWS::Bedrock::Guardrail
     Properties:
       BlockedInputMessaging: "Sorry, your query violates our usage policies."
@@ -152,7 +152,7 @@ Resources:
             OutputStrength: "NONE"
             Type: "PROMPT_ATTACK"
       Description: Turn on to block profane words and other harmful content.
-      Name: MedicalReasoningGuardrail
+      Name: JSLMedicalReasoningGuardrail
       WordPolicyConfig:
         ManagedWordListsConfig:
           - Type: PROFANITY

@@ -76,8 +76,8 @@ Resources:
       Description: "Analyze business, financial, and patent information using search"
       FoundationModel: !Ref BedrockModelId
       GuardrailConfiguration:
-        GuardrailIdentifier: !GetAtt Guardrail.GuardrailId
-        GuardrailVersion: !GetAtt Guardrail.Version
+        GuardrailIdentifier: !GetAtt CompetitiveIntelGuardrail.GuardrailId
+        GuardrailVersion: !GetAtt CompetitiveIntelGuardrail.Version
       Instruction: |
         You are an expert Corporate Competitive Intelligence Analyst powered by AI. Your purpose is to create comprehensive competitive 
         intelligence reports on major US corporations by analyzing recent activities, market positioning, and financial trends.
@@ -139,7 +139,7 @@ Resources:
       AgentId: !GetAtt CompetitiveIntelligenceAgent.AgentId
       AgentAliasName: !Ref AgentAliasName
 
-  Guardrail:
+  CompetitiveIntelGuardrail:
     Type: AWS::Bedrock::Guardrail
     Properties:
       BlockedInputMessaging: "Sorry, your query violates our usage policies."
@@ -165,7 +165,7 @@ Resources:
             OutputStrength: "NONE"
             Type: "PROMPT_ATTACK"
       Description: Turn on to block profane words and other harmful content.
-      Name: Guardrail
+      Name: CompetitiveIntelGuardrail
       WordPolicyConfig:
         ManagedWordListsConfig:
           - Type: PROFANITY
