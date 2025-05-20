@@ -35,10 +35,11 @@ Parameters:
     Description: Tag of the Docker image to deploy Streamlit UI
   MultiAgentDevMode:
     Type: String
-    Description: Select True to use a python notebook to manually create the agents step by step. Select false to auto create all agents. 
+    Description: Select "true" to use a python notebook to manually create the agents step by step. Select "false" to auto create all agents. 
+    Default: "false"
     AllowedValues: 
-     - True
-     - False
+     - "true"
+     - "false"
   GitBranch:
     Type: String
     Description: The github branch to clone 

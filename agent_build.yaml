@@ -16,10 +16,10 @@ Parameters:
   MultiAgentDevMode:
     Type: String
     Description: Select True to use a python notebook to manually create the agents step by step. Select false to auto create all agents. 
-    Default: "False"
+    Default: "false"
     AllowedValues: 
-     - "True"
-     - "False"
+     - "true"
+     - "false"
   GitRepoURL:
     Type: String
     Default: 'https://github.com/aws-samples/amazon-bedrock-agents-cancer-biomarker-discovery.git'
