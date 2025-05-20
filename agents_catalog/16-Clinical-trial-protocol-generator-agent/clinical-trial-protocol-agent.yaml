@@ -116,7 +116,7 @@ Resources:
   ##### Guardrail #####
   ###################
 
-  ClinicalTrialProtocolGuardrail:
+  Guardrail:
     Type: AWS::Bedrock::Guardrail
     Properties:
       BlockedInputMessaging: "Sorry, your query violates our usage policies."
@@ -130,7 +130,7 @@ Resources:
             OutputStrength: "NONE"
             Type: "PROMPT_ATTACK"
       Description: Guardrail to block profane words and other harmful content.
-      Name: ClinicalTrialProtocolGuardrail
+      Name: ClinicalTrialProtocolGeneratorGuardrail
       WordPolicyConfig:
         ManagedWordListsConfig:
           - Type: PROFANITY
@@ -223,8 +223,8 @@ Resources:
       Description: "Agent that helps users create, review, and optimize clinical trial protocols based on best practices and common data models"
       FoundationModel: !Ref BedrockModelId
       GuardrailConfiguration:
-        GuardrailIdentifier: !GetAtt ClinicalTrialProtocolGuardrail.GuardrailId
-        GuardrailVersion: !GetAtt ClinicalTrialProtocolGuardrail.Version
+        GuardrailIdentifier: !GetAtt Guardrail.GuardrailId
+        GuardrailVersion: !GetAtt Guardrail.Version
       Instruction: |
         You are a Clinical Trial Protocol Generator Agent that helps users create, review, and optimize clinical trial protocols based on best practices, common data models (CDM), regulatory guidelines, and similar studies. 
         You assist with protocol design, inclusion/exclusion criteria development, endpoint selection, and statistical considerations.
