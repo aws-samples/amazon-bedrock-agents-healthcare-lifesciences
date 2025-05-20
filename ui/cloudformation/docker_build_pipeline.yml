@@ -200,7 +200,7 @@ Resources:
   TriggerBuildFunctionRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub ${ProjectName}-lambda-trigger-build-function-role
+      # RoleName: !Sub ${ProjectName}-lambda-trigger-build-function-role
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
