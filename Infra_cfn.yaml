@@ -1193,18 +1193,18 @@ Resources:
         GitBranch: !Ref GitBranch
         SubAgentS3Bucket: !Ref S3Bucket
       TimeoutInMinutes: 30
-  StreamlitBuildNestedStack:
-    Type: AWS::CloudFormation::Stack
-    DependsOn: 
-      - AgentBuildNestedStack
-    Properties:
-      TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/packaged_streamlit_build.yaml
-      Parameters:
-        EnvironmentName: !Ref EnvironmentName
-        GitRepoURL: !Ref GithubLink
-        ImageTag: !Ref ImageTag
-        GitBranch: !Ref GitBranch
-      TimeoutInMinutes: 35
+  # StreamlitBuildNestedStack:
+  #   Type: AWS::CloudFormation::Stack
+  #   DependsOn: 
+  #     - AgentBuildNestedStack
+  #   Properties:
+  #     TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/packaged_streamlit_build.yaml
+  #     Parameters:
+  #       EnvironmentName: !Ref EnvironmentName
+  #       GitRepoURL: !Ref GithubLink
+  #       ImageTag: !Ref ImageTag
+  #       GitBranch: !Ref GitBranch
+  #     TimeoutInMinutes: 35
 
   ReactAppCodeBuild:
     Type: AWS::CodeBuild::Project
