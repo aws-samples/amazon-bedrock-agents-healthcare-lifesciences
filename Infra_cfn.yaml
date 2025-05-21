@@ -304,6 +304,7 @@ Resources:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
+              
   S3BucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
