@@ -51,20 +51,6 @@ if [ -f "agent_build.yaml" ]; then
   aws s3 cp "packaged_agent_build.yaml" "s3://${S3_BUCKET}/packaged_agent_build.yaml"
 fi
 
-# Process streamlit app
-if [ -d "streamlitapp" ] && [ -f "streamlitapp/streamlit_build.yaml" ]; then
-  echo "Processing streamlit app..."
-  cd streamlitapp || exit
-  aws cloudformation package \
-    --template-file streamlit_build.yaml \
-    --s3-bucket "${S3_BUCKET}" \
-    --output-template-file "../packaged_streamlit_build.yaml"
-  
-  # Copy to S3
-  aws s3 cp "../packaged_streamlit_build.yaml" "s3://${S3_BUCKET}/packaged_streamlit_build.yaml"
-  cd ..
-fi
-
 # Process agent catalog templates. NOTE: Uses a different S3 destination path!
 cd agents_catalog || exit
 echo "Processing agent templates..."

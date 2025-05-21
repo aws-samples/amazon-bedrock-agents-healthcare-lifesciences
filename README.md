@@ -92,7 +92,6 @@ Depending on your local environment, you may need to provide the full path to yo
 3. Update the GitHub URL in the following configuration files to point to your forked repository:
    - `infra_cfn.yaml`
    - `agent_build.yaml`
-   - `streamlit_build.yaml`
 
 4. For testing purposes, deploy the `infra_cfn.yaml` template to AWS CloudFormation.
 
