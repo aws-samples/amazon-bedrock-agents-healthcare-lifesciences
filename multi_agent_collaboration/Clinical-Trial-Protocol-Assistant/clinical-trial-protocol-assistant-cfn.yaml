@@ -29,7 +29,7 @@ Resources:
   ClinicalStudySearchAgentStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/packaged_clinical-study-agent.yaml
+      TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agent_catalog/packaged_clinical-study-agent.yaml
       Parameters:
         AgentAliasName: "Latest"
         AgentIAMRoleArn: !Ref AgentIAMRoleArn
@@ -40,7 +40,7 @@ Resources:
   ClinicalTrialProtocolGeneratorAgentStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/packaged_clinical-trial-protocol-generator-agent.yaml
+      TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agent_catalog/packaged_clinical-trial-protocol-generator-agent.yaml
       Parameters:
         AgentAliasName: "Latest"
         AgentIAMRoleArn: !Ref AgentIAMRoleArn

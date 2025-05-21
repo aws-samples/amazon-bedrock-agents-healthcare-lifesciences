@@ -13,24 +13,16 @@ Parameters:
     Type: String
     Description: (Optional) Amazon Bedrock Agents service role ARN
     Default: ""
-  # ChartImageBucketName:
-  #   Type: String
-  #   Description: S3 bucket name for storing chart images
-  #   Default: ""
-  # LayersBucketName:
-  #   Type: String
-  #   Description: S3 bucket name for storing Lambda layers
-  #   Default: ""
-  S3CodeBucket:
-    Description: Name of the S3 bucket to use for deployment and run storage
+  ChartImageBucketName:
     Type: String
-    Default: ""
+    Description: S3 bucket name for storing chart images
+  LayersBucketName:
+    Type: String
+    Description: S3 bucket name for storing Lambda layers
 
 Conditions:
   CreateAgentAliasCondition: !Not [!Equals [!Ref AgentAliasName, ""]]
   AgentIAMRoleCondition: !Not [!Equals [!Ref AgentIAMRoleArn, ""]]
-  # AgentS3BucketCondition: !Not [!Equals [!Ref S3CodeBucket, ""]]
-
 
 Resources:
   ####################
@@ -89,7 +81,7 @@ Resources:
                 Action:
                   - s3:PutObject
                   - s3:GetObject
-                Resource: !Sub arn:aws:s3:::${S3CodeBucket}/*
+                Resource: !Sub arn:aws:s3:::${ChartImageBucketName}/*
 
   DrugInformationLambdaRole:
     Type: AWS::IAM::Role
@@ -119,8 +111,8 @@ Resources:
         - python3.11
       Content:
         S3Bucket:
-          Ref: S3CodeBucket
-        S3Key: matplotlib.zip
+          Ref: LayersBucketName
+        S3Key: agent_catalog/matplotlib.zip
 
   #######################
   ##### Lambda Functions #####
@@ -157,7 +149,7 @@ Resources:
         Variables:
           ACTION_GROUP: "clinical_visualizer_action_group"
           LOG_LEVEL: "DEBUG"
-          CHART_IMAGE_BUCKET: !Ref S3CodeBucket
+          CHART_IMAGE_BUCKET: !Ref ChartImageBucketName
       Layers:
         - !Ref MatplotlibLayer
       Code: "action_groups/clinical-visualizer"
@@ -401,4 +393,4 @@ Outputs:
     Value: !GetAtt DrugInformationLambda.Arn
   ChartImageBucketName:
     Description: Name of the S3 bucket for chart images
-    Value: !Ref S3CodeBucket
+    Value: !Ref ChartImageBucketName
