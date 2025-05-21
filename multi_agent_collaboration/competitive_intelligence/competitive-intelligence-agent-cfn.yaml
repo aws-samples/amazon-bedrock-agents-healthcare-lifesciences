@@ -30,7 +30,7 @@ Parameters:
 Conditions:
   CreateAgentAliasCondition: !Not [!Equals [!Ref AgentAliasName, ""]]
   AgentIAMRoleCondition: !Not [!Equals [!Ref AgentIAMRoleArn, ""]]
-  AgentS3BucketCondition: !Not [!Equals [!Ref S3CodeBucket, ""]]
+  AgentS3BucketCondition: !Not [!Equals [!Ref S3Bucket, ""]]
 
 Resources:
   #####################

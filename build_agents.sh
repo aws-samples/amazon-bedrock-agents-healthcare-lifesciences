@@ -65,7 +65,7 @@ if [ -d "streamlitapp" ] && [ -f "streamlitapp/streamlit_build.yaml" ]; then
   cd ..
 fi
 
-# Process agent catalog templates
+# Process agent catalog templates. NOTE: Uses a different S3 destination path!
 cd agents_catalog || exit
 echo "Processing agent templates..."
 for agent_file in $(find . -type f -maxdepth 2 -name "*.yaml"); do
@@ -79,13 +79,13 @@ for agent_file in $(find . -type f -maxdepth 2 -name "*.yaml"); do
       --output-template-file "../packaged_${agent_name}.yaml"
 
     # Copy to S3 immediately after packaging
-    aws s3 cp "../packaged_${agent_name}.yaml" "s3://${S3_BUCKET}/packaged_${agent_name}.yaml"
+    aws s3 cp "../packaged_${agent_name}.yaml" "s3://${S3_BUCKET}/agent_catalog/packaged_${agent_name}.yaml"
     rm "../packaged_${agent_name}.yaml"
   fi
 done
 cd ..
 
-# Process multi-agent catalog templates
+# Process multi-agent catalog templates NOTE: Uses a different S3 destination path!
 cd multi_agent_collaboration || exit
 echo "Processing multi-agent templates..."
 for agent_file in $(find . -type f -name "*.yaml"); do
@@ -99,16 +99,16 @@ for agent_file in $(find . -type f -name "*.yaml"); do
       --output-template-file "../packaged_${agent_name}.yaml"
 
     # Copy to S3 immediately after packaging
-    aws s3 cp "../packaged_${agent_name}.yaml" "s3://${S3_BUCKET}/packaged_${agent_name}.yaml"
+    aws s3 cp "../packaged_${agent_name}.yaml" "s3://${S3_BUCKET}/agent_catalog/packaged_${agent_name}.yaml"
     rm "../packaged_${agent_name}.yaml"
   fi
 done
 cd ..
 
-# Process additional artifacts
+# Process additional artifacts. NOTE: Uses a different S3 destination path!
 echo "Uploading additional artifacts"
-aws s3 cp agents_catalog/10-SEC-10-K-agent/action-groups/SEC-10-K-search/docker/sec-10-k-docker.zip "s3://${S3_BUCKET}/sec-10-k-docker.zip"
-aws s3 cp agents_catalog/15-clinical-study-research-agent/lambdalayers/matplotlib.zip "s3://${S3_BUCKET}/matplotlib.zip"
+aws s3 cp agents_catalog/10-SEC-10-K-agent/action-groups/SEC-10-K-search/docker/sec-10-k-docker.zip "s3://${S3_BUCKET}/agent_catalog/sec-10-k-docker.zip"
+aws s3 cp agents_catalog/15-clinical-study-research-agent/lambdalayers/matplotlib.zip "s3://${S3_BUCKET}/agent_catalog/matplotlib.zip"
 
 
 echo "All templates packaged and uploaded to S3"

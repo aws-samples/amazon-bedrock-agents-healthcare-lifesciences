@@ -1267,13 +1267,13 @@ Resources:
   #       AgentIAMRoleArn: !GetAtt AgentBuildNestedStack.Outputs.AgentRole
   #     TimeoutInMinutes: 35
 
-  WileyOnlineSearchStack:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/packaged_wiley-search-agent-cfn.yaml
-      Parameters:
-        AgentIAMRoleArn: !GetAtt AgentBuildNestedStack.Outputs.AgentRole
-      TimeoutInMinutes: 35
+  # WileyOnlineSearchStack:
+  #   Type: AWS::CloudFormation::Stack
+  #   Properties:
+  #     TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/packaged_wiley-search-agent-cfn.yaml
+  #     Parameters:
+  #       AgentIAMRoleArn: !GetAtt AgentBuildNestedStack.Outputs.AgentRole
+  #     TimeoutInMinutes: 35
 
 Outputs:
   RedshiftClusterEndpoint:
