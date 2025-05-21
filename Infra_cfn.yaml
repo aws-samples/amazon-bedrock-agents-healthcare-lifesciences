@@ -1258,14 +1258,14 @@ Resources:
           - Outputs.ECRRepositoryURI
       TimeoutInMinutes: 35
 
-  ClinicalTrialProtocolSupervisorStack:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/packaged_clinical-trial-protocol-assistant-cfn.yaml
-      Parameters:
-        S3Bucket: !Ref S3Bucket
-        AgentIAMRoleArn: !GetAtt AgentBuildNestedStack.Outputs.AgentRole
-      TimeoutInMinutes: 35
+  # ClinicalTrialProtocolSupervisorStack:
+  #   Type: AWS::CloudFormation::Stack
+  #   Properties:
+  #     TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/packaged_clinical-trial-protocol-assistant-cfn.yaml
+  #     Parameters:
+  #       S3Bucket: !Ref S3Bucket
+  #       AgentIAMRoleArn: !GetAtt AgentBuildNestedStack.Outputs.AgentRole
+  #     TimeoutInMinutes: 35
 
   WileyOnlineSearchStack:
     Type: AWS::CloudFormation::Stack

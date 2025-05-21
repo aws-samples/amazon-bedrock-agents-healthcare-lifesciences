@@ -68,7 +68,7 @@ fi
 # Process agent catalog templates
 cd agents_catalog || exit
 echo "Processing agent templates..."
-for agent_file in $(find . -type f -name "*.yaml"); do
+for agent_file in $(find . -type f -maxdepth 2 -name "*.yaml"); do
   if [ -f "${agent_file}" ]; then
     echo "Found agent file: ${agent_file}"
     agent_name=$(basename "${agent_file}" .yaml)
