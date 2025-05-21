@@ -3,14 +3,15 @@ Description: Creates the SEC 10-K agent for searching using the EDGAR API.
 Parameters:
   AgentAliasName:
     Type: String
-    Default: ""
+    Default: "Latest"
   BedrockModelId:
     Type: String
     Description: The ID of the Foundation Model to use for the Agent
     Default: us.anthropic.claude-3-5-sonnet-20241022-v2:0
   AgentIAMRoleArn:
     Type: String
-    Description: The arn for the agent IAM role
+    Description: (Optional) Amazon Bedrock Agents service role ARN
+    Default: ""
   UserAgentString:
     Type: String
     NoEcho: true
@@ -19,12 +20,15 @@ Parameters:
   S3CodeBucket:
     Description: Name of the S3 bucket to use for deployment and run storage
     Type: String
+    Default: ""
   S3CodeKey:
     Description: S3 key for the zip file containing CodeBuild code
     Type: String
+    Default: "sec-10-k-docker.zip"
   ContainerName:
     Description: Name of the ECR project
     Type: String
+    Default: "sec-10-k-search"
   Timestamp:
     Description: Timestamp for the cfn deployment
     Type: Number
@@ -32,6 +36,9 @@ Parameters:
 
 Conditions:
   CreateAgentAliasCondition: !Not [!Equals [!Ref AgentAliasName, ""]]
+  AgentIAMRoleCondition: !Not [!Equals [!Ref AgentIAMRoleArn, ""]]
+  AgentS3BucketCondition: !Not [!Equals [!Ref S3CodeBucket, ""]]
+
 
 Resources:
   ########################
@@ -44,7 +51,10 @@ Resources:
       TemplateURL: container.yaml
       Parameters:
         S3CodeBucket:
-          Ref: S3CodeBucket
+          "Fn::If":
+            - AgentS3BucketCondition
+            - !Ref S3CodeBucket
+            - "{{resolve:ssm:/s3/agent_build/name:1}}"
         S3CodeKey:
           Ref: S3CodeKey
         Name:
@@ -142,7 +152,7 @@ Resources:
                   query:
                     Description: "Topic or question to search against all available SEC tags in the us-gaap taxonomy"
                     Type: string
-                    Required: True                    
+                    Required: True
               - Name: get_company_concept
                 Description: Get all the us-gaap disclosures for a single company (CIK) and concept (tag), with a separate array of facts for each unit of measure that the company has chosen to disclose (e.g. net profits reported in U.S. dollars and in Canadian dollars).
                 Parameters:
@@ -155,7 +165,12 @@ Resources:
                     Type: string
                     Required: True
       AgentName: "SEC-10-K-Search-Agent"
-      AgentResourceRoleArn: !Ref AgentIAMRoleArn
+      # If an IAM role ARN is passed as a paremter, use it. Otherwise look in SSM parameter store
+      AgentResourceRoleArn:
+        "Fn::If":
+          - AgentIAMRoleCondition
+          - !Ref AgentIAMRoleArn
+          - "{{resolve:ssm:/bedrock/agent/role/arn:1}}"
       AutoPrepare: True
       Description: "Perform financial analysis of a given company using the their SEC 10-K filings in the EDGAR database"
       FoundationModel: !Ref BedrockModelId
@@ -219,4 +234,8 @@ Outputs:
   AgentAliasId:
     Description: Agent Alias ID
     Value: !GetAtt AgentAliasResource.AgentAliasId
+    Condition: CreateAgentAliasCondition
+  AgentAliasArn:
+    Description: Agent Alias ARN
+    Value: !GetAtt AgentAliasResource.AgentAliasArn
     Condition: CreateAgentAliasCondition

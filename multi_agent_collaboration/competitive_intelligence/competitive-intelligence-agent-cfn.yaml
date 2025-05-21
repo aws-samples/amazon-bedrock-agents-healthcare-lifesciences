@@ -3,31 +3,73 @@ Description: Creates the Competitive Intelligence supervisor agent.
 Parameters:
   AgentAliasName:
     Type: String
-    Default: ""
+    Default: "Latest"
   BedrockModelId:
     Type: String
     Description: The ID of the Foundation Model to use for the Agent
     Default: us.anthropic.claude-3-5-sonnet-20241022-v2:0
   AgentIAMRoleArn:
     Type: String
-    Description: The arn for the agent IAM role
-  WebSearchAgentAliasArn:
+    Description: (Optional) Amazon Bedrock Agents service role ARN
+    Default: ""
+  TavilyApiKey:
     Type: String
-    Description: The arn for the web search sub agent
-  SEC10kAgentAliasArn:
+    NoEcho: true
+    Description: Provide TavilyApiKey API Key to utilize /web_search path
+    MinLength: 1
+  USPTOApiKey:
     Type: String
-    Description: The arn for the SE 10-K search sub agent
-  USPTOAgentAliasArn:
+    NoEcho: true
+    Description: Provide USPTO API Key to utilize /search path
+    MinLength: 1
+  S3Bucket:
+    Description: Name of the S3 bucket to use for deployment and run storage
     Type: String
-    Description: The arn for the USPTO search sub agent    
+    Default: ""
 
 Conditions:
   CreateAgentAliasCondition: !Not [!Equals [!Ref AgentAliasName, ""]]
+  AgentIAMRoleCondition: !Not [!Equals [!Ref AgentIAMRoleArn, ""]]
+  AgentS3BucketCondition: !Not [!Equals [!Ref S3CodeBucket, ""]]
 
 Resources:
   #####################
   ##### Agent #####
   ###################
+
+  WebSearchAgentStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ../../agents_catalog/11-Tavily-web-search-agent/web-search-agent-cfn.yaml/web-search-agent-cfn.yaml
+      Parameters:
+        AgentAliasName: "Latest"
+        AgentIAMRoleArn: !Ref AgentIAMRoleArn
+        TavilyApiKey: !Ref TavilyApiKey
+      TimeoutInMinutes: 35
+
+  SEC10kAgentStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ../../agents_catalog/10-SEC-10-K-agent/sec-10-K-agent-cfn.yaml
+      Parameters:
+        AgentAliasName: "Latest"
+        AgentIAMRoleArn: !Ref AgentIAMRoleArn
+        S3CodeBucket:
+          "Fn::If":
+            - AgentS3BucketCondition
+            - !Ref S3Bucket
+            - "{{resolve:ssm:/s3/agent_build/name:1}}"
+      TimeoutInMinutes: 35
+
+  USPTOSearchAgentStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ../../agents_catalog/14-USPTO-search/uspto-search-agent-cfn.yaml
+      Parameters:
+        AgentAliasName: "Latest"
+        AgentIAMRoleArn: !Ref AgentIAMRoleArn
+        USPTOApiKey: !Ref USPTOApiKey
+      TimeoutInMinutes: 35
 
   CompetitiveIntelligenceAgent:
     Type: AWS::Bedrock::Agent
@@ -40,7 +82,7 @@ Resources:
       AgentCollaborators:
         - CollaboratorName: Web-Search-Agent
           AgentDescriptor:
-            AliasArn: !Ref WebSearchAgentAliasArn
+            AliasArn: !GetAtt WebSearchAgentStack.Outputs.AgentAliasArn
           CollaborationInstruction: |
             Use the Web Search Agent to:
               - Find breaking news and recent developments
@@ -54,7 +96,7 @@ Resources:
             Focus searches on content from the past 3-6 months to complement the historical data from SEC filings with current market context.
         - CollaboratorName: SEC-10-K-Search-Agent
           AgentDescriptor:
-            AliasArn: !Ref SEC10kAgentAliasArn
+            AliasArn: !GetAtt SEC10kAgentStack.Outputs.AgentAliasArn
           CollaborationInstruction: |
             Use SEC 10-K Search Agent when you need specific quantitative financial information such as:
               - Revenue figures and year-over-year growth
@@ -64,14 +106,19 @@ Resources:
               - Debt levels and financing activities
         - CollaboratorName: USPTO-Search-Agent
           AgentDescriptor:
-            AliasArn: !Ref USPTOAgentAliasArn
+            AliasArn: !GetAtt USPTOSearchAgentStack.Outputs.AgentAliasArn
           CollaborationInstruction: |
             Use USPTO Search Agent when you need information about patent applications, such as:
               - Recent patent applications on given topic
               - The inventor, filing date, or applicant of a given patent
 
       AgentName: Competitive-Intelligence-Agent
-      AgentResourceRoleArn: !Ref AgentIAMRoleArn
+      # If an IAM role ARN is passed as a paremter, use it. Otherwise look in SSM parameter store
+      AgentResourceRoleArn:
+        "Fn::If":
+          - AgentIAMRoleCondition
+          - !Ref AgentIAMRoleArn
+          - "{{resolve:ssm:/bedrock/agent/role/arn:1}}"
       AutoPrepare: True
       Description: "Analyze business, financial, and patent information using search"
       FoundationModel: !Ref BedrockModelId
@@ -177,4 +224,8 @@ Outputs:
   AgentAliasId:
     Description: Agent Alias ID
     Value: !GetAtt AgentAliasResource.AgentAliasId
+    Condition: CreateAgentAliasCondition
+  AgentAliasArn:
+    Description: Agent Alias ARN
+    Value: !GetAtt AgentAliasResource.AgentAliasArn
     Condition: CreateAgentAliasCondition

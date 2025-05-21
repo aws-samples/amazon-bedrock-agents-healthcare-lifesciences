@@ -1084,6 +1084,14 @@ Resources:
       Value: !Ref S3Bucket
       Description: !Sub SSM parameter for S3 bucket name for ${EnvironmentName}
 
+  AgentBuildS3BucketNameSSMParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /s3/agent_build/name
+      Type: String
+      Value: !Ref S3Bucket
+      Description: "SSM parameter for S3 agent build bucket name"
+
   LambdaExecutionRole:
     Type: AWS::IAM::Role
     Properties:
