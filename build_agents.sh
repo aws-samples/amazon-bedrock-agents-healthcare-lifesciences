@@ -79,7 +79,7 @@ for agent_file in $(find . -type f -maxdepth 2 -name "*.yaml"); do
       --output-template-file "../packaged_${agent_name}.yaml"
 
     # Copy to S3 immediately after packaging
-    aws s3 cp "../packaged_${agent_name}.yaml" "s3://${S3_BUCKET}/agent_catalog/packaged_${agent_name}.yaml"
+    aws s3 cp "../packaged_${agent_name}.yaml" "s3://${S3_BUCKET}/agents_catalog/packaged_${agent_name}.yaml"
     rm "../packaged_${agent_name}.yaml"
   fi
 done
@@ -99,7 +99,7 @@ for agent_file in $(find . -type f -name "*.yaml"); do
       --output-template-file "../packaged_${agent_name}.yaml"
 
     # Copy to S3 immediately after packaging
-    aws s3 cp "../packaged_${agent_name}.yaml" "s3://${S3_BUCKET}/agent_catalog/packaged_${agent_name}.yaml"
+    aws s3 cp "../packaged_${agent_name}.yaml" "s3://${S3_BUCKET}/agents_catalog/packaged_${agent_name}.yaml"
     rm "../packaged_${agent_name}.yaml"
   fi
 done
@@ -107,8 +107,8 @@ cd ..
 
 # Process additional artifacts. NOTE: Uses a different S3 destination path!
 echo "Uploading additional artifacts"
-aws s3 cp agents_catalog/10-SEC-10-K-agent/action-groups/SEC-10-K-search/docker/sec-10-k-docker.zip "s3://${S3_BUCKET}/agent_catalog/sec-10-k-docker.zip"
-aws s3 cp agents_catalog/15-clinical-study-research-agent/lambdalayers/matplotlib.zip "s3://${S3_BUCKET}/agent_catalog/matplotlib.zip"
+aws s3 cp agents_catalog/10-SEC-10-K-agent/action-groups/SEC-10-K-search/docker/sec-10-k-docker.zip "s3://${S3_BUCKET}/agents_catalog/sec-10-k-docker.zip"
+aws s3 cp agents_catalog/15-clinical-study-research-agent/lambdalayers/matplotlib.zip "s3://${S3_BUCKET}/agents_catalog/matplotlib.zip"
 
 
 echo "All templates packaged and uploaded to S3"

@@ -1261,7 +1261,7 @@ Resources:
   ClinicalTrialProtocolSupervisorStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agent_catalog/packaged_clinical-trial-protocol-assistant-cfn.yaml
+      TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents_catalog/packaged_clinical-trial-protocol-assistant-cfn.yaml
       Parameters:
         S3Bucket: !Ref S3Bucket
         AgentIAMRoleArn: !GetAtt AgentBuildNestedStack.Outputs.AgentRole
@@ -1270,7 +1270,7 @@ Resources:
   WileyOnlineSearchStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agent_catalog/packaged_wiley-search-agent-cfn.yaml
+      TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents_catalog/packaged_wiley-search-agent-cfn.yaml
       Parameters:
         AgentIAMRoleArn: !GetAtt AgentBuildNestedStack.Outputs.AgentRole
       TimeoutInMinutes: 35

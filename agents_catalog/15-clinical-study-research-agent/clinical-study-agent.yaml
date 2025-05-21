@@ -112,7 +112,7 @@ Resources:
       Content:
         S3Bucket:
           Ref: LayersBucketName
-        S3Key: agent_catalog/matplotlib.zip
+        S3Key: agents_catalog/matplotlib.zip
 
   #######################
   ##### Lambda Functions #####
