@@ -8,7 +8,13 @@ from datetime import datetime
 REGION = os.environ.get('REGION')
 ACCOUNT_ID = os.environ.get('ACCOUNT_ID')
 BUCKET_NAME = os.environ.get('BUCKET_NAME')
-MODEL_ID = os.environ.get('MODEL_ID', 'anthropic.claude-3-sonnet-20240229-v1:0')
+
+# Model IDs for the agent and validator
+# The model ID for the agent is set to a default value, but can be overridden by an environment variable
+
+MODEL_ID = os.environ.get('MODEL_ID', 'anthropic.claude-3.5-sonnet-20240229-v2:0')
+validator_model_id = "us.amazon.nova-lite-v1:0"
+
 BATCH_JOB_QUEUE = os.environ.get('BATCH_JOB_QUEUE')
 BATCH_JOB_DEFINITION_FEATURE_EXTRACTION = os.environ.get('BATCH_JOB_DEFINITION_FEATURE_EXTRACTION')
 BATCH_JOB_DEFINITION_CLASSIFIER = os.environ.get('BATCH_JOB_DEFINITION_CLASSIFIER')
@@ -128,8 +134,7 @@ def run_validator(text):
         },
         {"text": prompt}]}]
         inf_params = {"maxTokens": 200, "topP": 0.1, "temperature": 0.3}
-        model_id = "us.amazon.nova-lite-v1:0"
-        model_response = bedrock_agent_client.converse(modelId=model_id, messages=messages, inferenceConfig=inf_params)
+        model_response = bedrock_agent_client.converse(modelId=validator_model_id, messages=messages, inferenceConfig=inf_params)
         response_text = model_response['output']['message']['content'][0]['text']
         return response_text
 
