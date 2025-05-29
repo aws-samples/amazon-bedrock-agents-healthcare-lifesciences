@@ -1,5 +1,14 @@
 ## Create an agent for Validating Radiology Report 
-Using Amazon Nova Micro, a multi-modal foundational model (FM) with document understanding capabilities, on Amazon Bedrock, a radiology report validation tool was created. First, we enable the large language model (LLM) to parse the guidance document, allowing it to understand the criteria for appropriate imaging. The radiology reports are contained in a dynamodb table and the guidance documents are stored in an S3 bucket. When the user asks a question about a certain report pertaining the patient id, the agent tries to identify the anatomical structure mentioned in the report and tries to find the closest matching guidance document. It then validates the report against the document. If a matching document is not found, the agent uses Nova's internal knowledge to validate the report. Two LLMs are used in this particular example, which are Claude's Sonnet 3.5v2 and Amazon's Nova Micro Lite. The Sonnet 3.5v2 model handles the agent interaction, while the Nova's Micro Lite model is used for validating the radiology report. Users are welcome to try different models which better suites their particular use cases.
+The AI agent presented here orchestrates the entire radiology report validation workflow on Amazon Bedrock. The agent uses Claude's Sonnet 3.5v2. Its primary responsibilities include:
+
+1. Responding to user queries about patient reports
+2. Retrieving relevant reports from DynamoDB
+3. Coordinating the validation workflow
+4. Interpreting validation results and communicating them to users
+
+When validating a report, the agent sends requests to Nova Micro Lite, which serves as a validation tool. The agent determines which guidance documents from S3 storage are relevant, then directs Nova to analyze these documents and compare them against the radiology report. If the agent cannot locate a suitable guidance document, it instructs Nova to use its built-in medical knowledge for validation.
+
+Throughout this process, the agent maintains context, manages the workflow, and ensures proper communication between the user, the database, and the validation tool. While currently implemented with Sonnet 3.5v2, the agent can be powered by other suitable models based on specific use case requirements.
 
 *This is an example setup. Our implementation is flexible to accomodate specific user workflows.*
 
