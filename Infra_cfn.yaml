@@ -491,7 +491,6 @@ Resources:
 
   TriggerReactAppBuildWaitHandle:
     Type: AWS::CloudFormation::WaitConditionHandle
-    Condition: CreateReactApp
 
   TriggerReactAppBuildWaitCondition:
     Type: AWS::CloudFormation::WaitCondition
@@ -520,7 +519,7 @@ Resources:
         Image: aws/codebuild/amazonlinux2-x86_64-standard:3.0
         EnvironmentVariables:
           - Name: WAIT_CONDITION_HANDLE
-            Value: !Ref TriggerAgentBuildWaitHandle
+            Value: !Ref TriggerReactAppBuildWaitHandle
       Source:
         Type: NO_SOURCE
         BuildSpec: !Sub |
@@ -547,6 +546,8 @@ Resources:
                 - ./scripts/build_react_app.sh
             post_build:
               commands:
+                - JSON_DATA=$( jq -n '{Status:"SUCCESS", Reason:"Configuration Complete","UniqueId":"ReactAppCodeBuild", "Data":"Application has completed configuration."}' )
+                - curl -X PUT -H "Content-Type:" --data-binary "$JSON_DATA" "$WAIT_CONDITION_HANDLE"
                 - echo Build completed on `date`
 
   ReactAppDockerBuildNestedStack:
@@ -612,31 +613,31 @@ Resources:
                   - !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:application-inference-profile/*
                   - !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:guardrail/*
 
-#   ##################################################################
-#   # Biomarker Discovery Agent
-#   ##################################################################
+  #   ##################################################################
+  #   # Biomarker Discovery Agent
+  #   ##################################################################
 
-#   BiomarkerDiscoveryAgentNestedStack:
-#     Type: AWS::CloudFormation::Stack
-#     DependsOn:
-#       - TriggerAgentBuildWaitCondition
-#     Properties:
-#       TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents_catalog/packaged_agent_build.yaml
-#       Parameters:
-#         BedrockModelId: !Ref BedrockModelId
-#         RedshiftDatabaseName: !Ref RedshiftDatabaseName
-#         RedshiftUserName: !Ref RedshiftUserName
-#         RedshiftPassword: !Ref RedshiftPassword
-#         MultiAgentDevMode: "false"
-#         EnvironmentName: env1
-#         GitRepoURL: !Ref GithubLink
-#         GitBranch: !Ref GitBranch
-#         SubAgentS3Bucket: !Ref S3Bucket
-#         VPC: !Ref VPC
-#         PrivateSubnet1: !Ref PrivateSubnet1
-#         PrivateSubnet2: !Ref PrivateSubnet2
-#         AgentRole: !GetAtt AgentRole.Arn
-#       TimeoutInMinutes: 30
+  #   BiomarkerDiscoveryAgentNestedStack:
+  #     Type: AWS::CloudFormation::Stack
+  #     DependsOn:
+  #       - TriggerAgentBuildWaitCondition
+  #     Properties:
+  #       TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents_catalog/packaged_agent_build.yaml
+  #       Parameters:
+  #         BedrockModelId: !Ref BedrockModelId
+  #         RedshiftDatabaseName: !Ref RedshiftDatabaseName
+  #         RedshiftUserName: !Ref RedshiftUserName
+  #         RedshiftPassword: !Ref RedshiftPassword
+  #         MultiAgentDevMode: "false"
+  #         EnvironmentName: env1
+  #         GitRepoURL: !Ref GithubLink
+  #         GitBranch: !Ref GitBranch
+  #         SubAgentS3Bucket: !Ref S3Bucket
+  #         VPC: !Ref VPC
+  #         PrivateSubnet1: !Ref PrivateSubnet1
+  #         PrivateSubnet2: !Ref PrivateSubnet2
+  #         AgentRole: !GetAtt AgentRole.Arn
+  #       TimeoutInMinutes: 30
 
   ##################################################################
   # Clinical Trial Protocol Supervisor
