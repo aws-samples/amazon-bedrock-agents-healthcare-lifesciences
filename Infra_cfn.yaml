@@ -613,31 +613,31 @@ Resources:
                   - !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:application-inference-profile/*
                   - !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:guardrail/*
 
-  #   ##################################################################
-  #   # Biomarker Discovery Agent
-  #   ##################################################################
+  ##################################################################
+  # Biomarker Discovery Agent
+  ##################################################################
 
-  #   BiomarkerDiscoveryAgentNestedStack:
-  #     Type: AWS::CloudFormation::Stack
-  #     DependsOn:
-  #       - TriggerAgentBuildWaitCondition
-  #     Properties:
-  #       TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents_catalog/packaged_agent_build.yaml
-  #       Parameters:
-  #         BedrockModelId: !Ref BedrockModelId
-  #         RedshiftDatabaseName: !Ref RedshiftDatabaseName
-  #         RedshiftUserName: !Ref RedshiftUserName
-  #         RedshiftPassword: !Ref RedshiftPassword
-  #         MultiAgentDevMode: "false"
-  #         EnvironmentName: env1
-  #         GitRepoURL: !Ref GithubLink
-  #         GitBranch: !Ref GitBranch
-  #         SubAgentS3Bucket: !Ref S3Bucket
-  #         VPC: !Ref VPC
-  #         PrivateSubnet1: !Ref PrivateSubnet1
-  #         PrivateSubnet2: !Ref PrivateSubnet2
-  #         AgentRole: !GetAtt AgentRole.Arn
-  #       TimeoutInMinutes: 30
+  BiomarkerDiscoveryAgentNestedStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn:
+      - TriggerAgentBuildWaitCondition
+    Properties:
+      TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents_catalog/packaged_agent_build.yaml
+      Parameters:
+        BedrockModelId: !Ref BedrockModelId
+        RedshiftDatabaseName: !Ref RedshiftDatabaseName
+        RedshiftUserName: !Ref RedshiftUserName
+        RedshiftPassword: !Ref RedshiftPassword
+        MultiAgentDevMode: "false"
+        EnvironmentName: env1
+        GitRepoURL: !Ref GithubLink
+        GitBranch: !Ref GitBranch
+        SubAgentS3Bucket: !Ref S3Bucket
+        VPC: !Ref VPC
+        PrivateSubnet1: !Ref PrivateSubnet1
+        PrivateSubnet2: !Ref PrivateSubnet2
+        AgentRole: !GetAtt AgentRole.Arn
+      TimeoutInMinutes: 30
 
   ##################################################################
   # Clinical Trial Protocol Supervisor

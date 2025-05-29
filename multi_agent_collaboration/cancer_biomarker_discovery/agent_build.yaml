@@ -1805,7 +1805,7 @@ Resources:
     Properties:
       Name: /bedrock/agent/role/arn
       Type: String
-      Value: AgentRole
+      Value: !Ref AgentRole
       Description: Amazon Bedrock Agents Service Role ARN
 
   S3BucketNameSSMParameter:
@@ -2030,7 +2030,7 @@ Resources:
         BedrockModelId: !Ref BedrockModelId
         EnvironmentName: !Ref EnvironmentName
         GitBranch: !Ref GitBranch
-        AgentRole: AgentRole
+        AgentRole: !Ref AgentRole
         SourceS3Bucket: !Ref SubAgentS3Bucket
         Region: !Ref AWS::Region
         AgentS3Bucket: !Ref S3Bucket
@@ -2317,7 +2317,7 @@ Resources:
       Parameters:
         EnvironmentName: !Ref EnvironmentName
         S3Bucket: !Ref S3Bucket
-        AgentRole: AgentRole
+        AgentRole: !Ref AgentRole
         BedrockModelId: !Ref BedrockModelId
       TimeoutInMinutes: 30
 
