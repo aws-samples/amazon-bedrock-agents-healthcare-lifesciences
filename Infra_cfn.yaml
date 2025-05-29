@@ -21,13 +21,6 @@ Parameters:
     Type: String
     Description: "The link to the agent build cloudformation stack"
     Default: "https://github.com/aws-samples/amazon-bedrock-agents-healthcare-lifesciences.git"
-  MultiAgentDevMode:
-    Type: String
-    Description: Select True to use a python notebook to manually create the agents step by step. Select false to auto create all agents.
-    Default: "false"
-    AllowedValues:
-      - "true"
-      - "false"
   GitBranch:
     Type: String
     Description: The github branch to clone
@@ -49,7 +42,7 @@ Parameters:
     Default: ""
   DeployApplication:
     Type: String
-    Description: Select true to deploy the application. Select false to only build the application.
+    Description: Select true to deploy the react application. Select false to only build the application.
     Default: "true"
     AllowedValues:
       - "true"
@@ -621,7 +614,7 @@ Resources:
         RedshiftDatabaseName: !Ref RedshiftDatabaseName
         RedshiftUserName: !Ref RedshiftUserName
         RedshiftPassword: !Ref RedshiftPassword
-        MultiAgentDevMode: !Ref MultiAgentDevMode
+        MultiAgentDevMode: "false"
         EnvironmentName: env1
         GitRepoURL: !Ref GithubLink
         GitBranch: !Ref GitBranch
