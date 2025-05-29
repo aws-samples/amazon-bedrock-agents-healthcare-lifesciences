@@ -601,6 +601,8 @@ Resources:
 
   ClinicalTrialProtocolSupervisorStack:
     Type: AWS::CloudFormation::Stack
+    DependsOn:
+      - TriggerAgentBuildCustomResource
     Properties:
       TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents_catalog/packaged_clinical-trial-protocol-assistant-cfn.yaml
       Parameters:
@@ -611,6 +613,8 @@ Resources:
   CompetitiveIntelligenceSupervisorStack:
     Type: AWS::CloudFormation::Stack
     Condition: CreateCompetitiveIntelAgent
+    DependsOn:
+      - TriggerAgentBuildCustomResource    
     Properties:
       TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents_catalog/packaged_competitive-intelligence-agent-cfn.yaml
       Parameters:
