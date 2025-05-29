@@ -14,10 +14,6 @@ Parameters:
   Name:
     Description: Name to use for the Docker container
     Type: String
-  Timestamp:
-    Description: Timestamp for the cfn deployment
-    Type: Number
-    Default: 9999999999
   WaitForCodeBuild:
     Description: Should CloudFormation wait for CodeBuild?
     Type: String
@@ -321,8 +317,6 @@ Resources:
         Ref: CodeBuildContainerProject
       AssetName:
         Ref: Name
-      Timestamp:
-        Ref: Timestamp
       WaitHandle:
         Ref: CodeBuildWaitHandle
 

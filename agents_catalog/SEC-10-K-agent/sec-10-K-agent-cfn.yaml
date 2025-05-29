@@ -29,10 +29,6 @@ Parameters:
     Description: Name of the ECR project
     Type: String
     Default: "sec-10-k-search"
-  Timestamp:
-    Description: Timestamp for the cfn deployment
-    Type: Number
-    Default: 9999999999
 
 Conditions:
   CreateAgentAliasCondition: !Not [!Equals [!Ref AgentAliasName, ""]]
@@ -59,8 +55,6 @@ Resources:
           Ref: S3CodeKey
         Name:
           Ref: ContainerName
-        Timestamp:
-          Ref: Timestamp
         WaitForCodeBuild: "Y"
 
   SEC10KSearchLambdaRole:

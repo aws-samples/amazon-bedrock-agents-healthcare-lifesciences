@@ -45,7 +45,7 @@ Resources:
         AgentAliasName: "Latest"
         AgentIAMRoleArn: !Ref AgentIAMRoleArn
         TavilyApiKey: !Ref TavilyApiKey
-      TimeoutInMinutes: 35
+      TimeoutInMinutes: 10
 
   SEC10kAgentStack:
     Type: AWS::CloudFormation::Stack
@@ -59,7 +59,7 @@ Resources:
             - AgentS3BucketCondition
             - !Ref S3Bucket
             - "{{resolve:ssm:/s3/agent_build/name:1}}"
-      TimeoutInMinutes: 35
+      TimeoutInMinutes: 10
 
   USPTOSearchAgentStack:
     Type: AWS::CloudFormation::Stack
@@ -69,7 +69,7 @@ Resources:
         AgentAliasName: "Latest"
         AgentIAMRoleArn: !Ref AgentIAMRoleArn
         USPTOApiKey: !Ref USPTOApiKey
-      TimeoutInMinutes: 35
+      TimeoutInMinutes: 10
 
   CompetitiveIntelligenceAgent:
     Type: AWS::Bedrock::Agent
