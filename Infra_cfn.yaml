@@ -261,6 +261,16 @@ Resources:
       ServiceToken: !GetAtt TriggerAgentBuildLambda.Arn
       ProjectName: !Ref AgentCodeBuild
 
+  TriggerAgentBuildWaitHandle:
+    Type: AWS::CloudFormation::WaitConditionHandle
+
+  TriggerAgentBuildWaitCondition:
+    Type: AWS::CloudFormation::WaitCondition
+    Properties:
+      Handle: !Ref TriggerAgentBuildWaitHandle
+      Timeout: 300
+      Count: 1
+
   TriggerReactAppBuildCustomResource:
     Type: Custom::TriggerAgentBuild
     Condition: CreateReactApp
@@ -483,6 +493,10 @@ Resources:
               commands:
                 - echo Build completed on `date`
 
+  ##################################################################
+  # Amazon Bedrock Agents Service Role
+  ##################################################################
+
   AgentRole:
     Type: AWS::IAM::Role
     DeletionPolicy: Retain
@@ -513,6 +527,10 @@ Resources:
                   - !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/*
                   - !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:application-inference-profile/*
                   - !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:guardrail/*
+
+  ##################################################################
+  # React Application
+  ##################################################################
 
   ReactAppCodeBuild:
     Type: AWS::CodeBuild::Project
@@ -559,10 +577,6 @@ Resources:
               commands:
                 - echo Build completed on `date`
 
-  ##################################################################
-  # React Application
-  ##################################################################
-
   ReactAppDockerBuildNestedStack:
     Type: AWS::CloudFormation::Stack
     Condition: CreateReactApp
@@ -580,8 +594,6 @@ Resources:
   ReactAppEcsBuildNestedStack:
     Type: AWS::CloudFormation::Stack
     Condition: CreateReactApp
-    DependsOn:
-      - ReactAppDockerBuildNestedStack
     Properties:
       TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/ui/ecs.yml
       Parameters:
@@ -601,8 +613,7 @@ Resources:
   BiomarkerDiscoveryAgentNestedStack:
     Type: AWS::CloudFormation::Stack
     DependsOn:
-      - TriggerAgentBuildCustomResource
-      - CleanupCustomResource
+      - TriggerAgentBuildWaitCondition
     Properties:
       TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents_catalog/packaged_agent_build.yaml
       Parameters:
@@ -628,7 +639,7 @@ Resources:
   ClinicalTrialProtocolSupervisorStack:
     Type: AWS::CloudFormation::Stack
     DependsOn:
-      - TriggerAgentBuildCustomResource
+      - TriggerAgentBuildWaitCondition
     Properties:
       TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents_catalog/packaged_clinical-trial-protocol-assistant-cfn.yaml
       Parameters:
@@ -644,7 +655,7 @@ Resources:
     Type: AWS::CloudFormation::Stack
     Condition: CreateCompetitiveIntelAgent
     DependsOn:
-      - TriggerAgentBuildCustomResource
+      - TriggerAgentBuildWaitCondition
     Properties:
       TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents_catalog/packaged_competitive-intelligence-agent-cfn.yaml
       Parameters:
