@@ -475,7 +475,7 @@ Resources:
       - TriggerAgentBuildCustomResource
       - CleanupCustomResource
     Properties:
-      TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/packaged_agent_build.yaml
+      TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents_catalog/packaged_agent_build.yaml
       Parameters:
         BedrockModelId: !Ref BedrockModelId
         RedshiftDatabaseName: !Ref RedshiftDatabaseName
