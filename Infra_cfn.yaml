@@ -469,6 +469,37 @@ Resources:
               commands:
                 - echo Build completed on `date`
 
+  AgentRole:
+    Type: AWS::IAM::Role
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - bedrock.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: BedrockInvokeModel
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:*
+                Resource:
+                  - !Sub arn:${AWS::Partition}:bedrock:*::foundation-model/*
+                  - !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:knowledge-base/*
+                  - !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:agent-alias/*
+                  - !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*
+                  - !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/*
+                  - !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:application-inference-profile/*
+                  - !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:guardrail/*                
+
   AgentBuildNestedStack:
     Type: AWS::CloudFormation::Stack
     DependsOn:
@@ -482,13 +513,14 @@ Resources:
         RedshiftUserName: !Ref RedshiftUserName
         RedshiftPassword: !Ref RedshiftPassword
         MultiAgentDevMode: !Ref MultiAgentDevMode
-        EnvironmentName: toolkit
+        EnvironmentName: env1
         GitRepoURL: !Ref GithubLink
         GitBranch: !Ref GitBranch
         SubAgentS3Bucket: !Ref S3Bucket
         VPC: !Ref VPC
         PrivateSubnet1: !Ref PrivateSubnet1
         PrivateSubnet2: !Ref PrivateSubnet2
+        AgentRole: !GetAtt AgentRole.Arn
       TimeoutInMinutes: 30
 
   ReactAppCodeBuild:
@@ -572,7 +604,7 @@ Resources:
     Properties:
       TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents_catalog/packaged_clinical-trial-protocol-assistant-cfn.yaml
       Parameters:
-        AgentIAMRoleArn: !GetAtt AgentBuildNestedStack.Outputs.AgentRole
+        AgentIAMRoleArn: !GetAtt AgentRole.Arn
         S3Bucket: !Ref S3Bucket
       TimeoutInMinutes: 35
 
@@ -584,14 +616,11 @@ Resources:
       Parameters:
         TavilyApiKey: !Ref TavilyApiKey
         USPTOApiKey: !Ref USPTOApiKey
-        AgentIAMRoleArn: !GetAtt AgentBuildNestedStack.Outputs.AgentRole
+        AgentIAMRoleArn: !GetAtt AgentRole.Arn
         S3Bucket: !Ref S3Bucket
       TimeoutInMinutes: 35
 
 Outputs:
-  RedshiftClusterEndpoint:
-    Description: Redshift Cluster Endpoint
-    Value: !GetAtt AgentBuildNestedStack.Outputs.RedshiftClusterEndpoint
   ReactAppExternalURL:
     Condition: CreateReactApp
     Value:
@@ -600,8 +629,5 @@ Outputs:
         - Outputs.ExternalUrl
     Description: ALB DNS for the React App
   AgentRole:
-    Value:
-      Fn::GetAtt:
-        - AgentBuildNestedStack
-        - Outputs.AgentRole
+    Value: !GetAtt AgentRole.Arn
     Description: Amazon Bedrock Agents Service Role ARN

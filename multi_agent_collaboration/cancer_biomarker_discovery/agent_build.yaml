@@ -66,6 +66,9 @@ Parameters:
   PrivateSubnet2:
     Type: AWS::EC2::Subnet::Id
     Description: Private subnet 2 for Redshift
+  AgentRole:
+    Type: String
+    Description: ARN for the shared Amazon Bedrock execution role
   # SecurityGroup:
   #   Type: AWS::EC2::SecurityGroup::Id
   #   Description: Security group for Redshift
@@ -1797,44 +1800,12 @@ Resources:
       ServiceToken: !GetAtt TriggerBuildLambda.Arn
       ProjectName: !Ref DataRetrievalLogic
 
-  AgentRole:
-    Type: AWS::IAM::Role
-    DeletionPolicy: Retain
-    UpdateReplacePolicy: Retain
-    Properties:
-      # RoleName: !Sub AmazonBedrockExecutionRoleForAgents_${AWS::AccountId}
-      AssumeRolePolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - bedrock.amazonaws.com
-            Action:
-              - sts:AssumeRole
-      Policies:
-        - PolicyName: BedrockInvokeModel
-          PolicyDocument:
-            Version: 2012-10-17
-            Statement:
-              - Effect: Allow
-                Action:
-                  - bedrock:*
-                Resource:
-                  - !Sub arn:${AWS::Partition}:bedrock:*::foundation-model/*
-                  - !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:knowledge-base/*
-                  - !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:agent-alias/*
-                  - !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*
-                  - !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/*
-                  - !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:application-inference-profile/*
-                  - !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:guardrail/*
-
   AgentRoleARNParameter:
     Type: AWS::SSM::Parameter
     Properties:
       Name: /bedrock/agent/role/arn
       Type: String
-      Value: !GetAtt AgentRole.Arn
+      Value: AgentRole
       Description: Amazon Bedrock Agents Service Role ARN
 
   S3BucketNameSSMParameter:
@@ -2059,7 +2030,7 @@ Resources:
         BedrockModelId: !Ref BedrockModelId
         EnvironmentName: !Ref EnvironmentName
         GitBranch: !Ref GitBranch
-        AgentRole: !GetAtt AgentRole.Arn
+        AgentRole: AgentRole
         SourceS3Bucket: !Ref SubAgentS3Bucket
         Region: !Ref AWS::Region
         AgentS3Bucket: !Ref S3Bucket
@@ -2346,15 +2317,11 @@ Resources:
       Parameters:
         EnvironmentName: !Ref EnvironmentName
         S3Bucket: !Ref S3Bucket
-        AgentRole: !GetAtt AgentRole.Arn
+        AgentRole: AgentRole
         BedrockModelId: !Ref BedrockModelId
       TimeoutInMinutes: 30
 
 Outputs:
-  AgentRole:
-    Value:
-      Fn::GetAtt: AgentRole.Arn
-    Description: Amazon Bedrock Agents Service Role ARN
   RedshiftClusterEndpoint:
     Description: Redshift Cluster Endpoint
     Value: !GetAtt RedshiftCluster.Endpoint.Address
