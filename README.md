@@ -87,7 +87,7 @@ The multi-agent solution overview of [Cancer biomarker discovery](multi_agent_co
 
 ## Model Context Protocol (MCP)
 
-The [Tavily web search](agents_catalog/11-Tavily-web-search-agent/README.md) and [USPTO search](agents_catalog/14-USPTO-search/README.md) tools can be added to your MCP client of choice using the [AWS Lambda MCP Server](https://awslabs.github.io/mcp/servers/lambda-mcp-server/). After installing one of both of them, you can add them to your MCP client configuration:
+The [Tavily web search](agents_catalog/Tavily-web-search-agent/README.md) and [USPTO search](agents_catalog/USPTO-search/README.md) tools can be added to your MCP client of choice using the [AWS Lambda MCP Server](https://awslabs.github.io/mcp/servers/lambda-mcp-server/). After installing one of both of them, you can add them to your MCP client configuration:
 
 ```json
 "hcls-agents": {
