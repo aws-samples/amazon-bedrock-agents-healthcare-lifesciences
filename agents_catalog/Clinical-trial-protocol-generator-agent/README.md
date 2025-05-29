@@ -38,9 +38,9 @@ The agent is deployed using AWS CloudFormation. The template creates all necessa
 
 `aws s3 mb s3://YOUR_S3_BUCKET_NAME`
 
-2. Navigate to the `16-Clinical-trial-protocol-generator-agent` folder.
+2. Navigate to the `Clinical-trial-protocol-generator-agent` folder.
 
-`cd 16-Clinical-trial-protocol-generator-agent`
+`cd Clinical-trial-protocol-generator-agent`
 
 ```bash
 export BUCKET_NAME="<REPLACE>"

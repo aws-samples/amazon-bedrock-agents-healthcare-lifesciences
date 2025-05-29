@@ -83,9 +83,9 @@ Answer questions using up-to-date information retrieved by the [Tavily Search AP
 
 `aws s3 mb s3://YOUR_S3_BUCKET_NAME`
 
-4. Navigate to the `11-Tavily-web-search-agent` folder
+4. Navigate to the `Tavily-web-search-agent` folder
 
-`cd agents_catalog/11-Tavily-web-search-agent`
+`cd agents_catalog/Tavily-web-search-agent`
 
 
 5. Package and deploy the agent template

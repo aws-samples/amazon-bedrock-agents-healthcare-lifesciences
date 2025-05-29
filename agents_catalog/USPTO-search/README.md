@@ -70,8 +70,8 @@ Search the USPTO Open Data Portal. Please note that this agent requires an [Open
 
 `aws s3 mb s3://YOUR_S3_BUCKET_NAME`
 
-3. Navigate to the `14-USPTO-search` folder
-14-USPTO-search14-JSL-medical-reasoning`
+3. Navigate to the `USPTO-search` folder
+USPTO-search14-JSL-medical-reasoning`
 
 5. Package and deploy the agent template
 
