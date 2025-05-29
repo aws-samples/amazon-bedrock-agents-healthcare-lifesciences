@@ -60,9 +60,10 @@ Conditions:
     !Not [!Or [!Equals [!Ref TavilyApiKey, ""], !Equals [!Ref USPTOApiKey, ""]]]
   CreateReactApp: !Equals [!Ref DeployApplication, "true"]
 
-
 Resources:
+  ##################################################################
   # VPC
+  ##################################################################
   VPC:
     Type: AWS::EC2::VPC
     Properties:
@@ -72,6 +73,7 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub ${AWS::StackName}-VPC
+
   PrivateSubnet1:
     Type: AWS::EC2::Subnet
     Properties:
@@ -84,6 +86,7 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub ${AWS::StackName}-PrivateSubnet1
+
   PrivateSubnet2:
     Type: AWS::EC2::Subnet
     Properties:
@@ -96,6 +99,7 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub ${AWS::StackName}-PrivateSubnet2
+
   PublicSubnet1:
     Type: AWS::EC2::Subnet
     Properties:
@@ -109,6 +113,7 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub ${AWS::StackName}-PublicSubnet1
+
   PublicSubnet2:
     Type: AWS::EC2::Subnet
     Properties:
@@ -122,15 +127,18 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub ${AWS::StackName}-PublicSubnet2
+
   NatGatewayEIP:
     Type: AWS::EC2::EIP
     Properties:
       Domain: vpc
+
   NatGateway:
     Type: AWS::EC2::NatGateway
     Properties:
       AllocationId: !GetAtt NatGatewayEIP.AllocationId
       SubnetId: !Ref PublicSubnet1
+
   PrivateRouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
@@ -180,16 +188,18 @@ Resources:
       SubnetId: !Ref PublicSubnet1
       RouteTableId: !Ref PublicRouteTable
 
-  # Internet Gateway
   InternetGateway:
     Type: AWS::EC2::InternetGateway
 
-  # VPC Gateway Attachment
   VPCGatewayAttachment:
     Type: AWS::EC2::VPCGatewayAttachment
     Properties:
       VpcId: !Ref VPC
       InternetGatewayId: !Ref InternetGateway
+
+  ##################################################################
+  # S3
+  ##################################################################
 
   S3Bucket:
     Type: AWS::S3::Bucket
@@ -240,6 +250,10 @@ Resources:
             Resource:
               - !Sub arn:aws:s3:::${S3Bucket}
               - !Sub arn:aws:s3:::${S3Bucket}/*
+
+  ##################################################################
+  # Custom Resources to Package Agent Templates
+  ##################################################################
 
   TriggerAgentBuildCustomResource:
     Type: Custom::TriggerAgentBuild
@@ -498,30 +512,7 @@ Resources:
                   - !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*
                   - !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/*
                   - !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:application-inference-profile/*
-                  - !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:guardrail/*                
-
-  AgentBuildNestedStack:
-    Type: AWS::CloudFormation::Stack
-    DependsOn:
-      - TriggerAgentBuildCustomResource
-      - CleanupCustomResource
-    Properties:
-      TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents_catalog/packaged_agent_build.yaml
-      Parameters:
-        BedrockModelId: !Ref BedrockModelId
-        RedshiftDatabaseName: !Ref RedshiftDatabaseName
-        RedshiftUserName: !Ref RedshiftUserName
-        RedshiftPassword: !Ref RedshiftPassword
-        MultiAgentDevMode: !Ref MultiAgentDevMode
-        EnvironmentName: env1
-        GitRepoURL: !Ref GithubLink
-        GitBranch: !Ref GitBranch
-        SubAgentS3Bucket: !Ref S3Bucket
-        VPC: !Ref VPC
-        PrivateSubnet1: !Ref PrivateSubnet1
-        PrivateSubnet2: !Ref PrivateSubnet2
-        AgentRole: !GetAtt AgentRole.Arn
-      TimeoutInMinutes: 30
+                  - !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:guardrail/*
 
   ReactAppCodeBuild:
     Type: AWS::CodeBuild::Project
@@ -568,6 +559,10 @@ Resources:
               commands:
                 - echo Build completed on `date`
 
+  ##################################################################
+  # React Application
+  ##################################################################
+
   ReactAppDockerBuildNestedStack:
     Type: AWS::CloudFormation::Stack
     Condition: CreateReactApp
@@ -599,6 +594,37 @@ Resources:
           - Outputs.ECRRepositoryURI
       TimeoutInMinutes: 35
 
+  ##################################################################
+  # Biomarker Discovery Agent
+  ##################################################################
+
+  BiomarkerDiscoveryAgentNestedStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn:
+      - TriggerAgentBuildCustomResource
+      - CleanupCustomResource
+    Properties:
+      TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents_catalog/packaged_agent_build.yaml
+      Parameters:
+        BedrockModelId: !Ref BedrockModelId
+        RedshiftDatabaseName: !Ref RedshiftDatabaseName
+        RedshiftUserName: !Ref RedshiftUserName
+        RedshiftPassword: !Ref RedshiftPassword
+        MultiAgentDevMode: !Ref MultiAgentDevMode
+        EnvironmentName: env1
+        GitRepoURL: !Ref GithubLink
+        GitBranch: !Ref GitBranch
+        SubAgentS3Bucket: !Ref S3Bucket
+        VPC: !Ref VPC
+        PrivateSubnet1: !Ref PrivateSubnet1
+        PrivateSubnet2: !Ref PrivateSubnet2
+        AgentRole: !GetAtt AgentRole.Arn
+      TimeoutInMinutes: 30
+
+  ##################################################################
+  # Clinical Trial Protocol Supervisor
+  ##################################################################
+
   ClinicalTrialProtocolSupervisorStack:
     Type: AWS::CloudFormation::Stack
     DependsOn:
@@ -610,11 +636,15 @@ Resources:
         S3Bucket: !Ref S3Bucket
       TimeoutInMinutes: 35
 
+  ##################################################################
+  # Competitive Intelligance Supervisor
+  ##################################################################
+
   CompetitiveIntelligenceSupervisorStack:
     Type: AWS::CloudFormation::Stack
     Condition: CreateCompetitiveIntelAgent
     DependsOn:
-      - TriggerAgentBuildCustomResource    
+      - TriggerAgentBuildCustomResource
     Properties:
       TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents_catalog/packaged_competitive-intelligence-agent-cfn.yaml
       Parameters:
