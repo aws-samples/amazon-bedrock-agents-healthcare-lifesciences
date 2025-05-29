@@ -230,19 +230,19 @@ Resources:
             Resource:
               - !Sub arn:aws:s3:::${S3Bucket}
               - !Sub arn:aws:s3:::${S3Bucket}/*
-          - Sid: AllowRedshiftLogging
-            Effect: Allow
-            Principal:
-              Service: redshift.amazonaws.com
-            Action:
-              - s3:PutObject
-              - s3:GetBucketLocation
-              - s3:ListBucket
-              - s3:GetBucketAcl
-              - s3:PutBucketAcl
-            Resource:
-              - !Sub arn:aws:s3:::${S3Bucket}
-              - !Sub arn:aws:s3:::${S3Bucket}/*
+          # - Sid: AllowRedshiftLogging
+          #   Effect: Allow
+          #   Principal:
+          #     Service: redshift.amazonaws.com
+          #   Action:
+          #     - s3:PutObject
+          #     - s3:GetBucketLocation
+          #     - s3:ListBucket
+          #     - s3:GetBucketAcl
+          #     - s3:PutBucketAcl
+          #   Resource:
+          #     - !Sub arn:aws:s3:::${S3Bucket}
+          #     - !Sub arn:aws:s3:::${S3Bucket}/*
 
   ##################################################################
   # Custom Resources to Package Agent Templates

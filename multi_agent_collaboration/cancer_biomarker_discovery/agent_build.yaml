@@ -92,6 +92,60 @@ Conditions:
 
 Resources:
 
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${EnvironmentName}-${AWS::AccountId}-${AWS::Region}-agent-build-bucket"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      LoggingConfiguration:
+        DestinationBucketName: !Ref LogBucket
+        LogFilePrefix: "access-logs/"
+
+  #Forces SSL/TLS encryption for all S3 operations on the S3 Bucket
+  S3BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref S3Bucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: ForceSSLOnlyAccess
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource:
+              - !Sub "${S3Bucket.Arn}"
+              - !Sub "${S3Bucket.Arn}/*"
+            Condition:
+              Bool:
+                "aws:SecureTransport": false
+          - Sid: AllowCloudFormationAccess
+            Effect: Allow
+            Principal:
+              Service: cloudformation.amazonaws.com
+            Action:
+              - s3:GetObject
+              - s3:ListBucket
+            Resource:
+              - !Sub "${S3Bucket.Arn}"
+              - !Sub "${S3Bucket.Arn}/*"
+          - Sid: AllowRedshiftLogging
+            Effect: Allow
+            Principal:
+              Service: redshift.amazonaws.com
+            Action:
+              - s3:PutObject
+              - s3:GetBucketLocation
+              - s3:ListBucket
+              - s3:GetBucketAcl
+              - s3:PutBucketAcl
+            Resource:
+              - !Sub arn:aws:s3:::${S3Bucket}
+              - !Sub arn:aws:s3:::${S3Bucket}/*
+
   RedshiftClusterParameterGroup:
     Type: AWS::Redshift::ClusterParameterGroup
     Properties:
@@ -935,46 +989,7 @@ Resources:
       S3BucketName: !Ref S3Bucket
       LogBucketName: !Ref LogBucket
 
-  S3Bucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: !Sub "${EnvironmentName}-${AWS::AccountId}-${AWS::Region}-agent-build-bucket"
-      BucketEncryption:
-        ServerSideEncryptionConfiguration:
-          - ServerSideEncryptionByDefault:
-              SSEAlgorithm: AES256
-      LoggingConfiguration:
-        DestinationBucketName: !Ref LogBucket
-        LogFilePrefix: "access-logs/"
-
-  #Forces SSL/TLS encryption for all S3 operations on the S3 Bucket
-  S3BucketPolicy:
-    Type: AWS::S3::BucketPolicy
-    Properties:
-      Bucket: !Ref S3Bucket
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Sid: ForceSSLOnlyAccess
-            Effect: Deny
-            Principal: "*"
-            Action: "s3:*"
-            Resource:
-              - !Sub "${S3Bucket.Arn}"
-              - !Sub "${S3Bucket.Arn}/*"
-            Condition:
-              Bool:
-                "aws:SecureTransport": false
-          - Sid: AllowCloudFormationAccess
-            Effect: Allow
-            Principal:
-              Service: cloudformation.amazonaws.com
-            Action:
-              - s3:GetObject
-              - s3:ListBucket
-            Resource:
-              - !Sub "${S3Bucket.Arn}"
-              - !Sub "${S3Bucket.Arn}/*"
+  
 
   LogBucket:
     Type: AWS::S3::Bucket
