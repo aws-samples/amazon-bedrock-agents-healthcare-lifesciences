@@ -553,8 +553,7 @@ Resources:
     Type: AWS::CloudFormation::Stack
     Condition: CreateReactApp
     DependsOn:
-      - ReactAppCodeBuild
-      - TriggerReactAppBuildCustomResource
+      - TriggerReactAppBuildWaitCondition
     Properties:
       TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/ui/docker_build_pipeline.yml
       Parameters:
@@ -650,9 +649,10 @@ Resources:
     Properties:
       TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents_catalog/packaged_clinical-trial-protocol-assistant-cfn.yaml
       Parameters:
+        BedrockModelId: !Ref BedrockModelId
         AgentIAMRoleArn: !GetAtt AgentRole.Arn
         S3Bucket: !Ref S3Bucket
-      TimeoutInMinutes: 35
+      TimeoutInMinutes: 10
 
   ##################################################################
   # Competitive Intelligance Supervisor
@@ -666,11 +666,12 @@ Resources:
     Properties:
       TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents_catalog/packaged_competitive-intelligence-agent-cfn.yaml
       Parameters:
+        BedrockModelId: !Ref BedrockModelId
         TavilyApiKey: !Ref TavilyApiKey
         USPTOApiKey: !Ref USPTOApiKey
         AgentIAMRoleArn: !GetAtt AgentRole.Arn
         S3Bucket: !Ref S3Bucket
-      TimeoutInMinutes: 35
+      TimeoutInMinutes: 10
 
 Outputs:
   ReactAppExternalURL:
