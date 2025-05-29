@@ -477,11 +477,11 @@ Resources:
                 - echo Cloning the repository
                 - git clone -b $GIT_BRANCH --single-branch $GITHUB_LINK repo
                 - cd repo
-                - chmod +x build_agents.sh
+                - chmod +x scripts/build_agents.sh
             build:
               commands:
                 - echo Processing agent templates
-                - ./build_agents.sh
+                - ./scripts/build_agents.sh
             post_build:
               commands:
                 - echo Build completed on `date`
@@ -560,12 +560,12 @@ Resources:
                 - echo Cloning the repository
                 - git clone -b $GIT_BRANCH --single-branch $GITHUB_LINK repo
                 - cd repo
-                - chmod +x build_react_app.sh
+                - chmod +x scripts/build_react_app.sh
             build:
               commands:
                 - echo Processing react app templates
                 - ls -la
-                - ./build_react_app.sh
+                - ./scripts/build_react_app.sh
             post_build:
               commands:
                 - echo Build completed on `date`
