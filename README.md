@@ -67,6 +67,8 @@ In most cases, you may leave the default template parameters unchanged. However,
 - **TavilyApiKey**: API key for the Tavily web search API. Required to deploy the Tavily Web Search and Competitive Intelligence Supervisor agents. Please visit [tavily.com](https://tavily.com/) to create a account and generate an API key.
 - **USPTOApiKey**: API key for the US Patent and Trademark Office (USPTO) Open Data Portal. Required to deploy the USPTO Search and Competitive Intelligence Supervisor agents. Please visit the [USPO Open Data Portal](https://data.uspto.gov/apis/getting-started) to create a account and generate an API key.
 
+You may also deploy the CloudFormation template using the AWS CLI using a command similar to `aws cloudformation deploy --template-file "infra_cfn.yaml" ...`
+
 ### 4. Access the toolkit application
 
 1. Navigate to AWS CloudFormation via AWS Console search
