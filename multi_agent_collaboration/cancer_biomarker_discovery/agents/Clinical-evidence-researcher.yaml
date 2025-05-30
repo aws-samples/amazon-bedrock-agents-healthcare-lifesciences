@@ -77,7 +77,7 @@ Resources:
       Code:
         S3Bucket: !Ref S3Bucket
         S3Key: pubmed-lambda-function.zip
-      Runtime: python3.11
+      Runtime: python3.12
       Timeout: 30
       MemorySize: 128
 

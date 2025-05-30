@@ -54,7 +54,7 @@ Resources:
     Properties:
       FunctionName: SearchUSPTO
       Description: Search for USPTO patent information using { 'search_query' } parameter (e.g. 'Cancer treatment'). Accepts optional { 'days' } parameter, representing the number of days in the past to search (e.g. '100').
-      Runtime: python3.13
+      Runtime: python3.12
       Handler: index.lambda_handler
       Role: !GetAtt USPTOSearchLambdaRole.Arn
       Timeout: 30

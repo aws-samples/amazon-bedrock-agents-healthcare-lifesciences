@@ -438,7 +438,7 @@ Resources:
                   print(e)
                   send_response(event, context, 'FAILED', {'Error': str(e)})
 
-      Runtime: python3.9
+      Runtime: python3.12
       Timeout: 900
       MemorySize: 3008
       Layers:
@@ -825,7 +825,7 @@ Resources:
             except Exception as e:
                 send_response(event, context, 'FAILED', {'Status': 'Failure', 'Error': str(e)})
                 print(e)
-      Runtime: "python3.9"
+      Runtime: python3.12
       Timeout: 900
       MemorySize: 512
       Layers:
@@ -1747,7 +1747,7 @@ Resources:
                       cfnresponse.send(event, context, cfnresponse.FAILED, {"Error": str(e)})
               else:
                   cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
-      Runtime: python3.8
+      Runtime: python3.12
       Timeout: 900
 
   TriggerBuildLambdaRole:

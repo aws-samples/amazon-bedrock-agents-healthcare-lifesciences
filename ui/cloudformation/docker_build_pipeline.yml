@@ -140,7 +140,7 @@ Resources:
   TriggerBuildFunction:
     Type: AWS::Lambda::Function
     Properties:
-      Runtime: python3.9
+      Runtime: python3.12
       Handler: index.handler
       FunctionName: !Sub ${ProjectName}-lambda-trigger-build
       Role: !GetAtt TriggerBuildFunctionRole.Arn
