@@ -672,6 +672,16 @@ Resources:
         S3Bucket: !Ref S3Bucket
       TimeoutInMinutes: 10
 
+  WileyOnlineSearchStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn:
+      - TriggerAgentBuildWaitCondition
+    Properties:
+      TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents_catalog/packaged_wiley-search-agent-cfn.yaml
+      Parameters:
+        AgentIAMRoleArn: !GetAtt AgentRole.Arn
+      TimeoutInMinutes: 10      
+
 #################################################################################################################################################
 #################################################################################################################################################
 
