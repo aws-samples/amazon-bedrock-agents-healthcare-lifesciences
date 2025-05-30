@@ -123,6 +123,10 @@ Depending on your local environment, you may need to provide the full path to yo
 
 4. For testing purposes, deploy the `infra_cfn.yaml` template to AWS CloudFormation.
 
+### AI-Guided Development
+
+We have provided a `CONTEXT.md` file to assist with AI-guided updates to this project.
+
 ### Submitting a Pull Request
 
 **Follow the guidelines to contribute a new agent to the catalog here: [add-a-new-agent](https://aws-samples.github.io/amazon-bedrock-agents-healthcare-lifesciences/guides/)

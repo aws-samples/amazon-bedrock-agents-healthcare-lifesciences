@@ -1,141 +1,134 @@
 # CONTEXT.md
 
-This file provides guidance to software development tools when working with code in this repository.
+This file provides guidance to AI-guided software development tools like Amazon Q Developer (aws.amazon.com/q/developer/build) or Claude Code (claude.ai/code) when working with code in this repository.
 
-## Repository Overview
+## Project Overview
 
-This is a healthcare and life sciences AI agents toolkit built on AWS Bedrock, providing specialized agents for drug research, clinical trials, and commercialization workflows. The repository includes individual agents, multi-agent collaboration frameworks, and a React UI for interaction.
+Amazon Bedrock Agents Healthcare & Life Sciences Toolkit - A comprehensive collection of AI agents built on AWS Bedrock for healthcare workflows including drug research, clinical trials, and commercialization. The project features 13+ specialized agents and multi-agent collaboration frameworks.
 
 ## Architecture
 
 ### Core Components
 
-- **`agents_catalog/`** - Individual specialized agents (biomarker analysis, medical imaging, clinical evidence research, etc.)
-- **`multi_agent_collaboration/`** - Supervisor agents that orchestrate multiple sub-agents for complex workflows
-- **`ui/`** - Next.js React application for agent interaction
-- **`docs/`** - Astro-based documentation site
+- **`agents_catalog/`** - Individual specialized agents (biomarker analysis, clinical evidence, pathology, etc.)
+- **`multi_agent_collaboration/`** - Supervisor agents orchestrating multiple sub-agents for complex workflows
+- **`ui/`** - Next.js React application with chat interfaces for agent interaction
+- **`docs/`** - Astro-based documentation site with Starlight theme
 
 ### Agent Architecture Pattern
 
-All agents follow a consistent pattern:
+All agents follow consistent structure:
 
 - Lambda-based action groups for specific capabilities
-- OpenAPI schema definitions for standardized API interactions
 - CloudFormation templates for infrastructure deployment
 - IAM roles with least-privilege access
-- Jupyter notebooks for development and testing
+- Jupyter notebooks for testing and demonstration
 
-## Development Commands
+### Multi-Agent Supervisor Pattern
+
+- Supervisor agents orchestrate specialized sub-agents
+- Shared knowledge bases via Amazon OpenSearch and Redshift
+- Asynchronous workflows for complex processing (imaging, pathology)
+
+## Common Development Commands
 
 ### Frontend Development
 
 ```bash
-# React UI
-cd ui/
-npm install
-npm run dev          # Development server with Turbo
+# React UI (ui/)
+npm run dev          # Development server with Turbopack
 npm run build        # Production build
 npm run start        # Production server
 npm run lint         # ESLint
 
-# Documentation site
-cd docs/
-npm install
+# Documentation site (docs/)
 npm run dev          # Astro dev server
 npm run build        # Static site build
 npm run preview      # Preview build
 ```
 
-### Infrastructure Deployment
+### Infrastructure and Deployment
 
 ```bash
-# Build and package all agents (requires S3_BUCKET env var)
+# Build and package all agents
 export S3_BUCKET=your-bucket-name
 ./scripts/build_agents.sh
 
 # Build React app artifacts
 ./scripts/build_react_app.sh
 
-# Individual agent deployment example
-cd agents_catalog/Clinical-trial-protocol-generator-agent/
+# Individual agent deployment
+cd agents_catalog/[agent-name]/
 ./deploy.sh BUCKET_NAME STACK_NAME REGION ROLE_ARN
-```
 
-### CloudFormation Operations
-
-```bash
-# Package templates
-aws cloudformation package \
-  --template-file template.yaml \
-  --s3-bucket bucket-name \
-  --output-template-file packaged-template.yaml
-
-# Deploy stack
+# Deploy main infrastructure stack
 aws cloudformation deploy \
-  --template-file packaged-template.yaml \
-  --stack-name stack-name \
+  --template-file Infra_cfn.yaml \
+  --stack-name hcls-agent-toolkit \
   --capabilities CAPABILITY_IAM
 ```
 
+## Technology Stack
+
+### Core Technologies
+
+- **Python 3.12** - Standardized across all components
+- **Next.js 15** with React 19 and TypeScript for UI
+- **AWS Bedrock** for AI agent framework
+- **CloudFormation** for Infrastructure as Code
+- **Docker** with Alpine Linux base images
+
+### Key Dependencies
+
+- `boto3>=1.35.98`, `awscli`, `botocore` for AWS integration
+- Domain-specific: `pydicom`, `pyradiomics`, `pandas`, `numpy`
+- Frontend: Tailwind CSS, AWS SDK
+
 ## Development Standards
 
-### Naming
+### File and Directory Conventions
 
-- Name all folders and files in snakecase (lowercase words separated by an underscore)
+- Consistent directory structure across agents
+- CloudFormation templates follow `[component]-cfn.yaml` naming
 
-### Python Environment
-
-- **Python 3.12** standardized across all components
-- Core dependencies: `boto3>=1.35.98`, `awscli`, `botocore`
-- Domain-specific packages: `pydicom`, `pyradiomics` (medical imaging), `pandas`, `numpy` (data science)
-
-### Infrastructure Patterns
-
-- CloudFormation templates for all deployments with parameterized stacks
-- Multi-stage Docker builds with Alpine Linux base images
-- Lambda containers for agent action groups
-- ECS deployment for React UI
-
-### Required Configuration
-
-When deploying, these parameters need values:
+### Required Configuration Parameters
 
 - **`RedshiftPassword`** - Database password (8+ chars, mixed case + numbers)
-- **`ReactAppAllowedCidr`** - IP CIDR for UI access (e.g., `192.0.2.0/32`)
-- **`TavilyApiKey`** - Web search API key from tavily.com
-- **`USPTOApiKey`** - Patent search API key from USPTO Open Data Portal
+- **`ReactAppAllowedCidr`** - IP CIDR for UI access
+- **`TavilyApiKey`** - Web search API key
+- **`USPTOApiKey`** - Patent search API key
 
-## Multi-Agent Collaboration Examples
+### Multi-Modal Data Integration
 
-### Cancer Biomarker Discovery
+Several agents handle specialized data types:
 
-Combines imaging, database, clinical evidence, and statistical agents for end-to-end biomarker analysis.
+- **Medical Imaging Expert** - CT scans with asynchronous processing
+- **Pathology Agent** - Whole Slide Images (WSI)
+- **Biomarker Database Analyst** - RNA-seq and clinical data integration
 
-### Clinical Trial Protocol Assistant
+### Model Context Protocol (MCP) Integration
 
-Integrates protocol generation with study research for comprehensive trial planning.
+- Tavily and USPTO agents available as MCP tools
+- AWS Lambda MCP Server integration
+- Configurable with AWS credentials and function tags
 
-### Competitive Intelligence
+## Testing and Evaluation
 
-Orchestrates web search, patent, and financial data agents for market analysis.
+### AgentEval Framework
 
-## Key Files and Patterns
+- YAML configurations for comprehensive testing
+- Claude-3 based evaluation with expected results validation
+- Test categories: factual accuracy, source citation, guardrail compliance
 
-- **`Infra_cfn.yaml`** - Main deployment template
-- **`agent_build.yaml`** - Agent build configuration
-- **Individual agent folders** - Each contains CloudFormation template, action groups, and Jupyter notebook
-- **`action_groups/`** - Lambda functions implementing agent capabilities
-- **`deploy.sh`** scripts - Standardized deployment helpers
+### Development Workflow
 
-## Development Workflow
+1. Test individual agents via Jupyter notebooks in each agent directory
+2. Use build scripts for packaging and deployment
+3. Deploy infrastructure using main CloudFormation template
+4. Develop custom agents following existing patterns
 
-1. Fork repository and update GitHub URLs in config files (`infra_cfn.yaml`, `agent_build.yaml`)
-2. Deploy infrastructure using main CloudFormation template
-3. Test individual agents via Jupyter notebooks in agent directories
-4. Develop custom agents following existing patterns in `agents_catalog/`
-5. Use build scripts for packaging and deployment
-6. Update documentation using Astro/MDX format
+## Healthcare Compliance Notes
 
-## Model Context Protocol (MCP) Integration
-
-Tavily web search and USPTO search agents can be integrated with MCP clients using the AWS Lambda MCP Server. Configure with AWS credentials and set `FUNCTION_TAG_KEY=Application` and `FUNCTION_TAG_VALUE=HCLSAgents`.
+- Legal disclaimers included for clinical use and HIPAA compliance
+- Enterprise-grade AWS integration with healthcare-specific considerations
+- Comprehensive evaluation frameworks for production-ready deployments
