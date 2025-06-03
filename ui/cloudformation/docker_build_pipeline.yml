@@ -112,12 +112,11 @@ Resources:
           - Name: ECR_ACCOUNT_ID
             Value: !Sub ${AWS::AccountId}
           - Name: GITHUB_LINK
-            Value: !Ref GitHubLink
+            Value: !Ref GithubLink
           - Name: GIT_BRANCH
             Value: !Ref 
       Source:
         Type: NO_SOURCE
-        # Location: !Sub ${PackageBucketName}/${PackageArtifactKey}
         BuildSpec: |
           version: 0.2
           phases:
