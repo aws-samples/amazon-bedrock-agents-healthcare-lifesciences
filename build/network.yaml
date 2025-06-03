@@ -1,0 +1,202 @@
+Parameters:
+  # BedrockModelId:
+  #   Type: String
+  #   Description: The ID of the Foundation Model to use for the Agent
+  #   Default: us.anthropic.claude-3-5-sonnet-20241022-v2:0
+  # RedshiftDatabaseName:
+  #   Type: String
+  #   Default: dev
+  # RedshiftUserName:
+  #   Type: String
+  #   Default: admin
+  # RedshiftPassword:
+  #   Type: String
+  #   NoEcho: true
+  #   Description: "STORE SECURELY - The password for the Redshift master user. Must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, and one number."
+  #   MinLength: 8
+  #   MaxLength: 64
+  #   AllowedPattern: ^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d!@#$%^&*()_+\-=\[\]{};:'",.<>?]{8,64}$
+  #   ConstraintDescription: "Password must be between 8 and 64 characters, and contain at least one uppercase letter, one lowercase letter, and one number."
+  # GithubLink:
+  #   Type: String
+  #   Description: "The link to the agent build cloudformation stack"
+  #   Default: "https://github.com/aws-samples/amazon-bedrock-agents-healthcare-lifesciences.git"
+  # GitBranch:
+  #   Type: String
+  #   Description: The github branch to clone
+  #   Default: main
+  # ReactAppAllowedCidr:
+  #   Type: String
+  #   Description: "Allowed CIDR block (X.X.X.X/X) for React App UI access"
+  #   AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))$
+  #   ConstraintDescription: Must be a valid CIDR block in format x.x.x.x/x
+  # TavilyApiKey:
+  #   Type: String
+  #   NoEcho: true
+  #   Description: Provide TavilyApiKey API Key to utilize /web_search path
+  #   Default: ""
+  # USPTOApiKey:
+  #   Type: String
+  #   NoEcho: true
+  #   Description: Provide USPTO API Key to utilize /search path
+  #   Default: ""
+  # DeployApplication:
+  #   Type: String
+  #   Description: Select true to deploy the react application. Select false to only build the application.
+  #   Default: "true"
+  #   AllowedValues:
+  #     - "true"
+  #     - "false"
+
+# Conditions:
+#   CreateCompetitiveIntelAgent:
+#     !Not [!Or [!Equals [!Ref TavilyApiKey, ""], !Equals [!Ref USPTOApiKey, ""]]]
+#   CreateReactApp: !Equals [!Ref DeployApplication, "true"]
+
+Resources:
+  ##################################################################
+  # VPC
+  ##################################################################
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-VPC
+
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Select
+        - 0
+        - !GetAZs
+          Ref: "AWS::Region"
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-PrivateSubnet1
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: !Select
+        - 1
+        - !GetAZs
+          Ref: "AWS::Region"
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-PrivateSubnet2
+
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.3.0/24
+      AvailabilityZone: !Select
+        - 0
+        - !GetAZs
+          Ref: "AWS::Region"
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-PublicSubnet1
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.4.0/24
+      AvailabilityZone: !Select
+        - 1
+        - !GetAZs
+          Ref: "AWS::Region"
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-PublicSubnet2
+
+  NatGatewayEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGatewayEIP.AllocationId
+      SubnetId: !Ref PublicSubnet1
+
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-PrivateRouteTable
+
+  PrivateRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway
+
+  PrivateSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet1
+      RouteTableId: !Ref PrivateRouteTable
+
+  PrivateSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet2
+      RouteTableId: !Ref PrivateRouteTable
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-PublicRouteTable
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+Outputs:
+  VPC:
+    Value: !Ref VPC
+    Description: VPC ID value
+  PublicSubnet1:
+    Value: !Ref PublicSubnet1
+    Description: Public subnet 1 value
+  PublicSubnet2:
+    Value: !Ref PublicSubnet2
+    Description: Public subnet 2 value

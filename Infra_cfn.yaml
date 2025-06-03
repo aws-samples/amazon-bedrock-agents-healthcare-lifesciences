@@ -57,138 +57,12 @@ Resources:
   ##################################################################
   # VPC
   ##################################################################
-  VPC:
-    Type: AWS::EC2::VPC
-    Properties:
-      CidrBlock: 10.0.0.0/16
-      EnableDnsHostnames: true
-      EnableDnsSupport: true
-      Tags:
-        - Key: Name
-          Value: !Sub ${AWS::StackName}-VPC
 
-  PrivateSubnet1:
-    Type: AWS::EC2::Subnet
+  Network:
+    Type: AWS::CloudFormation::Stack
     Properties:
-      VpcId: !Ref VPC
-      CidrBlock: 10.0.1.0/24
-      AvailabilityZone: !Select
-        - 0
-        - !GetAZs
-          Ref: "AWS::Region"
-      Tags:
-        - Key: Name
-          Value: !Sub ${AWS::StackName}-PrivateSubnet1
-
-  PrivateSubnet2:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref VPC
-      CidrBlock: 10.0.2.0/24
-      AvailabilityZone: !Select
-        - 1
-        - !GetAZs
-          Ref: "AWS::Region"
-      Tags:
-        - Key: Name
-          Value: !Sub ${AWS::StackName}-PrivateSubnet2
-
-  PublicSubnet1:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref VPC
-      CidrBlock: 10.0.3.0/24
-      AvailabilityZone: !Select
-        - 0
-        - !GetAZs
-          Ref: "AWS::Region"
-      MapPublicIpOnLaunch: true
-      Tags:
-        - Key: Name
-          Value: !Sub ${AWS::StackName}-PublicSubnet1
-
-  PublicSubnet2:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref VPC
-      CidrBlock: 10.0.4.0/24
-      AvailabilityZone: !Select
-        - 1
-        - !GetAZs
-          Ref: "AWS::Region"
-      MapPublicIpOnLaunch: true
-      Tags:
-        - Key: Name
-          Value: !Sub ${AWS::StackName}-PublicSubnet2
-
-  NatGatewayEIP:
-    Type: AWS::EC2::EIP
-    Properties:
-      Domain: vpc
-
-  NatGateway:
-    Type: AWS::EC2::NatGateway
-    Properties:
-      AllocationId: !GetAtt NatGatewayEIP.AllocationId
-      SubnetId: !Ref PublicSubnet1
-
-  PrivateRouteTable:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId: !Ref VPC
-      Tags:
-        - Key: Name
-          Value: !Sub ${AWS::StackName}-PrivateRouteTable
-
-  PrivateRoute:
-    Type: AWS::EC2::Route
-    Properties:
-      RouteTableId: !Ref PrivateRouteTable
-      DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !Ref NatGateway
-
-  PrivateSubnet1RouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref PrivateSubnet1
-      RouteTableId: !Ref PrivateRouteTable
-
-  PrivateSubnet2RouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref PrivateSubnet2
-      RouteTableId: !Ref PrivateRouteTable
-
-  PublicRouteTable:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId: !Ref VPC
-      Tags:
-        - Key: Name
-          Value: !Sub ${AWS::StackName}-PublicRouteTable
-
-  PublicRoute:
-    Type: AWS::EC2::Route
-    DependsOn: VPCGatewayAttachment
-    Properties:
-      RouteTableId: !Ref PublicRouteTable
-      DestinationCidrBlock: 0.0.0.0/0
-      GatewayId: !Ref InternetGateway
-
-  PublicSubnet1RouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref PublicSubnet1
-      RouteTableId: !Ref PublicRouteTable
-
-  InternetGateway:
-    Type: AWS::EC2::InternetGateway
-
-  VPCGatewayAttachment:
-    Type: AWS::EC2::VPCGatewayAttachment
-    Properties:
-      VpcId: !Ref VPC
-      InternetGatewayId: !Ref InternetGateway
+      TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/packaged_network.yaml
+      TimeoutInMinutes: 10
 
   ##################################################################
   # S3
@@ -230,19 +104,6 @@ Resources:
             Resource:
               - !Sub arn:aws:s3:::${S3Bucket}
               - !Sub arn:aws:s3:::${S3Bucket}/*
-          # - Sid: AllowRedshiftLogging
-          #   Effect: Allow
-          #   Principal:
-          #     Service: redshift.amazonaws.com
-          #   Action:
-          #     - s3:PutObject
-          #     - s3:GetBucketLocation
-          #     - s3:ListBucket
-          #     - s3:GetBucketAcl
-          #     - s3:PutBucketAcl
-          #   Resource:
-          #     - !Sub arn:aws:s3:::${S3Bucket}
-          #     - !Sub arn:aws:s3:::${S3Bucket}/*
 
   ##################################################################
   # Custom Resources to Package Agent Templates
@@ -569,10 +430,10 @@ Resources:
     Properties:
       TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/ui/ecs.yml
       Parameters:
-        VPCId: !Ref VPC
+        VPCId: !GetAtt Network.Outputs.VPC
         AllowedCidr: !Ref ReactAppAllowedCidr
-        PublicSubnet1: !Ref PublicSubnet1
-        PublicSubnet2: !Ref PublicSubnet2
+        PublicSubnet1: !GetAtt Network.Outputs.PublicSubnet1
+        PublicSubnet2: !GetAtt Network.Outputs.PublicSubnet2
         ImageUrl: !GetAtt
           - ReactAppDockerBuildNestedStack
           - Outputs.ECRRepositoryURI
@@ -639,9 +500,9 @@ Resources:
         GitRepoURL: !Ref GithubLink
         GitBranch: !Ref GitBranch
         SubAgentS3Bucket: !Ref S3Bucket
-        VPC: !Ref VPC
-        PrivateSubnet1: !Ref PrivateSubnet1
-        PrivateSubnet2: !Ref PrivateSubnet2
+        VPC: !GetAtt Network.Outputs.VPC
+        PrivateSubnet1: !GetAtt Network.Outputs.PrivateSubnet1
+        PrivateSubnet2: !GetAtt Network.Outputs.PrivateSubnet2
         AgentRole: !GetAtt AgentRole.Arn
       TimeoutInMinutes: 30
 
