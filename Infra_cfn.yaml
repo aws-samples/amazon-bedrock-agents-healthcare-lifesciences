@@ -467,11 +467,11 @@ Resources:
                 - echo Cloning the repository
                 - git clone -b $GIT_BRANCH --single-branch $GITHUB_LINK repo
                 - cd repo
-                - chmod +x scripts/build_agents.sh
+                - chmod +x build/build_agents.sh
             build:
               commands:
                 - echo Processing agent templates
-                - ./scripts/build_agents.sh
+                - ./build/build_agents.sh
             post_build:
               commands:
                 - JSON_DATA=$( jq -n '{Status:"SUCCESS", Reason:"Configuration Complete","UniqueId":"AgentCodeBuild", "Data":"Application has completed configuration."}' )
@@ -538,12 +538,12 @@ Resources:
                 - echo Cloning the repository
                 - git clone -b $GIT_BRANCH --single-branch $GITHUB_LINK repo
                 - cd repo
-                - chmod +x scripts/build_react_app.sh
+                - chmod +x build/build_react_app.sh
             build:
               commands:
                 - echo Processing react app templates
                 - ls -la
-                - ./scripts/build_react_app.sh
+                - ./build/build_react_app.sh
             post_build:
               commands:
                 - JSON_DATA=$( jq -n '{Status:"SUCCESS", Reason:"Configuration Complete","UniqueId":"ReactAppCodeBuild", "Data":"Application has completed configuration."}' )
