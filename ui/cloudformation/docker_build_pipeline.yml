@@ -2,12 +2,6 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: 'CloudFormation template for Docker build pipeline with CodeBuild and ECR'
 
 Parameters:
-  # PackageBucketName:
-  #   Type: String
-  #   Description: Bucket for source code package
-  # PackageArtifactKey:
-  #   Type: String
-  #   Description: Artifact S3 key for source code package 
   ProjectName:
     Type: String
     Description: Project name for the Code Build project
@@ -114,7 +108,7 @@ Resources:
           - Name: GITHUB_LINK
             Value: !Ref GithubLink
           - Name: GIT_BRANCH
-            Value: !Ref 
+            Value: !Ref GitBranch
       Source:
         Type: NO_SOURCE
         BuildSpec: |
