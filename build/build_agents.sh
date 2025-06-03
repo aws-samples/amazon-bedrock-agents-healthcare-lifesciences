@@ -22,8 +22,6 @@ for template in *.yaml; do
   fi
 done
 cd ..
-cd ..
-cd ..
 
 # Process Cancer biomarker discovery Subagent templates
 cd multi_agent_collaboration/cancer_biomarker_discovery/agents || exit
