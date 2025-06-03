@@ -16,7 +16,6 @@ Parameters:
     Description: (Optional) Amazon Bedrock Agents service role ARN
     Default: ""
 
-
 Conditions:
   CreateAgentAliasCondition: !Not [!Equals [!Ref AgentAliasName, ""]]
   AgentIAMRoleCondition: !Not [!Equals [!Ref AgentIAMRoleArn, ""]]
@@ -29,7 +28,7 @@ Resources:
   ClinicalStudySearchAgentStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents_catalog/packaged_clinical-study-agent.yaml
+      TemplateURL: ../../agents_catalog/15-clinical-study-research-agent/clinical-study-agent.yaml
       Parameters:
         AgentAliasName: "Latest"
         AgentIAMRoleArn: !Ref AgentIAMRoleArn
@@ -40,7 +39,7 @@ Resources:
   ClinicalTrialProtocolGeneratorAgentStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents_catalog/packaged_clinical-trial-protocol-generator-agent.yaml
+      TemplateURL: ../../agents_catalog/16-Clinical-trial-protocol-generator-agent/clinical-trial-protocol-generator-agent.yaml
       Parameters:
         AgentAliasName: "Latest"
         AgentIAMRoleArn: !Ref AgentIAMRoleArn

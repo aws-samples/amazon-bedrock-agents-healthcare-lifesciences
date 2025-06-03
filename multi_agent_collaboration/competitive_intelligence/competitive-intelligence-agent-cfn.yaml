@@ -40,7 +40,7 @@ Resources:
   WebSearchAgentStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents_catalog/packaged_web-search-agent-cfn.yaml
+      TemplateURL: ../../agents_catalog/11-Tavily-web-search-agent/web-search-agent-cfn.yaml
       Parameters:
         AgentAliasName: "Latest"
         AgentIAMRoleArn: !Ref AgentIAMRoleArn
@@ -50,7 +50,7 @@ Resources:
   SEC10kAgentStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents_catalog/packaged_sec-10-K-agent-cfn.yaml
+      TemplateURL: ../../agents_catalog/10-SEC-10-K-agent/sec-10-K-agent-cfn.yaml
       Parameters:
         AgentAliasName: "Latest"
         AgentIAMRoleArn: !Ref AgentIAMRoleArn
@@ -64,7 +64,8 @@ Resources:
   USPTOSearchAgentStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents_catalog/packaged_uspto-search-agent-cfn.yaml
+      # TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents_catalog/packaged_uspto-search-agent-cfn.yaml
+      TemplateURL: ../../agents_catalog/14-USPTO-search/uspto-search-agent-cfn.yaml
       Parameters:
         AgentAliasName: "Latest"
         AgentIAMRoleArn: !Ref AgentIAMRoleArn
