@@ -1,0 +1,269 @@
+Parameters:
+  GithubLink:
+    Type: String
+    Description: "The link to the agent build cloudformation stack"
+    Default: "https://github.com/aws-samples/amazon-bedrock-agents-healthcare-lifesciences.git"
+  GitBranch:
+    Type: String
+    Description: The github branch to clone
+    Default: main
+  S3Bucket:
+    Type: String
+    Description: S3Bucket for CodeBuild
+
+Resources:
+  S3BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref S3Bucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowCloudFormationReadAccess
+            Effect: Allow
+            Principal:
+              Service: cloudformation.amazonaws.com
+            Action:
+              - s3:GetObject
+            Resource: !Sub arn:aws:s3:::${S3Bucket}/*
+          - Sid: AllowCodeBuildAndLambdaAccess
+            Effect: Allow
+            Principal:
+              AWS:
+                - !GetAtt CodeBuildServiceRole.Arn
+                - !GetAtt TriggerAgentBuildLambdaRole.Arn
+            Action:
+              - s3:PutObject
+              - s3:GetObject
+              - s3:ListBucket
+            Resource:
+              - !Sub arn:aws:s3:::${S3Bucket}
+              - !Sub arn:aws:s3:::${S3Bucket}/*
+
+  TriggerAgentBuildLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CodeBuildStartBuildPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - codebuild:StartBuild
+                Resource:
+                  - !GetAtt AgentCodeBuild.Arn
+        - PolicyName: CloudWatchLogsPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: arn:aws:logs:*:*:*
+
+  TriggerAgentBuildLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt TriggerAgentBuildLambdaRole.Arn
+      Code:
+        ZipFile: |
+          import boto3
+          import cfnresponse
+          import time
+          def handler(event, context):
+              if event['RequestType'] in ['Create', 'Update']:
+                  try:
+                      codebuild = boto3.client('codebuild')
+                      project_name = event['ResourceProperties']['ProjectName']
+                      response = codebuild.start_build(projectName=project_name)
+                      build_id = response['build']['id']
+                      print(f"Build started: {build_id}")
+                      # time.sleep(120)
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {"BuildId": build_id})
+                  except Exception as e:
+                      print(f"Error: {str(e)}")
+                      cfnresponse.send(event, context, cfnresponse.FAILED, {"Error": str(e)})
+              elif event['RequestType'] == 'Delete':
+                  # No action needed for delete, as S3 cleanup will be handled separately
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+      Runtime: python3.12
+      Timeout: 300
+
+  CleanupLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: S3DeletePolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:DeleteObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub arn:aws:s3:::${S3Bucket}
+                  - !Sub arn:aws:s3:::${S3Bucket}/*
+        - PolicyName: CloudWatchLogsPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: arn:aws:logs:*:*:*
+
+  CleanupLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt CleanupLambdaRole.Arn
+      Code:
+        ZipFile: |
+          import boto3
+          import cfnresponse
+
+          def delete_bucket_contents(bucket):
+              s3 = boto3.resource('s3')
+              bucket = s3.Bucket(bucket)
+              bucket.objects.all().delete()
+
+          def handler(event, context):
+              if event['RequestType'] == 'Delete':
+                  s3 = boto3.client('s3')
+                  bucket = event['ResourceProperties']['S3Bucket']
+                  try:
+                      # Delete all objects in the bucket
+                      delete_bucket_contents(bucket)
+                      print(f"Deleted all contents from bucket: {bucket}")
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+                  except Exception as e:
+                      print(f"Error: {str(e)}")
+                      cfnresponse.send(event, context, cfnresponse.FAILED, {"Error": str(e)})
+              else:
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+      Runtime: python3.12
+      Timeout: 300
+
+  CleanupCustomResource:
+    Type: Custom::Cleanup
+    Properties:
+      ServiceToken: !GetAtt CleanupLambdaFunction.Arn
+      S3Bucket: !Ref S3Bucket
+      S3Prefix: ""
+
+  CodeBuildServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CodeBuildAccessPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${AWS::StackName}-AgentCodeBuild:*
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub arn:aws:s3:::${S3Bucket}
+                  - !Sub arn:aws:s3:::${S3Bucket}/*
+
+  TriggerAgentBuildCustomResource:
+    Type: Custom::TriggerAgentBuild
+    Properties:
+      ServiceToken: !GetAtt TriggerAgentBuildLambda.Arn
+      ProjectName: !Ref AgentCodeBuild
+
+  TriggerAgentBuildWaitHandle:
+    Type: AWS::CloudFormation::WaitConditionHandle
+
+  TriggerAgentBuildWaitCondition:
+    Type: AWS::CloudFormation::WaitCondition
+    Properties:
+      Handle: !Ref TriggerAgentBuildWaitHandle
+      Timeout: 300
+      Count: 1
+
+  AgentCodeBuild:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub ${AWS::StackName}-AgentCodeBuild
+      Description: "CodeBuild project to build and package agent CloudFormation templates"
+      ServiceRole: !GetAtt CodeBuildServiceRole.Arn
+      TimeoutInMinutes: 15
+      Artifacts:
+        Type: S3
+        Location: !Ref S3Bucket
+        Name: packaged_agents
+        NamespaceType: NONE
+        Packaging: NONE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:3.0
+        EnvironmentVariables:
+          - Name: WAIT_CONDITION_HANDLE
+            Value: !Ref TriggerAgentBuildWaitHandle
+      Source:
+        Type: NO_SOURCE
+        BuildSpec: !Sub |
+          version: 0.2
+          env:
+            variables:
+              S3_BUCKET: ${S3Bucket}
+              GIT_BRANCH: ${GitBranch}
+              GITHUB_LINK: ${GithubLink}
+          phases:
+            install:
+              runtime-versions:
+                python: 3.8
+            pre_build:
+              commands:
+                - echo Cloning the repository
+                - git clone -b $GIT_BRANCH --single-branch $GITHUB_LINK repo
+                - cd repo
+                - chmod +x build/build_agents.sh
+            build:
+              commands:
+                - echo Processing agent templates
+                - ./build/build_agents.sh
+            post_build:
+              commands:
+                - JSON_DATA=$( jq -n '{Status:"SUCCESS", Reason:"Configuration Complete","UniqueId":"AgentCodeBuild", "Data":"Application has completed configuration."}' )
+                - curl -X PUT -H "Content-Type:" --data-binary "$JSON_DATA" "$WAIT_CONDITION_HANDLE"
+                - echo Build completed on `date`
