@@ -341,32 +341,31 @@ Resources:
   # React Application
   ##################################################################
 
+  ReactAppDockerBuildNestedStack:
+    Type: AWS::CloudFormation::Stack
+    Condition: CreateReactApp
+    Properties:
+      TemplateURL: ui/cloudformation/docker_build_pipeline.yml
+      Parameters:
+        ProjectName: toolkit-react-ui
+        GithubLink: !Ref GithubLink
+        GitBranch: !Ref GitBranch
+      TimeoutInMinutes: 35
 
-  # ReactAppDockerBuildNestedStack:
-  #   Type: AWS::CloudFormation::Stack
-  #   Condition: CreateReactApp
-  #   Properties:
-  #     TemplateURL: ui/cloudformation/docker_build_pipeline.yml
-  #     Parameters:
-  #       ProjectName: toolkit-react-ui
-  #       GithubLink: !Ref GithubLink
-  #       GitBranch: !Ref GitBranch
-  #     TimeoutInMinutes: 35
-
-  # ReactAppEcsBuildNestedStack:
-  #   Type: AWS::CloudFormation::Stack
-  #   Condition: CreateReactApp
-  #   Properties:
-  #     TemplateURL: ui/cloudformation/ecs.yml
-  #     Parameters:
-  #       VPCId: !GetAtt Network.Outputs.VPC
-  #       AllowedCidr: !Ref ReactAppAllowedCidr
-  #       PublicSubnet1: !GetAtt Network.Outputs.PublicSubnet1
-  #       PublicSubnet2: !GetAtt Network.Outputs.PublicSubnet2
-  #       ImageUrl: !GetAtt
-  #         - ReactAppDockerBuildNestedStack
-  #         - Outputs.ECRRepositoryURI
-  #     TimeoutInMinutes: 35
+  ReactAppEcsBuildNestedStack:
+    Type: AWS::CloudFormation::Stack
+    Condition: CreateReactApp
+    Properties:
+      TemplateURL: ui/cloudformation/ecs.yml
+      Parameters:
+        VPCId: !GetAtt Network.Outputs.VPC
+        AllowedCidr: !Ref ReactAppAllowedCidr
+        PublicSubnet1: !GetAtt Network.Outputs.PublicSubnet1
+        PublicSubnet2: !GetAtt Network.Outputs.PublicSubnet2
+        ImageUrl: !GetAtt
+          - ReactAppDockerBuildNestedStack
+          - Outputs.ECRRepositoryURI
+      TimeoutInMinutes: 35
 
     ##################################################################
     # Amazon Bedrock Agents Service Role
