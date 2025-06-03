@@ -2,15 +2,23 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: 'CloudFormation template for Docker build pipeline with CodeBuild and ECR'
 
 Parameters:
-  PackageBucketName:
-    Type: String
-    Description: Bucket for source code package
-  PackageArtifactKey:
-    Type: String
-    Description: Artifact S3 key for source code package 
+  # PackageBucketName:
+  #   Type: String
+  #   Description: Bucket for source code package
+  # PackageArtifactKey:
+  #   Type: String
+  #   Description: Artifact S3 key for source code package 
   ProjectName:
     Type: String
     Description: Project name for the Code Build project
+  GithubLink:
+    Type: String
+    Description: "The link to the agent build cloudformation stack"
+    Default: "https://github.com/aws-samples/amazon-bedrock-agents-healthcare-lifesciences.git"
+  GitBranch:
+    Type: String
+    Description: The github branch to clone
+    Default: main
 
 Resources:
   # ECR Repository
@@ -74,14 +82,14 @@ Resources:
                   - s3:HeadBucket
                   - s3:ListBucket
                 Resource: '*'
-        - PolicyName: S3GetAccess
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - s3:GetObject
-                Resource: !Sub 'arn:aws:s3:::${PackageBucketName}/*'
+        # - PolicyName: S3GetAccess
+        #   PolicyDocument:
+        #     Version: '2012-10-17'
+        #     Statement:
+        #       - Effect: Allow
+        #         Action:
+        #           - s3:GetObject
+        #         Resource: !Sub 'arn:aws:s3:::${PackageBucketName}/*'
 
   # CodeBuild Project
   CodeBuildDockerProject:
@@ -103,9 +111,13 @@ Resources:
             Value: !Sub ${AWS::Region}
           - Name: ECR_ACCOUNT_ID
             Value: !Sub ${AWS::AccountId}
+          - Name: GITHUB_LINK
+            Value: !Ref GitHubLink
+          - Name: GIT_BRANCH
+            Value: !Ref 
       Source:
-        Type: S3
-        Location: !Sub ${PackageBucketName}/${PackageArtifactKey}
+        Type: NO_SOURCE
+        # Location: !Sub ${PackageBucketName}/${PackageArtifactKey}
         BuildSpec: |
           version: 0.2
           phases:
@@ -114,10 +126,14 @@ Resources:
                 - echo Logging in to Amazon ECR...
                 - aws ecr get-login-password --region $ECR_REGION | docker login --username AWS --password-stdin $ECR_ACCOUNT_ID.dkr.ecr.$ECR_REGION.amazonaws.com
                 - IMAGE_TAG=latest
+                - echo Cloning the repository
+                - git clone -b $GIT_BRANCH --single-branch $GITHUB_LINK repo
             build:
               commands:
                 - echo Build started on `date`
                 - ls -lrta
+                - echo "Preparing React UI artifact..."
+                - cd repo/ui
                 - echo Building the Docker image...
                 - docker build -t $ECR_REPOSITORY_URI:$IMAGE_TAG .
             post_build:

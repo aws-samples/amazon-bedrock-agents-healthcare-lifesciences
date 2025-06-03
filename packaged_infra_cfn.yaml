@@ -1,0 +1,417 @@
+Parameters:
+  BedrockModelId:
+    Type: String
+    Description: The ID of the Foundation Model to use for the Agent
+    Default: us.anthropic.claude-3-5-sonnet-20241022-v2:0
+  RedshiftDatabaseName:
+    Type: String
+    Default: dev
+  RedshiftUserName:
+    Type: String
+    Default: admin
+  RedshiftPassword:
+    Type: String
+    NoEcho: true
+    Description: STORE SECURELY - The password for the Redshift master user. Must
+      be at least 8 characters long and contain at least one uppercase letter, one
+      lowercase letter, and one number.
+    MinLength: 8
+    MaxLength: 64
+    AllowedPattern: ^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d!@#$%^&*()_+\-=\[\]{};:'",.<>?]{8,64}$
+    ConstraintDescription: Password must be between 8 and 64 characters, and contain
+      at least one uppercase letter, one lowercase letter, and one number.
+  GithubLink:
+    Type: String
+    Description: The link to the agent build cloudformation stack
+    Default: https://github.com/aws-samples/amazon-bedrock-agents-healthcare-lifesciences.git
+  GitBranch:
+    Type: String
+    Description: The github branch to clone
+    Default: main
+  ReactAppAllowedCidr:
+    Type: String
+    Description: Allowed CIDR block (X.X.X.X/X) for React App UI access
+    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))$
+    ConstraintDescription: Must be a valid CIDR block in format x.x.x.x/x
+  TavilyApiKey:
+    Type: String
+    NoEcho: true
+    Description: Provide TavilyApiKey API Key to utilize /web_search path
+    Default: ''
+  USPTOApiKey:
+    Type: String
+    NoEcho: true
+    Description: Provide USPTO API Key to utilize /search path
+    Default: ''
+  DeployApplication:
+    Type: String
+    Description: Select true to deploy the react application. Select false to only
+      build the application.
+    Default: 'true'
+    AllowedValues:
+    - 'true'
+    - 'false'
+Conditions:
+  CreateCompetitiveIntelAgent:
+    Fn::Not:
+    - Fn::Or:
+      - Fn::Equals:
+        - Ref: TavilyApiKey
+        - ''
+      - Fn::Equals:
+        - Ref: USPTOApiKey
+        - ''
+  CreateReactApp:
+    Fn::Equals:
+    - Ref: DeployApplication
+    - 'true'
+Resources:
+  Network:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://s3.us-west-2.amazonaws.com/biomarkers-discovery-agent-test-us-west-2-167428594774/174761e6ec37f9ace19343a5392f20d6.template
+      TimeoutInMinutes: 10
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName:
+        Fn::Sub: ${AWS::StackName}-${AWS::AccountId}-${AWS::Region}
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+        - ServerSideEncryptionByDefault:
+            SSEAlgorithm: AES256
+  S3BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket:
+        Ref: S3Bucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: AllowCloudFormationReadAccess
+          Effect: Allow
+          Principal:
+            Service: cloudformation.amazonaws.com
+          Action:
+          - s3:GetObject
+          Resource:
+            Fn::Sub: arn:aws:s3:::${S3Bucket}/*
+        - Sid: AllowCodeBuildAndLambdaAccess
+          Effect: Allow
+          Principal:
+            AWS:
+            - Fn::GetAtt:
+              - CodeBuildServiceRole
+              - Arn
+            - Fn::GetAtt:
+              - TriggerAgentBuildLambdaRole
+              - Arn
+          Action:
+          - s3:PutObject
+          - s3:GetObject
+          - s3:ListBucket
+          Resource:
+          - Fn::Sub: arn:aws:s3:::${S3Bucket}
+          - Fn::Sub: arn:aws:s3:::${S3Bucket}/*
+  TriggerAgentBuildLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+      - PolicyName: CodeBuildStartBuildPolicy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - codebuild:StartBuild
+            Resource:
+            - Fn::GetAtt:
+              - AgentCodeBuild
+              - Arn
+      - PolicyName: CloudWatchLogsPolicy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            Resource: arn:aws:logs:*:*:*
+  TriggerAgentBuildLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role:
+        Fn::GetAtt:
+        - TriggerAgentBuildLambdaRole
+        - Arn
+      Code:
+        ZipFile: "import boto3\nimport cfnresponse\nimport time\ndef handler(event,\
+          \ context):\n    if event['RequestType'] in ['Create', 'Update']:\n    \
+          \    try:\n            codebuild = boto3.client('codebuild')\n         \
+          \   project_name = event['ResourceProperties']['ProjectName']\n        \
+          \    response = codebuild.start_build(projectName=project_name)\n      \
+          \      build_id = response['build']['id']\n            print(f\"Build started:\
+          \ {build_id}\")\n            # time.sleep(120)\n            cfnresponse.send(event,\
+          \ context, cfnresponse.SUCCESS, {\"BuildId\": build_id})\n        except\
+          \ Exception as e:\n            print(f\"Error: {str(e)}\")\n           \
+          \ cfnresponse.send(event, context, cfnresponse.FAILED, {\"Error\": str(e)})\n\
+          \    elif event['RequestType'] == 'Delete':\n        # No action needed\
+          \ for delete, as S3 cleanup will be handled separately\n        cfnresponse.send(event,\
+          \ context, cfnresponse.SUCCESS, {})\n"
+      Runtime: python3.12
+      Timeout: 300
+  CleanupLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+      - PolicyName: S3DeletePolicy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - s3:DeleteObject
+            - s3:ListBucket
+            Resource:
+            - Fn::Sub: arn:aws:s3:::${S3Bucket}
+            - Fn::Sub: arn:aws:s3:::${S3Bucket}/*
+      - PolicyName: CloudWatchLogsPolicy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            Resource: arn:aws:logs:*:*:*
+  CleanupLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role:
+        Fn::GetAtt:
+        - CleanupLambdaRole
+        - Arn
+      Code:
+        ZipFile: "import boto3\nimport cfnresponse\n\ndef delete_bucket_contents(bucket):\n\
+          \    s3 = boto3.resource('s3')\n    bucket = s3.Bucket(bucket)\n    bucket.objects.all().delete()\n\
+          \ndef handler(event, context):\n    if event['RequestType'] == 'Delete':\n\
+          \        s3 = boto3.client('s3')\n        bucket = event['ResourceProperties']['S3Bucket']\n\
+          \        try:\n            # Delete all objects in the bucket\n        \
+          \    delete_bucket_contents(bucket)\n            print(f\"Deleted all contents\
+          \ from bucket: {bucket}\")\n            cfnresponse.send(event, context,\
+          \ cfnresponse.SUCCESS, {})\n        except Exception as e:\n           \
+          \ print(f\"Error: {str(e)}\")\n            cfnresponse.send(event, context,\
+          \ cfnresponse.FAILED, {\"Error\": str(e)})\n    else:\n        cfnresponse.send(event,\
+          \ context, cfnresponse.SUCCESS, {})\n"
+      Runtime: python3.12
+      Timeout: 300
+  CleanupCustomResource:
+    Type: Custom::Cleanup
+    Properties:
+      ServiceToken:
+        Fn::GetAtt:
+        - CleanupLambdaFunction
+        - Arn
+      S3Bucket:
+        Ref: S3Bucket
+      S3Prefix: ''
+  CodeBuildServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: codebuild.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+      - PolicyName: CodeBuildAccessPolicy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            Resource:
+            - Fn::Sub: arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${AWS::StackName}-AgentCodeBuild:*
+          - Effect: Allow
+            Action:
+            - s3:GetObject
+            - s3:PutObject
+            - s3:ListBucket
+            Resource:
+            - Fn::Sub: arn:aws:s3:::${S3Bucket}
+            - Fn::Sub: arn:aws:s3:::${S3Bucket}/*
+  TriggerAgentBuildCustomResource:
+    Type: Custom::TriggerAgentBuild
+    Properties:
+      ServiceToken:
+        Fn::GetAtt:
+        - TriggerAgentBuildLambda
+        - Arn
+      ProjectName:
+        Ref: AgentCodeBuild
+  TriggerAgentBuildWaitHandle:
+    Type: AWS::CloudFormation::WaitConditionHandle
+  TriggerAgentBuildWaitCondition:
+    Type: AWS::CloudFormation::WaitCondition
+    Properties:
+      Handle:
+        Ref: TriggerAgentBuildWaitHandle
+      Timeout: 300
+      Count: 1
+  AgentCodeBuild:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name:
+        Fn::Sub: ${AWS::StackName}-AgentCodeBuild
+      Description: CodeBuild project to build and package agent CloudFormation templates
+      ServiceRole:
+        Fn::GetAtt:
+        - CodeBuildServiceRole
+        - Arn
+      TimeoutInMinutes: 15
+      Artifacts:
+        Type: S3
+        Location:
+          Ref: S3Bucket
+        Name: packaged_agents
+        NamespaceType: NONE
+        Packaging: NONE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:3.0
+        EnvironmentVariables:
+        - Name: WAIT_CONDITION_HANDLE
+          Value:
+            Ref: TriggerAgentBuildWaitHandle
+      Source:
+        Type: NO_SOURCE
+        BuildSpec:
+          Fn::Sub: "version: 0.2\nenv:\n  variables:\n    S3_BUCKET: ${S3Bucket}\n\
+            \    GIT_BRANCH: ${GitBranch}\n    GITHUB_LINK: ${GithubLink}\nphases:\n\
+            \  install:\n    runtime-versions:\n      python: 3.8\n  pre_build:\n\
+            \    commands:\n      - echo Cloning the repository\n      - git clone\
+            \ -b $GIT_BRANCH --single-branch $GITHUB_LINK repo\n      - cd repo\n\
+            \      - chmod +x build/build_agents.sh\n  build:\n    commands:\n   \
+            \   - echo Processing agent templates\n      - ./build/build_agents.sh\n\
+            \  post_build:\n    commands:\n      - JSON_DATA=$( jq -n '{Status:\"\
+            SUCCESS\", Reason:\"Configuration Complete\",\"UniqueId\":\"AgentCodeBuild\"\
+            , \"Data\":\"Application has completed configuration.\"}' )\n      - curl\
+            \ -X PUT -H \"Content-Type:\" --data-binary \"$JSON_DATA\" \"$WAIT_CONDITION_HANDLE\"\
+            \n      - echo Build completed on `date`\n"
+  ReactAppDockerBuildNestedStack:
+    Type: AWS::CloudFormation::Stack
+    Condition: CreateReactApp
+    Properties:
+      TemplateURL: https://s3.us-west-2.amazonaws.com/biomarkers-discovery-agent-test-us-west-2-167428594774/6f90b1cf3a699c9fe66c1c131edbc863.template
+      Parameters:
+        ProjectName: toolkit-react-ui
+        GithubLink:
+          Ref: GithubLink
+        GitBranch:
+          Ref: GitBranch
+      TimeoutInMinutes: 35
+  ReactAppEcsBuildNestedStack:
+    Type: AWS::CloudFormation::Stack
+    Condition: CreateReactApp
+    Properties:
+      TemplateURL: https://s3.us-west-2.amazonaws.com/biomarkers-discovery-agent-test-us-west-2-167428594774/5fff5529b717f7bc99af31317bf5ecd9.template
+      Parameters:
+        VPCId:
+          Fn::GetAtt:
+          - Network
+          - Outputs.VPC
+        AllowedCidr:
+          Ref: ReactAppAllowedCidr
+        PublicSubnet1:
+          Fn::GetAtt:
+          - Network
+          - Outputs.PublicSubnet1
+        PublicSubnet2:
+          Fn::GetAtt:
+          - Network
+          - Outputs.PublicSubnet2
+        ImageUrl:
+          Fn::GetAtt:
+          - ReactAppDockerBuildNestedStack
+          - Outputs.ECRRepositoryURI
+      TimeoutInMinutes: 35
+  AgentRole:
+    Type: AWS::IAM::Role
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - bedrock.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Policies:
+      - PolicyName: BedrockInvokeModel
+        PolicyDocument:
+          Version: 2012-10-17
+          Statement:
+          - Effect: Allow
+            Action:
+            - bedrock:*
+            Resource:
+            - Fn::Sub: arn:${AWS::Partition}:bedrock:*::foundation-model/*
+            - Fn::Sub: arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:knowledge-base/*
+            - Fn::Sub: arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:agent-alias/*
+            - Fn::Sub: arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*
+            - Fn::Sub: arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/*
+            - Fn::Sub: arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:application-inference-profile/*
+            - Fn::Sub: arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:guardrail/*
+  WileyOnlineSearchStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn:
+    - TriggerAgentBuildWaitCondition
+    Properties:
+      TemplateURL: https://s3.us-west-2.amazonaws.com/biomarkers-discovery-agent-test-us-west-2-167428594774/2efb17223211eb03ee00fa8af6f9df85.template
+      Parameters:
+        AgentIAMRoleArn:
+          Fn::GetAtt:
+          - AgentRole
+          - Arn
+      TimeoutInMinutes: 10
+Outputs:
+  ReactAppExternalURL:
+    Condition: CreateReactApp
+    Value:
+      Fn::GetAtt:
+      - ReactAppEcsBuildNestedStack
+      - Outputs.ExternalUrl
+    Description: ALB DNS for the React App
+  AgentRole:
+    Value:
+      Fn::GetAtt:
+      - AgentRole
+      - Arn
+    Description: Amazon Bedrock Agents Service Role ARN

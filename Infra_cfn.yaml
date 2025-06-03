@@ -61,7 +61,7 @@ Resources:
   Network:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/packaged_network.yaml
+      TemplateURL: ./build/network.yaml
       TimeoutInMinutes: 10
 
   ##################################################################
@@ -129,7 +129,6 @@ Resources:
                   - codebuild:StartBuild
                 Resource:
                   - !GetAtt AgentCodeBuild.Arn
-                  - !GetAtt ReactAppCodeBuild.Arn
         - PolicyName: CloudWatchLogsPolicy
           PolicyDocument:
             Version: "2012-10-17"
@@ -264,7 +263,6 @@ Resources:
                   - logs:PutLogEvents
                 Resource:
                   - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${AWS::StackName}-AgentCodeBuild:*
-                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${AWS::StackName}-ReactAppCodeBuild:*
               - Effect: Allow
                 Action:
                   - s3:GetObject
@@ -343,92 +341,23 @@ Resources:
   # React Application
   ##################################################################
 
-  TriggerReactAppBuildCustomResource:
-    Type: Custom::TriggerAgentBuild
-    Condition: CreateReactApp
-    Properties:
-      ServiceToken: !GetAtt TriggerAgentBuildLambda.Arn
-      ProjectName: !Ref ReactAppCodeBuild
-
-  TriggerReactAppBuildWaitHandle:
-    Type: AWS::CloudFormation::WaitConditionHandle
-
-  TriggerReactAppBuildWaitCondition:
-    Type: AWS::CloudFormation::WaitCondition
-    Condition: CreateReactApp
-    Properties:
-      Handle: !Ref TriggerReactAppBuildWaitHandle
-      Timeout: 300
-      Count: 1
-
-  ReactAppCodeBuild:
-    Type: AWS::CodeBuild::Project
-    Properties:
-      Name: !Sub ${AWS::StackName}-ReactAppCodeBuild
-      Description: "CodeBuild project to build and React App CloudFormation templates"
-      ServiceRole: !GetAtt CodeBuildServiceRole.Arn
-      TimeoutInMinutes: 15
-      Artifacts:
-        Type: S3
-        Location: !Ref S3Bucket
-        Name: packaged_react_app
-        NamespaceType: NONE
-        Packaging: NONE
-      Environment:
-        Type: LINUX_CONTAINER
-        ComputeType: BUILD_GENERAL1_SMALL
-        Image: aws/codebuild/amazonlinux2-x86_64-standard:3.0
-        EnvironmentVariables:
-          - Name: WAIT_CONDITION_HANDLE
-            Value: !Ref TriggerReactAppBuildWaitHandle
-      Source:
-        Type: NO_SOURCE
-        BuildSpec: !Sub |
-          version: 0.2
-          env:
-            variables:
-              S3_BUCKET: ${S3Bucket}
-              GIT_BRANCH: ${GitBranch}
-              GITHUB_LINK: ${GithubLink}
-          phases:
-            install:
-              runtime-versions:
-                python: 3.8
-            pre_build:
-              commands:
-                - echo Cloning the repository
-                - git clone -b $GIT_BRANCH --single-branch $GITHUB_LINK repo
-                - cd repo
-                - chmod +x build/build_react_app.sh
-            build:
-              commands:
-                - echo Processing react app templates
-                - ls -la
-                - ./build/build_react_app.sh
-            post_build:
-              commands:
-                - JSON_DATA=$( jq -n '{Status:"SUCCESS", Reason:"Configuration Complete","UniqueId":"ReactAppCodeBuild", "Data":"Application has completed configuration."}' )
-                - curl -X PUT -H "Content-Type:" --data-binary "$JSON_DATA" "$WAIT_CONDITION_HANDLE"
-                - echo Build completed on `date`
 
   ReactAppDockerBuildNestedStack:
     Type: AWS::CloudFormation::Stack
     Condition: CreateReactApp
-    DependsOn:
-      - TriggerReactAppBuildWaitCondition
     Properties:
-      TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/ui/docker_build_pipeline.yml
+      TemplateURL: ui/cloudformation/docker_build_pipeline.yml
       Parameters:
         ProjectName: toolkit-react-ui
-        PackageBucketName: !Sub ${S3Bucket}
-        PackageArtifactKey: ui/ui_artifact.zip
+        GithubLink: !Ref GithubLink
+        GitBranch: !Ref GitBranch
       TimeoutInMinutes: 35
 
   ReactAppEcsBuildNestedStack:
     Type: AWS::CloudFormation::Stack
     Condition: CreateReactApp
     Properties:
-      TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/ui/ecs.yml
+      TemplateURL: ui/cloudformation/ecs.yml
       Parameters:
         VPCId: !GetAtt Network.Outputs.VPC
         AllowedCidr: !Ref ReactAppAllowedCidr
@@ -484,64 +413,64 @@ Resources:
   #################################################################################################################################################
   #################################################################################################################################################
 
-  BiomarkerDiscoveryAgentNestedStack:
-    Type: AWS::CloudFormation::Stack
-    DependsOn:
-      - TriggerAgentBuildWaitCondition
-    Properties:
-      TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/packaged_agent_build.yaml
-      Parameters:
-        BedrockModelId: !Ref BedrockModelId
-        RedshiftDatabaseName: !Ref RedshiftDatabaseName
-        RedshiftUserName: !Ref RedshiftUserName
-        RedshiftPassword: !Ref RedshiftPassword
-        MultiAgentDevMode: "false"
-        EnvironmentName: env1
-        GitRepoURL: !Ref GithubLink
-        GitBranch: !Ref GitBranch
-        SubAgentS3Bucket: !Ref S3Bucket
-        VPC: !GetAtt Network.Outputs.VPC
-        PrivateSubnet1: !GetAtt Network.Outputs.PrivateSubnet1
-        PrivateSubnet2: !GetAtt Network.Outputs.PrivateSubnet2
-        AgentRole: !GetAtt AgentRole.Arn
-      TimeoutInMinutes: 30
+  # BiomarkerDiscoveryAgentNestedStack:
+  #   Type: AWS::CloudFormation::Stack
+  #   DependsOn:
+  #     - TriggerAgentBuildWaitCondition
+  #   Properties:
+  #     TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/packaged_agent_build.yaml
+  #     Parameters:
+  #       BedrockModelId: !Ref BedrockModelId
+  #       RedshiftDatabaseName: !Ref RedshiftDatabaseName
+  #       RedshiftUserName: !Ref RedshiftUserName
+  #       RedshiftPassword: !Ref RedshiftPassword
+  #       MultiAgentDevMode: "false"
+  #       EnvironmentName: env1
+  #       GitRepoURL: !Ref GithubLink
+  #       GitBranch: !Ref GitBranch
+  #       SubAgentS3Bucket: !Ref S3Bucket
+  #       VPC: !GetAtt Network.Outputs.VPC
+  #       PrivateSubnet1: !GetAtt Network.Outputs.PrivateSubnet1
+  #       PrivateSubnet2: !GetAtt Network.Outputs.PrivateSubnet2
+  #       AgentRole: !GetAtt AgentRole.Arn
+  #     TimeoutInMinutes: 30
 
-  ClinicalTrialProtocolSupervisorStack:
-    Type: AWS::CloudFormation::Stack
-    DependsOn:
-      - TriggerAgentBuildWaitCondition
-    Properties:
-      TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents_catalog/packaged_clinical-trial-protocol-assistant-cfn.yaml
-      Parameters:
-        BedrockModelId: !Ref BedrockModelId
-        AgentIAMRoleArn: !GetAtt AgentRole.Arn
-        S3Bucket: !Ref S3Bucket
-      TimeoutInMinutes: 10
+  # ClinicalTrialProtocolSupervisorStack:
+  #   Type: AWS::CloudFormation::Stack
+  #   DependsOn:
+  #     - TriggerAgentBuildWaitCondition
+  #   Properties:
+  #     TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents_catalog/packaged_clinical-trial-protocol-assistant-cfn.yaml
+  #     Parameters:
+  #       BedrockModelId: !Ref BedrockModelId
+  #       AgentIAMRoleArn: !GetAtt AgentRole.Arn
+  #       S3Bucket: !Ref S3Bucket
+  #     TimeoutInMinutes: 10
 
-  CompetitiveIntelligenceSupervisorStack:
-    Type: AWS::CloudFormation::Stack
-    Condition: CreateCompetitiveIntelAgent
-    DependsOn:
-      - TriggerAgentBuildWaitCondition
-    Properties:
-      TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents_catalog/packaged_competitive-intelligence-agent-cfn.yaml
-      Parameters:
-        BedrockModelId: !Ref BedrockModelId
-        TavilyApiKey: !Ref TavilyApiKey
-        USPTOApiKey: !Ref USPTOApiKey
-        AgentIAMRoleArn: !GetAtt AgentRole.Arn
-        S3Bucket: !Ref S3Bucket
-      TimeoutInMinutes: 10
+  # CompetitiveIntelligenceSupervisorStack:
+  #   Type: AWS::CloudFormation::Stack
+  #   Condition: CreateCompetitiveIntelAgent
+  #   DependsOn:
+  #     - TriggerAgentBuildWaitCondition
+  #   Properties:
+  #     TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents_catalog/packaged_competitive-intelligence-agent-cfn.yaml
+  #     Parameters:
+  #       BedrockModelId: !Ref BedrockModelId
+  #       TavilyApiKey: !Ref TavilyApiKey
+  #       USPTOApiKey: !Ref USPTOApiKey
+  #       AgentIAMRoleArn: !GetAtt AgentRole.Arn
+  #       S3Bucket: !Ref S3Bucket
+  #     TimeoutInMinutes: 10
 
   WileyOnlineSearchStack:
     Type: AWS::CloudFormation::Stack
     DependsOn:
       - TriggerAgentBuildWaitCondition
     Properties:
-      TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents_catalog/packaged_wiley-search-agent-cfn.yaml
+      TemplateURL: agents_catalog/18-Wiley-OA-life-sciences-agent/wiley-search-agent-cfn.yaml
       Parameters:
         AgentIAMRoleArn: !GetAtt AgentRole.Arn
-      TimeoutInMinutes: 10      
+      TimeoutInMinutes: 10
 
 #################################################################################################################################################
 #################################################################################################################################################
