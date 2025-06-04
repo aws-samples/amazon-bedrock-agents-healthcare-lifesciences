@@ -174,7 +174,6 @@ Resources:
     DependsOn:
       - CodeBuild
     Properties:
-      # TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/packaged_agent_build.yaml
       TemplateURL: agent_build.yaml
       Parameters:
         BedrockModelId: !Ref BedrockModelId
@@ -204,6 +203,37 @@ Resources:
         S3Bucket: !Ref S3Bucket
       TimeoutInMinutes: 10
 
+  WebSearchAgentStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: agents_catalog/11-Tavily-web-search-agent/web-search-agent-cfn.yaml
+      Parameters:
+        AgentAliasName: "Latest"
+        AgentIAMRoleArn: !Ref AgentIAMRoleArn
+        TavilyApiKey: !Ref TavilyApiKey
+      TimeoutInMinutes: 35
+
+  SEC10kAgentStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: agents_catalog/10-SEC-10-K-agent/sec-10-K-agent-cfn.yaml
+      Parameters:
+        AgentAliasName: "Latest"
+        AgentIAMRoleArn: !Ref AgentIAMRoleArn
+        S3CodeBucket: !Ref S3Bucket
+        S3CodeKey: !Ref S3CodeKey
+      TimeoutInMinutes: 35
+
+  USPTOSearchAgentStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: agents_catalog/14-USPTO-search/uspto-search-agent-cfn.yaml
+      Parameters:
+        AgentAliasName: "Latest"
+        AgentIAMRoleArn: !Ref AgentIAMRoleArn
+        USPTOApiKey: !Ref USPTOApiKey
+      TimeoutInMinutes: 35
+
   CompetitiveIntelligenceSupervisorStack:
     Type: AWS::CloudFormation::Stack
     Condition: CreateCompetitiveIntelAgent
@@ -211,12 +241,13 @@ Resources:
       TemplateURL: multi_agent_collaboration/competitive_intelligence/competitive-intelligence-agent-cfn.yaml
       Parameters:
         BedrockModelId: !Ref BedrockModelId
-        TavilyApiKey: !Ref TavilyApiKey
-        USPTOApiKey: !Ref USPTOApiKey
         AgentIAMRoleArn: !GetAtt AgentRole.Arn
-        S3Bucket: !GetAtt CodeRepo.Outputs.S3Bucket
-        S3CodeKey: !GetAtt CodeRepo.Outputs.S3Key
+        WebSearchAgentAliasArn: !GetAtt WebSearchAgentStack.Outputs.AgentAliasArn
+        SEC10kAgentAliasArn: !GetAtt SEC10kAgentStack.Outputs.AgentAliasArn
+        USPTOSearchAgentAliasArn: !GetAtt USPTOSearchAgentStack.Outputs.AgentAliasArn
       TimeoutInMinutes: 10
+
+
 
   WileyOnlineSearchStack:
     Type: AWS::CloudFormation::Stack
