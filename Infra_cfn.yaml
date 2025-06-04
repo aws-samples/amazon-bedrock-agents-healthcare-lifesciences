@@ -169,7 +169,7 @@ Resources:
   #################################################################################################################################################
   #################################################################################################################################################
 
-  BiomarkerDiscoveryAgentNestedStack:
+  BiomarkerDiscoverySupervisorAgent:
     Type: AWS::CloudFormation::Stack
     DependsOn:
       - CodeBuild
@@ -191,50 +191,63 @@ Resources:
         AgentRole: !GetAtt AgentRole.Arn
       TimeoutInMinutes: 30
 
-  ClinicalTrialProtocolSupervisorStack:
+  ClinicalStudySearchAgent:
     Type: AWS::CloudFormation::Stack
-    DependsOn:
-      - CodeBuild
+    Properties:
+      TemplateURL: agents_catalog/15-clinical-study-research-agent/clinical-study-agent.yaml
+      Parameters:
+        AgentIAMRoleArn: !GetAtt AgentRole.Arn
+        ChartImageBucketName: !Ref S3Bucket
+      TimeoutInMinutes: 10
+
+  ClinicalTrialProtocolGeneratorAgent:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: agents_catalog/16-Clinical-trial-protocol-generator-agent/clinical-trial-protocol-generator-agent.yaml
+      Parameters:
+        AgentIAMRoleArn: !GetAtt AgentRole.Arn
+      TimeoutInMinutes: 10
+
+  ClinicalTrialProtocolSupervisorAgent:
+    Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL: multi_agent_collaboration/Clinical-Trial-Protocol-Assistant/clinical-trial-protocol-assistant-cfn.yaml
       Parameters:
         BedrockModelId: !Ref BedrockModelId
         AgentIAMRoleArn: !GetAtt AgentRole.Arn
-        S3Bucket: !Ref S3Bucket
+        ClinicalStudySearchAgentAliasArn: !GetAtt ClinicalStudySearchAgent.Outputs.AgentAliasArn
+        ClinicalTrialProtocolGeneratorAgentAliasArn: !GetAtt ClinicalTrialProtocolGeneratorAgent.Outputs.AgentAliasArn
       TimeoutInMinutes: 10
 
-  WebSearchAgentStack:
+  WebSearchAgent:
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL: agents_catalog/11-Tavily-web-search-agent/web-search-agent-cfn.yaml
       Parameters:
-        AgentAliasName: "Latest"
         AgentIAMRoleArn: !GetAtt AgentRole.Arn
         TavilyApiKey: !Ref TavilyApiKey
       TimeoutInMinutes: 35
 
-  SEC10kAgentStack:
+  SEC10kAgent:
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL: agents_catalog/10-SEC-10-K-agent/sec-10-K-agent-cfn.yaml
       Parameters:
-        AgentAliasName: "Latest"
         AgentIAMRoleArn: !GetAtt AgentRole.Arn
         S3CodeBucket: !Ref S3Bucket
         S3CodeKey: !GetAtt CodeRepo.Outputs.S3Key
       TimeoutInMinutes: 35
 
-  USPTOSearchAgentStack:
+  USPTOSearchAgent:
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL: agents_catalog/14-USPTO-search/uspto-search-agent-cfn.yaml
       Parameters:
-        AgentAliasName: "Latest"
         AgentIAMRoleArn: !GetAtt AgentRole.Arn
         USPTOApiKey: !Ref USPTOApiKey
       TimeoutInMinutes: 35
 
-  CompetitiveIntelligenceSupervisorStack:
+  CompetitiveIntelligenceSupervisorAgent:
     Type: AWS::CloudFormation::Stack
     Condition: CreateCompetitiveIntelAgent
     Properties:
@@ -242,12 +255,12 @@ Resources:
       Parameters:
         BedrockModelId: !Ref BedrockModelId
         AgentIAMRoleArn: !GetAtt AgentRole.Arn
-        WebSearchAgentAliasArn: !GetAtt WebSearchAgentStack.Outputs.AgentAliasArn
-        SEC10kAgentAliasArn: !GetAtt SEC10kAgentStack.Outputs.AgentAliasArn
-        USPTOSearchAgentAliasArn: !GetAtt USPTOSearchAgentStack.Outputs.AgentAliasArn
+        WebSearchAgentAliasArn: !GetAtt WebSearchAgent.Outputs.AgentAliasArn
+        SEC10kAgentAliasArn: !GetAtt SEC10kAgent.Outputs.AgentAliasArn
+        USPTOSearchAgentAliasArn: !GetAtt USPTOSearchAgent.Outputs.AgentAliasArn
       TimeoutInMinutes: 10
 
-  WileyOnlineSearchStack:
+  WileyOnlineSearchAgent:
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL: agents_catalog/18-Wiley-OA-life-sciences-agent/wiley-search-agent-cfn.yaml
