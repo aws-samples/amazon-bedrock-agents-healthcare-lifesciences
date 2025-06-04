@@ -2017,7 +2017,7 @@ Resources:
                                   "packaged_agent_build.yaml",
                                   "packaged_network.yaml",
                                   "packaged_container.yaml",
-                                  "packaged_copy_githb_repo.yaml",
+                                  "packaged_copy_github_repo.yaml",
                                   "packaged_codebuild.yaml",
                               ]
                           ):
