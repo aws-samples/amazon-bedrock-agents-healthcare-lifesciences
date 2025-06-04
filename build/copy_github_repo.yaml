@@ -21,7 +21,7 @@ Parameters:
     Default: ""
 
 Resources:
-  GitRepoDownloaderRole:
+  CopyGitRepoRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -44,11 +44,11 @@ Resources:
                   - s3:DeleteObject
                 Resource: !Sub "arn:aws:s3:::${S3Bucket}/*"
 
-  GitRepoDownloaderFunction:
+  CopyGitRepoFunction:
     Type: AWS::Lambda::Function
     Properties:
       Handler: index.lambda_handler
-      Role: !GetAtt GitRepoDownloaderRole.Arn
+      Role: !GetAtt CopyGitRepoRole.Arn
       Runtime: python3.12
       EphemeralStorage: 
         Size: 1024
@@ -245,9 +245,11 @@ Resources:
                           s3_client.upload_file(zip_path, s3_bucket, s3_key)
 
                           # Set the response data
-                          s3_uri = f"s3://{s3_bucket}/{s3_key}"
+                          s3_path = f"{s3_bucket}/{s3_key}"
                           response_data = {
-                              "S3Uri": s3_uri,
+                              "S3Bucket": s3_bucket,
+                              "S3Key": s3_key,
+                              "S3Path": s3_path,
                               "Repository": github_url,
                               "Branch": branch_name,
                           }
@@ -298,16 +300,22 @@ Resources:
                   )
                   return
 
-  GitRepoDownloader:
-    Type: Custom::GitRepoDownloader
+  CopyGitRepo:
+    Type: Custom::CopyGitRepo
     Properties:
-      ServiceToken: !GetAtt GitRepoDownloaderFunction.Arn
+      ServiceToken: !GetAtt CopyGitRepoFunction.Arn
       GitHubUrl: !Ref GitHubUrl
       BranchName: !Ref BranchName
       S3Bucket: !Ref S3Bucket
       S3KeyPrefix: !Ref S3KeyPrefix
 
 Outputs:
-  S3Uri:
-    Description: S3 URI where the GitHub repository zip was uploaded
-    Value: !GetAtt GitRepoDownloader.S3Uri
+  S3Bucket:
+    Description: S3 bucket where the GitHub repository zip was uploaded
+    Value: !GetAtt CopyGitRepo.S3Bucket
+  S3Key:
+    Description: S3 key where the GitHub repository zip was uploaded
+    Value: !GetAtt CopyGitRepo.S3Key
+  S3Path:
+    Description: S3 path where the GitHub repository zip was uploaded in the format <bucket-name>/<object-key>.zip
+    Value: !GetAtt CopyGitRepo.S3Path
