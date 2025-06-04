@@ -63,6 +63,9 @@ Resources:
     Properties:
       TemplateURL: build/network.yaml
       TimeoutInMinutes: 10
+      Tags:
+        - Key: Project
+          Value: "hcls-agents-toolkit"
 
   ##################################################################
   # S3
@@ -76,6 +79,9 @@ Resources:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
+      Tags:
+        - Key: Project
+          Value: "hcls-agents-toolkit"
 
   ##################################################################
   # Copy code repo to S3
@@ -91,6 +97,9 @@ Resources:
         S3Bucket: !Ref S3Bucket
         S3KeyPrefix: "repo"
       TimeoutInMinutes: 5
+      Tags:
+        - Key: Project
+          Value: "hcls-agents-toolkit"
 
   ###############################################################################
   # Custom Resources to Package Agent Templates - May not be needed in the future
@@ -105,6 +114,9 @@ Resources:
         GitBranch: !Ref GitBranch
         S3Bucket: !Ref S3Bucket
       TimeoutInMinutes: 10
+      Tags:
+        - Key: Project
+          Value: "hcls-agents-toolkit"
 
   ##################################################################
   # React Application
@@ -123,6 +135,9 @@ Resources:
         S3Bucket: !Ref S3Bucket
         S3CodeKey: !GetAtt CodeRepo.Outputs.S3Key
       TimeoutInMinutes: 35
+      Tags:
+        - Key: Project
+          Value: "hcls-agents-toolkit"
 
   ##################################################################
   # Amazon Bedrock Agents Service Role
@@ -158,6 +173,9 @@ Resources:
                   - !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/*
                   - !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:application-inference-profile/*
                   - !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:guardrail/*
+      Tags:
+        - Key: Project
+          Value: "hcls-agents-toolkit"
 
   #################################################################################################################################################
   #################################################################################################################################################
@@ -190,6 +208,9 @@ Resources:
         PrivateSubnet2: !GetAtt Network.Outputs.PrivateSubnet2
         AgentRole: !GetAtt AgentRole.Arn
       TimeoutInMinutes: 30
+      Tags:
+        - Key: Project
+          Value: "hcls-agents-toolkit"
 
   ClinicalStudySearchAgent:
     Type: AWS::CloudFormation::Stack
@@ -199,6 +220,9 @@ Resources:
         AgentIAMRoleArn: !GetAtt AgentRole.Arn
         ChartImageBucketName: !Ref S3Bucket
       TimeoutInMinutes: 10
+      Tags:
+        - Key: Project
+          Value: "hcls-agents-toolkit"
 
   ClinicalTrialProtocolGeneratorAgent:
     Type: AWS::CloudFormation::Stack
@@ -207,6 +231,9 @@ Resources:
       Parameters:
         AgentIAMRoleArn: !GetAtt AgentRole.Arn
       TimeoutInMinutes: 10
+      Tags:
+        - Key: Project
+          Value: "hcls-agents-toolkit"
 
   ClinicalTrialProtocolSupervisorAgent:
     Type: AWS::CloudFormation::Stack
@@ -218,6 +245,9 @@ Resources:
         ClinicalStudySearchAgentAliasArn: !GetAtt ClinicalStudySearchAgent.Outputs.AgentAliasArn
         ClinicalTrialProtocolGeneratorAgentAliasArn: !GetAtt ClinicalTrialProtocolGeneratorAgent.Outputs.AgentAliasArn
       TimeoutInMinutes: 10
+      Tags:
+        - Key: Project
+          Value: "hcls-agents-toolkit"
 
   WebSearchAgent:
     Type: AWS::CloudFormation::Stack
@@ -227,6 +257,9 @@ Resources:
         AgentIAMRoleArn: !GetAtt AgentRole.Arn
         TavilyApiKey: !Ref TavilyApiKey
       TimeoutInMinutes: 35
+      Tags:
+        - Key: Project
+          Value: "hcls-agents-toolkit"
 
   SEC10kAgent:
     Type: AWS::CloudFormation::Stack
@@ -237,6 +270,9 @@ Resources:
         S3CodeBucket: !Ref S3Bucket
         S3CodeKey: !GetAtt CodeRepo.Outputs.S3Key
       TimeoutInMinutes: 35
+      Tags:
+        - Key: Project
+          Value: "hcls-agents-toolkit"
 
   USPTOSearchAgent:
     Type: AWS::CloudFormation::Stack
@@ -246,6 +282,9 @@ Resources:
         AgentIAMRoleArn: !GetAtt AgentRole.Arn
         USPTOApiKey: !Ref USPTOApiKey
       TimeoutInMinutes: 35
+      Tags:
+        - Key: Project
+          Value: "hcls-agents-toolkit"
 
   CompetitiveIntelligenceSupervisorAgent:
     Type: AWS::CloudFormation::Stack
@@ -259,6 +298,9 @@ Resources:
         SEC10kAgentAliasArn: !GetAtt SEC10kAgent.Outputs.AgentAliasArn
         USPTOSearchAgentAliasArn: !GetAtt USPTOSearchAgent.Outputs.AgentAliasArn
       TimeoutInMinutes: 10
+      Tags:
+        - Key: Project
+          Value: "hcls-agents-toolkit"
 
   WileyOnlineSearchAgent:
     Type: AWS::CloudFormation::Stack
@@ -267,6 +309,9 @@ Resources:
       Parameters:
         AgentIAMRoleArn: !GetAtt AgentRole.Arn
       TimeoutInMinutes: 10
+      Tags:
+        - Key: Project
+          Value: "hcls-agents-toolkit"
 
 #################################################################################################################################################
 #################################################################################################################################################
