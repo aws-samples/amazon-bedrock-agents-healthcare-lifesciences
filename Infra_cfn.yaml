@@ -192,17 +192,18 @@ Resources:
   #       AgentRole: !GetAtt AgentRole.Arn
   #     TimeoutInMinutes: 30
 
-  # ClinicalTrialProtocolSupervisorStack:
-  #   Type: AWS::CloudFormation::Stack
-  #   DependsOn:
-  #     - CodeBuild
-  #   Properties:
-  #     TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents_catalog/packaged_clinical-trial-protocol-assistant-cfn.yaml
-  #     Parameters:
-  #       BedrockModelId: !Ref BedrockModelId
-  #       AgentIAMRoleArn: !GetAtt AgentRole.Arn
-  #       S3Bucket: !Ref S3Bucket
-  #     TimeoutInMinutes: 10
+  ClinicalTrialProtocolSupervisorStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn:
+      - CodeBuild
+    Properties:
+      # TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents_catalog/packaged_clinical-trial-protocol-assistant-cfn.yaml
+      TemplateURL: multi_agent_collaboration/Clinical-Trial-Protocol-Assistant/clinical-trial-protocol-assistant-cfn.yaml
+      Parameters:
+        BedrockModelId: !Ref BedrockModelId
+        AgentIAMRoleArn: !GetAtt AgentRole.Arn
+        S3Bucket: !Ref S3Bucket
+      TimeoutInMinutes: 10
 
   CompetitiveIntelligenceSupervisorStack:
     Type: AWS::CloudFormation::Stack

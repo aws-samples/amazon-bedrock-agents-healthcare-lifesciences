@@ -16,9 +16,9 @@ Parameters:
   ChartImageBucketName:
     Type: String
     Description: S3 bucket name for storing chart images
-  LayersBucketName:
-    Type: String
-    Description: S3 bucket name for storing Lambda layers
+  # LayersBucketName:
+  #   Type: String
+  #   Description: S3 bucket name for storing Lambda layers
 
 Conditions:
   CreateAgentAliasCondition: !Not [!Equals [!Ref AgentAliasName, ""]]
@@ -109,10 +109,10 @@ Resources:
       Description: Layer containing matplotlib and dependencies
       CompatibleRuntimes:
         - python3.11
-      Content:
-        S3Bucket:
-          Ref: LayersBucketName
-        S3Key: agents_catalog/matplotlib.zip
+      Content: lambdalayers/matplotlib.zip
+        # S3Bucket:
+        #   Ref: LayersBucketName
+        # S3Key: agents_catalog/matplotlib.zip
 
   #######################
   ##### Lambda Functions #####
