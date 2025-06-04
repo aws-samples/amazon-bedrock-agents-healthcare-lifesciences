@@ -52,7 +52,7 @@ Resources:
   SEC10KSearchContainer:
     Type: "AWS::CloudFormation::Stack"
     Properties:
-      TemplateURL: container.yaml
+      TemplateURL: ../../build/container.yaml
       Parameters:
         S3CodeBucket:
           "Fn::If":
@@ -62,10 +62,8 @@ Resources:
         S3CodeKey:
           Ref: S3CodeKey
         BuildContextPath: !Ref BuildContextPath
-        Name:
+        ContainerName:
           Ref: ContainerName
-        Timestamp:
-          Ref: Timestamp
         WaitForCodeBuild: "Y"
 
   SEC10KSearchLambdaRole:
