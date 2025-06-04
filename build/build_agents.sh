@@ -8,22 +8,34 @@ echo "S3 Bucket: ${S3_BUCKET}"
 # cd build || exit
 pushd build || exit
 echo "Processing build templates..."
-for template in *.yaml; do
-  if [ -f "${template}" ]; then
-    echo "Found template file: ${template}"
-    template_name=$(basename "${template}" .yaml)
-    echo "Packaging template: ${template_name}"
-    aws cloudformation package \
-      --template-file "${template}" \
-      --s3-bucket "${S3_BUCKET}" \
-      --output-template-file "../packaged_${template_name}.yaml"
-    
-    # Copy to S3 immediately after packaging
-    aws s3 cp "../packaged_${template_name}.yaml" "s3://${S3_BUCKET}/packaged_${template_name}.yaml"
-  fi
-done
-# cd ..
+template="codebuild.yaml"
+echo "Found template file: ${template}"
+template_name=$(basename "${template}" .yaml)
+echo "Packaging template: ${template_name}"
+aws cloudformation package \
+  --template-file "${template}" \
+  --s3-bucket "${S3_BUCKET}" \
+  --output-template-file "../packaged_${template_name}.yaml"
+# Copy to S3 immediately after packaging
+aws s3 cp "../packaged_${template_name}.yaml" "s3://${S3_BUCKET}/packaged_${template_name}.yaml"  
 popd
+
+# for template in *.yaml; do
+#   if [ -f "${template}" ]; then
+#     echo "Found template file: ${template}"
+#     template_name=$(basename "${template}" .yaml)
+#     echo "Packaging template: ${template_name}"
+#     aws cloudformation package \
+#       --template-file "${template}" \
+#       --s3-bucket "${S3_BUCKET}" \
+#       --output-template-file "../packaged_${template_name}.yaml"
+    
+#     # Copy to S3 immediately after packaging
+#     aws s3 cp "../packaged_${template_name}.yaml" "s3://${S3_BUCKET}/packaged_${template_name}.yaml"
+#   fi
+# done
+# # cd ..
+# popd
 
 # Process Cancer biomarker discovery Subagent templates
 # cd multi_agent_collaboration/cancer_biomarker_discovery/agents || exit

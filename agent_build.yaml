@@ -2012,7 +2012,7 @@ Resources:
                 # Get list of agent templates, excluding supervisor and streamlit
                 agents = []
                 for obj in response.get('Contents', []):
-                  if obj['Key'].startswith('packaged_') and obj['Key'].endswith('.yaml') and obj['Key'] not in ["packaged_agent_build.yaml", "packaged_network.yaml"]:
+                  if obj['Key'].startswith('packaged_') and obj['Key'].endswith('.yaml') and obj['Key'] not in ["packaged_agent_build.yaml", "packaged_network.yaml", "packaged_container.yaml", "packaged_copy_githb_repo.yaml"]:
                     agent_name = obj['Key'].replace('packaged_', '').replace('.yaml', '')
                     if agent_name not in ['supervisor_agent', 'streamlit_build']:
                       agents.append(agent_name)
