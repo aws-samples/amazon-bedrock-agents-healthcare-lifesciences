@@ -2000,32 +2000,39 @@ Resources:
           import cfnresponse
 
           def handler(event, context):
-            try:
-              if event['RequestType'] in ['Create', 'Update']:
-                s3 = boto3.client('s3')
-                bucket = event['ResourceProperties']['BucketName']
-                response = s3.list_objects_v2(
-                  Bucket=bucket,
-                  Prefix='packaged_'
-                )
-                
-                # Get list of agent templates, excluding supervisor and streamlit
-                agents = []
-                for obj in response.get('Contents', []):
-                  if obj['Key'].startswith('packaged_') and obj['Key'].endswith('.yaml') and obj['Key'] not in ["packaged_agent_build.yaml", "packaged_network.yaml", "packaged_container.yaml", "packaged_copy_githb_repo.yaml"]:
-                    agent_name = obj['Key'].replace('packaged_', '').replace('.yaml', '')
-                    if agent_name not in ['supervisor_agent', 'streamlit_build']:
-                      agents.append(agent_name)
-                
-                cfnresponse.send(event, context, cfnresponse.SUCCESS, {
-                  'Agents': agents
-                })
-              else:
-                cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
-            except Exception as e:
-              cfnresponse.send(event, context, cfnresponse.FAILED, {
-                'Error': str(e)
-              })
+              try:
+                  if event["RequestType"] in ["Create", "Update"]:
+                      s3 = boto3.client("s3")
+                      bucket = event["ResourceProperties"]["BucketName"]
+                      response = s3.list_objects_v2(Bucket=bucket, Prefix="packaged_")
+
+                      # Get list of agent templates, excluding supervisor and streamlit
+                      agents = []
+                      for obj in response.get("Contents", []):
+                          if (
+                              obj["Key"].startswith("packaged_")
+                              and obj["Key"].endswith(".yaml")
+                              and obj["Key"]
+                              not in [
+                                  "packaged_agent_build.yaml",
+                                  "packaged_network.yaml",
+                                  "packaged_container.yaml",
+                                  "packaged_copy_githb_repo.yaml",
+                                  "packaged_codebuild.yaml",
+                              ]
+                          ):
+                              agent_name = (
+                                  obj["Key"].replace("packaged_", "").replace(".yaml", "")
+                              )
+                              if agent_name not in ["supervisor_agent", "streamlit_build"]:
+                                  agents.append(agent_name)
+
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {"Agents": agents})
+                  else:
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+              except Exception as e:
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {"Error": str(e)})
+
 
   # Custom Resource to discover agents
   AgentDiscovery:
