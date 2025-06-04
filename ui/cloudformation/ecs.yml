@@ -23,11 +23,6 @@ Parameters:
     Type: String
     Default: hcls-agents-react-ui-service
     Description: A name for the service
-  # ImageUrl:
-  #   Type: String
-  #   Description:
-  #     The uri of a docker image that contains the application process that
-  #     will handle the traffic for this service
   ContainerPort:
     Type: Number
     Default: 3000
@@ -69,17 +64,6 @@ Parameters:
     Default: "ui"
 
 Resources:
-  # ReactAppDockerBuildNestedStack:
-  #   Type: AWS::CloudFormation::Stack
-  #   Condition: CreateReactApp
-  #   Properties:
-  #     TemplateURL: docker_build_pipeline.yml
-  #     Parameters:
-  #       S3Bucket: !Ref S3Bucket
-  #       S3CodeKey: !Ref S3CodeKey
-  #       BuildContextPath: "ui/app"
-  #     TimeoutInMinutes: 35
-
   ReactAppContainer:
     Type: "AWS::CloudFormation::Stack"
     Properties:
@@ -90,7 +74,7 @@ Resources:
           Ref: S3CodeKey
         BuildContextPath: !Ref BuildContextPath
         ContainerName: "toolkit-react-ui-ui-repo"
-        WaitForCodeBuild: "Y"      
+        WaitForCodeBuild: "Y"
 
   ECSCluster:
     Type: AWS::ECS::Cluster

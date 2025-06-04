@@ -42,7 +42,7 @@ Parameters:
     Default: ""
   DeployApplication:
     Type: String
-    Description: Select true to deploy the react application. Select false to only build the application.
+    Description: Select true to deploy the react application and agents. Select false to only build the agents.
     Default: "true"
     AllowedValues:
       - "true"
@@ -92,10 +92,9 @@ Resources:
         S3KeyPrefix: "repo"
       TimeoutInMinutes: 5
 
-
-  ##################################################################
-  # Custom Resources to Package Agent Templates
-  ##################################################################
+  ###############################################################################
+  # Custom Resources to Package Agent Templates - May not be needed in the future
+  ###############################################################################
 
   CodeBuild:
     Type: AWS::CloudFormation::Stack
@@ -125,9 +124,9 @@ Resources:
         S3CodeKey: !GetAtt CodeRepo.Outputs.S3Key
       TimeoutInMinutes: 35
 
-    ##################################################################
-    # Amazon Bedrock Agents Service Role
-    ##################################################################
+  ##################################################################
+  # Amazon Bedrock Agents Service Role
+  ##################################################################
 
   AgentRole:
     Type: AWS::IAM::Role
@@ -162,42 +161,42 @@ Resources:
 
   #################################################################################################################################################
   #################################################################################################################################################
-  #    _                _      ___      _        _
-  #   /_\  __ _ ___ _ _| |_   / __|__ _| |_ __ _| |___  __ _
-  #  / _ \/ _` / -_) ' \  _| | (__/ _` |  _/ _` | / _ \/ _` |
-  # /_/ \_\__, \___|_||_\__|  \___\__,_|\__\__,_|_\___/\__, |
-  #       |___/                                        |___/
+  ##    _                _      ___      _        _
+  ##   /_\  __ _ ___ _ _| |_   / __|__ _| |_ __ _| |___  __ _
+  ##  / _ \/ _` / -_) ' \  _| | (__/ _` |  _/ _` | / _ \/ _` |
+  ## /_/ \_\__, \___|_||_\__|  \___\__,_|\__\__,_|_\___/\__, |
+  ##       |___/                                        |___/
   #################################################################################################################################################
   #################################################################################################################################################
 
-  # BiomarkerDiscoveryAgentNestedStack:
-  #   Type: AWS::CloudFormation::Stack
-  #   DependsOn:
-  #     - TriggerAgentBuildWaitCondition
-  #   Properties:
-  #     TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/packaged_agent_build.yaml
-  #     Parameters:
-  #       BedrockModelId: !Ref BedrockModelId
-  #       RedshiftDatabaseName: !Ref RedshiftDatabaseName
-  #       RedshiftUserName: !Ref RedshiftUserName
-  #       RedshiftPassword: !Ref RedshiftPassword
-  #       MultiAgentDevMode: "false"
-  #       EnvironmentName: env1
-  #       GitRepoURL: !Ref GithubLink
-  #       GitBranch: !Ref GitBranch
-  #       SubAgentS3Bucket: !Ref S3Bucket
-  #       VPC: !GetAtt Network.Outputs.VPC
-  #       PrivateSubnet1: !GetAtt Network.Outputs.PrivateSubnet1
-  #       PrivateSubnet2: !GetAtt Network.Outputs.PrivateSubnet2
-  #       AgentRole: !GetAtt AgentRole.Arn
-  #     TimeoutInMinutes: 30
+  BiomarkerDiscoveryAgentNestedStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn:
+      - CodeBuild
+    Properties:
+      # TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/packaged_agent_build.yaml
+      TemplateURL: agent_build.yaml
+      Parameters:
+        BedrockModelId: !Ref BedrockModelId
+        RedshiftDatabaseName: !Ref RedshiftDatabaseName
+        RedshiftUserName: !Ref RedshiftUserName
+        RedshiftPassword: !Ref RedshiftPassword
+        MultiAgentDevMode: "false"
+        EnvironmentName: env1
+        GitRepoURL: !Ref GithubLink
+        GitBranch: !Ref GitBranch
+        SubAgentS3Bucket: !Ref S3Bucket
+        VPC: !GetAtt Network.Outputs.VPC
+        PrivateSubnet1: !GetAtt Network.Outputs.PrivateSubnet1
+        PrivateSubnet2: !GetAtt Network.Outputs.PrivateSubnet2
+        AgentRole: !GetAtt AgentRole.Arn
+      TimeoutInMinutes: 30
 
   ClinicalTrialProtocolSupervisorStack:
     Type: AWS::CloudFormation::Stack
     DependsOn:
       - CodeBuild
     Properties:
-      # TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents_catalog/packaged_clinical-trial-protocol-assistant-cfn.yaml
       TemplateURL: multi_agent_collaboration/Clinical-Trial-Protocol-Assistant/clinical-trial-protocol-assistant-cfn.yaml
       Parameters:
         BedrockModelId: !Ref BedrockModelId

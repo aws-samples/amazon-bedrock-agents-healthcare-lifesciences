@@ -33,7 +33,6 @@ Resources:
         AgentAliasName: "Latest"
         AgentIAMRoleArn: !Ref AgentIAMRoleArn
         ChartImageBucketName: !Ref S3Bucket
-        # LayersBucketName: !Ref S3Bucket
       TimeoutInMinutes: 10
 
   ClinicalTrialProtocolGeneratorAgentStack:
