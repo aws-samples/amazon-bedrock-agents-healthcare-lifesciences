@@ -67,6 +67,34 @@ In most cases, you may leave the default template parameters unchanged. However,
 - **TavilyApiKey**: API key for the Tavily web search API. Required to deploy the Tavily Web Search and Competitive Intelligence Supervisor agents. Please visit [tavily.com](https://tavily.com/) to create a account and generate an API key.
 - **USPTOApiKey**: API key for the US Patent and Trademark Office (USPTO) Open Data Portal. Required to deploy the USPTO Search and Competitive Intelligence Supervisor agents. Please visit the [USPO Open Data Portal](https://data.uspto.gov/apis/getting-started) to create a account and generate an API key.
 
+You may also deploy the application using the AWS CLI by first running `aws cloudformation package` and then `aws cloudformation deploy`. For example:
+
+```sh
+
+export BUCKET_NAME="amzn-s3-demo-bucket"
+export REGION="us-east-1"
+export STACK_NAME="hcls-agents-toolkit"
+export TAVILY_API_KEY="1234567890abcdef0"
+export USPTO_API_KEY="1234567890abcdef0"
+aws cloudformation package --template-file "infra_cfn.yaml" \
+  --s3-bucket $BUCKET_NAME \
+  --output-template-file "packaged_infra_cfn.yaml" \
+  --region $REGION
+aws cloudformation deploy --template-file "packaged_infra_cfn.yaml" \
+  --s3-bucket $BUCKET_NAME \
+  --capabilities CAPABILITY_IAM \
+  --stack-name $STACK_NAME \
+  --region $REGION \
+  --disable-rollback \
+  --parameter-overrides \
+    RedshiftPassword="1234567890abcdef0" \
+    ReactAppAllowedCidr="192.0.2.0/24" \
+    TavilyApiKey=$TAVILY_API_KEY \
+    USPTOApiKey=$USPTO_API_KEY
+rm packaged_infra_cfn.yaml
+
+```
+
 ### 4. Access the toolkit application
 
 1. Navigate to AWS CloudFormation via AWS Console search
@@ -114,11 +142,13 @@ Depending on your local environment, you may need to provide the full path to yo
 
 2. Clone your forked repository to your local machine.
 
-3. Update the GitHub URL in the following configuration files to point to your forked repository:
-   - `infra_cfn.yaml`
-   - `agent_build.yaml`
+3. Add new agents to the `agents_catalog` folder. You may also include your new agents as stack resources in the `infra_cfn.yaml` file.
 
-4. For testing purposes, deploy the `infra_cfn.yaml` template to AWS CloudFormation.
+4. For testing purposes, deploy the `infra_cfn.yaml` template to AWS CloudFormation providing your forked repository and branch as the `GithubLink` and `GitBranch` parameters.
+
+### AI-Assisted Development
+
+Please use the `CONTEXT.md` file to provide additional context to coding agents.
 
 ### Submitting a Pull Request
 
