@@ -353,3 +353,6 @@ Outputs:
   CodeBuildLambdaArn:
     Description: The ARN of the CodeBuild lambda trigger
     Value: !GetAtt StartCodeBuildLambda.Arn
+  ECRRepositoryName:
+    Description: ECR Repository Name
+    Value: !Ref Repository

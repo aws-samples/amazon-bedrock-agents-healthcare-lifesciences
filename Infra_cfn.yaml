@@ -111,30 +111,18 @@ Resources:
   # React Application
   ##################################################################
 
-  ReactAppDockerBuildNestedStack:
-    Type: AWS::CloudFormation::Stack
-    Condition: CreateReactApp
-    Properties:
-      TemplateURL: ui/cloudformation/docker_build_pipeline.yml
-      Parameters:
-        ProjectName: toolkit-react-ui
-        GithubLink: !Ref GithubLink
-        GitBranch: !Ref GitBranch
-      TimeoutInMinutes: 35
-
   ReactAppEcsBuildNestedStack:
     Type: AWS::CloudFormation::Stack
     Condition: CreateReactApp
     Properties:
       TemplateURL: ui/cloudformation/ecs.yml
       Parameters:
-        VPCId: !GetAtt Network.Outputs.VPC
         AllowedCidr: !Ref ReactAppAllowedCidr
+        VPCId: !GetAtt Network.Outputs.VPC
         PublicSubnet1: !GetAtt Network.Outputs.PublicSubnet1
         PublicSubnet2: !GetAtt Network.Outputs.PublicSubnet2
-        ImageUrl: !GetAtt
-          - ReactAppDockerBuildNestedStack
-          - Outputs.ECRRepositoryURI
+        S3Bucket: !GetAtt CodeRepo.Outputs.S3Bucket
+        S3CodeKey: !GetAtt CodeRepo.Outputs.S3Key
       TimeoutInMinutes: 35
 
     ##################################################################
@@ -219,8 +207,6 @@ Resources:
   CompetitiveIntelligenceSupervisorStack:
     Type: AWS::CloudFormation::Stack
     Condition: CreateCompetitiveIntelAgent
-    # DependsOn:
-    #   - CodeBuild
     Properties:
       TemplateURL: multi_agent_collaboration/competitive_intelligence/competitive-intelligence-agent-cfn.yaml
       Parameters:
