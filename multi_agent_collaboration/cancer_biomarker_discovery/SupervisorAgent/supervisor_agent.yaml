@@ -313,23 +313,6 @@ Resources:
     Properties:
       ServiceToken: !GetAtt CollaboratorAssociationFunction.Arn
       AgentId: !GetAtt BedrockAgentCustomResource.AgentId
-  
-  AgentIdSSMParameter:
-    DependsOn: CollaboratorAssociationCustomResource
-    Type: AWS::SSM::Parameter
-    Properties:
-      Name: !Sub /streamlitapp/${EnvironmentName}/AGENT_ID
-      Type: String
-      Value: !GetAtt BedrockAgentCustomResource.AgentId
-      Description: !Sub SSM parameter for AgentId for ${EnvironmentName}
-
-  AgentAliasIdSSMParameter:
-    Type: AWS::SSM::Parameter
-    Properties:
-      Name: !Sub /streamlitapp/${EnvironmentName}/AGENT_ALIAS_ID
-      Type: String
-      Value: !GetAtt CollaboratorAssociationCustomResource.SupervisorAliasId
-      Description: !Sub SSM parameter for AgentAliasId for ${EnvironmentName}
 
 Outputs:
   AgentId:

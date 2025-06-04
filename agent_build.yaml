@@ -1823,14 +1823,6 @@ Resources:
       Value: !Ref AgentRole
       Description: Amazon Bedrock Agents Service Role ARN
 
-  S3BucketNameSSMParameter:
-    Type: AWS::SSM::Parameter
-    Properties:
-      Name: !Sub /streamlitapp/${EnvironmentName}/S3_BUCKET_NAME
-      Type: String
-      Value: !Ref S3Bucket
-      Description: !Sub SSM parameter for S3 bucket name for ${EnvironmentName}
-
   AgentBuildS3BucketNameSSMParameter:
     Type: AWS::SSM::Parameter
     Properties:
@@ -2006,7 +1998,7 @@ Resources:
                       bucket = event["ResourceProperties"]["BucketName"]
                       response = s3.list_objects_v2(Bucket=bucket, Prefix="packaged_")
 
-                      # Get list of agent templates, excluding supervisor and streamlit
+                      # Get list of agent templates, excluding supervisor
                       agents = []
                       for obj in response.get("Contents", []):
                           if (
@@ -2024,7 +2016,7 @@ Resources:
                               agent_name = (
                                   obj["Key"].replace("packaged_", "").replace(".yaml", "")
                               )
-                              if agent_name not in ["supervisor_agent", "streamlit_build"]:
+                              if agent_name not in ["supervisor_agent"]:
                                   agents.append(agent_name)
 
                       cfnresponse.send(event, context, cfnresponse.SUCCESS, {"Agents": agents})
