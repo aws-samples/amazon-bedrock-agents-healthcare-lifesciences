@@ -78,6 +78,22 @@ Resources:
               SSEAlgorithm: AES256
 
   ##################################################################
+  # Copy code repo to S3
+  ##################################################################
+
+  CodeRepo:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: build/copy_github_repo.yaml
+      Parameters:
+        GithubLink: !Ref GithubLink
+        GitBranch: !Ref GitBranch
+        S3Bucket: !Ref S3Bucket
+        S3KeyPrefix: "repo"
+      TimeoutInMinutes: 5
+
+
+  ##################################################################
   # Custom Resources to Package Agent Templates
   ##################################################################
 
@@ -213,6 +229,7 @@ Resources:
         USPTOApiKey: !Ref USPTOApiKey
         AgentIAMRoleArn: !GetAtt AgentRole.Arn
         S3Bucket: !Ref S3Bucket
+        Code: !GetAtt CodeRepo.Outputs.S3Uri
       TimeoutInMinutes: 10
 
   WileyOnlineSearchStack:
