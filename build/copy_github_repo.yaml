@@ -5,16 +5,13 @@ Parameters:
   GitHubUrl:
     Type: String
     Description: URL of the GitHub repository to download
-
   BranchName:
     Type: String
     Description: Branch name to download
     Default: main
-
   S3Bucket:
     Type: String
     Description: S3 bucket name for upload
-
   S3KeyPrefix:
     Type: String
     Description: Optional prefix/path in the S3 bucket
@@ -50,13 +47,14 @@ Resources:
       Handler: index.lambda_handler
       Role: !GetAtt CopyGitRepoRole.Arn
       Runtime: python3.12
-      EphemeralStorage: 
+      EphemeralStorage:
         Size: 1024
       Timeout: 300
       MemorySize: 256
       Code:
         ZipFile: |
           import boto3
+          import cfnresponse
           import json
           import logging
           import os
@@ -66,7 +64,7 @@ Resources:
           import urllib.error
           from urllib.parse import urlparse
           from typing import Dict, Any, Optional
-          import cfnresponse
+          import zipfile
 
           # Configure logging
           logger = logging.getLogger()
@@ -232,6 +230,35 @@ Resources:
                                   shutil.copyfileobj(response, out_file)
 
                           logger.info(f"Repository downloaded to: {zip_path}")
+                          
+                          # Extract the zip file, move contents up a level, and rezip
+                          extract_dir = os.path.join(temp_dir, "extract")
+                          os.makedirs(extract_dir, exist_ok=True)
+                          
+                          # Extract the original zip file
+                          with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                              zip_ref.extractall(extract_dir)
+                          
+                          # Find the top-level directory (usually repo-name-branch)
+                          top_level_dirs = [d for d in os.listdir(extract_dir) if os.path.isdir(os.path.join(extract_dir, d))]
+                          if top_level_dirs:
+                              top_dir = os.path.join(extract_dir, top_level_dirs[0])
+                              
+                              # Create a new zip file with contents moved up a level
+                              repackaged_zip_path = os.path.join(temp_dir, f"repackaged_{zip_filename}")
+                              with zipfile.ZipFile(repackaged_zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                                  for root, _, files in os.walk(top_dir):
+                                      for file in files:
+                                          file_path = os.path.join(root, file)
+                                          # Calculate relative path from top_dir
+                                          rel_path = os.path.relpath(file_path, top_dir)
+                                          zipf.write(file_path, rel_path)
+                              
+                              # Replace the original zip with the repackaged one
+                              shutil.move(repackaged_zip_path, zip_path)
+                              logger.info(f"Repackaged zip file without top-level directory")
+                          else:
+                              logger.warning(f"No top-level directory found in zip, using original zip")
 
                           # Determine the S3 key (path in the bucket)
                           s3_key = (

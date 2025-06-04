@@ -61,7 +61,7 @@ Resources:
   Network:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: ./build/network.yaml
+      TemplateURL: build/network.yaml
       TimeoutInMinutes: 10
 
   ##################################################################
@@ -86,8 +86,8 @@ Resources:
     Properties:
       TemplateURL: build/copy_github_repo.yaml
       Parameters:
-        GithubLink: !Ref GithubLink
-        GitBranch: !Ref GitBranch
+        GitHubUrl: !Ref GithubLink
+        BranchName: !Ref GitBranch
         S3Bucket: !Ref S3Bucket
         S3KeyPrefix: "repo"
       TimeoutInMinutes: 5
@@ -219,8 +219,8 @@ Resources:
   CompetitiveIntelligenceSupervisorStack:
     Type: AWS::CloudFormation::Stack
     Condition: CreateCompetitiveIntelAgent
-    DependsOn:
-      - CodeBuild
+    # DependsOn:
+    #   - CodeBuild
     Properties:
       TemplateURL: multi_agent_collaboration/competitive_intelligence/competitive-intelligence-agent-cfn.yaml
       Parameters:
@@ -228,8 +228,8 @@ Resources:
         TavilyApiKey: !Ref TavilyApiKey
         USPTOApiKey: !Ref USPTOApiKey
         AgentIAMRoleArn: !GetAtt AgentRole.Arn
-        S3Bucket: !Ref S3Bucket
-        Code: !GetAtt CodeRepo.Outputs.S3Uri
+        S3Bucket: !GetAtt CodeRepo.Outputs.S3Bucket
+        S3CodeKey: !GetAtt CodeRepo.Outputs.S3Key
       TimeoutInMinutes: 10
 
   WileyOnlineSearchStack:

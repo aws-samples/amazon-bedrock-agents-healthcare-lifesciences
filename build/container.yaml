@@ -209,6 +209,7 @@ Resources:
             build:
               commands:
                 - echo Building the image
+                - ls -R
                 - docker buildx build --platform linux/amd64 --provenance=false -t $IMAGE_REPO_NAME:$IMAGE_TAG $BUILD_CONTEXT_PATH
                 - echo tagging the $IMAGE_REPO_NAME image
                 - docker tag $IMAGE_REPO_NAME:$IMAGE_TAG $ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG

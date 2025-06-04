@@ -59,11 +59,6 @@ Resources:
         AgentAliasName: "Latest"
         AgentIAMRoleArn: !Ref AgentIAMRoleArn
         S3CodeBucket: !Ref S3Bucket
-        # S3CodeBucket:
-        #   "Fn::If":
-        #     - AgentS3BucketCondition
-        #     - !Ref S3Bucket
-        #     - "{{resolve:ssm:/s3/agent_build/name:1}}"
         S3CodeKey: !Ref S3CodeKey
       TimeoutInMinutes: 35
 
