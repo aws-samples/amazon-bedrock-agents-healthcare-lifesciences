@@ -24,7 +24,11 @@ Parameters:
   S3CodeKey:
     Description: S3 key for the zip file containing CodeBuild code
     Type: String
-    Default: "agents_catalog/sec-10-k-docker.zip"
+    Default: "repo/amazon-bedrock-agents-healthcare-lifesciences.zip"
+  BuildContextPath:
+    Description: Path to the container build context
+    Type: String
+    Default: "agents_catalog/10-SEC-10-K-agent/action-groups/SEC-10-K-search/container"
   ContainerName:
     Description: Name of the ECR project
     Type: String
@@ -57,6 +61,7 @@ Resources:
             - "{{resolve:ssm:/s3/agent_build/name:1}}"
         S3CodeKey:
           Ref: S3CodeKey
+        BuildContextPath: !Ref BuildContextPath
         Name:
           Ref: ContainerName
         Timestamp:

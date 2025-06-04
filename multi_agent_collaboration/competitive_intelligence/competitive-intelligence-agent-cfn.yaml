@@ -26,6 +26,10 @@ Parameters:
     Description: Name of the S3 bucket to use for deployment and run storage
     Type: String
     Default: ""
+  S3CodeKey:
+    Description: S3 key for the zip file containing CodeBuild code
+    Type: String
+    Default: "repo/amazon-bedrock-agents-healthcare-lifesciences.zip"
 
 Conditions:
   CreateAgentAliasCondition: !Not [!Equals [!Ref AgentAliasName, ""]]
@@ -54,17 +58,18 @@ Resources:
       Parameters:
         AgentAliasName: "Latest"
         AgentIAMRoleArn: !Ref AgentIAMRoleArn
-        S3CodeBucket:
-          "Fn::If":
-            - AgentS3BucketCondition
-            - !Ref S3Bucket
-            - "{{resolve:ssm:/s3/agent_build/name:1}}"
+        S3CodeBucket: !Ref S3Bucket
+        # S3CodeBucket:
+        #   "Fn::If":
+        #     - AgentS3BucketCondition
+        #     - !Ref S3Bucket
+        #     - "{{resolve:ssm:/s3/agent_build/name:1}}"
+        S3CodeKey: !Ref S3CodeKey
       TimeoutInMinutes: 35
 
   USPTOSearchAgentStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      # TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents_catalog/packaged_uspto-search-agent-cfn.yaml
       TemplateURL: ../../agents_catalog/14-USPTO-search/uspto-search-agent-cfn.yaml
       Parameters:
         AgentAliasName: "Latest"
