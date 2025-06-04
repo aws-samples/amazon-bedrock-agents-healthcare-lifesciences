@@ -120,7 +120,7 @@ Resources:
         VPCId: !GetAtt Network.Outputs.VPC
         PublicSubnet1: !GetAtt Network.Outputs.PublicSubnet1
         PublicSubnet2: !GetAtt Network.Outputs.PublicSubnet2
-        S3Bucket: !GetAtt CodeRepo.Outputs.S3Bucket
+        S3Bucket: !Ref S3Bucket
         S3CodeKey: !GetAtt CodeRepo.Outputs.S3Key
       TimeoutInMinutes: 35
 
@@ -209,7 +209,7 @@ Resources:
       TemplateURL: agents_catalog/11-Tavily-web-search-agent/web-search-agent-cfn.yaml
       Parameters:
         AgentAliasName: "Latest"
-        AgentIAMRoleArn: !Ref AgentIAMRoleArn
+        AgentIAMRoleArn: !GetAtt AgentRole.Arn
         TavilyApiKey: !Ref TavilyApiKey
       TimeoutInMinutes: 35
 
@@ -219,9 +219,9 @@ Resources:
       TemplateURL: agents_catalog/10-SEC-10-K-agent/sec-10-K-agent-cfn.yaml
       Parameters:
         AgentAliasName: "Latest"
-        AgentIAMRoleArn: !Ref AgentIAMRoleArn
+        AgentIAMRoleArn: !GetAtt AgentRole.Arn
         S3CodeBucket: !Ref S3Bucket
-        S3CodeKey: !Ref S3CodeKey
+        S3CodeKey: !GetAtt CodeRepo.Outputs.S3Key
       TimeoutInMinutes: 35
 
   USPTOSearchAgentStack:
@@ -230,7 +230,7 @@ Resources:
       TemplateURL: agents_catalog/14-USPTO-search/uspto-search-agent-cfn.yaml
       Parameters:
         AgentAliasName: "Latest"
-        AgentIAMRoleArn: !Ref AgentIAMRoleArn
+        AgentIAMRoleArn: !GetAtt AgentRole.Arn
         USPTOApiKey: !Ref USPTOApiKey
       TimeoutInMinutes: 35
 
@@ -246,8 +246,6 @@ Resources:
         SEC10kAgentAliasArn: !GetAtt SEC10kAgentStack.Outputs.AgentAliasArn
         USPTOSearchAgentAliasArn: !GetAtt USPTOSearchAgentStack.Outputs.AgentAliasArn
       TimeoutInMinutes: 10
-
-
 
   WileyOnlineSearchStack:
     Type: AWS::CloudFormation::Stack
