@@ -313,7 +313,7 @@ Resources:
       MemorySize: 512
       Role:
         Fn::GetAtt: StartCodeBuildLambdaExecutionRole.Arn
-      Runtime: python3.13
+      Runtime: python3.12
       Timeout: 30
 
   CodeBuildWaitHandle:

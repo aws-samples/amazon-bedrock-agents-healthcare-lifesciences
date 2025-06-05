@@ -91,7 +91,7 @@ Resources:
       LayerName: matplotliblayer
       Description: Layer containing matplotlib and dependencies
       CompatibleRuntimes:
-        - python3.11
+        - python3.12
       Content: lambdalayers/matplotlib.zip
 
   #######################
