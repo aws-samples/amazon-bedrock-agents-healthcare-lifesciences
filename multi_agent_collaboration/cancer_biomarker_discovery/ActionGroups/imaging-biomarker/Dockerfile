@@ -1,4 +1,4 @@
-FROM public.ecr.aws/docker/library/python:3.7.17-slim-buster
+FROM public.ecr.aws/docker/library/python:3.12-slim-bookworm
 
 COPY ./requirements.txt /opt/
 RUN pip3 install --no-cache-dir -r /opt/requirements.txt

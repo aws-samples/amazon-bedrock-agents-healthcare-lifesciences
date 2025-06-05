@@ -122,7 +122,7 @@ Resources:
       FunctionName: clinical-visualizer
       Handler: index.lambda_handler
       Role: !GetAtt ClinicalVisualizerLambdaRole.Arn
-      Runtime: python3.11
+      Runtime: python3.12
       Timeout: 30
       MemorySize: 2048
       Environment:
