@@ -1,16 +1,16 @@
 # Sample Healthcare and Life Sciences Agents on AWS
 
-Explore the following components in the repository:
+## Project Components
 
-## Agents catalog
+### Agents catalog
 
 Library of specialized agents for common workflows across drug research, clinical trials, and commercialization [agent-catalog](agents_catalog/)
 
-## Multi-agent collaboration
+### Multi-agent collaboration
 
 Framework for agent collaboration and knowledge sharing. End to end examples for cancer biomarker discovery, clinical trial protocol assistant, and competitive intelligence. [multi-agent-collaboration](multi_agent_collaboration/)
 
-## Evaluation
+### Evaluation
 
 Methods for assessing agent performance and result quality. Agent task and goal metrics for cancer biomarker discovery [evaluations](evaluations/)
 
@@ -18,7 +18,9 @@ The key components are illustrated in the diagram below:
 
 ![flow](docs/src/assets/HCLS-agents-toolkit.png)
 
-## Deployment
+## Prerequisites
+
+Please complete the following steps in your AWS account before deployment.
 
 ### 1. Request Amazon Bedrock model access
 
@@ -34,7 +36,7 @@ Request access to the following Amazon Bedrock foundation models using the [offi
 
 [Request an increase](https://docs.aws.amazon.com/servicequotas/latest/userguide/request-quota-increase.html#quota-console-increase) of the Amazon Bedrock "Parameters per function" quota to at least 10.
 
-### 3. Deploy the toolkit application and agents for your preferred region
+## Deployment
 
 Choose _Launch Stack_ for your preferred region to deploy the toolkit application and selected agents into your AWS account. It may take up to 30 minutes to finish the deployment.
 
@@ -95,7 +97,7 @@ rm packaged_infra_cfn.yaml
 
 ```
 
-### 4. Access the toolkit application
+## Access the toolkit application
 
 1. Navigate to AWS CloudFormation via AWS Console search
 2. Click the parent stack name that was chosen to deploy the `Infra_cfn.yaml`
