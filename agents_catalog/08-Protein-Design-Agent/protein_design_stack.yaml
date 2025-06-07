@@ -746,7 +746,7 @@ Resources:
                     'Error': str(e)
                 })
 
-      Runtime: python3.9
+      Runtime: python3.12
       Timeout: 900
       MemorySize: 256
 
@@ -820,7 +820,7 @@ Resources:
       - WorkflowExecutionRole
       - ECRRepository
     Properties:
-      Runtime: python3.9
+      Runtime: python3.12
       Handler: index.handler
       Role: !GetAtt WorkflowTriggerRole.Arn
       Environment:
@@ -1220,7 +1220,7 @@ Resources:
       - WorkflowMonitorRole
       - WorkflowTriggerFunction
     Properties:
-      Runtime: python3.9
+      Runtime: python3.12
       Handler: index.handler
       Role: !GetAtt WorkflowMonitorRole.Arn
       Environment:

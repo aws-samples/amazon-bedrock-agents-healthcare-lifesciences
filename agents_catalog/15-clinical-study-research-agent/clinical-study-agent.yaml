@@ -16,29 +16,12 @@ Parameters:
   ChartImageBucketName:
     Type: String
     Description: S3 bucket name for storing chart images
-  LayersBucketName:
-    Type: String
-    Description: S3 bucket name for storing Lambda layers
 
 Conditions:
   CreateAgentAliasCondition: !Not [!Equals [!Ref AgentAliasName, ""]]
   AgentIAMRoleCondition: !Not [!Equals [!Ref AgentIAMRoleArn, ""]]
 
 Resources:
-  ####################
-  ##### Storage #####
-  ####################
-
-  # ChartImageBucket:
-  #   Type: AWS::S3::Bucket
-  #   Properties:
-  #     BucketName: !Ref ChartImageBucketName
-  #     PublicAccessBlockConfiguration:
-  #       BlockPublicAcls: true
-  #       BlockPublicPolicy: true
-  #       IgnorePublicAcls: true
-  #       RestrictPublicBuckets: true
-
   #######################
   ##### Lambda Roles #####
   #######################
@@ -108,11 +91,8 @@ Resources:
       LayerName: matplotliblayer
       Description: Layer containing matplotlib and dependencies
       CompatibleRuntimes:
-        - python3.11
-      Content:
-        S3Bucket:
-          Ref: LayersBucketName
-        S3Key: agents_catalog/matplotlib.zip
+        - python3.12
+      Content: lambdalayers/matplotlib.zip
 
   #######################
   ##### Lambda Functions #####
@@ -142,7 +122,7 @@ Resources:
       FunctionName: clinical-visualizer
       Handler: index.lambda_handler
       Role: !GetAtt ClinicalVisualizerLambdaRole.Arn
-      Runtime: python3.11
+      Runtime: python3.12
       Timeout: 30
       MemorySize: 2048
       Environment:
@@ -179,7 +159,8 @@ Resources:
   ##### Lambda Permissions #####
   #######################
 
-  ClinicalStudySearchLambdaPermission:
+  # ClinicalStudySearch Lambda Permissions
+  ClinicalStudySearchLambdaAliasPermission:
     Type: AWS::Lambda::Permission
     Properties:
       Action: lambda:InvokeFunction
@@ -188,7 +169,17 @@ Resources:
       SourceAccount: !Ref AWS::AccountId
       SourceArn: !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent-alias/*
 
-  ClinicalVisualizerLambdaPermission:
+  ClinicalStudySearchLambdaAgentPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt ClinicalStudySearchLambda.Arn
+      Principal: bedrock.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+      SourceArn: !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*
+
+  # ClinicalVisualizer Lambda Permissions
+  ClinicalVisualizerLambdaAliasPermission:
     Type: AWS::Lambda::Permission
     Properties:
       Action: lambda:InvokeFunction
@@ -197,7 +188,17 @@ Resources:
       SourceAccount: !Ref AWS::AccountId
       SourceArn: !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent-alias/*
 
-  DrugInformationLambdaPermission:
+  ClinicalVisualizerLambdaAgentPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt ClinicalVisualizerLambda.Arn
+      Principal: bedrock.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+      SourceArn: !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*
+
+  # DrugInformation Lambda Permissions
+  DrugInformationLambdaAliasPermission:
     Type: AWS::Lambda::Permission
     Properties:
       Action: lambda:InvokeFunction
@@ -205,6 +206,15 @@ Resources:
       Principal: bedrock.amazonaws.com
       SourceAccount: !Ref AWS::AccountId
       SourceArn: !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent-alias/*
+
+  DrugInformationLambdaAgentPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt DrugInformationLambda.Arn
+      Principal: bedrock.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+      SourceArn: !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*
 
   ###################
   ##### Guardrail #####

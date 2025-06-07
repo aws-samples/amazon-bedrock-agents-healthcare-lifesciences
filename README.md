@@ -1,16 +1,16 @@
 # Sample Healthcare and Life Sciences Agents on AWS
 
-Explore the following components in the repository:
+## Project Components
 
-## Agents catalog
+### Agents catalog
 
 Library of specialized agents for common workflows across drug research, clinical trials, and commercialization [agent-catalog](agents_catalog/)
 
-## Multi-agent collaboration
+### Multi-agent collaboration
 
 Framework for agent collaboration and knowledge sharing. End to end examples for cancer biomarker discovery, clinical trial protocol assistant, and competitive intelligence. [multi-agent-collaboration](multi_agent_collaboration/)
 
-## Evaluation
+### Evaluation
 
 Methods for assessing agent performance and result quality. Agent task and goal metrics for cancer biomarker discovery [evaluations](evaluations/)
 
@@ -18,7 +18,9 @@ The key components are illustrated in the diagram below:
 
 ![flow](docs/src/assets/HCLS-agents-toolkit.png)
 
-## Deployment
+## Prerequisites
+
+Please complete the following steps in your AWS account before deployment.
 
 ### 1. Request Amazon Bedrock model access
 
@@ -34,7 +36,7 @@ Request access to the following Amazon Bedrock foundation models using the [offi
 
 [Request an increase](https://docs.aws.amazon.com/servicequotas/latest/userguide/request-quota-increase.html#quota-console-increase) of the Amazon Bedrock "Parameters per function" quota to at least 10.
 
-### 3. Deploy the toolkit application and agents for your preferred region
+## Deployment
 
 Choose _Launch Stack_ for your preferred region to deploy the toolkit application and selected agents into your AWS account. It may take up to 30 minutes to finish the deployment.
 
@@ -67,11 +69,39 @@ In most cases, you may leave the default template parameters unchanged. However,
 - **TavilyApiKey**: API key for the Tavily web search API. Required to deploy the Tavily Web Search and Competitive Intelligence Supervisor agents. Please visit [tavily.com](https://tavily.com/) to create a account and generate an API key.
 - **USPTOApiKey**: API key for the US Patent and Trademark Office (USPTO) Open Data Portal. Required to deploy the USPTO Search and Competitive Intelligence Supervisor agents. Please visit the [USPO Open Data Portal](https://data.uspto.gov/apis/getting-started) to create a account and generate an API key.
 
-### 4. Access the toolkit application
+You may also deploy the application using the AWS CLI by first running `aws cloudformation package` and then `aws cloudformation deploy`. For example:
+
+```sh
+
+export BUCKET_NAME="amzn-s3-demo-bucket"
+export REGION="us-east-1"
+export STACK_NAME="hcls-agents-toolkit"
+export TAVILY_API_KEY="1234567890abcdef0"
+export USPTO_API_KEY="1234567890abcdef0"
+aws cloudformation package --template-file "infra_cfn.yaml" \
+  --s3-bucket $BUCKET_NAME \
+  --output-template-file "packaged_infra_cfn.yaml" \
+  --region $REGION
+aws cloudformation deploy --template-file "packaged_infra_cfn.yaml" \
+  --s3-bucket $BUCKET_NAME \
+  --capabilities CAPABILITY_IAM \
+  --stack-name $STACK_NAME \
+  --region $REGION \
+  --disable-rollback \
+  --parameter-overrides \
+    RedshiftPassword="1234567890abcdef0" \
+    ReactAppAllowedCidr="192.0.2.0/24" \
+    TavilyApiKey=$TAVILY_API_KEY \
+    USPTOApiKey=$USPTO_API_KEY
+rm packaged_infra_cfn.yaml
+
+```
+
+## Access the toolkit application
 
 1. Navigate to AWS CloudFormation via AWS Console search
 2. Click the parent stack name that was chosen to deploy the `Infra_cfn.yaml`
-3. In the Outputs tab, find the `ReactAppExternalURL` link and add 'https://' to the beginning of the URL and paste in your browser
+3. In the Outputs tab, find the `ReactAppExternalURL` link and add 'http://' to the beginning of the URL and paste in your browser
 4. You should be able to see a landing page with all (or a subset) deployed agents as shown in the [video](https://d2dnsxs0d2upyb.cloudfront.net/agents-demo/agents_toolkit_overview.mp4) below:
 
 [![react-app-landing-page](docs/src/assets/agents_list_react_app.png)](https://d2dnsxs0d2upyb.cloudfront.net/agents-demo/agents_toolkit_overview.mp4)
@@ -114,12 +144,13 @@ Depending on your local environment, you may need to provide the full path to yo
 
 2. Clone your forked repository to your local machine.
 
-3. Update the GitHub URL in the following configuration files to point to your forked repository:
-   - `infra_cfn.yaml`
-   - `agent_build.yaml`
-   - `streamlit_build.yaml`
+3. Add new agents to the `agents_catalog` folder. You may also include your new agents as stack resources in the `infra_cfn.yaml` file.
 
-4. For testing purposes, deploy the `infra_cfn.yaml` template to AWS CloudFormation.
+4. For testing purposes, deploy the `infra_cfn.yaml` template to AWS CloudFormation providing your forked repository and branch as the `GithubLink` and `GitBranch` parameters.
+
+### AI-Assisted Development
+
+Please use the `CONTEXT.md` file to provide additional context to coding agents.
 
 ### Submitting a Pull Request
 

@@ -1,0 +1,3 @@
+boto3>=1.37.26
+rapidfuzz==3.12.2
+sec-edgar-api==1.1.0

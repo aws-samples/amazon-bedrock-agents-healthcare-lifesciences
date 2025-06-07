@@ -8,14 +8,16 @@ Parameters:
     Type: String
     Description: The ID of the Foundation Model to use for the Agent
     Default: us.anthropic.claude-3-5-sonnet-20240620-v1:0
-  S3Bucket:
-    Type: String
-    Description: (Optional) Amazon S3 bucket name for storing outputs
   AgentIAMRoleArn:
     Type: String
     Description: (Optional) Amazon Bedrock Agents service role ARN
     Default: ""
-
+  ClinicalStudySearchAgentAliasArn:
+    Description: Alias ARN for the clinical study search sub-agent
+    Type: String
+  ClinicalTrialProtocolGeneratorAgentAliasArn:
+    Description: Alias ARN for the clinical trial protocol generation sub-agent
+    Type: String
 
 Conditions:
   CreateAgentAliasCondition: !Not [!Equals [!Ref AgentAliasName, ""]]
@@ -25,26 +27,6 @@ Resources:
   #####################
   ##### Agent #####
   ###################
-
-  ClinicalStudySearchAgentStack:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents_catalog/packaged_clinical-study-agent.yaml
-      Parameters:
-        AgentAliasName: "Latest"
-        AgentIAMRoleArn: !Ref AgentIAMRoleArn
-        ChartImageBucketName: !Ref S3Bucket
-        LayersBucketName: !Ref S3Bucket
-      TimeoutInMinutes: 35
-
-  ClinicalTrialProtocolGeneratorAgentStack:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents_catalog/packaged_clinical-trial-protocol-generator-agent.yaml
-      Parameters:
-        AgentAliasName: "Latest"
-        AgentIAMRoleArn: !Ref AgentIAMRoleArn
-      TimeoutInMinutes: 35
 
   ClinicalTrialProtocolAssistantAgent:
     Type: AWS::Bedrock::Agent
@@ -57,12 +39,12 @@ Resources:
       AgentCollaborators:
         - CollaboratorName: Clinical-Study-Search-Agent
           AgentDescriptor:
-            AliasArn: !GetAtt ClinicalStudySearchAgentStack.Outputs.AgentAliasArn
+            AliasArn: !Ref ClinicalStudySearchAgentAliasArn
           CollaborationInstruction: |
             Clinical Study Search Agent searches through clinical trial data source lie clinicaltrials.gov to find past studies that match what you're looking for—based on condition, treatment, study phase, patient type, or other filters. It brings back detailed information about the past studies, including the study design, goals, participants, and key outcomes. These results can then be used to help design new clinical trials or generate protocol documents.
         - CollaboratorName: Clinical-Trial-Protocol-Generator-Agent
           AgentDescriptor:
-            AliasArn: !GetAtt ClinicalTrialProtocolGeneratorAgentStack.Outputs.AgentAliasArn
+            AliasArn: !Ref ClinicalTrialProtocolGeneratorAgentAliasArn
           CollaborationInstruction: |
             This agent helps you write a complete clinical trial protocol. It knows the structure and required sections, and can either start from scratch or use past studies (from the search agent) as references. It fills in key sections like objectives, study design, and eligibility criteria. You can then edit the document or regenerate specific sections. Perfect for trial managers or medical writers looking to save time.
       AgentName: "clinical-trial-protocol-assistant"

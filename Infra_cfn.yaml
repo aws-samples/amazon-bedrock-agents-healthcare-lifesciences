@@ -3,13 +3,6 @@ Parameters:
     Type: String
     Description: The ID of the Foundation Model to use for the Agent
     Default: us.anthropic.claude-3-5-sonnet-20241022-v2:0
-  EnvironmentName:
-    Type: String
-    Description: The name of the agent environment, used to differentiate agent application. Must be lowercase, contain one number, and be no more than 5 characters long.
-    Default: env1
-    MaxLength: 5
-    AllowedPattern: ^[a-z]{1,4}[0-9]$
-    ConstraintDescription: Must be lowercase, contain one number at the end, and be no more than 5 characters long.
   RedshiftDatabaseName:
     Type: String
     Default: dev
@@ -28,13 +21,6 @@ Parameters:
     Type: String
     Description: "The link to the agent build cloudformation stack"
     Default: "https://github.com/aws-samples/amazon-bedrock-agents-healthcare-lifesciences.git"
-  MultiAgentDevMode:
-    Type: String
-    Description: Select True to use a python notebook to manually create the agents step by step. Select false to auto create all agents.
-    Default: "false"
-    AllowedValues:
-      - "true"
-      - "false"
   GitBranch:
     Type: String
     Description: The github branch to clone
@@ -54,260 +40,36 @@ Parameters:
     NoEcho: true
     Description: Provide USPTO API Key to utilize /search path
     Default: ""
+  DeployApplication:
+    Type: String
+    Description: Select true to deploy the react application and agents. Select false to only build the agents.
+    Default: "true"
+    AllowedValues:
+      - "true"
+      - "false"
 
 Conditions:
-  CreateCompetitiveIntelAgent: !Not [!Or [!Equals [!Ref TavilyApiKey, ""], !Equals [!Ref USPTOApiKey, ""]]]
-
-Mappings:
-  RegionMap:
-    us-east-1:
-      PandasLayer: "arn:aws:lambda:us-east-1:336392948345:layer:AWSSDKPandas-Python39:20"
-    us-east-2:
-      PandasLayer: "arn:aws:lambda:us-east-2:336392948345:layer:AWSSDKPandas-Python39:20"
-    us-west-1:
-      PandasLayer: "arn:aws:lambda:us-west-1:336392948345:layer:AWSSDKPandas-Python39:20"
-    us-west-2:
-      PandasLayer: "arn:aws:lambda:us-west-2:336392948345:layer:AWSSDKPandas-Python39:20"
+  CreateCompetitiveIntelAgent:
+    !Not [!Or [!Equals [!Ref TavilyApiKey, ""], !Equals [!Ref USPTOApiKey, ""]]]
+  CreateReactApp: !Equals [!Ref DeployApplication, "true"]
 
 Resources:
-  # Redshift Cluster
-  RedshiftClusterParameterGroup:
-    Type: AWS::Redshift::ClusterParameterGroup
-    Properties:
-      Description: Custom parameter group for Redshift cluster
-      ParameterGroupFamily: redshift-1.0
-      Parameters:
-        - ParameterName: enable_user_activity_logging
-          ParameterValue: "true"
-        - ParameterName: require_ssl
-          ParameterValue: "true"
-
-  RedshiftCluster:
-    Type: AWS::Redshift::Cluster
-    Properties:
-      DBName: !Ref RedshiftDatabaseName
-      ClusterIdentifier: biomarker-redshift-cluster
-      NodeType: dc2.large
-      MasterUsername: !Ref RedshiftUserName
-      MasterUserPassword: !Ref RedshiftPassword
-      ClusterType: single-node
-      PubliclyAccessible: false
-      VpcSecurityGroupIds: [!Ref SecurityGroup]
-      ClusterSubnetGroupName: !Ref RedshiftSubnetGroup
-      ClusterParameterGroupName: !Ref RedshiftClusterParameterGroup
-      Encrypted: true
-      LoggingProperties:
-        BucketName: !Ref S3Bucket
-        S3KeyPrefix: "redshift-logs/"
-        LogDestinationType: s3
-      IamRoles:
-        - !GetAtt RedshiftRole.Arn
-
-  RedshiftRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: redshift.amazonaws.com
-            Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
-      Policies:
-        - PolicyName: RedshiftS3LoggingPolicy
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - s3:PutObject
-                  - s3:GetBucketLocation
-                  - s3:ListBucket
-                  - s3:GetBucketAcl
-                  - s3:PutBucketAcl
-                Resource:
-                  - !Sub arn:aws:s3:::${S3Bucket}
-                  - !Sub arn:aws:s3:::${S3Bucket}/*
-
-  # Glue Connection
-  JDBCConnection:
-    Type: AWS::Glue::Connection
-    Properties:
-      CatalogId: !Ref "AWS::AccountId"
-      ConnectionInput:
-        Name: jdbc_connector_biomarkers
-        Description: JDBC connection for Redshift
-        ConnectionType: JDBC
-        ConnectionProperties:
-          JDBC_CONNECTION_URL: !Sub "jdbc:redshift://${RedshiftCluster.Endpoint.Address}:5439/${RedshiftDatabaseName}"
-          USERNAME: !Ref RedshiftUserName
-          PASSWORD: !Ref RedshiftPassword
-        PhysicalConnectionRequirements:
-          SubnetId: !Ref PrivateSubnet1
-          SecurityGroupIdList: [!Ref SecurityGroup]
-          AvailabilityZone: !Select
-            - 0
-            - !GetAZs
-              Ref: "AWS::Region"
-
-  SecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Security group for Redshift cluster
-      VpcId: !Ref VPC
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 5439
-          ToPort: 5439
-          CidrIp: 10.0.0.0/16 # Only allow access from within VPC
-      SecurityGroupEgress:
-        - IpProtocol: All
-          FromPort: 0
-          ToPort: 65535
-          CidrIp: 0.0.0.0/0
-      Tags:
-        - Key: Name
-          Value: !Sub ${AWS::StackName}-RedshiftSG
-  RedshiftSubnetGroup:
-    Type: AWS::Redshift::ClusterSubnetGroup
-    Properties:
-      Description: Subnet group for Redshift cluster
-      SubnetIds:
-        - !Ref PrivateSubnet1
-        - !Ref PrivateSubnet2
-      Tags:
-        - Key: Name
-          Value: !Sub ${AWS::StackName}-RedshiftSubnetGroup
+  ##################################################################
   # VPC
-  VPC:
-    Type: AWS::EC2::VPC
+  ##################################################################
+
+  Network:
+    Type: AWS::CloudFormation::Stack
     Properties:
-      CidrBlock: 10.0.0.0/16
-      EnableDnsHostnames: true
-      EnableDnsSupport: true
+      TemplateURL: build/network.yaml
+      TimeoutInMinutes: 10
       Tags:
-        - Key: Name
-          Value: !Sub ${AWS::StackName}-VPC
-  PrivateSubnet1:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref VPC
-      CidrBlock: 10.0.1.0/24
-      AvailabilityZone: !Select
-        - 0
-        - !GetAZs
-          Ref: "AWS::Region"
-      Tags:
-        - Key: Name
-          Value: !Sub ${AWS::StackName}-PrivateSubnet1
-  PrivateSubnet2:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref VPC
-      CidrBlock: 10.0.2.0/24
-      AvailabilityZone: !Select
-        - 1
-        - !GetAZs
-          Ref: "AWS::Region"
-      Tags:
-        - Key: Name
-          Value: !Sub ${AWS::StackName}-PrivateSubnet2
-  PublicSubnet1:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref VPC
-      CidrBlock: 10.0.3.0/24
-      AvailabilityZone: !Select
-        - 0
-        - !GetAZs
-          Ref: "AWS::Region"
-      MapPublicIpOnLaunch: true
-      Tags:
-        - Key: Name
-          Value: !Sub ${AWS::StackName}-PublicSubnet1
-  PublicSubnet2:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref VPC
-      CidrBlock: 10.0.4.0/24
-      AvailabilityZone: !Select
-        - 1
-        - !GetAZs
-          Ref: "AWS::Region"
-      MapPublicIpOnLaunch: true
-      Tags:
-        - Key: Name
-          Value: !Sub ${AWS::StackName}-PublicSubnet2
-  NatGatewayEIP:
-    Type: AWS::EC2::EIP
-    Properties:
-      Domain: vpc
-  NatGateway:
-    Type: AWS::EC2::NatGateway
-    Properties:
-      AllocationId: !GetAtt NatGatewayEIP.AllocationId
-      SubnetId: !Ref PublicSubnet1
-  PrivateRouteTable:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId: !Ref VPC
-      Tags:
-        - Key: Name
-          Value: !Sub ${AWS::StackName}-PrivateRouteTable
+        - Key: Project
+          Value: "hcls-agents-toolkit"
 
-  PrivateRoute:
-    Type: AWS::EC2::Route
-    Properties:
-      RouteTableId: !Ref PrivateRouteTable
-      DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !Ref NatGateway
-
-  PrivateSubnet1RouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref PrivateSubnet1
-      RouteTableId: !Ref PrivateRouteTable
-
-  PrivateSubnet2RouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref PrivateSubnet2
-      RouteTableId: !Ref PrivateRouteTable
-
-  PublicRouteTable:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId: !Ref VPC
-      Tags:
-        - Key: Name
-          Value: !Sub ${AWS::StackName}-PublicRouteTable
-
-  PublicRoute:
-    Type: AWS::EC2::Route
-    DependsOn: VPCGatewayAttachment
-    Properties:
-      RouteTableId: !Ref PublicRouteTable
-      DestinationCidrBlock: 0.0.0.0/0
-      GatewayId: !Ref InternetGateway
-
-  PublicSubnet1RouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref PublicSubnet1
-      RouteTableId: !Ref PublicRouteTable
-
-  # Internet Gateway
-  InternetGateway:
-    Type: AWS::EC2::InternetGateway
-
-  # VPC Gateway Attachment
-  VPCGatewayAttachment:
-    Type: AWS::EC2::VPCGatewayAttachment
-    Properties:
-      VpcId: !Ref VPC
-      InternetGatewayId: !Ref InternetGateway
+  ##################################################################
+  # S3
+  ##################################################################
 
   S3Bucket:
     Type: AWS::S3::Bucket
@@ -317,1002 +79,251 @@ Resources:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
-              
-  S3BucketPolicy:
-    Type: AWS::S3::BucketPolicy
+      Tags:
+        - Key: Project
+          Value: "hcls-agents-toolkit"
+
+  ##################################################################
+  # Copy code repo to S3
+  ##################################################################
+
+  CodeRepo:
+    Type: AWS::CloudFormation::Stack
     Properties:
-      Bucket: !Ref S3Bucket
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Sid: AllowCloudFormationReadAccess
-            Effect: Allow
-            Principal:
-              Service: cloudformation.amazonaws.com
-            Action:
-              - s3:GetObject
-            Resource: !Sub arn:aws:s3:::${S3Bucket}/*
-          - Sid: AllowCodeBuildAndLambdaAccess
-            Effect: Allow
-            Principal:
-              AWS:
-                - !GetAtt CodeBuildServiceRole.Arn
-                - !GetAtt TriggerAgentBuildLambdaRole.Arn
-            Action:
-              - s3:PutObject
-              - s3:GetObject
-              - s3:ListBucket
-            Resource:
-              - !Sub arn:aws:s3:::${S3Bucket}
-              - !Sub arn:aws:s3:::${S3Bucket}/*
-          - Sid: AllowRedshiftLogging
-            Effect: Allow
-            Principal:
-              Service: redshift.amazonaws.com
-            Action:
-              - s3:PutObject
-              - s3:GetBucketLocation
-              - s3:ListBucket
-              - s3:GetBucketAcl
-              - s3:PutBucketAcl
-            Resource:
-              - !Sub arn:aws:s3:::${S3Bucket}
-              - !Sub arn:aws:s3:::${S3Bucket}/*
-  S3DataProcessingLambdaRole:
-    Type: "AWS::IAM::Role"
+      TemplateURL: build/copy_github_repo.yaml
+      Parameters:
+        GitHubUrl: !Ref GithubLink
+        BranchName: !Ref GitBranch
+        S3Bucket: !Ref S3Bucket
+        S3KeyPrefix: "repo"
+      TimeoutInMinutes: 5
+      Tags:
+        - Key: Project
+          Value: "hcls-agents-toolkit"
+
+  ###############################################################################
+  # Custom Resources to Package Agent Templates - May not be needed in the future
+  ###############################################################################
+
+  CodeBuild:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: build/codebuild.yaml
+      Parameters:
+        GithubLink: !Ref GithubLink
+        GitBranch: !Ref GitBranch
+        S3Bucket: !Ref S3Bucket
+      TimeoutInMinutes: 10
+      Tags:
+        - Key: Project
+          Value: "hcls-agents-toolkit"
+
+  ##################################################################
+  # React Application
+  ##################################################################
+
+  ReactAppEcsBuildNestedStack:
+    Type: AWS::CloudFormation::Stack
+    Condition: CreateReactApp
+    Properties:
+      TemplateURL: ui/cloudformation/ecs.yml
+      Parameters:
+        AllowedCidr: !Ref ReactAppAllowedCidr
+        VPCId: !GetAtt Network.Outputs.VPC
+        PublicSubnet1: !GetAtt Network.Outputs.PublicSubnet1
+        PublicSubnet2: !GetAtt Network.Outputs.PublicSubnet2
+        S3Bucket: !Ref S3Bucket
+        S3CodeKey: !GetAtt CodeRepo.Outputs.S3Key
+      TimeoutInMinutes: 35
+      Tags:
+        - Key: Project
+          Value: "hcls-agents-toolkit"
+
+  ##################################################################
+  # Amazon Bedrock Agents Service Role
+  ##################################################################
+
+  AgentRole:
+    Type: AWS::IAM::Role
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       AssumeRolePolicyDocument:
-        Version: "2012-10-17"
+        Version: 2012-10-17
         Statement:
           - Effect: Allow
-            Principal:
-              Service: lambda.amazonaws.com
-            Action: "sts:AssumeRole"
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-      Policies:
-        - PolicyName: S3Access
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - "s3:CreateBucket"
-                  - "s3:PutObject"
-                Resource:
-                  - !Sub "arn:aws:s3:::biomarkers-discovery-agent-test-${AWS::Region}-${AWS::AccountId}"
-                  - !Sub "arn:aws:s3:::biomarkers-discovery-agent-test-${AWS::Region}-${AWS::AccountId}/*"
-        - PolicyName: STSAccess
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - "sts:GetCallerIdentity"
-                Resource: "*"
-
-  S3DataProcessingLambda:
-    Type: "AWS::Lambda::Function"
-    Properties:
-      Handler: index.lambda_handler
-      Role: !GetAtt S3DataProcessingLambdaRole.Arn
-      Code:
-        ZipFile: |
-          import json
-          import boto3
-          import pandas as pd
-          import gzip
-          import requests
-          import shutil
-          import os
-          import io
-          from io import StringIO
-          import urllib3
-
-          http = urllib3.PoolManager()
-
-          def send_response(event, context, response_status, response_data, physical_resource_id=None):
-              response_url = event['ResponseURL']
-
-              response_body = {
-                'Status': response_status,
-                'Reason': f"See the details in CloudWatch Log Stream: {context.log_stream_name}",
-                'PhysicalResourceId': physical_resource_id or context.log_stream_name,
-                'StackId': event['StackId'],
-                'RequestId': event['RequestId'],
-                'LogicalResourceId': event['LogicalResourceId'],
-                'Data': response_data
-              }
-
-              json_response_body = json.dumps(response_body)
-
-              headers = {
-                'content-type': '',
-                'content-length': str(len(json_response_body))
-              }
-
-              response = http.request('PUT', response_url, body=json_response_body, headers=headers)
-              return response.status
-
-          def lambda_handler(event, context):
-              try:
-                  if event['RequestType'] == 'Delete':
-                      send_response(event, context, 'SUCCESS', {})
-                      return
-
-                  s3 = boto3.client('s3')
-                  session = boto3.session.Session()
-                  region = session.region_name
-                  accountID = boto3.client('sts').get_caller_identity().get('Account')
-
-                  setup_Bucket_Name = f'biomarkers-discovery-agent-test-{region}-{accountID}'
-                  solution_name = 'biomarkers'
-                  input_data_bucket = f"s3://{setup_Bucket_Name}/data/{solution_name}"
-                  SOLUTION_PREFIX = 'multi-modal'
-                  BUCKET = setup_Bucket_Name
-
-                  genomic_dataset_url = "https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE103584&format=file&file=GSE103584%5FR01%5FNSCLC%5FRNAseq%2Etxt%2Egz"
-                  clinical_dataset_url = "https://www.cancerimagingarchive.net/wp-content/uploads/NSCLCR01Radiogenomic_DATA_LABELS_2018-05-22_1500-shifted.csv"
-                  genomic_dataset_name = "GSE103584_R01_NSCLC_RNAseq.txt"
-                  clinical_dataset_name = "NSCLCR01Radiogenomic_DATA_LABELS_2018-05-22_1500-shifted.csv"
-
-                  # Create S3 bucket for data
-                  try:
-                      if region != 'us-east-1':
-                          s3.create_bucket(Bucket=setup_Bucket_Name, CreateBucketConfiguration={
-                              'LocationConstraint': region})
-                      else:
-                          s3.create_bucket(Bucket=setup_Bucket_Name)
-                  except s3.exceptions.BucketAlreadyExists:
-                      print(f"Bucket {setup_Bucket_Name} already exists")
-                  except s3.exceptions.BucketAlreadyOwnedByYou:
-                      print(f"Bucket {setup_Bucket_Name} already owned by you")
-
-                  # Download and process genomic data
-                  genomic_response = requests.get(genomic_dataset_url)
-                  if genomic_response.status_code == 200:
-                      with gzip.open(io.BytesIO(genomic_response.content), 'rt') as f:
-                          gen_data = pd.read_csv(f, delimiter='\t')
-                      s3.put_object(Body=gen_data.to_csv(index=False, sep='\t'), Bucket=setup_Bucket_Name, Key=f'data/{solution_name}/genomics/{genomic_dataset_name}')
-                  else:
-                      raise Exception('Failed to download genomic data')
-
-                  # Download and process clinical data
-                  clinical_response = requests.get(clinical_dataset_url)
-                  if clinical_response.status_code == 200:
-                      data_clinical = pd.read_csv(StringIO(clinical_response.text))
-                      s3.put_object(Body=data_clinical.to_csv(index=False), Bucket=setup_Bucket_Name, Key=f'data/{solution_name}/clinical/{clinical_dataset_name}')
-                  else:
-                      raise Exception('Failed to download clinical data')
-
-                  # Process the data
-                  data_clinical = data_clinical[~data_clinical["Case ID"].str.contains("AMC")]
-
-                  list_delete_cols = ['Quit Smoking Year', 'Date of Recurrence', 'Date of Last Known Alive', 'Date of Death', 'CT Date', 'PET Date']
-                  data_clinical.drop(list_delete_cols, axis=1, inplace=True)
-
-                  data_clinical["Survival Status"].replace({"Dead": "1", "Alive": "0"}, inplace=True)
-
-                  data_clinical.fillna(0, inplace=True)
-
-                  drop_cases = ['R01-003', 'R01-004', 'R01-006', 'R01-007', 'R01-015', 'R01-016', 'R01-018', 'R01-022', 'R01-023', 'R01-098', 'R01-105']
-                  gen_data = gen_data.drop(drop_cases, axis=1)
-
-                  gen_data.rename(columns={'Unnamed: 0':'index_temp'}, inplace=True)
-                  gen_data.set_index('index_temp', inplace=True)
-                  gen_data_t = gen_data.transpose()
-                  gen_data_t.reset_index(inplace=True)
-                  gen_data_t.rename(columns={'index':'Case_ID'}, inplace=True)
-                  
-                  selected_columns = ['Case_ID','LRIG1', 'HPGD', 'GDF15', 'CDH2', 'POSTN', 'VCAN', 'PDGFRA', 'VCAM1', 'CD44', 'CD48', 'CD4', 'LYL1', 'SPI1', 'CD37', 'VIM', 'LMO2', 'EGR2', 'BGN', 'COL4A1', 'COL5A1', 'COL5A2']
-                  gen_data_t = gen_data_t[selected_columns]
-
-                  data_gen = gen_data_t.fillna(0)
-                  data_clinical = data_clinical.rename(columns={'Case ID': 'Case_ID'}) 
-                  data_clinical[['Time to Death (days)']] = data_clinical[['Time to Death (days)']].fillna(value=3000)
-                  inner_merged_total = pd.merge(data_gen, data_clinical, on=["Case_ID"])
-                  inner_merged_total['Survival duration'] = inner_merged_total['Age at Histological Diagnosis'] + inner_merged_total['Time to Death (days)']/365
-                  # Save the final result
-                  clinical_genomic_key = f'data/{solution_name}/clinical_genomic.csv'
-                  s3.put_object(Body=inner_merged_total.to_csv(index=False), Bucket=setup_Bucket_Name, Key=clinical_genomic_key)
-                  
-
-                  # Save the final result
-                  s3.put_object(Body=inner_merged_total.to_csv(index=False), Bucket=setup_Bucket_Name, Key=f'data/{solution_name}/clinical_genomic.csv')
-                  chemotherapy_cases = inner_merged_total[inner_merged_total['Chemotherapy'] == 'Yes'].copy()
-                  chemotherapy_cases.loc[chemotherapy_cases['LRIG1'] <= 25, 'ExpressionGroup'] = 0
-                  chemotherapy_cases.loc[chemotherapy_cases['LRIG1'] > 25, 'ExpressionGroup'] = 1
-                  
-                  chemotherapy_cases = chemotherapy_cases[['LRIG1', 'Survival Status', 'Survival duration', 'ExpressionGroup']]
-                  
-                  # Save chemotherapy survival data
-                  s3.put_object(Body=chemotherapy_cases.to_csv(index=False), Bucket=setup_Bucket_Name, Key=f'data/{solution_name}/chemotherapy_survival.csv')
-                  chemotherapy_survival_key = f'data/{solution_name}/chemotherapy_survival.csv'
-
-
-
-                  send_response(event, context, 'SUCCESS', {
-                  'BucketName': setup_Bucket_Name,
-                  'ClinicalGenomicKey': clinical_genomic_key,
-                  'ChemotherapySurvivalKey': chemotherapy_survival_key
-              })
-              except Exception as e:
-                  print(e)
-                  send_response(event, context, 'FAILED', {'Error': str(e)})
-
-      Runtime: python3.9
-      Timeout: 900
-      MemorySize: 3008
-      Layers:
-        - !FindInMap [RegionMap, !Ref "AWS::Region", PandasLayer]
-
-  S3DataProcessingCustomResource:
-    Type: "Custom::S3DataProcessing"
-    Properties:
-      ServiceToken: !GetAtt S3DataProcessingLambda.Arn
-
-  # Lambda Function to Load Data
-  LambdaExecutionRole:
-    Type: "AWS::IAM::Role"
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: "Allow"
             Principal:
               Service:
-                - "lambda.amazonaws.com"
+                - bedrock.amazonaws.com
             Action:
-              - "sts:AssumeRole"
+              - sts:AssumeRole
       Policies:
-        - PolicyName: "LambdaExecutionPolicy"
+        - PolicyName: BedrockInvokeModel
           PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: "Allow"
-                Action:
-                  - "logs:CreateLogGroup"
-                  - "logs:CreateLogStream"
-                  - "logs:PutLogEvents"
-                Resource:
-                  - "arn:aws:logs:*:*:*"
-              - Effect: "Allow"
-                Action:
-                  - "s3:GetObject"
-                  - "s3:ListBucket"
-                  - "s3:HeadObject"
-                  - "s3:GetObjectAttributes"
-                Resource:
-                  - !Sub "arn:aws:s3:::biomarkers-discovery-agent-test-${AWS::Region}-${AWS::AccountId}"
-                  - !Sub "arn:aws:s3:::biomarkers-discovery-agent-test-${AWS::Region}-${AWS::AccountId}/*"
-              - Effect: "Allow"
-                Action:
-                  - "ec2:CreateNetworkInterface"
-                  - "ec2:DeleteNetworkInterface"
-                  - "ec2:DescribeNetworkInterfaces"
-                Resource:
-                  - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:network-interface/*"
-              - Effect: "Allow"
-                Action:
-                  - "ec2:DescribeSecurityGroups"
-                  - "ec2:DescribeSubnets"
-                  - "ec2:DescribeVpcs"
-                Resource:
-                  - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:security-group/${SecurityGroup}"
-                  - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:subnet/${PrivateSubnet1}"
-                  - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:subnet/${PrivateSubnet2}"
-                  - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:vpc/${VPC}"
-              - Effect: "Allow"
-                Action:
-                  - "redshift-data:ExecuteStatement"
-                  - "redshift-data:GetStatementResult"
-                Resource:
-                  - !Sub arn:aws:redshift:${AWS::Region}:${AWS::AccountId}:cluster:biomarker-redshift-cluster
-                  - !Sub arn:aws:redshift:${AWS::Region}:${AWS::AccountId}:dbname:biomarker-redshift-cluster/${RedshiftDatabaseName}
-              - Effect: "Allow"
-                Action:
-                  - "redshift:GetClusterCredentials"
-                Resource:
-                  - !Sub arn:aws:redshift:${AWS::Region}:${AWS::AccountId}:dbuser:biomarker-redshift-cluster/${RedshiftUserName}
-                  - !Sub arn:aws:redshift:${AWS::Region}:${AWS::AccountId}:dbname:biomarker-redshift-cluster/${RedshiftDatabaseName}
-
-  LambdaFunction:
-    Type: "AWS::Lambda::Function"
-    Properties:
-      Handler: "index.lambda_handler"
-      Role: !GetAtt LambdaExecutionRole.Arn
-      Code:
-        ZipFile: |
-          import json
-          import boto3
-          import csv
-          import urllib3
-          import os
-          import redshift_connector
-          import pandas as pd
-          import time
-          print("hello")
-
-          s3_client = boto3.client('s3')
-          redshift_data = boto3.client('redshift-data')
-          http = urllib3.PoolManager()
-          database = os.environ['REDSHIFT_DATABASE']
-          cluster_id = os.environ['REDSHIFT_CLUSTER_ID']
-          DbUser = os.environ['REDSHIFT_USER']
-
-
-
-          def send_response(event, context, response_status, response_data, physical_resource_id=None):
-            response_url = event['ResponseURL']
-
-            response_body = {
-              'Status': response_status,
-              'Reason': f"See the details in CloudWatch Log Stream: {context.log_stream_name}",
-              'PhysicalResourceId': physical_resource_id or context.log_stream_name,
-              'StackId': event['StackId'],
-              'RequestId': event['RequestId'],
-              'LogicalResourceId': event['LogicalResourceId'],
-              'Data': response_data
-            }
-
-            json_response_body = json.dumps(response_body)
-
-            headers = {
-              'content-type': '',
-              'content-length': str(len(json_response_body))
-            }
-
-            response = http.request('PUT', response_url, body=json_response_body, headers=headers)
-            return response.status
-
-
-          def create_chemotherapy_survival_table(cluster_id, database, Dbuser):
-            sql = f"""
-              CREATE TABLE IF NOT EXISTS "dev"."public"."chemotherapy_survival" (
-              LRIG1 FLOAT,
-              Survival_Status BOOLEAN,
-              Survival_Duration FLOAT,
-              ExpressionGroup FLOAT
-          );
-
-              COMMENT ON COLUMN "dev"."public"."chemotherapy_survival".LRIG1 IS 'Gene expression value for LRIG1';
-              COMMENT ON COLUMN "dev"."public"."chemotherapy_survival".Survival_Status IS 'BOOLEAN 0 for Alive or 1 for Dead';
-              COMMENT ON COLUMN "dev"."public"."chemotherapy_survival".Survival_Duration IS 'Survival duration in days';
-              COMMENT ON COLUMN "dev"."public"."chemotherapy_survival".ExpressionGroup IS 'Integer 1 or 0 for expression group';
-            """
-            response = redshift_data.execute_statement(
-                ClusterIdentifier=cluster_id,
-                Database=database,
-                DbUser=Dbuser,
-                Sql=sql
-            )
-            return response
-
-          def create_clinical_genomic_table(cluster_id, database, Dbuser):
-            sql = """
-            CREATE TABLE IF NOT EXISTS "dev"."public"."clinical_genomic"(
-              Case_ID VARCHAR(50),
-              LRIG1 FLOAT,
-              HPGD FLOAT,
-              GDF15 FLOAT,
-              CDH2 FLOAT,
-              POSTN FLOAT,
-              VCAN FLOAT,
-              PDGFRA FLOAT,
-              VCAM1 FLOAT,
-              CD44 FLOAT,
-              CD48 FLOAT,
-              CD4 FLOAT,
-              LYL1 FLOAT,
-              SPI1 FLOAT,
-              CD37 FLOAT,
-              VIM FLOAT,
-              LMO2 FLOAT,
-              EGR2 FLOAT,
-              BGN FLOAT,
-              COL4A1 FLOAT,
-              COL5A1 FLOAT,
-              COL5A2 FLOAT,
-              Patient_affiliation VARCHAR(50),
-              Age_at_Histological_Diagnosis INT,
-              Weight_lbs FLOAT,
-              Gender VARCHAR(10),
-              Ethnicity VARCHAR(50),
-              Smoking_status VARCHAR(50),
-              Pack_Years INT,
-              Percent_GG VARCHAR(20),
-              Tumor_Location_RUL VARCHAR(20),
-              Tumor_Location_RML VARCHAR(20),
-              Tumor_Location_RLL VARCHAR(20),
-              Tumor_Location_LUL VARCHAR(20),
-              Tumor_Location_LLL VARCHAR(20),
-              Tumor_Location_L_Lingula VARCHAR(20),
-              Tumor_Location_Unknown VARCHAR(20),
-              Histology VARCHAR(70),
-              Pathological_T_stage VARCHAR(20),
-              Pathological_N_stage VARCHAR(20),
-              Pathological_M_stage VARCHAR(20),
-              Histopathological_Grade VARCHAR(70),
-              Lymphovascular_invasion VARCHAR(60),
-              Pleural_invasion VARCHAR(50),
-              EGFR_mutation_status VARCHAR(50),
-              KRAS_mutation_status VARCHAR(50),
-              ALK_translocation_status VARCHAR(50),
-              Adjuvant_Treatment VARCHAR(20),
-              Chemotherapy VARCHAR(20),
-              Radiation VARCHAR(20),
-              Recurrence VARCHAR(20),
-              Recurrence_Location VARCHAR(50),
-              Survival_Status BOOLEAN,
-              Time_to_Death FLOAT,
-              Days_between_CT_and_surgery INT,
-              Survival_Duration FLOAT
-              
-              
-            );
-
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".Case_ID IS 'Unique identifier for each case';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".LRIG1 IS 'Gene expression value for LRIG1';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".HPGD IS 'Gene expression value for HPGD';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".GDF15 IS 'Gene expression value for GDF15';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".CDH2 IS 'Gene expression value for CDH2';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".POSTN IS 'Gene expression value for POSTN';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".VCAN IS 'Gene expression value for VCAN';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".PDGFRA IS 'Gene expression value for PDGFRA';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".VCAM1 IS 'Gene expression value for VCAM1';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".CD44 IS 'Gene expression value for CD44';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".CD48 IS 'Gene expression value for CD48';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".CD4 IS 'Gene expression value for CD4';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".LYL1 IS 'Gene expression value for LYL1';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".SPI1 IS 'Gene expression value for SPI1';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".CD37 IS 'Gene expression value for CD37';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".VIM IS 'Gene expression value for VIM';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".LMO2 IS 'Gene expression value for LMO2';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".EGR2 IS 'Gene expression value for EGR2';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".BGN IS 'Gene expression value for BGN';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".COL4A1 IS 'Gene expression value for COL4A1';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".COL5A1 IS 'Gene expression value for COL5A1';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".COL5A2 IS 'Gene expression value for COL5A2';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".Patient_affiliation IS 'VA or Stanford';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".Age_at_Histological_Diagnosis IS 'Age at Histological Diagnosis';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".Weight_lbs IS 'Weight in pounds';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".Gender IS 'Male or Female';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".Ethnicity IS 'Ethnicity';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".Smoking_status IS 'Current, Former, or Never';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".Pack_Years IS 'Number of pack years for smokers';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".Percent_GG IS 'Percentage of ground glass opacity (GG) in the tumor';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".Tumor_Location_RUL IS 'Right Upper Lobe';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".Tumor_Location_RML IS 'Right Middle Lobe';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".Tumor_Location_RLL IS 'Right Lower Lobe';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".Tumor_Location_LUL IS 'Left Upper Lobe';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".Tumor_Location_LLL IS 'Left Lower Lobe';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".Tumor_Location_L_Lingula IS 'Left Lingula';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".Tumor_Location_Unknown IS 'Unknown location';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".Histology IS 'Histology type';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".Pathological_T_stage IS 'Pathological T stage';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".Pathological_N_stage IS 'Pathological N stage';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".Pathological_M_stage IS 'Pathological M stage';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".Histopathological_Grade IS 'G1 Well differentiated, G2 Moderately differentiated, G3 Poorly differentiated';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".Lymphovascular_invasion IS 'Present or Absent';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".Pleural_invasion IS 'Yes or No';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".EGFR_mutation_status IS 'Mutant, Wildtype, or Unknown';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".KRAS_mutation_status IS 'Mutant, Wildtype, or Unknown';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".ALK_translocation_status IS 'Positive, Negative, or Unknown';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".Adjuvant_Treatment IS 'Yes or No';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".Chemotherapy IS 'Yes or No';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".Radiation IS 'Yes or No';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".Recurrence IS 'Yes or No';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".Recurrence_Location IS 'Local, Distant, or N/A';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".Survival_Status IS 'BOOLEAN 0 represents Alive and 1 represent Dead';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".Time_to_Death IS 'Time to death in days, or 0 if alive';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".Days_between_CT_and_surgery IS 'Number of days between CT scan and surgery';
-              COMMENT ON COLUMN "dev"."public"."clinical_genomic".Survival_Duration IS 'duration of paitent survial in years';
-            """
-            
-            response = redshift_data.execute_statement(
-                ClusterIdentifier=cluster_id,
-                Database=database,
-                DbUser=Dbuser,
-                Sql=sql
-            )
-            print("data loaded")
-            return response
-
-          def load_chemotherapy_data(cluster_id, database, Dbuser, df):
-            
-            for row in df.itertuples():
-              sql = f"""
-              INSERT INTO "dev"."public"."chemotherapy_survival" (
-                LRIG1,
-                Survival_Status,
-                Survival_Duration,
-                ExpressionGroup)
-                VALUES ('{row[1]}', '{row[2]}', '{row[3]}', '{row[4]}');"""
-                
-              response = redshift_data.execute_statement(
-                    ClusterIdentifier=cluster_id,
-                    Database=database,
-                    DbUser=Dbuser,
-                    Sql=sql
-                )
-
-            # Access specific attributes of the response
-            if 'ResponseMetadata' in response:
-                print("HTTP Status Code:", response['ResponseMetadata']['HTTPStatusCode'])
-                print("Request ID:", response['ResponseMetadata']['RequestId'])
-
-            if 'Error' in response:
-                print("Error:", response['Error'])
-
-            return response
-
-          def load_clinical_genomic_data(cluster_id, database, Dbuser, df):
-            
-            for row in df.itertuples():
-              sql = f"""INSERT INTO "dev"."public"."clinical_genomic" (
-              Case_ID, LRIG1, HPGD, GDF15, CDH2, POSTN, VCAN,
-              PDGFRA, VCAM1, CD44, CD48, CD4, LYL1, SPI1, CD37,
-              VIM, LMO2, EGR2, BGN, COL4A1, COL5A1, COL5A2, 
-              Patient_affiliation, Age_at_Histological_Diagnosis, 
-              Weight_lbs, Gender, Ethnicity, Smoking_status,
-              Pack_Years, Percent_GG, Tumor_Location_RUL,
-              Tumor_Location_RML, Tumor_Location_RLL,
-              Tumor_Location_LUL, Tumor_Location_LLL,
-              Tumor_Location_L_Lingula, Tumor_Location_Unknown,
-              Histology, Pathological_T_stage, Pathological_N_stage,
-              Pathological_M_stage, Histopathological_Grade,
-              Lymphovascular_invasion, Pleural_invasion,
-              EGFR_mutation_status, KRAS_mutation_status,
-              ALK_translocation_status, Adjuvant_Treatment, Chemotherapy,
-              Radiation, Recurrence, Recurrence_Location,
-              Survival_Status, Time_to_Death,
-              Days_between_CT_and_surgery, Survival_Duration)
-              VALUES (
-              {','.join([f"'{row[i]}'" for i in range(1, len(row))])});"""
-              print(sql)
-                
-              response = redshift_data.execute_statement(
-                    ClusterIdentifier=cluster_id,
-                    Database=database,
-                    DbUser=Dbuser,
-                    Sql=sql
-                  )
-
-            if 'ResponseMetadata' in response:
-                print("HTTP Status Code:", response['ResponseMetadata']['HTTPStatusCode'])
-                print("Request ID:", response['ResponseMetadata']['RequestId'])
-
-            if 'Error' in response:
-                print("Error:", response['Error'])
-            return response
-
-          def lambda_handler(event, context):
-            try:
-                if event['RequestType'] == 'Delete':
-                    send_response(event, context, 'SUCCESS', {})
-                    return
-
-                s3_bucket = event['ResourceProperties']['S3Bucket']
-                s3_key_clinical_genomic_data = event['ResourceProperties']['ClinicalGenomicKey']
-                s3_key_chemotherapy_survival_data = event['ResourceProperties']['ChemotherapySurvivalKey']
-            
-                #Create chemotherapy table
-                create_chemotherapy_survival_table(cluster_id, database, DbUser)
-                time.sleep(5)
-                
-                #download data
-                with open('/tmp/chemotherapy_survival.csv', 'wb') as file:
-                    s3_client.download_fileobj(s3_bucket, s3_key_chemotherapy_survival_data, file)
-                chemotherapy_df = pd.read_csv('/tmp/chemotherapy_survival.csv')
-                
-                #Load chemotherapy data to table
-                load_chemotherapy_data(cluster_id, database, DbUser, chemotherapy_df)
-                time.sleep(5)
-              
-                #Create clinical genomic table
-                create_clinical_genomic_table(cluster_id, database, DbUser)
-                time.sleep(5)
-                
-                #download data
-                with open('/tmp/clinical_genomic.csv', 'wb') as file:
-                    s3_client.download_fileobj(s3_bucket, s3_key_clinical_genomic_data, file)
-                clinical_df = pd.read_csv('/tmp/clinical_genomic.csv')
-                
-                # Load clinical genomic data to table
-                load_clinical_genomic_data(cluster_id, database, DbUser, clinical_df)
-                time.sleep(5)
-
-                send_response(event, context, 'SUCCESS', {'Status': 'Success'})
-
-            except Exception as e:
-                send_response(event, context, 'FAILED', {'Status': 'Failure', 'Error': str(e)})
-                print(e)
-      Runtime: "python3.9"
-      Timeout: 900
-      MemorySize: 512
-      Layers:
-        - !FindInMap [RegionMap, !Ref "AWS::Region", PandasLayer]
-      Environment:
-        Variables:
-          REDSHIFT_CLUSTER_ID: "biomarker-redshift-cluster"
-          REDSHIFT_DATABASE: !Ref RedshiftDatabaseName
-          REDSHIFT_USER: "admin"
-
-  LambdaFunctionInvokePermission:
-    Type: "AWS::Lambda::Permission"
-    Properties:
-      Action: "lambda:InvokeFunction"
-      Principal: "cloudformation.amazonaws.com"
-      FunctionName: !GetAtt LambdaFunction.Arn
-
-  # Custom Resource to Load Data to Redshift
-  LoadDataToRedshift:
-    DependsOn:
-      - RedshiftCluster
-      - S3DataProcessingCustomResource
-    Type: Custom::LoadDataToRedshift
-    Properties:
-      ServiceToken: !GetAtt LambdaFunction.Arn
-      S3Bucket: !GetAtt S3DataProcessingCustomResource.BucketName
-      ClinicalGenomicKey: !GetAtt S3DataProcessingCustomResource.ClinicalGenomicKey
-      ChemotherapySurvivalKey: !GetAtt S3DataProcessingCustomResource.ChemotherapySurvivalKey
-
-  TriggerAgentBuildCustomResource:
-    Type: Custom::TriggerAgentBuild
-    Properties:
-      ServiceToken: !GetAtt TriggerAgentBuildLambda.Arn
-      ProjectName: !Ref AgentCodeBuild
-
-  TriggerReactAppBuildCustomResource:
-    Type: Custom::TriggerAgentBuild
-    Properties:
-      ServiceToken: !GetAtt TriggerAgentBuildLambda.Arn
-      ProjectName: !Ref ReactAppCodeBuild
-
-  TriggerAgentBuildLambda:
-    Type: AWS::Lambda::Function
-    Properties:
-      Handler: index.handler
-      Role: !GetAtt TriggerAgentBuildLambdaRole.Arn
-      Code:
-        ZipFile: |
-          import boto3
-          import cfnresponse
-          import time
-          def handler(event, context):
-              if event['RequestType'] in ['Create', 'Update']:
-                  try:
-                      codebuild = boto3.client('codebuild')
-                      project_name = event['ResourceProperties']['ProjectName']
-                      response = codebuild.start_build(projectName=project_name)
-                      build_id = response['build']['id']
-                      print(f"Build started: {build_id}")
-                      time.sleep(120)
-                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {"BuildId": build_id})
-                  except Exception as e:
-                      print(f"Error: {str(e)}")
-                      cfnresponse.send(event, context, cfnresponse.FAILED, {"Error": str(e)})
-              elif event['RequestType'] == 'Delete':
-                  # No action needed for delete, as S3 cleanup will be handled separately
-                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
-      Runtime: python3.8
-      Timeout: 300
-
-  CleanupLambdaFunction:
-    Type: AWS::Lambda::Function
-    Properties:
-      Handler: index.handler
-      Role: !GetAtt CleanupLambdaRole.Arn
-      Code:
-        ZipFile: |
-          import boto3
-          import cfnresponse
-
-          def delete_bucket_contents(bucket):
-              s3 = boto3.resource('s3')
-              bucket = s3.Bucket(bucket)
-              bucket.objects.all().delete()
-
-          def handler(event, context):
-              if event['RequestType'] == 'Delete':
-                  s3 = boto3.client('s3')
-                  bucket = event['ResourceProperties']['S3Bucket']
-                  try:
-                      # Delete all objects in the bucket
-                      delete_bucket_contents(bucket)
-                      print(f"Deleted all contents from bucket: {bucket}")
-                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
-                  except Exception as e:
-                      print(f"Error: {str(e)}")
-                      cfnresponse.send(event, context, cfnresponse.FAILED, {"Error": str(e)})
-              else:
-                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
-      Runtime: python3.8
-      Timeout: 300
-
-  CleanupLambdaRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: lambda.amazonaws.com
-            Action: sts:AssumeRole
-      Policies:
-        - PolicyName: S3DeletePolicy
-          PolicyDocument:
-            Version: "2012-10-17"
+            Version: 2012-10-17
             Statement:
               - Effect: Allow
                 Action:
-                  - s3:DeleteObject
-                  - s3:ListBucket
+                  - bedrock:*
                 Resource:
-                  - !Sub arn:aws:s3:::${S3Bucket}
-                  - !Sub arn:aws:s3:::${S3Bucket}/*
-        - PolicyName: CloudWatchLogsPolicy
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - logs:CreateLogGroup
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
-                Resource: arn:aws:logs:*:*:*
+                  - !Sub arn:${AWS::Partition}:bedrock:*::foundation-model/*
+                  - !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:knowledge-base/*
+                  - !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:agent-alias/*
+                  - !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*
+                  - !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/*
+                  - !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:application-inference-profile/*
+                  - !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:guardrail/*
+      Tags:
+        - Key: Project
+          Value: "hcls-agents-toolkit"
 
-  CleanupCustomResource:
-    Type: Custom::Cleanup
-    Properties:
-      ServiceToken: !GetAtt CleanupLambdaFunction.Arn
-      S3Bucket: !Ref S3Bucket
-      S3Prefix: ""
+  #################################################################################################################################################
+  #################################################################################################################################################
+  ##    _                _      ___      _        _
+  ##   /_\  __ _ ___ _ _| |_   / __|__ _| |_ __ _| |___  __ _
+  ##  / _ \/ _` / -_) ' \  _| | (__/ _` |  _/ _` | / _ \/ _` |
+  ## /_/ \_\__, \___|_||_\__|  \___\__,_|\__\__,_|_\___/\__, |
+  ##       |___/                                        |___/
+  #################################################################################################################################################
+  #################################################################################################################################################
 
-  TriggerAgentBuildLambdaRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: lambda.amazonaws.com
-            Action: sts:AssumeRole
-      Policies:
-        - PolicyName: CodeBuildStartBuildPolicy
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - codebuild:StartBuild
-                Resource:
-                  - !GetAtt AgentCodeBuild.Arn
-                  - !GetAtt ReactAppCodeBuild.Arn
-        - PolicyName: CloudWatchLogsPolicy
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - logs:CreateLogGroup
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
-                Resource: arn:aws:logs:*:*:*
-  CodeBuildServiceRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: codebuild.amazonaws.com
-            Action: sts:AssumeRole
-      Policies:
-        - PolicyName: CodeBuildAccessPolicy
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - logs:CreateLogGroup
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
-                Resource:
-                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${AWS::StackName}-AgentCodeBuild:*
-                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${AWS::StackName}-ReactAppCodeBuild:*
-              - Effect: Allow
-                Action:
-                  - s3:GetObject
-                  - s3:PutObject
-                  - s3:ListBucket
-                Resource:
-                  - !Sub arn:aws:s3:::${S3Bucket}
-                  - !Sub arn:aws:s3:::${S3Bucket}/*
-              - Effect: Allow
-                Action:
-                  - cloudformation:PackageTemplate
-                Resource:
-                  - !Sub arn:aws:s3:::${S3Bucket}
-                  - !Sub arn:aws:s3:::${S3Bucket}/*
-
-  AgentCodeBuild:
-    Type: AWS::CodeBuild::Project
-    Properties:
-      Name: !Sub ${AWS::StackName}-AgentCodeBuild
-      Description: "CodeBuild project to build and package agent CloudFormation templates"
-      ServiceRole: !GetAtt CodeBuildServiceRole.Arn
-      TimeoutInMinutes: 15
-      Artifacts:
-        Type: S3
-        Location: !Ref S3Bucket
-        Name: packaged_agents
-        NamespaceType: NONE
-        Packaging: NONE
-      Environment:
-        Type: LINUX_CONTAINER
-        ComputeType: BUILD_GENERAL1_SMALL
-        Image: aws/codebuild/amazonlinux2-x86_64-standard:3.0
-      Source:
-        Type: NO_SOURCE
-        BuildSpec: !Sub |
-          version: 0.2
-          env:
-            variables:
-              S3_BUCKET: ${S3Bucket}
-              GIT_BRANCH: ${GitBranch}
-              GITHUB_LINK: ${GithubLink}
-          phases:
-            install:
-              runtime-versions:
-                python: 3.8
-            pre_build:
-              commands:
-                - echo Cloning the repository
-                - git clone -b $GIT_BRANCH --single-branch $GITHUB_LINK repo
-                - cd repo
-                - chmod +x build_agents.sh
-            build:
-              commands:
-                - echo Processing agent templates
-                - ./build_agents.sh
-            post_build:
-              commands:
-                - echo Build completed on `date`
-  AgentBuildNestedStack:
+  BiomarkerDiscoverySupervisorAgent:
     Type: AWS::CloudFormation::Stack
     DependsOn:
-      - TriggerAgentBuildCustomResource
-      - CleanupCustomResource
-      - RedshiftCluster
+      - CodeBuild
     Properties:
-      TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/packaged_agent_build.yaml
+      TemplateURL: agent_build.yaml
       Parameters:
         BedrockModelId: !Ref BedrockModelId
-        MultiAgentDevMode: !Ref MultiAgentDevMode
-        EnvironmentName: !Ref EnvironmentName
+        RedshiftDatabaseName: !Ref RedshiftDatabaseName
+        RedshiftUserName: !Ref RedshiftUserName
+        RedshiftPassword: !Ref RedshiftPassword
+        MultiAgentDevMode: "false"
+        EnvironmentName: env1
         GitRepoURL: !Ref GithubLink
         GitBranch: !Ref GitBranch
         SubAgentS3Bucket: !Ref S3Bucket
+        VPC: !GetAtt Network.Outputs.VPC
+        PrivateSubnet1: !GetAtt Network.Outputs.PrivateSubnet1
+        PrivateSubnet2: !GetAtt Network.Outputs.PrivateSubnet2
+        AgentRole: !GetAtt AgentRole.Arn
       TimeoutInMinutes: 30
+      Tags:
+        - Key: Project
+          Value: "hcls-agents-toolkit"
 
-  ReactAppCodeBuild:
-    Type: AWS::CodeBuild::Project
-    Properties:
-      Name: !Sub ${AWS::StackName}-ReactAppCodeBuild
-      Description: "CodeBuild project to build and React App CloudFormation templates"
-      ServiceRole: !GetAtt CodeBuildServiceRole.Arn
-      TimeoutInMinutes: 15
-      Artifacts:
-        Type: S3
-        Location: !Ref S3Bucket
-        Name: packaged_react_app
-        NamespaceType: NONE
-        Packaging: NONE
-      Environment:
-        Type: LINUX_CONTAINER
-        ComputeType: BUILD_GENERAL1_SMALL
-        Image: aws/codebuild/amazonlinux2-x86_64-standard:3.0
-      Source:
-        Type: NO_SOURCE
-        BuildSpec: !Sub |
-          version: 0.2
-          env:
-            variables:
-              S3_BUCKET: ${S3Bucket}
-              GIT_BRANCH: ${GitBranch}
-              GITHUB_LINK: ${GithubLink}
-          phases:
-            install:
-              runtime-versions:
-                python: 3.8
-            pre_build:
-              commands:
-                - echo Cloning the repository
-                - git clone -b $GIT_BRANCH --single-branch $GITHUB_LINK repo
-                - cd repo
-                - chmod +x build_react_app.sh
-            build:
-              commands:
-                - echo Processing react app templates
-                - ls -la
-                - ./build_react_app.sh
-            post_build:
-              commands:
-                - echo Build completed on `date`
-  ReactAppDockerBuildNestedStack:
-    Type: AWS::CloudFormation::Stack
-    DependsOn:
-      - ReactAppCodeBuild
-      - TriggerReactAppBuildCustomResource
-    Properties:
-      TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/ui/docker_build_pipeline.yml
-      Parameters:
-        ProjectName: !Sub ${EnvironmentName}-react-ui
-        PackageBucketName: !Sub ${S3Bucket}
-        PackageArtifactKey: ui/ui_artifact.zip
-      TimeoutInMinutes: 35
-  ReactAppEcsBuildNestedStack:
-    Type: AWS::CloudFormation::Stack
-    DependsOn:
-      - ReactAppDockerBuildNestedStack
-    Properties:
-      TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/ui/ecs.yml
-      Parameters:
-        VPCId: !Ref VPC
-        AllowedCidr: !Ref ReactAppAllowedCidr
-        PublicSubnet1: !Ref PublicSubnet1
-        PublicSubnet2: !Ref PublicSubnet2
-        ImageUrl: !GetAtt
-          - ReactAppDockerBuildNestedStack
-          - Outputs.ECRRepositoryURI
-      TimeoutInMinutes: 35
-
-  ClinicalTrialProtocolSupervisorStack:
+  ClinicalStudySearchAgent:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents_catalog/packaged_clinical-trial-protocol-assistant-cfn.yaml
+      TemplateURL: agents_catalog/15-clinical-study-research-agent/clinical-study-agent.yaml
       Parameters:
-        AgentIAMRoleArn: !GetAtt AgentBuildNestedStack.Outputs.AgentRole
-        S3Bucket: !Ref S3Bucket
-      TimeoutInMinutes: 35
+        AgentIAMRoleArn: !GetAtt AgentRole.Arn
+        ChartImageBucketName: !Ref S3Bucket
+      TimeoutInMinutes: 10
+      Tags:
+        - Key: Project
+          Value: "hcls-agents-toolkit"
 
-  WileyOnlineSearchStack:
+  ClinicalTrialProtocolGeneratorAgent:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents_catalog/packaged_wiley-search-agent-cfn.yaml
+      TemplateURL: agents_catalog/16-Clinical-trial-protocol-generator-agent/clinical-trial-protocol-generator-agent.yaml
       Parameters:
-        AgentIAMRoleArn: !GetAtt AgentBuildNestedStack.Outputs.AgentRole
-      TimeoutInMinutes: 35
+        AgentIAMRoleArn: !GetAtt AgentRole.Arn
+      TimeoutInMinutes: 10
+      Tags:
+        - Key: Project
+          Value: "hcls-agents-toolkit"
 
-  CompetitiveIntelligenceSupervisorStack:
+  ClinicalTrialProtocolSupervisorAgent:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: multi_agent_collaboration/Clinical-Trial-Protocol-Assistant/clinical-trial-protocol-assistant-cfn.yaml
+      Parameters:
+        BedrockModelId: !Ref BedrockModelId
+        AgentIAMRoleArn: !GetAtt AgentRole.Arn
+        ClinicalStudySearchAgentAliasArn: !GetAtt ClinicalStudySearchAgent.Outputs.AgentAliasArn
+        ClinicalTrialProtocolGeneratorAgentAliasArn: !GetAtt ClinicalTrialProtocolGeneratorAgent.Outputs.AgentAliasArn
+      TimeoutInMinutes: 10
+      Tags:
+        - Key: Project
+          Value: "hcls-agents-toolkit"
+
+  WebSearchAgent:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: agents_catalog/11-Tavily-web-search-agent/web-search-agent-cfn.yaml
+      Parameters:
+        AgentIAMRoleArn: !GetAtt AgentRole.Arn
+        TavilyApiKey: !Ref TavilyApiKey
+      TimeoutInMinutes: 35
+      Tags:
+        - Key: Project
+          Value: "hcls-agents-toolkit"
+
+  SEC10kAgent:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: agents_catalog/10-SEC-10-K-agent/sec-10-K-agent-cfn.yaml
+      Parameters:
+        AgentIAMRoleArn: !GetAtt AgentRole.Arn
+        S3CodeBucket: !Ref S3Bucket
+        S3CodeKey: !GetAtt CodeRepo.Outputs.S3Key
+      TimeoutInMinutes: 35
+      Tags:
+        - Key: Project
+          Value: "hcls-agents-toolkit"
+
+  USPTOSearchAgent:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: agents_catalog/14-USPTO-search/uspto-search-agent-cfn.yaml
+      Parameters:
+        AgentIAMRoleArn: !GetAtt AgentRole.Arn
+        USPTOApiKey: !Ref USPTOApiKey
+      TimeoutInMinutes: 35
+      Tags:
+        - Key: Project
+          Value: "hcls-agents-toolkit"
+
+  CompetitiveIntelligenceSupervisorAgent:
     Type: AWS::CloudFormation::Stack
     Condition: CreateCompetitiveIntelAgent
     Properties:
-      TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents_catalog/packaged_competitive-intelligence-agent-cfn.yaml
+      TemplateURL: multi_agent_collaboration/competitive_intelligence/competitive-intelligence-agent-cfn.yaml
       Parameters:
-        TavilyApiKey: !Ref TavilyApiKey
-        USPTOApiKey: !Ref USPTOApiKey
-        AgentIAMRoleArn: !GetAtt AgentBuildNestedStack.Outputs.AgentRole
-        S3Bucket: !Ref S3Bucket
-      TimeoutInMinutes: 35      
+        BedrockModelId: !Ref BedrockModelId
+        AgentIAMRoleArn: !GetAtt AgentRole.Arn
+        WebSearchAgentAliasArn: !GetAtt WebSearchAgent.Outputs.AgentAliasArn
+        SEC10kAgentAliasArn: !GetAtt SEC10kAgent.Outputs.AgentAliasArn
+        USPTOSearchAgentAliasArn: !GetAtt USPTOSearchAgent.Outputs.AgentAliasArn
+      TimeoutInMinutes: 10
+      Tags:
+        - Key: Project
+          Value: "hcls-agents-toolkit"
+
+  WileyOnlineSearchAgent:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: agents_catalog/18-Wiley-OA-life-sciences-agent/wiley-search-agent-cfn.yaml
+      Parameters:
+        AgentIAMRoleArn: !GetAtt AgentRole.Arn
+      TimeoutInMinutes: 10
+      Tags:
+        - Key: Project
+          Value: "hcls-agents-toolkit"
+
+#################################################################################################################################################
+#################################################################################################################################################
 
 Outputs:
-  RedshiftClusterEndpoint:
-    Description: Redshift Cluster Endpoint
-    Value: !GetAtt RedshiftCluster.Endpoint.Address
   ReactAppExternalURL:
+    Condition: CreateReactApp
     Value:
       Fn::GetAtt:
         - ReactAppEcsBuildNestedStack
         - Outputs.ExternalUrl
     Description: ALB DNS for the React App
   AgentRole:
-    Value:
-      Fn::GetAtt:
-        - AgentBuildNestedStack
-        - Outputs.AgentRole
+    Value: !GetAtt AgentRole.Arn
     Description: Amazon Bedrock Agents Service Role ARN

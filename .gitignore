@@ -4,3 +4,4 @@ agenteval_*
 .DS_Store
 node_modules
 .next
+.kiro

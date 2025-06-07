@@ -222,7 +222,7 @@ class BedrockAgentScenarioWrapper:
             lambda_function = self.lambda_client.create_function(
                 FunctionName=function_name,
                 Description=TOOL_DESCRIPTION,
-                Runtime="python3.11",
+                Runtime="python3.12",
                 Role=self.lambda_role.arn,
                 Handler=f"{function_name}.lambda_handler",
                 Code={"ZipFile": deployment_package},

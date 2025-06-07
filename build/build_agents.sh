@@ -4,8 +4,42 @@
 echo "Current directory: $(pwd)"
 echo "S3 Bucket: ${S3_BUCKET}"
 
+# Process templates in build folder
+# cd build || exit
+pushd build || exit
+echo "Processing build templates..."
+template="codebuild.yaml"
+echo "Found template file: ${template}"
+template_name=$(basename "${template}" .yaml)
+echo "Packaging template: ${template_name}"
+aws cloudformation package \
+  --template-file "${template}" \
+  --s3-bucket "${S3_BUCKET}" \
+  --output-template-file "../packaged_${template_name}.yaml"
+# Copy to S3 immediately after packaging
+aws s3 cp "../packaged_${template_name}.yaml" "s3://${S3_BUCKET}/packaged_${template_name}.yaml"  
+popd
+
+# for template in *.yaml; do
+#   if [ -f "${template}" ]; then
+#     echo "Found template file: ${template}"
+#     template_name=$(basename "${template}" .yaml)
+#     echo "Packaging template: ${template_name}"
+#     aws cloudformation package \
+#       --template-file "${template}" \
+#       --s3-bucket "${S3_BUCKET}" \
+#       --output-template-file "../packaged_${template_name}.yaml"
+    
+#     # Copy to S3 immediately after packaging
+#     aws s3 cp "../packaged_${template_name}.yaml" "s3://${S3_BUCKET}/packaged_${template_name}.yaml"
+#   fi
+# done
+# # cd ..
+# popd
+
 # Process Cancer biomarker discovery Subagent templates
-cd multi_agent_collaboration/cancer_biomarker_discovery/agents || exit
+# cd multi_agent_collaboration/cancer_biomarker_discovery/agents || exit
+pushd multi_agent_collaboration/cancer_biomarker_discovery/agents || exit
 echo "Processing agent templates..."
 for agent_file in *.yaml; do
   if [ -f "${agent_file}" ]; then
@@ -21,12 +55,14 @@ for agent_file in *.yaml; do
     aws s3 cp "../packaged_${agent_name}.yaml" "s3://${S3_BUCKET}/packaged_${agent_name}.yaml"
   fi
 done
-cd ..
-cd ..
-cd ..
+# cd ..
+# cd ..
+# cd ..
+popd
 
 # Process Cancer Biomarker discovery Supervisor agent template - note the quotes around directory name
-cd multi_agent_collaboration/cancer_biomarker_discovery/SupervisorAgent || exit
+# cd multi_agent_collaboration/cancer_biomarker_discovery/SupervisorAgent || exit
+pushd multi_agent_collaboration/cancer_biomarker_discovery/SupervisorAgent || exit
 echo "Processing supervisor agent template..."
 if [ -f "supervisor_agent.yaml" ]; then
   echo "Packaging supervisor agent"
@@ -38,9 +74,10 @@ if [ -f "supervisor_agent.yaml" ]; then
   # Copy to S3 immediately after packaging
   aws s3 cp "../packaged_supervisor_agent.yaml" "s3://${S3_BUCKET}/packaged_supervisor_agent.yaml"
 fi
-cd ..
-cd ..
-cd ..
+# cd ..
+# cd ..
+# cd ..
+popd
 
 # Process agent build template
 echo "Processing agent build template..."
@@ -55,22 +92,9 @@ if [ -f "agent_build.yaml" ]; then
   aws s3 cp "packaged_agent_build.yaml" "s3://${S3_BUCKET}/packaged_agent_build.yaml"
 fi
 
-# Process streamlit app
-if [ -d "streamlitapp" ] && [ -f "streamlitapp/streamlit_build.yaml" ]; then
-  echo "Processing streamlit app..."
-  cd streamlitapp || exit
-  aws cloudformation package \
-    --template-file streamlit_build.yaml \
-    --s3-bucket "${S3_BUCKET}" \
-    --output-template-file "../packaged_streamlit_build.yaml"
-  
-  # Copy to S3
-  aws s3 cp "../packaged_streamlit_build.yaml" "s3://${S3_BUCKET}/packaged_streamlit_build.yaml"
-  cd ..
-fi
-
 # Process agent catalog templates. NOTE: Uses a different S3 destination path!
-cd agents_catalog || exit
+# cd agents_catalog || exit
+pushd agents_catalog || exit
 echo "Processing agent templates..."
 for agent_file in $(find . -type f -maxdepth 2 -name "*.yaml"); do
   if [ -f "${agent_file}" ]; then
@@ -87,10 +111,12 @@ for agent_file in $(find . -type f -maxdepth 2 -name "*.yaml"); do
     rm "../packaged_${agent_name}.yaml"
   fi
 done
-cd ..
+# cd ..
+popd
 
 # Process multi-agent catalog templates NOTE: Uses a different S3 destination path!
-cd multi_agent_collaboration || exit
+# cd multi_agent_collaboration || exit
+pushd multi_agent_collaboration || exit
 echo "Processing multi-agent templates..."
 for agent_file in $(find . -type f -name "*.yaml"); do
   if [ -f "${agent_file}" ]; then
@@ -107,7 +133,8 @@ for agent_file in $(find . -type f -name "*.yaml"); do
     rm "../packaged_${agent_name}.yaml"
   fi
 done
-cd ..
+# cd ..
+popd
 
 # Process additional artifacts. NOTE: Uses a different S3 destination path!
 echo "Uploading additional artifacts"

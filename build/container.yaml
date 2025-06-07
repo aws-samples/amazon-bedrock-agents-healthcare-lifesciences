@@ -11,8 +11,12 @@ Parameters:
   S3CodeKey:
     Description: S3 key for the zip file containing CodeBuild code
     Type: String
-  Name:
-    Description: Name to use for the Docker container
+  BuildContextPath:
+    Description: Path to the build context directory
+    Type: String
+    Default: "."
+  ContainerName:
+    Description: Name to use for the container
     Type: String
   Timestamp:
     Description: Timestamp for the cfn deployment
@@ -94,7 +98,7 @@ Resources:
   Repository:
     Type: AWS::ECR::Repository
     Properties:
-      RepositoryName: !Ref Name
+      RepositoryName: !Ref ContainerName
       EmptyOnDelete: True
       EncryptionConfiguration:
         EncryptionType: KMS
@@ -185,6 +189,8 @@ Resources:
             Value: !Ref "AWS::AccountId"
           - Name: REGION
             Value: !Ref "AWS::Region"
+          - Name: BUILD_CONTEXT_PATH
+            Value: !Ref BuildContextPath
         Image: aws/codebuild/standard:6.0
         ImagePullCredentialsType: CODEBUILD
         PrivilegedMode: true
@@ -203,7 +209,8 @@ Resources:
             build:
               commands:
                 - echo Building the image
-                - docker buildx build --platform linux/amd64 --provenance=false -t $IMAGE_REPO_NAME:$IMAGE_TAG .
+                - ls -R
+                - docker buildx build --platform linux/amd64 --provenance=false -t $IMAGE_REPO_NAME:$IMAGE_TAG $BUILD_CONTEXT_PATH
                 - echo tagging the $IMAGE_REPO_NAME image
                 - docker tag $IMAGE_REPO_NAME:$IMAGE_TAG $ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG
             post_build:
@@ -306,7 +313,7 @@ Resources:
       MemorySize: 512
       Role:
         Fn::GetAtt: StartCodeBuildLambdaExecutionRole.Arn
-      Runtime: python3.13
+      Runtime: python3.12
       Timeout: 30
 
   CodeBuildWaitHandle:
@@ -320,7 +327,7 @@ Resources:
       BuildProjectName:
         Ref: CodeBuildContainerProject
       AssetName:
-        Ref: Name
+        Ref: ContainerName
       Timestamp:
         Ref: Timestamp
       WaitHandle:
@@ -346,3 +353,6 @@ Outputs:
   CodeBuildLambdaArn:
     Description: The ARN of the CodeBuild lambda trigger
     Value: !GetAtt StartCodeBuildLambda.Arn
+  ECRRepositoryName:
+    Description: ECR Repository Name
+    Value: !Ref Repository

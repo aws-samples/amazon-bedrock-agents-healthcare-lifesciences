@@ -189,7 +189,7 @@ Resources:
       Code:
         S3Bucket: !Ref S3Bucket 
         S3Key: matplotbarchartlambda.zip  
-      Runtime: python3.11  
+      Runtime: python3.12  
       Timeout: 500
       MemorySize: 128
       Layers:

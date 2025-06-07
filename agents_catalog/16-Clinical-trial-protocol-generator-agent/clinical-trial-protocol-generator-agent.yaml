@@ -62,7 +62,7 @@ Resources:
   ##### Lambda Permissions #####
   #######################
 
-  ClinicalDataModelLambdaPermission:
+  ClinicalDataModelLambdaAliasPermission:
     Type: AWS::Lambda::Permission
     Properties:
       Action: lambda:InvokeFunction
@@ -70,6 +70,15 @@ Resources:
       Principal: bedrock.amazonaws.com
       SourceAccount: !Ref AWS::AccountId
       SourceArn: !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent-alias/*
+
+  ClinicalDataModelLambdaAgentPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt ClinicalDataModelLambda.Arn
+      Principal: bedrock.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+      SourceArn: !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*
 
   ###################
   ##### Guardrail #####

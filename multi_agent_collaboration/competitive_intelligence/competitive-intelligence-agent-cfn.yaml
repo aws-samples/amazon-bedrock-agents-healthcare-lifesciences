@@ -12,64 +12,24 @@ Parameters:
     Type: String
     Description: (Optional) Amazon Bedrock Agents service role ARN
     Default: ""
-  TavilyApiKey:
+  WebSearchAgentAliasArn:
+    Description: Alias ARN for the web search sub-agent
     Type: String
-    NoEcho: true
-    Description: Provide TavilyApiKey API Key to utilize /web_search path
-    MinLength: 1
-  USPTOApiKey:
+  SEC10kAgentAliasArn:
+    Description: Alias ARN for the SEC 10-K search sub-agent
     Type: String
-    NoEcho: true
-    Description: Provide USPTO API Key to utilize /search path
-    MinLength: 1
-  S3Bucket:
-    Description: Name of the S3 bucket to use for deployment and run storage
+  USPTOSearchAgentAliasArn:
+    Description: Alias ARN for the USPTO search sub-agent
     Type: String
-    Default: ""
 
 Conditions:
   CreateAgentAliasCondition: !Not [!Equals [!Ref AgentAliasName, ""]]
   AgentIAMRoleCondition: !Not [!Equals [!Ref AgentIAMRoleArn, ""]]
-  AgentS3BucketCondition: !Not [!Equals [!Ref S3Bucket, ""]]
 
 Resources:
   #####################
   ##### Agent #####
   ###################
-
-  WebSearchAgentStack:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents_catalog/packaged_web-search-agent-cfn.yaml
-      Parameters:
-        AgentAliasName: "Latest"
-        AgentIAMRoleArn: !Ref AgentIAMRoleArn
-        TavilyApiKey: !Ref TavilyApiKey
-      TimeoutInMinutes: 35
-
-  SEC10kAgentStack:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents_catalog/packaged_sec-10-K-agent-cfn.yaml
-      Parameters:
-        AgentAliasName: "Latest"
-        AgentIAMRoleArn: !Ref AgentIAMRoleArn
-        S3CodeBucket:
-          "Fn::If":
-            - AgentS3BucketCondition
-            - !Ref S3Bucket
-            - "{{resolve:ssm:/s3/agent_build/name:1}}"
-      TimeoutInMinutes: 35
-
-  USPTOSearchAgentStack:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents_catalog/packaged_uspto-search-agent-cfn.yaml
-      Parameters:
-        AgentAliasName: "Latest"
-        AgentIAMRoleArn: !Ref AgentIAMRoleArn
-        USPTOApiKey: !Ref USPTOApiKey
-      TimeoutInMinutes: 35
 
   CompetitiveIntelligenceAgent:
     Type: AWS::Bedrock::Agent
@@ -82,7 +42,8 @@ Resources:
       AgentCollaborators:
         - CollaboratorName: Web-Search-Agent
           AgentDescriptor:
-            AliasArn: !GetAtt WebSearchAgentStack.Outputs.AgentAliasArn
+            # AliasArn: !GetAtt WebSearchAgentStack.Outputs.AgentAliasArn
+            AliasArn: !Ref WebSearchAgentAliasArn
           CollaborationInstruction: |
             Use the Web Search Agent to:
               - Find breaking news and recent developments
@@ -96,7 +57,8 @@ Resources:
             Focus searches on content from the past 3-6 months to complement the historical data from SEC filings with current market context.
         - CollaboratorName: SEC-10-K-Search-Agent
           AgentDescriptor:
-            AliasArn: !GetAtt SEC10kAgentStack.Outputs.AgentAliasArn
+            # AliasArn: !GetAtt SEC10kAgentStack.Outputs.AgentAliasArn
+            AliasArn: !Ref SEC10kAgentAliasArn
           CollaborationInstruction: |
             Use SEC 10-K Search Agent when you need specific quantitative financial information such as:
               - Revenue figures and year-over-year growth
@@ -106,7 +68,8 @@ Resources:
               - Debt levels and financing activities
         - CollaboratorName: USPTO-Search-Agent
           AgentDescriptor:
-            AliasArn: !GetAtt USPTOSearchAgentStack.Outputs.AgentAliasArn
+            # AliasArn: !GetAtt USPTOSearchAgentStack.Outputs.AgentAliasArn
+            AliasArn: !Ref USPTOSearchAgentAliasArn
           CollaborationInstruction: |
             Use USPTO Search Agent when you need information about patent applications, such as:
               - Recent patent applications on given topic
