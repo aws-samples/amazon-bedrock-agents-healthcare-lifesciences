@@ -101,7 +101,7 @@ rm packaged_infra_cfn.yaml
 
 1. Navigate to AWS CloudFormation via AWS Console search
 2. Click the parent stack name that was chosen to deploy the `Infra_cfn.yaml`
-3. In the Outputs tab, find the `ReactAppExternalURL` link and add 'https://' to the beginning of the URL and paste in your browser
+3. In the Outputs tab, find the `ReactAppExternalURL` link and add 'http://' to the beginning of the URL and paste in your browser
 4. You should be able to see a landing page with all (or a subset) deployed agents as shown in the [video](https://d2dnsxs0d2upyb.cloudfront.net/agents-demo/agents_toolkit_overview.mp4) below:
 
 [![react-app-landing-page](docs/src/assets/agents_list_react_app.png)](https://d2dnsxs0d2upyb.cloudfront.net/agents-demo/agents_toolkit_overview.mp4)
