@@ -162,7 +162,7 @@ Resources:
     Properties:
       DBName: !Ref RedshiftDatabaseName
       ClusterIdentifier: biomarker-redshift-cluster
-      NodeType: dc2.large
+      NodeType: ra3.large
       MasterUsername: !Ref RedshiftUserName
       MasterUserPassword: !Ref RedshiftPassword
       ClusterType: single-node
