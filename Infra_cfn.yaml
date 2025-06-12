@@ -319,6 +319,18 @@ Resources:
         - Key: Project
           Value: "hcls-agents-toolkit"
 
+  UniProtProteinSearchAgent:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: agents_catalog/19-UniProt-protein-search-agent/uniprot-protein-search-agent-cfn.yaml
+      Parameters:
+        BedrockModelId: !Ref BedrockModelId
+        AgentIAMRoleArn: !GetAtt AgentRole.Arn
+      TimeoutInMinutes: 10
+      Tags:
+        - Key: Project
+          Value: "hcls-agents-toolkit"
+
 #################################################################################################################################################
 #################################################################################################################################################
 
