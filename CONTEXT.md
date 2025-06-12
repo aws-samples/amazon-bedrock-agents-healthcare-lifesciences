@@ -71,7 +71,7 @@ Follow this guidance when developing new agents for this toolkit:
 
 * CloudFormation templates that define a Bedrock Agent should have at least three parameters:
   * AgentAliasName - Optional alias name. Defaults to "Latest"
-  * BedrockModelId - Optional Bedrock foundation model id. Defaults to "anthropic.claude-3-5-sonnet-20241022-v2:0"
+  * BedrockModelId - Optional Bedrock foundation model id. Defaults to "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
   * AgentIAMRoleArn - Optional Bedrock Agent execution role. Defaults to ""
 
 ### Lambda Action Groups

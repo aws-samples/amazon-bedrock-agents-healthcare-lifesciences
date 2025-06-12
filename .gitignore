@@ -6,3 +6,4 @@ node_modules
 .next
 .kiro
 .amazonq
+__pycache__
