@@ -6,7 +6,6 @@ documentation, we greatly value feedback and contributions from our community.
 Please read through this document before submitting any issues or pull requests to ensure we have all the necessary
 information to effectively respond to your bug report or contribution.
 
-
 ## Reporting Bugs/Feature Requests
 
 We welcome you to use the GitHub issue tracker to report bugs or suggest features.
@@ -19,8 +18,8 @@ reported the issue. Please try to include as much information as you can. Detail
 * Any modifications you've made relevant to the bug
 * Anything unusual about your environment or deployment
 
-
 ## Contributing via Pull Requests
+
 Contributions via pull requests are much appreciated. Before sending us a pull request, please ensure that:
 
 1. You are working against the latest source on the *main* branch.
@@ -39,20 +38,73 @@ To send us a pull request, please:
 GitHub provides additional document on [forking a repository](https://help.github.com/articles/fork-a-repo/) and
 [creating a pull request](https://help.github.com/articles/creating-a-pull-request/).
 
-
 ## Finding contributions to work on
+
 Looking at the existing issues is a great way to find something to contribute on. As our projects, by default, use the default GitHub issue labels (enhancement/bug/duplicate/help wanted/invalid/question/wontfix), looking at any 'help wanted' issues is a great place to start.
 
+## AI-assisted development
+
+We encourage you to use coding agents like Amazon Q Developer or Claude Code to add new agents to this repository. You can find additional information to guide this process in the `CONTEXT.md` file. In addition, we recommend the following Model Context Protocol (MCP) servers to guide coding agents:
+
+* [AWS Documentation Server](https://github.com/awslabs/mcp/tree/main/src/aws-documentation-mcp-server)
+* [AWS CloudFormation Server](https://github.com/awslabs/mcp/tree/main/src/cfn-mcp-server)
+* [Git Repo Research MCP Server](https://github.com/awslabs/mcp/tree/main/src/git-repo-research-mcp-server)
+
+### Installation
+
+Configure the MCP servesr in your MCP client configuration (e.g., for Amazon Q Developer CLI, edit .amazonq/mcp.json):
+
+```json
+{
+  "mcpServers": {
+    "awslabs.aws-documentation-mcp-server": {
+      "command": "uvx",
+      "args": ["awslabs.aws-documentation-mcp-server@latest"],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR",
+        "AWS_DOCUMENTATION_PARTITION": "aws"
+      },
+      "disabled": false,
+      "autoApprove": []
+    },
+    "awslabs.cfn-mcp-server": {
+      "command": "uvx",
+      "args": [
+        "awslabs.cfn-mcp-server@latest"
+      ],
+      "env": {
+        "AWS_PROFILE": "YOUR_AWS_PROFILE_NAME"
+      },
+      "disabled": false,
+      "autoApprove": []
+    },
+    "awslabs.git-repo-research-mcp-server": {
+      "command": "uvx",
+      "args": ["awslabs.git-repo-research-mcp-server@latest"],
+      "env": {
+        "AWS_PROFILE": "YOUR_AWS_PROFILE_NAME",
+        "AWS_REGION": "YOUR_AWS_REGION",
+        "FASTMCP_LOG_LEVEL": "ERROR",
+        "GITHUB_TOKEN": "YOUR_GITHUB_TOKEN"
+      },
+      "disabled": false,
+      "autoApprove": []
+    }
+  }
+}
+```
+
+Replace `YOUR_AWS_PROFILE_NAME`, `YOUR_AWS_REGION`, and `YOUR_GITHUB_TOKEN` with the correct values.
 
 ## Code of Conduct
+
 This project has adopted the [Amazon Open Source Code of Conduct](https://aws.github.io/code-of-conduct).
 For more information see the [Code of Conduct FAQ](https://aws.github.io/code-of-conduct-faq) or contact
-opensource-codeofconduct@amazon.com with any additional questions or comments.
-
+<opensource-codeofconduct@amazon.com> with any additional questions or comments.
 
 ## Security issue notifications
-If you discover a potential security issue in this project we ask that you notify AWS/Amazon Security via our [vulnerability reporting page](http://aws.amazon.com/security/vulnerability-reporting/). Please do **not** create a public github issue.
 
+If you discover a potential security issue in this project we ask that you notify AWS/Amazon Security via our [vulnerability reporting page](http://aws.amazon.com/security/vulnerability-reporting/). Please do **not** create a public github issue.
 
 ## Licensing
 

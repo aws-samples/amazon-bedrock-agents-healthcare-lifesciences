@@ -1,14 +1,14 @@
 # CONTEXT.md
 
-This file provides guidance to coding agents such as Claude Code (claude.ai/code) or Amazon Q Developer when working with code in this repository.
+This file provides guidance to coding agents such as Amazon Q Developer or Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Repository Overview
 
 This is the AWS Healthcare and Life Sciences Agents Toolkit - a collection of specialized Amazon Bedrock agents for drug research, clinical trials, and commercialization workflows. The repository contains three main components:
 
-- **agents_catalog/**: Library of 18+ specialized agents (biomarker analysis, clinical research, pathology, etc.)
-- **multi_agent_collaboration/**: Framework for coordinating multiple agents on complex workflows
-- **ui/**: Next.js React application providing a web interface to interact with deployed agents
+* **agents_catalog/**: Library of 18+ specialized agents (biomarker analysis, clinical research, pathology, etc.)
+* **multi_agent_collaboration/**: Framework for coordinating multiple agents on complex workflows
+* **ui/**: Next.js React application providing a web interface to interact with deployed agents
 
 ## Architecture
 
@@ -16,43 +16,12 @@ This is the AWS Healthcare and Life Sciences Agents Toolkit - a collection of sp
 
 Each agent follows a consistent pattern:
 
-- CloudFormation template (`.yaml`) for infrastructure deployment
-- Action groups in `/action-groups/` directories containing Lambda function implementations  
-- README with deployment instructions and usage examples
-- Optional Jupyter notebooks (`.ipynb`) for interactive development
+* CloudFormation template (`.yaml`) for infrastructure deployment
+* Action groups in `/action-groups/` directories containing Lambda function implementations  
+* README with deployment instructions and usage examples
+* Optional Jupyter notebooks (`.ipynb`) for interactive development
 
-### Foundation Models
-
-- Primary: Claude 3.5 Sonnet (`us.anthropic.claude-3-5-sonnet-20241022-v2:0`)
-- Alternative: Amazon Nova Pro (`us.amazon.nova-pro-v1:0`)
-- Models are parameterized in CloudFormation templates
-
-### Multi-Agent Coordination
-
-Uses supervisor agent pattern where a coordinator orchestrates specialized sub-agents. Example: Cancer Biomarker Discovery supervisor coordinates biomarker analyst, imaging expert, statistician, and clinical researcher agents.
-
-## Development Commands
-
-### UI Application (Next.js)
-
-```bash
-cd ui/
-npm run dev          # Start development server with turbopack
-npm run build        # Build for production
-npm run start        # Start production server
-npm run lint         # Run linting
-```
-
-### Documentation Site (Astro)
-
-```bash
-cd docs/
-npm run dev          # Start development server
-npm run build        # Build static site
-npm run preview      # Preview built site
-```
-
-### AWS Deployment
+## AWS Deployment
 
 ```bash
 # Deploy main infrastructure stack
@@ -71,25 +40,32 @@ aws cloudformation deploy --template-file agents_catalog/[agent-name]/[agent-nam
   --stack-name [agent-stack-name]
 ```
 
-## Key Infrastructure Components
+## New agent development
 
-### Required AWS Services
+### Deelopment guidance
 
-- **Amazon Bedrock**: Foundation models (Claude, Nova)
-- **Lambda**: Action group implementations
-- **S3**: Artifact storage and data input/output
-- **CloudFormation**: Infrastructure as code
-- **IAM**: Granular permissions for agent actions
-- **Redshift**: Clinical/genomic data storage (biomarker agents)
-- **OpenSearch**: Document search capabilities
+Follow this guidance when developing new agents for this toolkit:
 
-### External Dependencies
+* Use the agent defined in `agents_catalog/10-SEC-10-K-agent` as an example of best practices when creating a new agent.
 
-- **Tavily API**: Web search functionality
-- **USPTO API**: Patent search capabilities
-- **SageMaker**: Some agents use marketplace models (JSL Medical NLP)
+* Ensure you are working within a git repo by running `git status`. If a git repo is not configured yet, create one by running `git init`.
 
-## Agent Development Patterns
+* When creating a new agent, first create a new subfolder under `agents_catalog`. This folder name should follow the same pattern as the existing subfolders: `<two-digit index>-<agent name>`. For example, if the latest subfolder is named, "43-my-last-agent", the new agent should begin with "44", followed by a dash, followed by the agent name, like "44-my-new-agent". This agent folder should contain all of the information necessary to define the new agent.
+
+* The agent folder must contain a README.md file. This README should consisely describe the agent and the use case it solves. Update and extend this README.md file with additional information about the project as development progresses, and commit changes to this file and the other planning files below as they are updated.
+
+* Work with the user to implement the new agent step by step, first by working out the requirements, then the design/architecture including AWS infrastructure components, then the list of tasks needed to create the agent. Generally, the user will ask you to create two types of files:
+
+  * CloudFormation templates written in yaml format.
+  * Lambda functions written in Python and supporting data.
+
+* Capture the agent design in additional planning files in the agent subfolder:
+
+  * requirements.md: Defines the requirements for this project
+  * design.md: Defines the design and architecture for this project
+  * tasks.md: Lists the discrete tasks that need to be executed in order to successfully implement the project. Each task has a check box [ ] that is checked off when the task has been successfully completed. A git commit should be performed after any task is successfully completed.
+
+  Once all planning steps are completed and documented, and the user is ready to proceed, begin implementing the tasks one at a time until the project is completed.
 
 ### Lambda Action Groups
 
@@ -117,49 +93,32 @@ def lambda_handler(event, context):
 
 ### Docker Containers
 
-For complex processing (e.g., semantic search, image analysis):
+Use the `Image` Lambda package type for complex action groups (e.g., semantic search, image analysis). You can create new container images and upload them to ECR as part of the agent CloudFormation template by including the container building workflow as a nested stack. Here is an example from `agents_catalog/10-SEC-10-K-agent/sec-10-K-agent-cfn.yaml`:
 
-- Use ECR for container storage
-- Multi-stage builds for dependency optimization
-- Environment variable configuration
+```yaml
+SEC10KSearchContainer:
+Type: "AWS::CloudFormation::Stack"
+Properties:
+    TemplateURL: ../../build/container.yaml
+    Parameters:
+    S3CodeBucket:
+        "Fn::If":
+        - AgentS3BucketCondition
+        - !Ref S3CodeBucket
+        - "{{resolve:ssm:/s3/agent_build/name:1}}"
+    S3CodeKey:
+        Ref: S3CodeKey
+    BuildContextPath: !Ref BuildContextPath
+    ContainerName:
+        Ref: ContainerName
+    WaitForCodeBuild: "Y"
+```
 
-### OpenAPI Schema Definition
-
-Action groups require OpenAPI 3.0 schemas defining available tools and parameters.
-
-## Testing
-
-### Agent Evaluation
-
-Use the evaluation framework in `evaluations/`:
-
-- Run `evaluate_biomarker_agent.ipynb` for comprehensive testing
-- Includes RAG, Text-to-SQL, and Chain-of-Thought evaluations
-- Results tracked in Langfuse dashboards
-
-### Individual Agent Testing
-
-- Deploy with CloudFormation templates
-- Test via Jupyter notebooks in agent directories
-- Use Bedrock console for direct invocation testing
-
-## Important Notes
-
-### Model Access
-
-Ensure access to required Bedrock models:
-
-- Amazon Titan Embeddings G1 - Text
-- Amazon Nova Pro
-- Anthropic Claude 3.5 Sonnet (all versions)
-
-### Quota Limits
-
-Request increase for "Parameters per function" quota to at least 10 in Amazon Bedrock.
+This example references the existing `container.yaml` template located at `build/container.yaml`. Use this template for all new containers. Do not define your own.
 
 ### Security
 
-- Never commit API keys or sensitive credentials
-- Use CloudFormation parameters with NoEcho for secrets
-- Implement least-privilege IAM policies
-- This is demonstration code - not for clinical production use
+* Never commit API keys or sensitive credentials
+* Use CloudFormation parameters with NoEcho for secrets
+* Implement least-privilege IAM policies
+* This is demonstration code - not for clinical production use
