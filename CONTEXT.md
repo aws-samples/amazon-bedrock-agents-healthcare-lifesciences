@@ -42,7 +42,7 @@ aws cloudformation deploy --template-file agents_catalog/[agent-name]/[agent-nam
 
 ## New agent development
 
-### Deelopment guidance
+### Development guidance
 
 Follow this guidance when developing new agents for this toolkit:
 
@@ -67,9 +67,16 @@ Follow this guidance when developing new agents for this toolkit:
 
   Once all planning steps are completed and documented, and the user is ready to proceed, begin implementing the tasks one at a time until the project is completed.
 
+### CloudFormation Templates
+
+* CloudFormation templates that define a Bedrock Agent should have at least three parameters:
+  * AgentAliasName - Optional alias name. Defaults to "Latest"
+  * BedrockModelId - Optional Bedrock foundation model id. Defaults to "anthropic.claude-3-5-sonnet-20241022-v2:0"
+  * AgentIAMRoleArn - Optional Bedrock Agent execution role. Defaults to ""
+
 ### Lambda Action Groups
 
-Standard handler structure:
+Use Python 3.12 as the runtime for all lambda functions. Lambda code should have the standard handler structure:
 
 ```python
 def lambda_handler(event, context):
