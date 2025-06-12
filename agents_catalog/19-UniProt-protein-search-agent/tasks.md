@@ -7,32 +7,46 @@
 - [x] Create requirements.md with functional and technical requirements
 - [x] Create design.md with architecture and component design
 - [x] Create tasks.md with implementation checklist
-- [ ] Commit initial planning files to git
+- [x] Commit initial planning files to git
 
 ## Phase 2: CloudFormation Template Development
 
-- [ ] Create main CloudFormation template (uniprot-protein-search-agent-cfn.yaml)
-- [ ] Define Bedrock Agent resource with Claude 3.5 Sonnet v2
-- [ ] Define Agent Alias resource
-- [ ] Define IAM roles for Bedrock Agent and Lambda functions
-- [ ] Define Lambda function resources for action groups
-- [ ] Define CloudWatch Log Groups
-- [ ] Add template parameters and outputs
+- [x] Create main CloudFormation template (uniprot-protein-search-agent-cfn.yaml)
+- [x] Define Bedrock Agent resource with Claude 3.5 Sonnet v2
+- [x] Define Agent Alias resource
+- [x] Define IAM roles for Bedrock Agent and Lambda functions
+- [x] Define Lambda function resources for action groups
+- [x] Define CloudWatch Log Groups
+- [x] Add template parameters and outputs
 - [ ] Test CloudFormation template syntax validation
 
 ## Phase 3: Action Group 1 - Protein Search
 
-- [ ] Create action-groups directory structure
-- [ ] Create action-groups/uniprot-search directory
-- [ ] Implement Lambda function for protein search (lambda_function.py)
-  - [ ] Set up HTTP client for UniProt API calls
-  - [ ] Implement search query construction logic
-  - [ ] Implement API response parsing
-  - [ ] Add error handling and validation
-  - [ ] Add logging and monitoring
+- [x] Create action-groups directory structure
+- [x] Create action-groups/uniprot-search directory
+- [x] Implement Lambda function for protein search (lambda_function.py)
+  - [x] Set up HTTP client for UniProt API calls
+  - [x] Implement search query construction logic
+  - [x] Implement API response parsing
+  - [x] Add error handling and validation
+  - [x] Add logging and monitoring
 - [ ] Create requirements.txt for Lambda dependencies
 - [ ] Test protein search functionality locally
-- [ ] Create API schema definition for search_proteins function
+- [x] Create API schema definition for search_proteins function
+
+## Phase 4: Action Group 2 - Protein Details
+
+- [x] Create action-groups/uniprot-details directory
+- [x] Implement Lambda function for protein details (lambda_function.py)
+  - [x] Set up HTTP client for UniProt API calls
+  - [x] Implement accession ID validation
+  - [x] Implement detailed data retrieval logic
+  - [x] Add optional sequence and features handling
+  - [x] Add error handling and validation
+  - [x] Add logging and monitoring
+- [ ] Create requirements.txt for Lambda dependencies
+- [ ] Test protein details functionality locally
+- [x] Create API schema definition for get_protein_details function
 
 ## Phase 4: Action Group 2 - Protein Details
 
