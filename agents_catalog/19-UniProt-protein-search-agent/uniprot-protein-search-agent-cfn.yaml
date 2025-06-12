@@ -48,7 +48,7 @@ Resources:
   UniProtSearchLambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub "${AWS::StackName}-uniprot-search"
+      FunctionName: UniProtSearch
       Role: !GetAtt UniProtSearchLambdaRole.Arn
       Runtime: python3.12
       Handler: lambda_function.lambda_handler
@@ -96,7 +96,7 @@ Resources:
   UniProtDetailsLambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub "${AWS::StackName}-uniprot-details"
+      FunctionName: UniProtDetails
       Role: !GetAtt UniProtDetailsLambdaRole.Arn
       Runtime: python3.12
       Handler: lambda_function.lambda_handler

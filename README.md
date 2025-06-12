@@ -55,6 +55,7 @@ This will deploy the following agents:
 - Clinical Study Research Agent
 - Clinical Trial Protocol Generator Agent
 - Wiley Open Access Life Sciences Agent
+- UniProt Protein Search Agent
 - Competitive Intelligence (Multi-Agent Supervisor)
 - SEC 10-K Search Agent
 - Tavily Web Search Agent

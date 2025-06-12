@@ -100,6 +100,12 @@ Configure the MCP servesr in your MCP client configuration (e.g., for Amazon Q D
 
 Replace `YOUR_AWS_PROFILE_NAME`, `YOUR_AWS_REGION`, and `YOUR_GITHUB_TOKEN` with the correct values.
 
+### Prompt
+
+For best results, ensure that your prompt is clear and consise. As an example, here is the prompt used to create the UniProt-protein-research agent:
+
+> I would like to create a new agent in this repository for retrieving information about proteins from UniProt. Scientists need information about specific proteins to answer questions like, "Which protein might be the cause of a disease"? This information could include human-readable descriptions of protein function, metadata about where a protein is commonly located in a cell, or amino acid sequence information. UniProt provides several APIs to retrieve information about proteins programmatically. An overview of these APIs can be found at https://www.uniprot.org/api-documentation/uniprotkb. You can also find detailed Swagger documentation for these APIs at https://www.uniprot.org/api-documentation/uniprotkb.  Please help me create a new Bedrock Agent that can take in the name or description of a protein, search for it using an ActionGroup linked to the UniProt search API, then retrieve details for one or more specific proteins of interest by their UniProtKB accession ID.
+
 ## Code of Conduct
 
 This project has adopted the [Amazon Open Source Code of Conduct](https://aws.github.io/code-of-conduct).
