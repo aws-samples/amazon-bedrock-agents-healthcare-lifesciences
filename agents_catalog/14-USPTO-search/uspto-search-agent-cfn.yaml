@@ -23,7 +23,7 @@ Parameters:
     Type: String
     NoEcho: true
     Description: Provide USPTO API Key to utilize /search path
-    MinLength: 1
+    Default: ""
 
 Conditions:
   HasUSPTOApiKeyCondition: !Not [!Equals [!Ref USPTOApiKey, ""]]

@@ -23,7 +23,7 @@ Parameters:
     Type: String
     NoEcho: true
     Description: Provide TavilyApiKey API Key to utilize /web_search path
-    MinLength: 1
+    Default: ""
 
 Conditions:
   HasTavilyApiKeyCondition: !Not [!Equals [!Ref TavilyApiKey, ""]]
