@@ -107,8 +107,7 @@ aws cloudformation deploy --template-file "uniprot-protein-search-agent-cfn-pack
   --region $REGION \
   --parameter-overrides \
   AgentAliasName="Latest" \
-  AgentIAMRoleArn=$BEDROCK_AGENT_SERVICE_ROLE_ARM \
-  S3CodeBucket=$BUCKET_NAME
+  AgentIAMRoleArn=$BEDROCK_AGENT_SERVICE_ROLE_ARM
 rm uniprot-protein-search-agent-cfn-packaged.yaml
 ```
 

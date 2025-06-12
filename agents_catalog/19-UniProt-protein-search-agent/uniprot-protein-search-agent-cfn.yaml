@@ -14,15 +14,10 @@ Parameters:
     Type: String
     Description: (Optional) Amazon Bedrock Agents service role ARN
     Default: ""
-  S3CodeBucket:
-    Description: Name of the S3 bucket to use for deployment storage
-    Type: String
-    Default: ""
 
 Conditions:
   CreateAgentAliasCondition: !Not [!Equals [!Ref AgentAliasName, ""]]
   AgentIAMRoleCondition: !Not [!Equals [!Ref AgentIAMRoleArn, ""]]
-  AgentS3BucketCondition: !Not [!Equals [!Ref S3CodeBucket, ""]]
 
 Resources:
   ########################
@@ -230,7 +225,7 @@ Resources:
         FiltersConfig:
           - InputStrength: "HIGH"
             OutputStrength: "HIGH"
-            Type: "PROFANITY"
+            Type: "MISCONDUCT"
           - InputStrength: "HIGH"
             OutputStrength: "NONE"
             Type: "PROMPT_ATTACK"

@@ -18,7 +18,7 @@
 - [x] Define Lambda function resources for action groups
 - [x] Define CloudWatch Log Groups
 - [x] Add template parameters and outputs
-- [ ] Test CloudFormation template syntax validation
+- [x] Test CloudFormation template syntax validation
 
 ## Phase 3: Action Group 1 - Protein Search
 
@@ -47,20 +47,6 @@
 - [ ] Create requirements.txt for Lambda dependencies
 - [ ] Test protein details functionality locally
 - [x] Create API schema definition for get_protein_details function
-
-## Phase 4: Action Group 2 - Protein Details
-
-- [ ] Create action-groups/uniprot-details directory
-- [ ] Implement Lambda function for protein details (lambda_function.py)
-  - [ ] Set up HTTP client for UniProt API calls
-  - [ ] Implement accession ID validation
-  - [ ] Implement detailed data retrieval logic
-  - [ ] Add optional sequence and features handling
-  - [ ] Add error handling and validation
-  - [ ] Add logging and monitoring
-- [ ] Create requirements.txt for Lambda dependencies
-- [ ] Test protein details functionality locally
-- [ ] Create API schema definition for get_protein_details function
 
 ## Phase 5: Integration and Testing
 
