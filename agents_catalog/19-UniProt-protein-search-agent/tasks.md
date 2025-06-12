@@ -30,7 +30,7 @@
   - [x] Implement API response parsing
   - [x] Add error handling and validation
   - [x] Add logging and monitoring
-- [ ] Create requirements.txt for Lambda dependencies
+- [x] Create requirements.txt for Lambda dependencies (no additional dependencies needed - using standard library only)
 - [ ] Test protein search functionality locally
 - [x] Create API schema definition for search_proteins function
 
@@ -44,7 +44,7 @@
   - [x] Add optional sequence and features handling
   - [x] Add error handling and validation
   - [x] Add logging and monitoring
-- [ ] Create requirements.txt for Lambda dependencies
+- [x] Create requirements.txt for Lambda dependencies (no additional dependencies needed - using standard library only)
 - [ ] Test protein details functionality locally
 - [x] Create API schema definition for get_protein_details function
 
