@@ -56,41 +56,45 @@ Configure the MCP servesr in your MCP client configuration (e.g., for Amazon Q D
 
 ```json
 {
-  "mcpServers": {
-    "awslabs.aws-documentation-mcp-server": {
-      "command": "uvx",
-      "args": ["awslabs.aws-documentation-mcp-server@latest"],
-      "env": {
-        "FASTMCP_LOG_LEVEL": "ERROR",
-        "AWS_DOCUMENTATION_PARTITION": "aws"
-      },
-      "disabled": false,
-      "autoApprove": []
-    },
-    "awslabs.cfn-mcp-server": {
-      "command": "uvx",
-      "args": [
-        "awslabs.cfn-mcp-server@latest"
-      ],
-      "env": {
-        "AWS_PROFILE": "YOUR_AWS_PROFILE_NAME"
-      },
-      "disabled": false,
-      "autoApprove": []
-    },
-    "awslabs.git-repo-research-mcp-server": {
-      "command": "uvx",
-      "args": ["awslabs.git-repo-research-mcp-server@latest"],
-      "env": {
-        "AWS_PROFILE": "YOUR_AWS_PROFILE_NAME",
-        "AWS_REGION": "YOUR_AWS_REGION",
-        "FASTMCP_LOG_LEVEL": "ERROR",
-        "GITHUB_TOKEN": "YOUR_GITHUB_TOKEN"
-      },
-      "disabled": false,
-      "autoApprove": []
+    "mcpServers": {
+        "awslabs.aws-documentation-mcp-server": {
+            "command": "uvx",
+            "args": [
+                "awslabs.aws-documentation-mcp-server@latest"
+            ],
+            "env": {
+                "FASTMCP_LOG_LEVEL": "ERROR",
+                "AWS_DOCUMENTATION_PARTITION": "aws"
+            },
+            "disabled": false,
+            "autoApprove": []
+        },
+        "awslabs.cfn-mcp-server": {
+            "command": "uvx",
+            "args": [
+                "awslabs.cfn-mcp-server@latest"
+            ],
+            "env": {
+                "AWS_PROFILE": "YOUR_AWS_PROFILE_NAME"
+            },
+            "disabled": false,
+            "autoApprove": []
+        },
+        "awslabs.git-repo-research-mcp-server": {
+            "command": "uvx",
+            "args": [
+                "awslabs.git-repo-research-mcp-server@latest"
+            ],
+            "env": {
+                "AWS_PROFILE": "YOUR_AWS_PROFILE_NAME",
+                "AWS_REGION": "YOUR_AWS_REGION",
+                "FASTMCP_LOG_LEVEL": "ERROR",
+                "GITHUB_TOKEN": "YOUR_GITHUB_TOKEN"
+            },
+            "disabled": false,
+            "autoApprove": []
+        }
     }
-  }
 }
 ```
 

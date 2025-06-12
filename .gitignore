@@ -5,3 +5,4 @@ agenteval_*
 node_modules
 .next
 .kiro
+.amazonq
