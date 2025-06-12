@@ -49,6 +49,10 @@ Parameters:
       - "false"
 
 Conditions:
+  CreateWebSearchAgent:
+    !Not [!Equals [!Ref TavilyApiKey, ""]]
+  CreateSEC10kAgent:
+    !Not [!Equals [!Ref USPTOApiKey, ""]]
   CreateCompetitiveIntelAgent:
     !Not [!Or [!Equals [!Ref TavilyApiKey, ""], !Equals [!Ref USPTOApiKey, ""]]]
   CreateReactApp: !Equals [!Ref DeployApplication, "true"]
@@ -251,6 +255,7 @@ Resources:
 
   WebSearchAgent:
     Type: AWS::CloudFormation::Stack
+    Condition: CreateWebSearchAgent
     Properties:
       TemplateURL: agents_catalog/11-Tavily-web-search-agent/web-search-agent-cfn.yaml
       Parameters:
@@ -263,6 +268,7 @@ Resources:
 
   SEC10kAgent:
     Type: AWS::CloudFormation::Stack
+    Condition: CreateSEC10kAgent
     Properties:
       TemplateURL: agents_catalog/10-SEC-10-K-agent/sec-10-K-agent-cfn.yaml
       Parameters:

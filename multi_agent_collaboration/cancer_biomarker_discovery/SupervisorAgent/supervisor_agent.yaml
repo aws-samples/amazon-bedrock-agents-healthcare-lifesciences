@@ -250,7 +250,7 @@ Resources:
                       #Get each agent alias
                       for agent in response['agentSummaries']:
                           if agent['agentName'] in [sa["sub_agent_association_name"] for sa in sub_agents]:
-                          
+                              print(f"Selected agent name: {agent['agentName']}")
                               alias_response = client.list_agent_aliases(
                                   agentId=agent['agentId']
                               )
