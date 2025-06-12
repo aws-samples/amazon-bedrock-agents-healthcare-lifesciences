@@ -51,7 +51,7 @@ Parameters:
 Conditions:
   CreateWebSearchAgent:
     !Not [!Equals [!Ref TavilyApiKey, ""]]
-  CreateSEC10kAgent:
+  CreateUSPTOSearchAgent:
     !Not [!Equals [!Ref USPTOApiKey, ""]]
   CreateCompetitiveIntelAgent:
     !Not [!Or [!Equals [!Ref TavilyApiKey, ""], !Equals [!Ref USPTOApiKey, ""]]]
@@ -268,7 +268,6 @@ Resources:
 
   SEC10kAgent:
     Type: AWS::CloudFormation::Stack
-    Condition: CreateSEC10kAgent
     Properties:
       TemplateURL: agents_catalog/10-SEC-10-K-agent/sec-10-K-agent-cfn.yaml
       Parameters:
@@ -282,6 +281,7 @@ Resources:
 
   USPTOSearchAgent:
     Type: AWS::CloudFormation::Stack
+    Condition: CreateUSPTOSearchAgent
     Properties:
       TemplateURL: agents_catalog/14-USPTO-search/uspto-search-agent-cfn.yaml
       Parameters:
