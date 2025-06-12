@@ -71,9 +71,39 @@ def construct_search_query(query: str, organism: str) -> str:
         # Use the organism as provided
         organism_filter = f'organism_name:"{organism}"'
     
-    # Construct the search query
-    # Try to match protein names, gene names, or function descriptions
-    search_terms = f'(protein_name:"{query}" OR gene:"{query}" OR cc_function:"{query}" OR cc_disease:"{query}")'
+    # Handle multi-word queries by creating flexible search terms
+    query_terms = query.strip().split()
+    
+    if len(query_terms) == 1:
+        # Single word - search in multiple fields
+        single_term = query_terms[0]
+        search_terms = f'(protein_name:"{single_term}" OR gene:"{single_term}" OR cc_function:"{single_term}" OR cc_disease:"{single_term}" OR keyword:"{single_term}")'
+    else:
+        # Multiple words - create flexible combinations
+        full_phrase = ' '.join(query_terms)
+        
+        # Create search combinations:
+        # 1. Full phrase in quotes for exact matches
+        # 2. All terms without quotes for broader matching
+        # 3. Individual terms for maximum flexibility
+        search_parts = []
+        
+        # Full phrase search (exact match)
+        search_parts.append(f'protein_name:"{full_phrase}"')
+        search_parts.append(f'cc_function:"{full_phrase}"')
+        search_parts.append(f'cc_disease:"{full_phrase}"')
+        
+        # All terms together (broader match)
+        all_terms = ' AND '.join(query_terms)
+        search_parts.append(f'({all_terms})')
+        
+        # Individual terms for maximum coverage
+        for term in query_terms:
+            search_parts.append(f'protein_name:"{term}"')
+            search_parts.append(f'gene:"{term}"')
+            search_parts.append(f'keyword:"{term}"')
+        
+        search_terms = f'({" OR ".join(search_parts)})'
     
     return f'{search_terms} AND {organism_filter}'
 
