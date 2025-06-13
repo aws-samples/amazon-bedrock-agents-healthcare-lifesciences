@@ -351,13 +351,11 @@ Resources:
                 - echo "Build phase completed"
                 - echo "lambda layer preperation phase starts"
                 - cd repo
-                - mkdir -p python
-                - pip install -r lambdalayers/requirements.txt -t python
-                - zip -r9 lambda-layer.zip python
-                - cp lambda-layer.zip ../
+                - mkdir -p python/lib/python3.11/site-packages
+                - pip install --no-cache-dir -r lambdalayers/requirements.txt -t python/lib/python3.11/site-packages
+                - zip -r9 ../lambda-layer.zip python
                 - cd ..
                 - aws s3 cp lambda-layer.zip s3://${S3Bucket}/lambda-layer.zip
-
       TimeoutInMinutes: 10
 
   # Log into ECR and push scientific-plots-with-lifelines Docker image
