@@ -10,7 +10,7 @@ echo "Bash configuration loaded"
 echo "--------------------------------------"
 
 echo "Changing to evaluation framework directory..."
-cd amazon-bedrock-agent-evaluation-framework
+cd open-source-bedrock-agent-evaluation
 echo "Directory changed successfully"
 echo "--------------------------------------"
 
