@@ -69,6 +69,9 @@ In most cases, you may leave the default template parameters unchanged. However,
 
 - **TavilyApiKey**: API key for the Tavily web search API. Required to deploy the Tavily Web Search and Competitive Intelligence Supervisor agents. Please visit [tavily.com](https://tavily.com/) to create a account and generate an API key.
 - **USPTOApiKey**: API key for the US Patent and Trademark Office (USPTO) Open Data Portal. Required to deploy the USPTO Search and Competitive Intelligence Supervisor agents. Please visit the [USPO Open Data Portal](https://data.uspto.gov/apis/getting-started) to create a account and generate an API key.
+- [Optional] **ExistingVpcId**: To use an existing VPC to host the ReactApp, provide the VPC Id here. If you do not provide it will will create a new VPC and required public and private subnets
+- [Optional] **ExistingPublicSubnets**:  To use existing public subnets in an existing VPC to host the ReactApp, provide 2 Public Subnet Ids here (In 2 separate availability zones). If you do not provide it will will create a new VPC and required public and private subnets.
+- [Optional] **ExistingPrivateSubnets**:  To use existing private subnets in an existing VPC for VPC based resources, provide 2 Private Subnet Ids here (In 2 separate availability zones). If you do not provide it will will create a new VPC and required public and private subnets.
 
 You may also deploy the application using the AWS CLI by first running `aws cloudformation package` and then `aws cloudformation deploy`. For example:
 
@@ -97,6 +100,12 @@ aws cloudformation deploy --template-file "packaged_infra_cfn.yaml" \
 rm packaged_infra_cfn.yaml
 
 ```
+> [!Note]
+> To use existing VPC and subnets, provide them as additional arguments in the `--parameter-overrides` section above. For example:
+  >  
+  > --parameter-overrides ExistingVpcId="vpc-i767asdfg8ase87f6" ExistingPublicSubnets=subnet-9867zdf897sa6fe,subnet-7896sadf786sdf ExistingPrivateSubnets=subnet-87d6cv78s6df,subnet-87s6df786asdf78
+
+>
 
 ## Access the toolkit application
 

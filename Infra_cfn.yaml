@@ -1,3 +1,5 @@
+Transform: AWS::LanguageExtensions
+
 Parameters:
   BedrockModelId:
     Type: String
@@ -47,8 +49,24 @@ Parameters:
     AllowedValues:
       - "true"
       - "false"
+  ExistingVpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: "The VPC ID of an existing VPC in your AWS account and current region"
+    Default: ""
+  ExistingPublicSubnets:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: "A list of 2 public subnet IDs in your AWS account and AWS region from two different AZs are required."
+    Default: ""
+  ExistingPrivateSubnets:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: "A list of 2 private subnet IDs in your AWS account and AWS region from two different AZs are required."
+    Default: ""
 
 Conditions:
+  HasVpcId: !Not [!Equals [!Ref ExistingVpcId, ""]]
+  HasTwoPublicSubnets: !Equals [Fn::Length: !Ref ExistingPublicSubnets, 2]
+  HasTwoPrivateSubnets: !Equals [Fn::Length: !Ref ExistingPrivateSubnets, 2]
+  CreateNetworking: !Not [!And [!Condition HasVpcId, !Condition HasTwoPublicSubnets, !Condition HasTwoPrivateSubnets]]
   CreateWebSearchAgent:
     !Not [!Equals [!Ref TavilyApiKey, ""]]
   CreateUSPTOSearchAgent:
@@ -64,6 +82,7 @@ Resources:
 
   Network:
     Type: AWS::CloudFormation::Stack
+    Condition: CreateNetworking
     Properties:
       TemplateURL: build/network.yaml
       TimeoutInMinutes: 10
@@ -133,9 +152,9 @@ Resources:
       TemplateURL: ui/cloudformation/ecs.yml
       Parameters:
         AllowedCidr: !Ref ReactAppAllowedCidr
-        VPCId: !GetAtt Network.Outputs.VPC
-        PublicSubnet1: !GetAtt Network.Outputs.PublicSubnet1
-        PublicSubnet2: !GetAtt Network.Outputs.PublicSubnet2
+        VPCId: !If [ CreateNetworking, !GetAtt "Network.Outputs.VPCId" , !Ref ExistingVpcId ]
+        PublicSubnet1: !If [ CreateNetworking, !GetAtt "Network.Outputs.PublicSubnet1" , !Select [ 0, !Ref ExistingPublicSubnets ] ]
+        PublicSubnet2: !If [ CreateNetworking, !GetAtt "Network.Outputs.PublicSubnet2" , !Select [ 1, !Ref ExistingPublicSubnets ] ]
         S3Bucket: !Ref S3Bucket
         S3CodeKey: !GetAtt CodeRepo.Outputs.S3Key
       TimeoutInMinutes: 35
@@ -207,9 +226,9 @@ Resources:
         GitRepoURL: !Ref GithubLink
         GitBranch: !Ref GitBranch
         SubAgentS3Bucket: !Ref S3Bucket
-        VPC: !GetAtt Network.Outputs.VPC
-        PrivateSubnet1: !GetAtt Network.Outputs.PrivateSubnet1
-        PrivateSubnet2: !GetAtt Network.Outputs.PrivateSubnet2
+        VPC: !If [ CreateNetworking, !GetAtt "Network.Outputs.VPCId" , !Ref ExistingVpcId ]
+        PrivateSubnet1: !If [ CreateNetworking, !GetAtt "Network.Outputs.PrivateSubnet1" , !Select [ 0, !Ref ExistingPrivateSubnets ] ]
+        PrivateSubnet2: !If [ CreateNetworking, !GetAtt "Network.Outputs.PrivateSubnet2" , !Select [ 1, !Ref ExistingPrivateSubnets ] ]
         AgentRole: !GetAtt AgentRole.Arn
       TimeoutInMinutes: 30
       Tags:
