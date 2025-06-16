@@ -7,7 +7,7 @@ Parameters:
   BedrockModelId:
     Type: String
     Description: The ID of the Foundation Model to use for the Agent
-    Default: us.anthropic.claude-3-5-sonnet-20240620-v1:0
+    Default: us.anthropic.claude-3-5-sonnet-20241022-v2:0
   AgentIAMRoleArn:
     Type: String
     Description: The arn for the agent IAM role
@@ -80,7 +80,7 @@ Resources:
   LambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
-      Runtime: python3.13
+      Runtime: python3.12
       Handler: index.lambda_handler
       Role: !GetAtt LambdaRole.Arn
       Timeout: 30
@@ -144,14 +144,14 @@ Resources:
                     Description: "Unstructured medical text"
                     Type: string
                     Required: True
-      AgentName: jsl-analyze-medical-reports
+      AgentName: John-Snow-Labs-Analyze-Medical-Reports
       AgentResourceRoleArn: !Ref AgentIAMRoleArn
       AutoPrepare: True
       Description: "Extract adverse drug events from unstructured clinical texts"
       FoundationModel: !Ref BedrockModelId
       GuardrailConfiguration:
-        GuardrailIdentifier: !GetAtt Guardrail.GuardrailId
-        GuardrailVersion: !GetAtt Guardrail.Version
+        GuardrailIdentifier: !GetAtt JSLAnalyzeMedicalReportsGuardrail.GuardrailId
+        GuardrailVersion: !GetAtt JSLAnalyzeMedicalReportsGuardrail.Version
       Instruction: |
         You are a medical text analysis assistant powered by a large language model.
         You help analyze clinical and medical documentation using specialized NLP tools, but you DO NOT provide clinical guidance, diagnosis, treatment recommendations, or interpret medical implications for individual patients.
@@ -172,7 +172,7 @@ Resources:
       AgentId: !GetAtt Agent.AgentId
       AgentAliasName: !Ref AgentAliasName
 
-  Guardrail:
+  JSLAnalyzeMedicalReportsGuardrail:
     Type: AWS::Bedrock::Guardrail
     Properties:
       BlockedInputMessaging: "Sorry, your query violates our usage policies."
@@ -186,7 +186,7 @@ Resources:
             OutputStrength: "NONE"
             Type: "PROMPT_ATTACK"
       Description: Turn on to block profane words and other harmful content.
-      Name: ADEGuardrail
+      Name: JSLAnalyzeMedicalReportsGuardrail
       WordPolicyConfig:
         ManagedWordListsConfig:
           - Type: PROFANITY

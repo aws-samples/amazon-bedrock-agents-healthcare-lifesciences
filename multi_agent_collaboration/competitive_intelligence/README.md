@@ -6,7 +6,7 @@ Supervisor agent for analyzing public financial information and news about compa
 
 ## Deployment
 
-1. Deploy the agents in the `agents_catalog/SEC-10-K-agent` and `agent_catalog/Tavily-web-search-agent` folders according to the instructuctions in each `README.md` file.
+1. Deploy the agents in the `agents_catalog/SEC-10-K-agent` and `agents_catalog/Tavily-web-search-agent` folders according to the instructuctions in each `README.md` file.
 
 2. Run the following to deploy the CloudFormation stack.
 

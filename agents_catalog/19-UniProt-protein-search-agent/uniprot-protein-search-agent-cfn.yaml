@@ -1,0 +1,249 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Creates the UniProt Protein Search agent for searching and retrieving protein information from UniProt database.
+
+Parameters:
+  AgentAliasName:
+    Type: String
+    Default: "Latest"
+    Description: Name for the agent alias
+  BedrockModelId:
+    Type: String
+    Description: The ID of the Foundation Model to use for the Agent
+    Default: us.anthropic.claude-3-5-sonnet-20241022-v2:0
+  AgentIAMRoleArn:
+    Type: String
+    Description: (Optional) Amazon Bedrock Agents service role ARN
+    Default: ""
+
+Conditions:
+  CreateAgentAliasCondition: !Not [!Equals [!Ref AgentAliasName, ""]]
+  AgentIAMRoleCondition: !Not [!Equals [!Ref AgentIAMRoleArn, ""]]
+
+Resources:
+  ########################
+  ##### UniProt Search #####
+  ########################
+
+  UniProtSearchLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  UniProtSearchLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-uniprot-search"
+      RetentionInDays: 14
+
+  UniProtSearchLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: UniProtSearch
+      Role: !GetAtt UniProtSearchLambdaRole.Arn
+      Runtime: python3.12
+      Handler: lambda_function.lambda_handler
+      Timeout: 30
+      MemorySize: 256
+      Environment:
+        Variables:
+          LOG_LEVEL: "INFO"
+      Code: action-groups/uniprot-search/
+
+  UniProtSearchLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt UniProtSearchLambdaFunction.Arn
+      Principal: bedrock.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+      SourceArn: !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*
+
+  #########################
+  ##### UniProt Details #####
+  #########################
+
+  UniProtDetailsLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  UniProtDetailsLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-uniprot-details"
+      RetentionInDays: 14
+
+  UniProtDetailsLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: UniProtDetails
+      Role: !GetAtt UniProtDetailsLambdaRole.Arn
+      Runtime: python3.12
+      Handler: lambda_function.lambda_handler
+      Timeout: 30
+      MemorySize: 256
+      Environment:
+        Variables:
+          LOG_LEVEL: "INFO"
+      Code: action-groups/uniprot-details/
+
+  UniProtDetailsLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt UniProtDetailsLambdaFunction.Arn
+      Principal: bedrock.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+      SourceArn: !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*
+
+  #####################
+  ##### Agent #####
+  ###################
+
+  UniProtSearchAgent:
+    Type: AWS::Bedrock::Agent
+    Properties:
+      ActionGroups:
+        - ActionGroupName: "UserInputAction"
+          ParentActionGroupSignature: "AMAZON.UserInput"
+          ActionGroupState: "ENABLED"
+        - ActionGroupName: UniProtSearch
+          Description: Search for proteins in the UniProt database
+          ActionGroupExecutor:
+            Lambda: !GetAtt UniProtSearchLambdaFunction.Arn
+          ActionGroupState: ENABLED
+          FunctionSchema:
+            Functions:
+              - Name: search_proteins
+                Description: Search for proteins in the UniProt database using protein names, descriptions, gene names, or other search terms. Returns a list of matching proteins with their UniProt accession IDs and basic information.
+                Parameters:
+                  query:
+                    Description: "Search query for proteins (e.g., protein name, gene name, function description, or disease name)"
+                    Type: string
+                    Required: True
+                  organism:
+                    Description: "Optional organism filter (e.g., 'human', 'mouse', 'Homo sapiens'). Defaults to human if not specified."
+                    Type: string
+                    Required: False
+                  limit:
+                    Description: "Maximum number of results to return (default: 10, max: 50)"
+                    Type: integer
+                    Required: False
+        - ActionGroupName: UniProtDetails
+          Description: Retrieve comprehensive information about specific proteins
+          ActionGroupExecutor:
+            Lambda: !GetAtt UniProtDetailsLambdaFunction.Arn
+          ActionGroupState: ENABLED
+          FunctionSchema:
+            Functions:
+              - Name: get_protein_details
+                Description: Retrieve comprehensive information about a specific protein using its UniProtKB accession ID, including function, cellular location, amino acid sequence, disease associations, and other metadata.
+                Parameters:
+                  accession_id:
+                    Description: "UniProtKB accession ID (e.g., 'P04637' for p53 tumor suppressor)"
+                    Type: string
+                    Required: True
+                  include_sequence:
+                    Description: "Whether to include the amino acid sequence in the response (default: false)"
+                    Type: boolean
+                    Required: False
+                  include_features:
+                    Description: "Whether to include detailed protein features and annotations (default: true)"
+                    Type: boolean
+                    Required: False
+      AgentName: "UniProt-Protein-Search-Agent"
+      AgentResourceRoleArn:
+        "Fn::If":
+          - AgentIAMRoleCondition
+          - !Ref AgentIAMRoleArn
+          - "{{resolve:ssm:/bedrock/agent/role/arn:1}}"
+      AutoPrepare: True
+      Description: "Search and retrieve detailed information about proteins from the UniProt database to help answer questions about protein function, disease associations, and cellular location"
+      FoundationModel: !Ref BedrockModelId
+      GuardrailConfiguration:
+        GuardrailIdentifier: !GetAtt UniProtSearchGuardrail.GuardrailId
+        GuardrailVersion: !GetAtt UniProtSearchGuardrail.Version
+      Instruction: |
+        You are an expert protein researcher specializing in protein analysis using UniProt database. Help users search for and analyze proteins by retrieving detailed information through the UniProt API tools.
+
+        You have access to the following tools:
+
+        - search_proteins: Search for proteins in the UniProt database using protein names, descriptions, or other search terms. Returns a list of matching proteins with their UniProt accession IDs.
+        - get_protein_details: Retrieve comprehensive information about a specific protein using its UniProtKB accession ID, including function, cellular location, amino acid sequence, and other metadata.
+
+        Analysis Process
+
+        1. Begin by understanding what protein information the user is seeking.
+        2. Use search_proteins to find relevant proteins based on the user's query (protein name, description, or related terms).
+        3. Present the search results and help the user identify the most relevant proteins.
+        4. Use get_protein_details to retrieve comprehensive information for specific proteins of interest.
+        5. Analyze and interpret the protein data to answer the user's questions about protein function, disease relationships, cellular location, etc.
+        6. Present findings in a clear, structured format with relevant biological context.
+
+        Response Guidelines
+
+        - Provide scientifically accurate information based on UniProt data
+        - Explain protein concepts in accessible language while maintaining scientific precision
+        - Include relevant details like protein function, subcellular localization, and sequence information
+        - Highlight connections between proteins and diseases when relevant
+        - Make appropriate biological interpretations of the data
+        - Acknowledge data limitations and suggest additional resources when needed
+
+  AgentAliasResource:
+    Type: AWS::Bedrock::AgentAlias
+    Condition: CreateAgentAliasCondition
+    Properties:
+      AgentId: !GetAtt UniProtSearchAgent.AgentId
+      AgentAliasName: !Ref AgentAliasName
+
+  UniProtSearchGuardrail:
+    Type: AWS::Bedrock::Guardrail
+    Properties:
+      BlockedInputMessaging: "Sorry, your query violates our usage policies."
+      BlockedOutputsMessaging: "Sorry, I am unable to reply because the output violates our usage policies."
+      ContentPolicyConfig:
+        FiltersConfig:
+          - InputStrength: "HIGH"
+            OutputStrength: "HIGH"
+            Type: "MISCONDUCT"
+          - InputStrength: "HIGH"
+            OutputStrength: "NONE"
+            Type: "PROMPT_ATTACK"
+      Description: Guardrail for UniProt protein search agent to block harmful content.
+      Name: UniProtSearchGuardrail
+      WordPolicyConfig:
+        ManagedWordListsConfig:
+          - Type: PROFANITY
+
+Outputs:
+  AgentId:
+    Description: Agent ID
+    Value: !Ref UniProtSearchAgent
+  AgentAliasId:
+    Description: Agent Alias ID
+    Value: !GetAtt AgentAliasResource.AgentAliasId
+    Condition: CreateAgentAliasCondition
+  AgentAliasArn:
+    Description: Agent Alias ARN
+    Value: !GetAtt AgentAliasResource.AgentAliasArn
+    Condition: CreateAgentAliasCondition

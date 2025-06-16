@@ -224,7 +224,7 @@ Resources:
                   cfnresponse.send(event, context, cfnresponse.FAILED, {
                       'Error': str(e)
                   })
-      Runtime: python3.11
+      Runtime: python3.12
       Timeout: 300  # 5 minutes
       MemorySize: 128
   
@@ -273,7 +273,7 @@ Resources:
                   'statusCode': 200,
                   'body': 'Hello World'
               }
-      Runtime: python3.11
+      Runtime: python3.12
       Timeout: 300
       MemorySize: 256
       Environment:

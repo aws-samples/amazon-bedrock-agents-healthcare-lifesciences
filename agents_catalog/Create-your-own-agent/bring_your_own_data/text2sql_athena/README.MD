@@ -1,10 +1,6 @@
 # Create a Text2SQL Bedrock Agent
 
-Create an end-to-end Text-to-SQL Bedrock Agent solution, integrated with Amazon Athena
-
-## Sample Database Overview
-
-This example utilizes the 'BirdSQL Mini Dev' dataset as the sample SQL data: (https://github.com/bird-bench/mini_dev)
+Create an end-to-end Text-to-SQL Bedrock Agent solution, integrated with Amazon Athena using a sample dataset
 
 ### Workflow of the Text2SQL Agent
 
@@ -15,6 +11,8 @@ This example utilizes the 'BirdSQL Mini Dev' dataset as the sample SQL data: (ht
     - Converts natural language questions into Amazon Athena queries
     - Executes queries against Amazon Athena
     - Returns results in user-friendly format
+
+3. **Error handling and self-correction** : Performs a self-optimize step to improve the SQL statement before execution and also handles retries and error handling after execution
 
 ### Agentic Text2Cypher Flow
 
@@ -29,24 +27,9 @@ This example utilizes the 'BirdSQL Mini Dev' dataset as the sample SQL data: (ht
 
 ### Deployment
 
-Step 1: Go to a SageMaker Notebook instance in your AWS account and clone this repository in a terminal
+Step 1: Navigate to agents_catalog/0-Notebook-environment/ and go to setup_environment.ipynb, use the Python 3 (ipykernel)
 
-```bash
-cd SageMaker/
-git clone https://github.com/aws-samples/amazon-bedrock-agents-cancer-biomarker-discovery.git
-```
-
-Step 2: Navigate to the multi-agent-collaboration branch within the repository
-```bash
-cd amazon-bedrock-agents-cancer-biomarker-discovery
-```
-```bash
-git checkout multi-agent-collaboration
-```
-
-Step 3: Navigate to agents_catalog/0-Notebook-environment/ and go to setup_environment.ipynb, use the Python 3 (ipykernel)
-
-Step 4: Run through the 'sample_text2sql_agent.ipynb' to create the Text-to-SQL agent
+Step 2: Run through the 'sample_text2sql_agent.ipynb' to create the Text-to-SQL agent
 
 ## How to Test in AWS Console
 

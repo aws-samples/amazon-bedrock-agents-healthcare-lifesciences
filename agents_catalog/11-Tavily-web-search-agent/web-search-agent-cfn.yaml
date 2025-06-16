@@ -10,23 +10,25 @@ Metadata:
 Parameters:
   AgentAliasName:
     Type: String
-    Default: ""
+    Default: "Latest"
   BedrockModelId:
     Type: String
     Description: The ID of the Foundation Model to use for the Agent
-    Default: us.anthropic.claude-3-5-sonnet-20240620-v1:0
+    Default: us.anthropic.claude-3-5-sonnet-20241022-v2:0
   AgentIAMRoleArn:
     Type: String
-    Description: The arn for the agent IAM role
+    Description: (Optional) Amazon Bedrock Agents service role ARN
+    Default: ""
   TavilyApiKey:
     Type: String
     NoEcho: true
     Description: Provide TavilyApiKey API Key to utilize /web_search path
-    MinLength: 1
+    Default: ""
 
 Conditions:
   HasTavilyApiKeyCondition: !Not [!Equals [!Ref TavilyApiKey, ""]]
   CreateAgentAliasCondition: !Not [!Equals [!Ref AgentAliasName, ""]]
+  AgentIAMRoleCondition: !Not [!Equals [!Ref AgentIAMRoleArn, ""]]
 
 Resources:
   #####################
@@ -50,6 +52,8 @@ Resources:
   WebSearchLambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
+      FunctionName: TavilyWebSearch
+      Description: "Search the web with { 'search_query' } parameter. Optional { 'days' } parameter for days of history to search and { 'topic' } parameter for either 'news' or 'general' content type."
       Runtime: python3.12
       Handler: index.lambda_handler
       Role: !GetAtt WebSearchLambdaRole.Arn
@@ -62,6 +66,9 @@ Resources:
             - "TAVILY_API_KEY_${StackId}"
             - StackId: !Select [2, !Split ["/", !Ref AWS::StackId]]
       Code: "action-groups/web-search"
+      Tags:
+        - Key: Application
+          Value: HCLSAgents
 
   WebSearchLambdaRole:
     Type: AWS::IAM::Role
@@ -143,18 +150,13 @@ Resources:
                     Description: "The number of days of history to search. Helps when looking for recent events or news."
                     Type: string
                     Required: False
-      AgentName:
-        !Join [
-          "-",
-          [
-            "web-search-agent",
-            !Select [
-              4,
-              !Split ["-", !Select [2, !Split ["/", !Ref "AWS::StackId"]]],
-            ],
-          ],
-        ]
-      AgentResourceRoleArn: !Ref AgentIAMRoleArn
+      AgentName: Tavily-Web-Search-Agent
+      # If an IAM role ARN is passed as a paremter, use it. Otherwise look in SSM parameter store
+      AgentResourceRoleArn:
+        "Fn::If":
+          - AgentIAMRoleCondition
+          - !Ref AgentIAMRoleArn
+          - "{{resolve:ssm:/bedrock/agent/role/arn:1}}"
       AutoPrepare: True
       Description: "Answer questions by searching the internet."
       FoundationModel: !Ref BedrockModelId
@@ -232,11 +234,14 @@ Resources:
           - Type: PROFANITY
 
 Outputs:
-  AgentId: 
+  AgentId:
     Description: Agent ID
     Value: !Ref WebSearchAgent
-  AgentAliasId: 
+  AgentAliasId:
     Description: Agent Alias ID
-    Value: !GetAtt  AgentAliasResource.AgentAliasId
+    Value: !GetAtt AgentAliasResource.AgentAliasId
     Condition: CreateAgentAliasCondition
-
+  AgentAliasArn:
+    Description: Agent Alias ARN
+    Value: !GetAtt AgentAliasResource.AgentAliasArn
+    Condition: CreateAgentAliasCondition

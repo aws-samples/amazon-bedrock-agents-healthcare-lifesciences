@@ -18,12 +18,13 @@ The biomarker analysis workflow is illustrated below that incorporates multimoda
 The multi-agent solution architecture is illustrated below. 
 ![architecture](images/MultiAgentBiomarkers.png)
 
-Amazon Bedrock Agents enable generative AI applications to execute multistep tasks across company systems and data sources. We define our solution to include planning and reasoning with multiple tools
--	Biomarker query engine:  Convert natural language questions to SQL statements and execute on an Amazon Redshift database of biomarkers. 
--	Scientific analysis and plotting engine: Use lifelines library with clinical and genomics data to build survival regression models like COX proportional hazard model and visualization like Kaplan Meier charts for survival analysis. 
--	External data API: Use PubMed apis to search biomedical literature for specific evidence. 
--	Internal literature: Use Knowledge Bases for Bedrock to give agents contextual information from internal literature evidence for RAG to deliver more relevant, accurate, and customized responses 
--	Medical imaging: Use Amazon SageMaker Jobs to augment agents with the capability to trigger asynchronous jobs with an ephemeral cluster to process CT scan images that include 2D slices to 3D volumes conversion, CT and segmentation masks alignment, radiomic feature extraction within the tumor region.
+Amazon Bedrock Agents enable generative AI applications to execute multistep tasks across company systems and data sources. We define our solution to include planning and reasoning with multiple agents. 
+
+    Biomarker database analyst : Convert natural language questions to SQL statements and execute on an Amazon Redshift database of biomarkers.
+    Statistician: Use a custom container with lifelines library to build survival regression models and visualization such as Kaplan Meier charts for survival analysis.
+    Clinical evidence researcher: Use PubMed APIs to search biomedical literature for external evidence. Use Amazon Bedrock Knowledge Bases for Retrieval Augmented Generation (RAG) to deliver responses from internal literature evidence.
+    Medical imaging expert: Use Amazon SageMaker jobs to augment agents with the capability to trigger asynchronous jobs with an ephemeral cluster to process CT scan images.
+
 ![architecture](images/architecture_details.jpg)
 
 
@@ -67,6 +68,20 @@ The clinical records are stored in CSV format. Each row corresponds to a patient
 Medical imaging biomarkers of cancer promise improvements in patient care through advances in precision medicine. Compared to genomic biomarkers, imaging biomarkers provide the advantages of being non-invasive, and characterizing a heterogeneous tumor in its entirety, as opposed to limited tissue available via biopsy [2]. In this dataset, CT and PET/CT imaging sequences were acquired for patients prior to surgical procedures. Segmentation of tumor regions were annotated by two expert thoracic radiologists. Below is an example overlay of a tumor segmentation onto a lung CT scan (case R01-093).
 
 ![ortho-view](https://sagemaker-solutions-prod-us-east-2.s3-us-east-2.amazonaws.com/sagemaker-lung-cancer-survival-prediction/1.0.0/docs/R01-093_06-22-1994_ortho-view.png)
+
+## Example Usage
+
+**Question**: What is the average age of patients diagnosed with Adenocarcinoma in the database?
+**Supervisor Plan**: Use Biomarker database analyst
+
+**Question**: What are the top 5 biomarkers (lowest p value) with overall survival for patients that have undergone chemotherapy ? Generate a bar chart of them
+**Supervisor Plan**: Use Biomarker database analyst and Statistician
+
+**Question**: According to evidence, What imaging properties of the tumor are associated with EGFR pathway?
+**Supervisor Plan**: Use Clinical evidence researcher
+
+**Question**: Can you compute the imaging biomarkers for the 2 patients with the lowest gdf15 expression values? Show me the segmentation and the sphericity and elongation values
+**Supervisor Plan**: Use Biomarker database analyst and Medical imaging expert
 
 ## Chain of thought reasoning example
 Here is an example chain of thought sequence with the agent. 11 questions are listed in the image with their expected responses.  

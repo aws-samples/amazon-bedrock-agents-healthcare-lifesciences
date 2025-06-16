@@ -8,7 +8,7 @@ export default defineConfig({
   base: '/amazon-bedrock-agents-healthcare-lifesciences/',
   trailingSlash: 'always',
   integrations: [starlight({
-    title: 'Agents for Healthcare and Life Sciences on AWS',
+    title: 'Sample Agents for Healthcare and Life Sciences on AWS',
     social: {
       github: 'https://github.com/aws-samples/amazon-bedrock-agents-healthcare-lifesciences/tree/main',
     },

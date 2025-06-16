@@ -4,7 +4,7 @@ Create an end-to-end Text-to-Cypher solution, integrated with Neptune database.
 
 ## Sample Database Overview
 
-This example utilizes the reactome database, a biological pathway database commonly used for pharmaceutical research purposes. 
+This example utilizes the [Reactome](https://reactome.org/) database, a biological pathway database commonly used for pharmaceutical research purposes. 
 
 ### Use Case: Pharmaceutical research agent
 
@@ -57,25 +57,11 @@ This Text-to-Cypher solution enables researchers to perform:
 
 
 ### Deployment
-
-Step 1: Go to a SageMaker Notebook instance in your AWS account and clone this repository in a terminal
-
-```bash
-cd SageMaker/
-git clone https://github.com/aws-samples/amazon-bedrock-agents-cancer-biomarker-discovery.git
 ```
 
-Step 2: Navigate to the multi-agent-collaboration branch within the repository
-```bash
-cd amazon-bedrock-agents-cancer-biomarker-discovery
-```
-```bash
-git checkout multi-agent-collaboration
-```
+Step 1: Navigate to agents_catalog/0-Notebook-environment/ and go to setup_environment.ipynb, use the Python 3 (ipykernel)
 
-Step 3: Navigate to agents_catalog/0-Notebook-environment/ and go to setup_environment.ipynb, use the Python 3 (ipykernel)
-
-Step 4: Run through the 'sample_text2cypher_agent.ipynb' to create the Text-to-Cypher agent
+Step 2: Run through the 'sample_text2cypher_agent.ipynb' to create the Text-to-Cypher agent
 
 ## How to Test in AWS Console
 

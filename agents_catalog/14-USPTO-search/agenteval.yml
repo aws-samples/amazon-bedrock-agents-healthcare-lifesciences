@@ -1,0 +1,13 @@
+evaluator:
+  model: claude-3
+target:
+  type: bedrock-agent
+  bedrock_agent_id: BEDROCK_AGENT_ID
+  bedrock_agent_alias_id: BEDROCK_AGENT_ALIAS_ID
+tests:
+  cancer:
+    steps:
+    - Ask the agent to find patent applications from the past 200 days related to cancer therapy
+    expected_results:
+    - The agent identifies patent applications related to cancer therapy
+    - The agent identifies a patent application filed by Memorial Sloan Kettering Cancer Center for Anti-ADAM10 Antibodies

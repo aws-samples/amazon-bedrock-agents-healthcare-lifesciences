@@ -1,0 +1,32 @@
+{
+  "name": "hcls-agents-ui",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@aws-sdk/client-bedrock": "^3.772.0",
+    "@aws-sdk/client-bedrock-agent": "^3.772.0",
+    "@aws-sdk/client-bedrock-agent-runtime": "^3.775.0",
+    "@aws-sdk/client-bedrock-runtime": "^3.772.0",
+    "@aws-sdk/credential-providers": "^3.774.0",
+    "aws-cdk": "^2.1006.0",
+    "dotenv": "^16.5.0",
+    "framer-motion": "^12.5.0",
+    "next": "^15.2.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

@@ -3,23 +3,28 @@ Description: Creates the Competitive Intelligence supervisor agent.
 Parameters:
   AgentAliasName:
     Type: String
-    Default: ""
+    Default: "Latest"
   BedrockModelId:
     Type: String
     Description: The ID of the Foundation Model to use for the Agent
-    Default: us.anthropic.claude-3-5-sonnet-20240620-v1:0
+    Default: us.anthropic.claude-3-5-sonnet-20241022-v2:0
   AgentIAMRoleArn:
     Type: String
-    Description: The arn for the agent IAM role
+    Description: (Optional) Amazon Bedrock Agents service role ARN
+    Default: ""
   WebSearchAgentAliasArn:
+    Description: Alias ARN for the web search sub-agent
     Type: String
-    Description: The arn for the web search sub agent
   SEC10kAgentAliasArn:
+    Description: Alias ARN for the SEC 10-K search sub-agent
     Type: String
-    Description: The arn for the SE 10-K search sub agent
+  USPTOSearchAgentAliasArn:
+    Description: Alias ARN for the USPTO search sub-agent
+    Type: String
 
 Conditions:
   CreateAgentAliasCondition: !Not [!Equals [!Ref AgentAliasName, ""]]
+  AgentIAMRoleCondition: !Not [!Equals [!Ref AgentIAMRoleArn, ""]]
 
 Resources:
   #####################
@@ -37,6 +42,7 @@ Resources:
       AgentCollaborators:
         - CollaboratorName: Web-Search-Agent
           AgentDescriptor:
+            # AliasArn: !GetAtt WebSearchAgentStack.Outputs.AgentAliasArn
             AliasArn: !Ref WebSearchAgentAliasArn
           CollaborationInstruction: |
             Use the Web Search Agent to:
@@ -51,6 +57,7 @@ Resources:
             Focus searches on content from the past 3-6 months to complement the historical data from SEC filings with current market context.
         - CollaboratorName: SEC-10-K-Search-Agent
           AgentDescriptor:
+            # AliasArn: !GetAtt SEC10kAgentStack.Outputs.AgentAliasArn
             AliasArn: !Ref SEC10kAgentAliasArn
           CollaborationInstruction: |
             Use SEC 10-K Search Agent when you need specific quantitative financial information such as:
@@ -59,35 +66,39 @@ Resources:
               - Balance sheet metrics
               - Cash flow information
               - Debt levels and financing activities
+        - CollaboratorName: USPTO-Search-Agent
+          AgentDescriptor:
+            # AliasArn: !GetAtt USPTOSearchAgentStack.Outputs.AgentAliasArn
+            AliasArn: !Ref USPTOSearchAgentAliasArn
+          CollaborationInstruction: |
+            Use USPTO Search Agent when you need information about patent applications, such as:
+              - Recent patent applications on given topic
+              - The inventor, filing date, or applicant of a given patent
 
-      AgentName:
-        !Join [
-          "-",
-          [
-            "competitive-intelligence-agent",
-            !Select [
-              4,
-              !Split ["-", !Select [2, !Split ["/", !Ref "AWS::StackId"]]],
-            ],
-          ],
-        ]
-      AgentResourceRoleArn: !Ref AgentIAMRoleArn
+      AgentName: Competitive-Intelligence-Agent
+      # If an IAM role ARN is passed as a paremter, use it. Otherwise look in SSM parameter store
+      AgentResourceRoleArn:
+        "Fn::If":
+          - AgentIAMRoleCondition
+          - !Ref AgentIAMRoleArn
+          - "{{resolve:ssm:/bedrock/agent/role/arn:1}}"
       AutoPrepare: True
-      Description: "Analyze business news and SEC 10-K filings"
+      Description: "Analyze business, financial, and patent information using search"
       FoundationModel: !Ref BedrockModelId
       GuardrailConfiguration:
-        GuardrailIdentifier: !GetAtt Guardrail.GuardrailId
-        GuardrailVersion: !GetAtt Guardrail.Version
+        GuardrailIdentifier: !GetAtt CompetitiveIntelGuardrail.GuardrailId
+        GuardrailVersion: !GetAtt CompetitiveIntelGuardrail.Version
       Instruction: |
         You are an expert Corporate Competitive Intelligence Analyst powered by AI. Your purpose is to create comprehensive competitive 
         intelligence reports on major US corporations by analyzing recent activities, market positioning, and financial trends.
 
         Your Capabilities:
 
-        You can coordinate two specialized sub-agents to gather information:
+        You can coordinate three specialized sub-agents to gather information:
 
             - Web Search Agent: Can retrieve recent news articles, press releases, analyst reports, and media coverage about target companies
             - SEC Filing Agent: Can extract and analyze data from SEC 10-K filings
+            - USPTO Search Agent: Can retrieve and analyze patent applications from the USPTO
 
         Report Structure:
 
@@ -112,10 +123,11 @@ Resources:
             1. First, understand the specific company the user wants analyzed
             2. Instruct the Web Search Agent to find recent news about the company (last 3-6 months)
             3. Direct the SEC Filing Agent to retrieve relevant data about profit and loss from the previous 5 years of 10-K filings
-            4. Synthesize information from both sources into a cohesive narrative
-            5. Identify patterns, anomalies, and strategically significant insights
-            6. Present findings objectively with relevant quantitative data
-            7. Format the report professionally with clear section headings
+            4. Ask the USPTO search agent to find patent applications from the past 365 days with the name of the company or any research topics identified in the web search
+            5. Synthesize information from all sources into a cohesive narrative
+            6. Identify patterns, anomalies, and strategically significant insights
+            7. Present findings objectively with relevant quantitative data
+            8. Format the report professionally with clear section headings
 
         Guidelines:
 
@@ -137,7 +149,7 @@ Resources:
       AgentId: !GetAtt CompetitiveIntelligenceAgent.AgentId
       AgentAliasName: !Ref AgentAliasName
 
-  Guardrail:
+  CompetitiveIntelGuardrail:
     Type: AWS::Bedrock::Guardrail
     Properties:
       BlockedInputMessaging: "Sorry, your query violates our usage policies."
@@ -163,7 +175,7 @@ Resources:
             OutputStrength: "NONE"
             Type: "PROMPT_ATTACK"
       Description: Turn on to block profane words and other harmful content.
-      Name: Guardrail
+      Name: CompetitiveIntelGuardrail
       WordPolicyConfig:
         ManagedWordListsConfig:
           - Type: PROFANITY
@@ -175,4 +187,8 @@ Outputs:
   AgentAliasId:
     Description: Agent Alias ID
     Value: !GetAtt AgentAliasResource.AgentAliasId
+    Condition: CreateAgentAliasCondition
+  AgentAliasArn:
+    Description: Agent Alias ARN
+    Value: !GetAtt AgentAliasResource.AgentAliasArn
     Condition: CreateAgentAliasCondition

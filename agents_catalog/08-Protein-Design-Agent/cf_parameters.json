@@ -1,6 +1,22 @@
 [
-    {
-      "ParameterKey": "S3BucketName",
-      "ParameterValue": "hcls-bedrock-agents-byot-aho"
-    }
+  {
+    "ParameterKey": "S3BucketName",
+    "ParameterValue": "hcls-bedrock-agents-byot-aho-20240416-west2"
+  },
+  {
+    "ParameterKey": "StackPrefix",
+    "ParameterValue": "protein-design"
+  },
+  {
+    "ParameterKey": "ApplicationName",
+    "ParameterValue": "HealthOmics-Workflow"
+  },
+  {
+    "ParameterKey": "WorkflowPath",
+    "ParameterValue": "workflow"
+  },
+  {
+    "ParameterKey": "SecretName",
+    "ParameterValue": "protein-design-secret"
+  }
 ]
