@@ -8,7 +8,6 @@ This agent optimizes the scheduling of in vivo studies across a 30-day period, e
 - **Resource Constraint Management**: Ensures daily animal capacity limits are never exceeded (configurable, default 1000 animals/day)
 - **Load Balancing**: Distributes studies and animal usage evenly across the month to avoid resource spikes
 - **Flexible Study Parameters**: Supports study duration, preferred start dates, and priority levels
-- **Visual Schedule Output**: Provides clear visualizations of resource utilization and study distribution
 - **Constraint Satisfaction**: Handles complex scheduling constraints while optimizing for multiple objectives
 
 ## Architecture
@@ -55,23 +54,48 @@ The agent is deployed using AWS CloudFormation with all necessary resources:
 ### Deployment Steps
 
 1. Create an S3 bucket for deployment artifacts (if needed):
+
 ```bash
 aws s3 mb s3://YOUR_S3_BUCKET_NAME
 ```
 
 2. Navigate to the agent directory:
+
 ```bash
-cd 21-invivo-study-scheduler-agent
+cd agents_catalog/21-invivo-study-scheduler-agent
+```
+
+3. Upload container definition to S3
+
+```bash
+zip -jr container.zip action-groups/schedule-optimizer/container
+aws s3 cp container.zip s3://YOUR_S3_BUCKET_NAME
 ```
 
 3. Set environment variables and deploy:
+
 ```bash
 export BUCKET_NAME="<YOUR_S3_BUCKET>"
 export NAME="<STACK_NAME>"
 export REGION="<AWS_REGION>"
-export BEDROCK_AGENT_SERVICE_ROLE_ARM="<BEDROCK_SERVICE_ROLE_ARN>"
+export BEDROCK_AGENT_SERVICE_ROLE_ARN="<BEDROCK_SERVICE_ROLE_ARN>"
 
-bash deploy.sh
+aws cloudformation package --template-file "invivo-study-scheduler-agent-cfn.yaml" \
+  --s3-bucket $BUCKET_NAME \
+  --output-template-file "packaged_invivo-study-scheduler-agent-cfn.yaml" \
+  --region $REGION
+aws cloudformation deploy --template-file "packaged_invivo-study-scheduler-agent-cfn.yaml" \
+  --s3-bucket $BUCKET_NAME \
+  --capabilities CAPABILITY_IAM \
+  --stack-name $STACK_NAME \
+  --region $REGION \
+  --disable-rollback \
+  --parameter-overrides \
+    AgentIAMRoleArn=$BEDROCK_AGENT_SERVICE_ROLE_ARN \
+    S3CodeBucket=$S3CodeBucket \
+    S3CodeKey="container.zip" \
+    BuildContextPath="."
+rm packaged_invivo-study-scheduler-agent-cfn.yaml
 ```
 
 ## Usage Examples
