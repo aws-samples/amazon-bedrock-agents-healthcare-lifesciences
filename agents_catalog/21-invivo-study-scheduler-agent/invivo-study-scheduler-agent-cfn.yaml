@@ -16,15 +16,15 @@ Parameters:
   S3CodeBucket:
     Description: Name of the S3 bucket to use for deployment and run storage
     Type: String
-    Default: "invivo-study-scheduler-agent-build"
+    Default: ""
   S3CodeKey:
     Description: S3 key for the zip file containing container code
     Type: String
-    Default: "container.zip"
+    Default: "repo/amazon-bedrock-agents-healthcare-lifesciences.zip"
   BuildContextPath:
     Description: Path to the container build context
     Type: String
-    Default: "container"
+    Default: "agents_catalog/21-invivo-study-scheduler-agent/action-groups/schedule-optimizer/container"
   ContainerName:
     Description: Name of the ECR project
     Type: String
@@ -41,46 +41,9 @@ Conditions:
 
 Resources:
   ########################
-  ##### IAM Roles #####
-  ########################
-  
-  # IAM Role for Bedrock Agent
-  BedrockAgentRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: bedrock.amazonaws.com
-            Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AmazonBedrockFullAccess
-      Policies:
-        - PolicyName: BedrockAgentLambdaInvoke
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - lambda:InvokeFunction
-                Resource: '*'
-        - PolicyName: CloudWatchLogsAccess
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - logs:CreateLogGroup
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
-                Resource: '*'
-  
-  ########################
   ##### S3 Bucket for Visualizations #####
   ########################
-  
+
   VisualizationBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -102,9 +65,14 @@ Resources:
   ScheduleOptimizerContainer:
     Type: "AWS::CloudFormation::Stack"
     Properties:
-      TemplateURL: https://invivo-study-scheduler-agent-build.s3.amazonaws.com/build/container.yaml
+      TemplateURL: ../../build/container.yaml
+      # TemplateURL: https://invivo-study-scheduler-agent-build.s3.amazonaws.com/build/container.yaml
       Parameters:
-        S3CodeBucket: "invivo-study-scheduler-agent-build"
+        S3CodeBucket:
+          "Fn::If":
+            - AgentS3BucketCondition
+            - !Ref S3CodeBucket
+            - "{{resolve:ssm:/s3/agent_build/name:1}}"
         S3CodeKey:
           Ref: S3CodeKey
         BuildContextPath: !Ref BuildContextPath
@@ -209,10 +177,11 @@ Resources:
                     Required: False
       AgentName: "InVivo-Study-Scheduler-Agent"
       # Use the IAM role we created or the one provided as a parameter
-      AgentResourceRoleArn: !If 
-        - AgentIAMRoleCondition
-        - !Ref AgentIAMRoleArn
-        - !GetAtt BedrockAgentRole.Arn
+      AgentResourceRoleArn:
+        "Fn::If":
+          - AgentIAMRoleCondition
+          - !Ref AgentIAMRoleArn
+          - "{{resolve:ssm:/bedrock/agent/role/arn:1}}"
       AutoPrepare: True
       Description: "Optimize the scheduling of in vivo studies in laboratory environments over a 30-day period"
       FoundationModel: !Ref BedrockModelId
@@ -259,7 +228,7 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
@@ -270,14 +239,14 @@ Resources:
       Policies:
         - PolicyName: CloudWatchLogsAccess
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: '*'
+                Resource: "*"
 
   InVivoStudySchedulerGuardrail:
     Type: AWS::Bedrock::Guardrail

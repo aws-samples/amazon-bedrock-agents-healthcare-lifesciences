@@ -351,6 +351,19 @@ Resources:
         - Key: Project
           Value: "hcls-agents-toolkit"
 
+  InvivoStudySchedulerAgent:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: agents_catalog/21-invivo-study-scheduler-agent/invivo-study-scheduler-agent-cfn.yaml
+      Parameters:
+        AgentIAMRoleArn: !GetAtt AgentRole.Arn
+        S3CodeBucket: !Ref S3Bucket
+        S3CodeKey: !GetAtt CodeRepo.Outputs.S3Key
+      TimeoutInMinutes: 35
+      Tags:
+        - Key: Project
+          Value: "hcls-agents-toolkit"          
+
 #################################################################################################################################################
 #################################################################################################################################################
 
