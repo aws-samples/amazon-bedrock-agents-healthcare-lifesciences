@@ -50,19 +50,20 @@ Parameters:
       - "true"
       - "false"
   ExistingVpcId:
-    Type: AWS::EC2::VPC::Id
+    Type: String
     Description: "The VPC ID of an existing VPC in your AWS account and current region"
     Default: ""
   ExistingPublicSubnets:
-    Type: List<AWS::EC2::Subnet::Id>
+    Type: CommaDelimitedList
     Description: "A list of 2 public subnet IDs in your AWS account and AWS region from two different AZs are required."
     Default: ""
   ExistingPrivateSubnets:
-    Type: List<AWS::EC2::Subnet::Id>
+    Type: CommaDelimitedList
     Description: "A list of 2 private subnet IDs in your AWS account and AWS region from two different AZs are required."
     Default: ""
 
 Conditions:
+  
   HasVpcId: !Not [!Equals [!Ref ExistingVpcId, ""]]
   HasTwoPublicSubnets: !Equals [Fn::Length: !Ref ExistingPublicSubnets, 2]
   HasTwoPrivateSubnets: !Equals [Fn::Length: !Ref ExistingPrivateSubnets, 2]
@@ -152,7 +153,7 @@ Resources:
       TemplateURL: ui/cloudformation/ecs.yml
       Parameters:
         AllowedCidr: !Ref ReactAppAllowedCidr
-        VPCId: !If [ CreateNetworking, !GetAtt "Network.Outputs.VPCId" , !Ref ExistingVpcId ]
+        VPCId: !If [ CreateNetworking, !GetAtt "Network.Outputs.VPC" , !Ref ExistingVpcId ]
         PublicSubnet1: !If [ CreateNetworking, !GetAtt "Network.Outputs.PublicSubnet1" , !Select [ 0, !Ref ExistingPublicSubnets ] ]
         PublicSubnet2: !If [ CreateNetworking, !GetAtt "Network.Outputs.PublicSubnet2" , !Select [ 1, !Ref ExistingPublicSubnets ] ]
         S3Bucket: !Ref S3Bucket
@@ -226,7 +227,7 @@ Resources:
         GitRepoURL: !Ref GithubLink
         GitBranch: !Ref GitBranch
         SubAgentS3Bucket: !Ref S3Bucket
-        VPC: !If [ CreateNetworking, !GetAtt "Network.Outputs.VPCId" , !Ref ExistingVpcId ]
+        VPC: !If [ CreateNetworking, !GetAtt "Network.Outputs.VPC" , !Ref ExistingVpcId ]
         PrivateSubnet1: !If [ CreateNetworking, !GetAtt "Network.Outputs.PrivateSubnet1" , !Select [ 0, !Ref ExistingPrivateSubnets ] ]
         PrivateSubnet2: !If [ CreateNetworking, !GetAtt "Network.Outputs.PrivateSubnet2" , !Select [ 1, !Ref ExistingPrivateSubnets ] ]
         AgentRole: !GetAtt AgentRole.Arn

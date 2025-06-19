@@ -76,6 +76,7 @@ In most cases, you may leave the default template parameters unchanged. However,
 You may also deploy the application using the AWS CLI by first running `aws cloudformation package` and then `aws cloudformation deploy`. For example:
 
 ```sh
+set -xe
 
 export BUCKET_NAME="amzn-s3-demo-bucket"
 export REGION="us-east-1"
@@ -93,7 +94,7 @@ aws cloudformation deploy --template-file "packaged_infra_cfn.yaml" \
   --region $REGION \
   --disable-rollback \
   --parameter-overrides \
-    RedshiftPassword="1234567890abcdef0" \
+    RedshiftPassword="MyExamplePassword123$$" \
     ReactAppAllowedCidr="192.0.2.0/24" \
     TavilyApiKey=$TAVILY_API_KEY \
     USPTOApiKey=$USPTO_API_KEY
