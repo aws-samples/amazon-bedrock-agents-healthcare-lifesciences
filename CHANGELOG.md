@@ -16,3 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### 0.1.0 Changed
 
 - Updated all Lambda function runtimes to Python 3.12 (except for PyTorch-based containers)
+
+### 0.1.1 Changed
+
+- Updated solution to use existing networking infrastructure if available

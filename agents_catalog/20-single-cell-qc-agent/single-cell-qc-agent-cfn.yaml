@@ -1,0 +1,291 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Creates the Single Cell QC Analysis agent for validating quality control metrics of single cell gene expression assays.
+
+Parameters:
+  AgentAliasName:
+    Type: String
+    Default: "Latest"
+    Description: Name for the agent alias
+  BedrockModelId:
+    Type: String
+    Description: The ID of the Foundation Model to use for the Agent
+    Default: us.anthropic.claude-3-5-sonnet-20241022-v2:0
+  AgentIAMRoleArn:
+    Type: String
+    Description: (Optional) Amazon Bedrock Agents service role ARN
+    Default: ""
+  S3CodeBucket:
+    Type: String
+    Description: S3 bucket where the action group code is stored
+    Default: ""
+  S3CodeKey:
+    Type: String
+    Description: S3 key prefix where the action group code is stored
+    Default: "single-cell-qc-agent"
+
+Conditions:
+  CreateAgentAliasCondition: !Not [!Equals [!Ref AgentAliasName, ""]]
+  AgentIAMRoleCondition: !Not [!Equals [!Ref AgentIAMRoleArn, ""]]
+  S3CodeBucketCondition: !Not [!Equals [!Ref S3CodeBucket, ""]]
+
+Resources:
+  ########################
+  ##### Web Summary Analyzer #####
+  ########################
+
+  WebSummaryAnalyzerLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: S3Access
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource: "*"
+        - PolicyName: BedrockAccess
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                  - bedrock:Converse
+                Resource: "*"
+
+  WebSummaryAnalyzerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-web-summary-analyzer"
+      RetentionInDays: 14
+
+  WebSummaryAnalyzerLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: WebSummaryAnalyzer
+      Role: !GetAtt WebSummaryAnalyzerLambdaRole.Arn
+      Runtime: python3.12
+      Handler: lambda_function.lambda_handler
+      Timeout: 60
+      MemorySize: 256
+      Environment:
+        Variables:
+          LOG_LEVEL: "INFO"
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+      Code: 
+        S3Bucket: !Sub "lambda-${AWS::Region}-${AWS::AccountId}"
+        S3Key: single-cell-qc-agent/web-summary-analyzer.zip
+
+  WebSummaryAnalyzerLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt WebSummaryAnalyzerLambdaFunction.Arn
+      Principal: bedrock.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+      SourceArn: !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*
+
+  #########################
+  ##### QC Validator #####
+  #########################
+
+  QCValidatorLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: S3Access
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource: "*"
+        - PolicyName: BedrockAccess
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                  - bedrock:Converse
+                Resource: "*"
+
+  QCValidatorLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-qc-validator"
+      RetentionInDays: 14
+
+  QCValidatorLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: QCValidator
+      Role: !GetAtt QCValidatorLambdaRole.Arn
+      Runtime: python3.12
+      Handler: lambda_function.lambda_handler
+      Timeout: 60
+      MemorySize: 256
+      Environment:
+        Variables:
+          LOG_LEVEL: "INFO"
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+      Code: 
+        S3Bucket: !Sub "lambda-${AWS::Region}-${AWS::AccountId}"
+        S3Key: single-cell-qc-agent/qc-validator.zip
+
+  QCValidatorLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt QCValidatorLambdaFunction.Arn
+      Principal: bedrock.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+      SourceArn: !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*
+
+  #####################
+  ##### Agent #####
+  ###################
+
+  SingleCellQCAgent:
+    Type: AWS::Bedrock::Agent
+    Properties:
+      ActionGroups:
+        - ActionGroupName: "UserInputAction"
+          ParentActionGroupSignature: "AMAZON.UserInput"
+          ActionGroupState: "ENABLED"
+        - ActionGroupName: WebSummaryAnalyzer
+          Description: Analyzes web summary files from single cell gene expression assays
+          ActionGroupExecutor:
+            Lambda: !GetAtt WebSummaryAnalyzerLambdaFunction.Arn
+          ActionGroupState: ENABLED
+          FunctionSchema:
+            Functions:
+              - Name: analyze_web_summary
+                Description: Analyzes a web summary file from a single cell gene expression assay to extract key quality control metrics and visualizations.
+                Parameters:
+                  web_summary_s3_uri:
+                    Description: "S3 URI of the web summary pdf file to analyze (e.g., s3://bucket-name/path/to/web_summary.pdf)"
+                    Type: string
+                    Required: True
+        - ActionGroupName: QCValidator
+          Description: Validates quality control metrics against technical guidelines
+          ActionGroupExecutor:
+            Lambda: !GetAtt QCValidatorLambdaFunction.Arn
+          ActionGroupState: ENABLED
+          FunctionSchema:
+            Functions:
+              - Name: validate_qc_metrics
+                Description: Validates quality control metrics from a web summary file against technical guidelines to identify any anomalies or quality issues.
+                Parameters:
+                  web_summary_s3_uri:
+                    Description: "S3 URI of the web summary pdf file to analyze (e.g., s3://bucket-name/path/to/web_summary.pdf)"
+                    Type: string
+                    Required: True
+                  technical_doc_s3_uri:
+                    Description: "S3 URI of the technical document PDF containing interpretation guidelines (e.g., s3://bucket-name/path/to/technical_document.pdf)"
+                    Type: string
+                    Required: True
+      AgentName: "Single-Cell-QC-Analysis-Agent"
+      AgentResourceRoleArn:
+        "Fn::If":
+          - AgentIAMRoleCondition
+          - !Ref AgentIAMRoleArn
+          - "{{resolve:ssm:/bedrock/agent/role/arn:1}}"
+      AutoPrepare: True
+      Description: "Analyzes and validates quality control metrics for single cell gene expression assays by comparing web summary files against technical interpretation guidelines"
+      FoundationModel: !Ref BedrockModelId
+      GuardrailConfiguration:
+        GuardrailIdentifier: !GetAtt SingleCellQCGuardrail.GuardrailId
+        GuardrailVersion: !GetAtt SingleCellQCGuardrail.Version
+      Instruction: |
+        You are an expert in single cell genomics quality control analysis. Your role is to help scientists validate the quality of single cell gene expression assays by analyzing web summary files and comparing them against technical guidelines.
+
+        You have access to the following tools:
+
+        - analyze_web_summary: Analyzes a web summary file from a single cell gene expression assay to extract key quality control metrics and visualizations.
+        - validate_qc_metrics: Validates quality control metrics from a web summary file against technical guidelines to identify any anomalies or quality issues.
+
+        Analysis Process:
+
+        1. Begin by understanding what quality control analysis the user needs.
+        2. Use analyze_web_summary to extract key metrics from the web summary file.
+        3. Present the extracted metrics in a clear, structured format.
+        4. If requested, use validate_qc_metrics to compare the metrics against technical guidelines.
+        5. Provide a comprehensive analysis with clear pass/fail indicators for each metric.
+        6. Highlight any anomalies or quality issues detected.
+        7. Offer recommendations based on the analysis results.
+
+        Response Guidelines:
+
+        - Provide scientifically accurate interpretations of quality control metrics
+        - Explain technical concepts in accessible language while maintaining scientific precision
+        - Present results in a structured format with clear sections for different metric categories
+        - Use visual indicators (✅, ⚠️, ❌) to clearly show pass/warning/fail status
+        - Acknowledge limitations in the analysis when appropriate
+        - Make recommendations based on the quality control results
+
+  AgentAliasResource:
+    Type: AWS::Bedrock::AgentAlias
+    Condition: CreateAgentAliasCondition
+    Properties:
+      AgentId: !GetAtt SingleCellQCAgent.AgentId
+      AgentAliasName: !Ref AgentAliasName
+
+  SingleCellQCGuardrail:
+    Type: AWS::Bedrock::Guardrail
+    Properties:
+      BlockedInputMessaging: "Sorry, your query violates our usage policies."
+      BlockedOutputsMessaging: "Sorry, I am unable to reply because the output violates our usage policies."
+      ContentPolicyConfig:
+        FiltersConfig:
+          - InputStrength: "HIGH"
+            OutputStrength: "HIGH"
+            Type: "MISCONDUCT"
+          - InputStrength: "HIGH"
+            OutputStrength: "NONE"
+            Type: "PROMPT_ATTACK"
+      Description: Guardrail for Single Cell QC Analysis agent to block harmful content.
+      Name: SingleCellQCGuardrail
+      WordPolicyConfig:
+        ManagedWordListsConfig:
+          - Type: PROFANITY
+
+Outputs:
+  AgentId:
+    Description: Agent ID
+    Value: !Ref SingleCellQCAgent
+  AgentAliasId:
+    Description: Agent Alias ID
+    Value: !GetAtt AgentAliasResource.AgentAliasId
+    Condition: CreateAgentAliasCondition
+  AgentAliasArn:
+    Description: Agent Alias ARN
+    Value: !GetAtt AgentAliasResource.AgentAliasArn
+    Condition: CreateAgentAliasCondition

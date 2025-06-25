@@ -1,0 +1,281 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Creates the In Vivo Study Scheduler agent for optimizing laboratory study schedules.
+Parameters:
+  AgentAliasName:
+    Type: String
+    Default: "Latest"
+    Description: Name for the agent alias
+  BedrockModelId:
+    Type: String
+    Description: The ID of the Foundation Model to use for the Agent
+    Default: us.anthropic.claude-3-5-sonnet-20241022-v2:0
+  AgentIAMRoleArn:
+    Type: String
+    Description: (Optional) Amazon Bedrock Agents service role ARN
+    Default: ""
+  S3CodeBucket:
+    Description: Name of the S3 bucket to use for deployment and run storage
+    Type: String
+    Default: ""
+  S3CodeKey:
+    Description: S3 key for the zip file containing container code
+    Type: String
+    Default: "repo/amazon-bedrock-agents-healthcare-lifesciences.zip"
+  BuildContextPath:
+    Description: Path to the container build context
+    Type: String
+    Default: "agents_catalog/21-invivo-study-scheduler-agent/action-groups/schedule-optimizer/container"
+  ContainerName:
+    Description: Name of the ECR project
+    Type: String
+    Default: "invivo-study-scheduler"
+  Timestamp:
+    Description: Timestamp for the cfn deployment
+    Type: Number
+    Default: 9999999999
+
+Conditions:
+  CreateAgentAliasCondition: !Not [!Equals [!Ref AgentAliasName, ""]]
+  AgentIAMRoleCondition: !Not [!Equals [!Ref AgentIAMRoleArn, ""]]
+  AgentS3BucketCondition: !Not [!Equals [!Ref S3CodeBucket, ""]]
+
+Resources:
+  ########################
+  ##### S3 Bucket for Visualizations #####
+  ########################
+
+  VisualizationBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "invivo-scheduler-viz-${AWS::AccountId}-${AWS::Region}"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldVisualizations
+            Status: Enabled
+            ExpirationInDays: 7
+  ########################
+  ##### Schedule Optimizer #####
+  ########################
+
+  ScheduleOptimizerContainer:
+    Type: "AWS::CloudFormation::Stack"
+    Properties:
+      TemplateURL: ../../build/container.yaml
+      # TemplateURL: https://invivo-study-scheduler-agent-build.s3.amazonaws.com/build/container.yaml
+      Parameters:
+        S3CodeBucket:
+          "Fn::If":
+            - AgentS3BucketCondition
+            - !Ref S3CodeBucket
+            - "{{resolve:ssm:/s3/agent_build/name:1}}"
+        S3CodeKey:
+          Ref: S3CodeKey
+        BuildContextPath: !Ref BuildContextPath
+        ContainerName:
+          Ref: ContainerName
+        WaitForCodeBuild: "Y"
+
+  ScheduleOptimizerLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: S3Access
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                Resource: !Sub "${VisualizationBucket.Arn}/*"
+  ScheduleOptimizerLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Role: !GetAtt ScheduleOptimizerLambdaRole.Arn
+      Timeout: 300
+      MemorySize: 1024
+      Environment:
+        Variables:
+          ACTION_GROUP: "ScheduleOptimizerActionGroup"
+          LOG_LEVEL: "DEBUG"
+          VISUALIZATION_BUCKET: !Ref VisualizationBucket
+      PackageType: Image
+      Code:
+        ImageUri: !GetAtt ScheduleOptimizerContainer.Outputs.ContainerURI
+
+  ScheduleOptimizerLambdaAgentPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt ScheduleOptimizerLambdaFunction.Arn
+      Principal: bedrock.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+      SourceArn: !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent-alias/*
+
+  ScheduleOptimizerLambdaAgentAliasPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt ScheduleOptimizerLambdaFunction.Arn
+      Principal: bedrock.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+      SourceArn: !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*
+  #####################
+  ##### Agent #####
+  ###################
+  InVivoStudySchedulerAgent:
+    Type: AWS::Bedrock::Agent
+    Properties:
+      ActionGroups:
+        - ActionGroupName: "UserInputAction"
+          ParentActionGroupSignature: "AMAZON.UserInput"
+          ActionGroupState: "ENABLED"
+        - ActionGroupName: "CodeInterpreterAction"
+          ParentActionGroupSignature: "AMAZON.CodeInterpreter"
+          ActionGroupState: "ENABLED"
+        - ActionGroupName: ScheduleOptimizer
+          Description: Actions for optimizing in vivo study schedules
+          ActionGroupExecutor:
+            Lambda: !GetAtt ScheduleOptimizerLambdaFunction.Arn
+          ActionGroupState: ENABLED
+          FunctionSchema:
+            Functions:
+              - Name: optimizeSchedule
+                Description: Optimize the schedule of in vivo studies over a 30-day period to balance resource utilization
+                Parameters:
+                  studies:
+                    Description: "JSON string representing a list of studies to schedule, each with an ID, number of animals required, preferred start date (optional), duration in days, and priority level (optional)"
+                    Type: string
+                    Required: True
+                  max_animals_per_day:
+                    Description: "Maximum number of animals available per day, default is 1000"
+                    Type: integer
+                    Required: False
+                  optimization_objective:
+                    Description: "Primary optimization objective: 'balance_animals' (default) or 'balance_studies'"
+                    Type: string
+                    Required: False
+                  visualization_type:
+                    Description: "Type of visualization to include: 'bar_chart' (default), 'heatmap', or 'line_chart'"
+                    Type: string
+                    Required: False
+      AgentName: "InVivo-Study-Scheduler-Agent"
+      # Use the IAM role we created or the one provided as a parameter
+      AgentResourceRoleArn:
+        "Fn::If":
+          - AgentIAMRoleCondition
+          - !Ref AgentIAMRoleArn
+          - "{{resolve:ssm:/bedrock/agent/role/arn:1}}"
+      AutoPrepare: True
+      Description: "Optimize the scheduling of in vivo studies in laboratory environments over a 30-day period"
+      FoundationModel: !Ref BedrockModelId
+      Instruction: |
+        You are an expert laboratory resource scheduler specializing in optimizing in vivo study schedules. Your goal is to help laboratory managers efficiently allocate resources by creating balanced schedules that distribute studies evenly across a 30-day period.
+
+        You have access to the following tools:
+
+        - optimizeSchedule: Creates an optimized schedule for in vivo studies over a 30-day period, balancing resource utilization and respecting capacity constraints.
+
+        You also have the ability to generate and run code. This could be useful for additional analysis or custom visualizations of the schedule.
+
+        Scheduling Process:
+
+        1. Begin by asking which studies need to be scheduled, if not provided.
+        2. For each study, collect the following information:
+           - Study ID or name
+           - Number of animals required
+           - Preferred start date (optional)
+           - Duration of the study in days (default is 1)
+           - Priority level (optional)
+        3. Use the optimizeSchedule function to generate an optimized schedule.
+        4. Present the schedule in a clear, structured format with relevant visualizations.
+        5. Provide insights on resource utilization and any potential bottlenecks.
+
+        Response Guidelines:
+
+        - Explain the optimization approach and constraints considered
+        - Highlight how the schedule balances resource utilization
+        - Compare the optimized schedule to any preferred dates that were specified
+        - Suggest improvements or alternatives if applicable
+        - Use visualizations to illustrate resource usage patterns
+        - Acknowledge any limitations in the optimization process
+
+  AgentAliasResource:
+    Type: AWS::Bedrock::AgentAlias
+    Condition: CreateAgentAliasCondition
+    Properties:
+      AgentId: !GetAtt InVivoStudySchedulerAgent.AgentId
+      AgentAliasName: !Ref AgentAliasName
+
+  # IAM Role for Bedrock Guardrail
+  BedrockGuardrailRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: bedrock.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonBedrockFullAccess
+      Policies:
+        - PolicyName: CloudWatchLogsAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "*"
+
+  InVivoStudySchedulerGuardrail:
+    Type: AWS::Bedrock::Guardrail
+    Properties:
+      BlockedInputMessaging: "Sorry, your query violates our usage policies."
+      BlockedOutputsMessaging: "Sorry, I am unable to reply because the output violates our usage policies."
+      ContentPolicyConfig:
+        FiltersConfig:
+          - InputStrength: "HIGH"
+            OutputStrength: "NONE"
+            Type: "PROMPT_ATTACK"
+      Description: Turn on to block profane words and other harmful content.
+      Name: InVivoStudySchedulerGuardrail
+      WordPolicyConfig:
+        ManagedWordListsConfig:
+          - Type: PROFANITY
+
+Outputs:
+  AgentId:
+    Description: Agent ID
+    Value: !Ref InVivoStudySchedulerAgent
+  AgentAliasId:
+    Description: Agent Alias ID
+    Value: !GetAtt AgentAliasResource.AgentAliasId
+    Condition: CreateAgentAliasCondition
+  AgentAliasArn:
+    Description: Agent Alias ARN
+    Value: !GetAtt AgentAliasResource.AgentAliasArn
+    Condition: CreateAgentAliasCondition
+  VisualizationBucketName:
+    Description: Name of the S3 bucket for visualizations
+    Value: !Ref VisualizationBucket

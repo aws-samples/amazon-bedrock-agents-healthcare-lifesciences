@@ -1,0 +1,68 @@
+name: Deploy CloudFormation Templates
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+    types:
+      - closed
+    branches:
+      - main
+
+# Required for OIDC token generation
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy to S3
+    runs-on: ubuntu-latest
+    
+    # Only run on merged PRs or direct pushes to main
+    if: github.event_name == 'push' || (github.event.pull_request.merged == true)
+    
+    strategy:
+      matrix:
+        region: [us-east-1, us-west-2]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: GitHubActions-Deploy-${{ matrix.region }}
+          aws-region: ${{ matrix.region }}
+          audience: sts.amazonaws.com
+
+      - name: Verify AWS credentials
+        run: |
+          aws sts get-caller-identity
+          echo "Deploying to region: ${{ matrix.region }}"
+
+      - name: Run deployment script
+        run: |
+          export REGION=${{ matrix.region }}
+          export BUCKET_ROOT=${{ secrets.BUCKET_ROOT }}
+          export BUCKET_NAME="$BUCKET_ROOT-$REGION"
+          export S3_PREFIX="public_assets_support_materials/hcls_agents_toolkit"
+          mkdir tmp
+          aws cloudformation package --template-file "Infra_cfn.yaml" \
+              --s3-bucket $BUCKET_NAME \
+              --s3-prefix $S3_PREFIX \
+              --output-template-file "tmp/Infra_cfn.yaml" \
+              --region $REGION
+          aws s3 cp tmp/Infra_cfn.yaml s3://$BUCKET_NAME/$S3_PREFIX/Infra_cfn.yaml --region $REGION
+          rm -rf tmp
+        env:
+          AWS_REGION: ${{ matrix.region }}
+
+      - name: Upload deployment artifacts (optional)
+        if: success()
+        run: |
+          echo "Deployment to ${{ matrix.region }} completed successfully"

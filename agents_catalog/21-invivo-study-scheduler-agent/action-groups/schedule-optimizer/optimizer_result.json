@@ -1,0 +1,259 @@
+{
+  "schedule": [
+    {
+      "study_id": "Study_C",
+      "animals_required": 100,
+      "assigned_start_day": 8,
+      "duration_days": 1,
+      "preferred_start_day": 8,
+      "priority": 5
+    },
+    {
+      "study_id": "Study_A",
+      "animals_required": 150,
+      "assigned_start_day": 5,
+      "duration_days": 3,
+      "preferred_start_day": 5,
+      "priority": 4
+    },
+    {
+      "study_id": "Study_B",
+      "animals_required": 200,
+      "assigned_start_day": 10,
+      "duration_days": 2,
+      "preferred_start_day": 10,
+      "priority": 3
+    },
+    {
+      "study_id": "Study_E",
+      "animals_required": 175,
+      "assigned_start_day": 20,
+      "duration_days": 2,
+      "preferred_start_day": 20,
+      "priority": 3
+    },
+    {
+      "study_id": "Study_D",
+      "animals_required": 300,
+      "assigned_start_day": 15,
+      "duration_days": 4,
+      "preferred_start_day": 15,
+      "priority": 2
+    }
+  ],
+  "daily_usage": [
+    {
+      "day": 1,
+      "animal_count": 0,
+      "study_count": 0,
+      "active_studies": []
+    },
+    {
+      "day": 2,
+      "animal_count": 0,
+      "study_count": 0,
+      "active_studies": []
+    },
+    {
+      "day": 3,
+      "animal_count": 0,
+      "study_count": 0,
+      "active_studies": []
+    },
+    {
+      "day": 4,
+      "animal_count": 0,
+      "study_count": 0,
+      "active_studies": []
+    },
+    {
+      "day": 5,
+      "animal_count": 150,
+      "study_count": 1,
+      "active_studies": [
+        "Study_A"
+      ]
+    },
+    {
+      "day": 6,
+      "animal_count": 150,
+      "study_count": 1,
+      "active_studies": [
+        "Study_A"
+      ]
+    },
+    {
+      "day": 7,
+      "animal_count": 150,
+      "study_count": 1,
+      "active_studies": [
+        "Study_A"
+      ]
+    },
+    {
+      "day": 8,
+      "animal_count": 100,
+      "study_count": 1,
+      "active_studies": [
+        "Study_C"
+      ]
+    },
+    {
+      "day": 9,
+      "animal_count": 0,
+      "study_count": 0,
+      "active_studies": []
+    },
+    {
+      "day": 10,
+      "animal_count": 200,
+      "study_count": 1,
+      "active_studies": [
+        "Study_B"
+      ]
+    },
+    {
+      "day": 11,
+      "animal_count": 200,
+      "study_count": 1,
+      "active_studies": [
+        "Study_B"
+      ]
+    },
+    {
+      "day": 12,
+      "animal_count": 0,
+      "study_count": 0,
+      "active_studies": []
+    },
+    {
+      "day": 13,
+      "animal_count": 0,
+      "study_count": 0,
+      "active_studies": []
+    },
+    {
+      "day": 14,
+      "animal_count": 0,
+      "study_count": 0,
+      "active_studies": []
+    },
+    {
+      "day": 15,
+      "animal_count": 300,
+      "study_count": 1,
+      "active_studies": [
+        "Study_D"
+      ]
+    },
+    {
+      "day": 16,
+      "animal_count": 300,
+      "study_count": 1,
+      "active_studies": [
+        "Study_D"
+      ]
+    },
+    {
+      "day": 17,
+      "animal_count": 300,
+      "study_count": 1,
+      "active_studies": [
+        "Study_D"
+      ]
+    },
+    {
+      "day": 18,
+      "animal_count": 300,
+      "study_count": 1,
+      "active_studies": [
+        "Study_D"
+      ]
+    },
+    {
+      "day": 19,
+      "animal_count": 0,
+      "study_count": 0,
+      "active_studies": []
+    },
+    {
+      "day": 20,
+      "animal_count": 175,
+      "study_count": 1,
+      "active_studies": [
+        "Study_E"
+      ]
+    },
+    {
+      "day": 21,
+      "animal_count": 175,
+      "study_count": 1,
+      "active_studies": [
+        "Study_E"
+      ]
+    },
+    {
+      "day": 22,
+      "animal_count": 0,
+      "study_count": 0,
+      "active_studies": []
+    },
+    {
+      "day": 23,
+      "animal_count": 0,
+      "study_count": 0,
+      "active_studies": []
+    },
+    {
+      "day": 24,
+      "animal_count": 0,
+      "study_count": 0,
+      "active_studies": []
+    },
+    {
+      "day": 25,
+      "animal_count": 0,
+      "study_count": 0,
+      "active_studies": []
+    },
+    {
+      "day": 26,
+      "animal_count": 0,
+      "study_count": 0,
+      "active_studies": []
+    },
+    {
+      "day": 27,
+      "animal_count": 0,
+      "study_count": 0,
+      "active_studies": []
+    },
+    {
+      "day": 28,
+      "animal_count": 0,
+      "study_count": 0,
+      "active_studies": []
+    },
+    {
+      "day": 29,
+      "animal_count": 0,
+      "study_count": 0,
+      "active_studies": []
+    },
+    {
+      "day": 30,
+      "animal_count": 0,
+      "study_count": 0,
+      "active_studies": []
+    }
+  ],
+  "total_animals": 925,
+  "max_animals_per_day": 300,
+  "avg_animals_per_day": 83.33333333333333,
+  "median_animals_per_active_day": 187.5,
+  "std_dev_animals": 111.11805533855522,
+  "max_studies_per_day": 1,
+  "avg_studies_per_day": 0.4,
+  "median_studies_per_active_day": 1.0,
+  "std_dev_studies": 0.48989794855663565
+}

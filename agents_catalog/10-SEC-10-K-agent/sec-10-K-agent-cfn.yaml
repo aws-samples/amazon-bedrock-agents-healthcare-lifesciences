@@ -43,7 +43,6 @@ Conditions:
   AgentIAMRoleCondition: !Not [!Equals [!Ref AgentIAMRoleArn, ""]]
   AgentS3BucketCondition: !Not [!Equals [!Ref S3CodeBucket, ""]]
 
-
 Resources:
   ########################
   ##### SEC10K Search #####
