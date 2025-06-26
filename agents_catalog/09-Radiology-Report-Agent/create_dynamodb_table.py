@@ -36,12 +36,10 @@ def create_dynamodb_table(tablename = "RadiologyReports", region="us-west-2"):
 def enter_data_to_dynamodb(table, data):
     # enter data to the dynamodb table
     for item in data:
-        table.put_item(
-            Item={
-                "PatientID": item["PatientID"],
-                "Report": item["Report"]
-            }
-        )
+        table.put_item(Item={
+            "PatientID": item["PatientID"],
+            "Report": item["Report"]
+        })
     print("Data entered successfully")
 
 if __name__ == "__main__":
@@ -67,5 +65,7 @@ if __name__ == "__main__":
                 "PatientID": patient_id,
                 "Report": report
             }
+            enter_data_to_dynamodb(table, [data])
+            
             enter_data_to_dynamodb(table, [data])
             

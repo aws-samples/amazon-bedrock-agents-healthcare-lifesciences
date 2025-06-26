@@ -21,7 +21,7 @@ BATCH_JOB_DEFINITION_CLASSIFIER = os.environ.get('BATCH_JOB_DEFINITION_CLASSIFIE
 LAMBDA_VIEWER_FUNCTION_NAME = os.environ.get('LAMBDA_VIEWER_FUNCTION_NAME')
 
 # Change the s3 bucket 
-S3_bucket_name = "radiology-report-agent-guidance-documents"
+S3_bucket_name = "radiology-report-agent-guidance-documents1789"
 
 # Bedrock configuration
 BEDROCK_CONFIG = Config(connect_timeout=120, read_timeout=120, retries={'max_attempts': 0})
@@ -42,18 +42,25 @@ def get_radiology_report(pat_id):
         key (_type_): _description_
     """
     from boto3.dynamodb.conditions import Key
-    dynamodb_client = boto3.client('dynamodb')
+    region = 'us-west-2'  # Explicitly set the region
+    dynamodb_client = boto3.client('dynamodb', region_name=region)
     dynamodb_table_name = "RadiologyReports"
-    dynamodb = boto3.resource('dynamodb')
+    dynamodb = boto3.resource('dynamodb', region_name=region)
     table = dynamodb.Table(dynamodb_table_name)
     print("Patient ID: ", pat_id)
 
     try:
+        # Query using only the PatientID as the hash key
         response = table.query(KeyConditionExpression=Key('PatientID').eq(str(pat_id)))
-        print(response)
-        report = response['Items'][0]['Report']
+        print("Response: ", response)
+        if 'Items' in response and len(response['Items']) > 0:
+            # Get the first report for this patient
+            report = response['Items'][0]['Report']
+        else:
+            print(f"No items found for PatientID: {pat_id}")
+            report = None
     except Exception as e:
-        print("Patient ID not found in DynamoDB: ")
+        print(f"Error querying DynamoDB: {e}")
         report = None
 
     return report
