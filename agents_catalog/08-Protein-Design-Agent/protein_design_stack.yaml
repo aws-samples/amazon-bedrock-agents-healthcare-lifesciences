@@ -291,7 +291,7 @@ Resources:
               commands:
                 - echo Build started on `date`
                 - echo Building the Docker image...
-                - docker build -t $REPOSITORY_URI:latest .
+                - docker build --build-arg AWS_DEFAULT_REGION=$AWS_REGION -t $REPOSITORY_URI:latest .
             post_build:
               commands:
                 - echo Build completed on `date`
