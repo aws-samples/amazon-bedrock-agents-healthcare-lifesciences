@@ -16,8 +16,30 @@ Parameters:
     Default: ""
   ReportBucketName:
     Type: String
-    Description: Name of the S3 bucket to store generated reports
-    Default: ""
+    Description: Name prefix for the S3 bucket to store generated reports
+    Default: "safety-signal-reports"
+
+Resources:
+  ################################
+  ##### S3 Bucket #####
+  ################################
+
+  ReportBucket:
+    Type: AWS::S3::Bucket
+    Condition: CreateReportBucketCondition
+    Properties:
+      BucketName: !Sub "${ReportBucketName}-${AWS::StackName}-${AWS::Region}-${AWS::AccountId}"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
 
 Conditions:
   CreateAgentAliasCondition: !Not [!Equals [!Ref AgentAliasName, ""]]
@@ -467,7 +489,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - s3:PutObject
-                Resource: !Sub "arn:aws:s3:::${ReportBucketName}/*"
+                Resource: !Sub "arn:aws:s3:::${ReportBucketName}-${AWS::StackName}-${AWS::Region}-${AWS::AccountId}/*"
 
   ReportGenerationLogGroup:
     Type: AWS::Logs::LogGroup
@@ -487,7 +509,7 @@ Resources:
       Environment:
         Variables:
           LOG_LEVEL: "INFO"
-          REPORT_BUCKET_NAME: !Ref ReportBucketName
+          REPORT_BUCKET_NAME: !Sub "${ReportBucketName}-${AWS::StackName}-${AWS::Region}-${AWS::AccountId}"
       Code:
         ZipFile: |
           import json
