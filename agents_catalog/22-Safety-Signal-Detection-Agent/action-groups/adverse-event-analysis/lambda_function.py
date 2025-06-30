@@ -3,9 +3,9 @@ import logging
 import os
 import urllib.request
 import urllib.parse
+import urllib.error
 from datetime import datetime, timedelta
-import pandas as pd
-import numpy as np
+from collections import defaultdict
 
 # Configure logging
 logger = logging.getLogger()
@@ -14,17 +14,15 @@ logger.setLevel(os.environ.get('LOG_LEVEL', 'INFO'))
 def calculate_prr(a, b, c, d):
     """
     Calculate Proportional Reporting Ratio (PRR)
-    a: Number of reports with the drug and adverse event
-    b: Number of reports with the drug
-    c: Number of reports with the adverse event
-    d: Total number of reports
     """
     if a == 0:
         return None
     try:
         prr = (a/b)/(c/d)
+        logger.debug(f"PRR calculation: a={a}, b={b}, c={c}, d={d}, prr={prr}")
         return prr
     except ZeroDivisionError:
+        logger.warning("Division by zero in PRR calculation")
         return None
 
 def query_openfda(product_name, start_date, end_date):
@@ -32,21 +30,26 @@ def query_openfda(product_name, start_date, end_date):
     Query OpenFDA API for adverse event reports
     """
     base_url = "https://api.fda.gov/drug/event.json"
-    
-    # Construct search query
     search_query = f'patient.drug.medicinalproduct:"{product_name}" AND receiptdate:[{start_date} TO {end_date}]'
-    
     params = {
         'search': search_query,
-        'limit': 100  # Adjust based on needs
+        'limit': 100
     }
     
     url = f"{base_url}?{urllib.parse.urlencode(params)}"
+    logger.info(f"OpenFDA API URL: {url}")
     
     try:
-        with urllib.request.urlopen(url) as response:
+        req = urllib.request.Request(url, headers={'Accept': 'application/json'})
+        with urllib.request.urlopen(req) as response:
             data = json.loads(response.read().decode())
+            logger.info(f"OpenFDA API response: {len(data.get('results', []))} results found")
             return data
+    except urllib.error.HTTPError as e:
+        logger.error(f"OpenFDA API HTTP error: {e.code} - {e.reason}")
+        if e.code == 404:
+            return {'results': []}
+        raise
     except Exception as e:
         logger.error(f"Error querying OpenFDA API: {str(e)}")
         raise
@@ -55,23 +58,24 @@ def analyze_trends(data):
     """
     Analyze trends in adverse event reports
     """
-    # Convert to pandas DataFrame for analysis
-    events = pd.DataFrame(data['results'])
+    daily_counts = defaultdict(int)
     
-    # Group by receipt date
-    events['receiptdate'] = pd.to_datetime(events['receiptdate'])
-    daily_counts = events.groupby('receiptdate').size()
+    for report in data['results']:
+        date = report.get('receiptdate', '').split('T')[0]
+        if date:
+            daily_counts[date] += 1
     
-    # Calculate moving average
-    ma = daily_counts.rolling(window=7).mean()
+    dates = sorted(daily_counts.keys())
     
-    # Convert timestamps to strings for JSON serialization
-    daily_counts_dict = {str(k): v for k, v in daily_counts.to_dict().items()}
-    ma_dict = {str(k): v for k, v in ma.to_dict().items()}
+    moving_average = {}
+    for i, date in enumerate(dates):
+        if i >= 3 and i < len(dates) - 3:
+            window_sum = sum(daily_counts[dates[j]] for j in range(i-3, i+4))
+            moving_average[date] = window_sum / 7
     
     return {
-        'daily_counts': daily_counts_dict,
-        'moving_average': ma_dict
+        'daily_counts': dict(daily_counts),
+        'moving_average': moving_average
     }
 
 def detect_signals(data, threshold=2.0):
@@ -79,38 +83,34 @@ def detect_signals(data, threshold=2.0):
     Detect safety signals using PRR calculation
     """
     signals = []
-    
-    # Calculate total reports for the drug
     total_drug_reports = len(data['results'])
     
-    # Group adverse events
-    events = {}
+    events = defaultdict(int)
     for report in data['results']:
         for event in report.get('patient', {}).get('reaction', []):
             event_term = event.get('reactionmeddrapt', '')
             if event_term:
-                events[event_term] = events.get(event_term, 0) + 1
+                events[event_term] += 1
     
-    # Calculate PRR for each event
     for event, count in events.items():
-        # Query background rates (simplified - should use actual background rates)
-        background_rate = 0.01  # Example background rate
-        total_background = 1000000  # Example total reports
+        background_rate = 0.01
+        total_background = 1000000
         
         prr = calculate_prr(
-            count,  # a: reports with drug and event
-            total_drug_reports,  # b: total reports with drug
-            background_rate * total_background,  # c: total reports with event
-            total_background  # d: total reports
+            count,
+            total_drug_reports,
+            background_rate * total_background,
+            total_background
         )
         
         if prr and prr >= threshold:
-            signals.append({
+            signal = {
                 'event': event,
                 'count': count,
-                'prr': prr,
+                'prr': round(prr, 2),
                 'confidence_interval': calculate_confidence_interval(count, total_drug_reports)
-            })
+            }
+            signals.append(signal)
     
     return sorted(signals, key=lambda x: x['prr'], reverse=True)
 
@@ -122,19 +122,98 @@ def calculate_confidence_interval(count, total):
         return None
     
     proportion = count / total
-    z = 1.96  # 95% confidence level
+    z = 1.96
     
     try:
-        standard_error = np.sqrt((proportion * (1 - proportion)) / total)
+        standard_error = ((proportion * (1 - proportion)) / total) ** 0.5
         ci_lower = max(0, proportion - z * standard_error)
         ci_upper = min(1, proportion + z * standard_error)
         
         return {
-            'lower': ci_lower,
-            'upper': ci_upper
+            'lower': round(ci_lower, 3),
+            'upper': round(ci_upper, 3)
         }
     except:
         return None
+
+def format_response(data):
+    """
+    Format the response for Bedrock Agent
+    """
+    if not data['signals']:
+        return "No safety signals were detected for the specified criteria."
+    
+    response_lines = []
+    
+    response_lines.append(f"Analysis Results for {data['product_name']}")
+    response_lines.append(f"Analysis Period: {data['analysis_period']['start']} to {data['analysis_period']['end']}")
+    response_lines.append(f"Total Reports: {data['total_reports']}")
+    
+    response_lines.append("\nTop Safety Signals:")
+    for signal in data['signals']:
+        ci = signal['confidence_interval']
+        ci_text = f" (95% CI: {ci['lower']}-{ci['upper']})" if ci else ""
+        response_lines.append(
+            f"- {signal['event']}: PRR={signal['prr']}, Reports={signal['count']}{ci_text}"
+        )
+    
+    if data['trends']['daily_counts']:
+        dates = sorted(data['trends']['daily_counts'].keys())
+        response_lines.extend([
+            "\nTrend Analysis:",
+            f"Report dates: {dates[0]} to {dates[-1]}",
+            f"Peak daily reports: {max(data['trends']['daily_counts'].values())}"
+        ])
+    
+    return "\n".join(response_lines)
+
+def parse_parameters(event):
+    """
+    Parse parameters from Bedrock Agent event
+    """
+    logger.info(f"Parsing parameters from event: {json.dumps(event)}")
+    
+    parameters = {}
+    if 'parameters' in event:
+        for param in event['parameters']:
+            name = param.get('name')
+            value = param.get('value')
+            if name and value is not None:
+                parameters[name] = value
+    
+    product_name = parameters.get('product_name')
+    if not product_name:
+        raise ValueError("Product name is required")
+    
+    try:
+        time_period = int(parameters.get('time_period', 6))
+    except (TypeError, ValueError):
+        time_period = 6
+    
+    try:
+        signal_threshold = float(parameters.get('signal_threshold', 2.0))
+    except (TypeError, ValueError):
+        signal_threshold = 2.0
+    
+    return product_name, time_period, signal_threshold
+
+def create_response(event, result):
+    """
+    Create a properly formatted response for Bedrock Agent
+    """
+    return {
+        "response": {
+            "actionGroup": event["actionGroup"],
+            "function": event["function"],
+            "functionResponse": {
+                "responseBody": {
+                    "TEXT": {
+                        "body": result
+                    }
+                }
+            }
+        }
+    }
 
 def lambda_handler(event, context):
     """
@@ -143,56 +222,43 @@ def lambda_handler(event, context):
     try:
         logger.info(f"Received event: {json.dumps(event)}")
         
-        # Parse input parameters
-        body = json.loads(event.get('body', '{}'))
-        product_name = body.get('product_name')
-        time_period = int(body.get('time_period', 6))  # Default 6 months
-        signal_threshold = float(body.get('signal_threshold', 2.0))
+        try:
+            product_name, time_period, signal_threshold = parse_parameters(event)
+        except ValueError as e:
+            return create_response(event, str(e))
         
-        if not product_name:
-            return {
-                'statusCode': 400,
-                'body': json.dumps({
-                    'error': 'Product name is required'
-                })
-            }
-        
-        # Calculate date range
         end_date = datetime.now()
         start_date = end_date - timedelta(days=30*time_period)
         
-        # Query OpenFDA API
         data = query_openfda(
             product_name,
             start_date.strftime('%Y%m%d'),
             end_date.strftime('%Y%m%d')
         )
         
-        # Analyze trends
-        trends = analyze_trends(data)
+        if not data['results']:
+            return create_response(
+                event,
+                f"No adverse event reports found for {product_name} in the specified time period."
+            )
         
-        # Detect signals
+        trends = analyze_trends(data)
         signals = detect_signals(data, signal_threshold)
         
-        return {
-            'statusCode': 200,
-            'body': json.dumps({
-                'product_name': product_name,
-                'analysis_period': {
-                    'start': start_date.isoformat(),
-                    'end': end_date.isoformat()
-                },
-                'total_reports': len(data['results']),
-                'trends': trends,
-                'signals': signals[:10]  # Top 10 signals
-            })
+        response_data = {
+            'product_name': product_name,
+            'analysis_period': {
+                'start': start_date.isoformat(),
+                'end': end_date.isoformat()
+            },
+            'total_reports': len(data['results']),
+            'trends': trends,
+            'signals': signals[:10]
         }
         
+        return create_response(event, format_response(response_data))
+        
+    except urllib.error.HTTPError as e:
+        return create_response(event, f"OpenFDA API error: {e.reason}")
     except Exception as e:
-        logger.error(f"Error processing request: {str(e)}")
-        return {
-            'statusCode': 500,
-            'body': json.dumps({
-                'error': f"Internal server error: {str(e)}"
-            })
-        }
+        return create_response(event, f"An error occurred while analyzing adverse events: {str(e)}")

@@ -1,323 +1,135 @@
 # Safety Signal Detection Agent
 
-## 1. Summary
+This agent helps medical professionals detect and evaluate safety signals from adverse event reports using OpenFDA data, PubMed literature, and FDA label information.
 
-Detect and evaluate safety signals from adverse event reports using OpenFDA, PubMed, and FDA Label data. This agent helps pharmacovigilance professionals analyze adverse event trends, detect potential safety signals using statistical methods, gather supporting evidence, and generate comprehensive reports with visualizations to answer questions like "Are there any emerging safety concerns for this drug?"
+## Overview
 
-## 2. Agent Details
+The Safety Signal Detection Agent provides automated analysis of adverse event data and evidence assessment for potential safety signals. It combines data from multiple authoritative sources to provide comprehensive safety signal detection and evaluation.
 
-### 2.1. Instructions
+## Features
 
-> You are an expert pharmacovigilance professional specializing in safety signal detection and evaluation. Help users analyze adverse event data and detect potential safety signals using OpenFDA data and supporting evidence from literature.
->
-> You have access to the following tools:
->
-> - analyze_adverse_events: Analyze adverse events from OpenFDA data, perform trend analysis, and detect safety signals using PRR calculation.
-> - assess_evidence: Gather and assess evidence for detected signals using PubMed literature and FDA label information.
-> - generate_report: Create comprehensive reports with visualizations of the analysis results.
->
-> Analysis Process
->
-> 1. Begin by understanding what safety analysis the user is seeking.
-> 2. Use analyze_adverse_events to retrieve and analyze adverse event data for the specified product.
-> 3. Present initial findings and highlight any detected safety signals.
-> 4. Use assess_evidence to gather supporting evidence for significant signals.
-> 5. Use generate_report to create a comprehensive report with visualizations.
-> 6. Present findings with appropriate pharmacovigilance context.
->
-> Response Guidelines
->
-> - Provide scientifically accurate analysis based on available data
-> - Explain pharmacovigilance concepts in accessible language while maintaining precision
-> - Include relevant visualizations and statistical analysis
-> - Highlight the strength of evidence for detected signals
-> - Make appropriate interpretations considering data limitations
-> - Suggest follow-up actions when warranted
+- **Adverse Event Analysis**: Analyzes OpenFDA data to detect safety signals using Proportional Reporting Ratio (PRR)
+- **Evidence Assessment**: Gathers supporting evidence from PubMed literature and FDA labels
+- **Report Generation**: Creates comprehensive reports with analysis results and evidence summaries
 
-### 2.2. Guardrails
+## Architecture
 
-| Content | Input Filter | Output Filter |
-| ---- | ---- | ---- |
-| Profanity | HIGH | HIGH |
-| Sexual | NONE | NONE |
-| Violence | NONE | NONE |
-| Hate | NONE | NONE |
-| Insults | NONE | NONE |
-| Misconduct | NONE | NONE |
-| Prompt Attack | HIGH | NONE |
+The agent is implemented using three AWS Lambda functions:
 
-### 2.3. Tools
+1. **AdverseEventAnalysis**: Retrieves and analyzes adverse event data from OpenFDA
+2. **EvidenceAssessment**: Searches PubMed and FDA labels for supporting evidence
+3. **ReportGeneration**: Generates text reports and stores them in S3
 
-```json
-{
-  name: "analyze_adverse_events",
-  description: "Analyze adverse events and detect safety signals using OpenFDA data",
-  inputSchema: {
-    type: "object",
-    properties: {
-      product_name: { type: "string", description: "Name of the product to analyze"},
-      time_period: { type: "integer", description: "Analysis period in months (default: 6)"},
-      signal_threshold: { type: "number", description: "PRR threshold for signal detection (default: 2.0)"}
-    },
-    required: ["product_name"]
-  }
-},
-{
-  name: "assess_evidence",
-  description: "Gather and assess evidence for safety signals using PubMed and FDA label data",
-  inputSchema: {
-    type: "object",
-    properties: {
-      product_name: { type: "string", description: "Product name"},
-      adverse_event: { type: "string", description: "Adverse event term to assess"},
-      include_pubmed: { type: "boolean", description: "Include PubMed literature search"},
-      include_label: { type: "boolean", description: "Include FDA label information"}
-    },
-    required: ["product_name", "adverse_event"]
-  }
-},
-{
-  name: "generate_report",
-  description: "Generate comprehensive safety signal detection report with visualizations",
-  inputSchema: {
-    type: "object",
-    properties: {
-      analysis_results: { type: "object", description: "Results from adverse event analysis"},
-      evidence_data: { type: "object", description: "Evidence assessment data"},
-      include_graphs: { type: "boolean", description: "Include data visualizations"}
-    },
-    required: ["analysis_results", "evidence_data"]
-  }
-}
+## Usage
+
+The agent can be used through natural language interactions. Here are some example prompts and their expected outputs:
+
+### Basic Analysis
+```
+Input: "Analyze adverse events for metformin over the past 6 months"
+
+Output:
+Analysis Results for metformin
+Analysis Period: 2025-01-01 to 2025-06-30
+Total Reports: 100
+
+Top Safety Signals:
+- Acute kidney injury: PRR=39.0, Reports=39 (95% CI: 0.294-0.486)
+- Lactic acidosis: PRR=36.0, Reports=36 (95% CI: 0.266-0.454)
+- Headache: PRR=19.0, Reports=19 (95% CI: 0.113-0.267)
+...
+
+Trend Analysis:
+Report dates: 20250106 to 20250328
+Peak daily reports: 17
 ```
 
-## 3. Installation
+### Evidence Assessment
+```
+Input: "Assess evidence for lactic acidosis with metformin"
 
-1. (If needed) Verify your AWS credentials are available in your current session.
+Output:
+Evidence Assessment for metformin - lactic acidosis
 
-`aws sts get-caller-identity`
+Literature Evidence:
+- Title: Risk factors for metformin-associated lactic acidosis (2024, PMID: 12345678)
+  Abstract: This study identified key risk factors...
 
-2. (If needed) Create a Amazon S3 bucket to store the agent template.
+FDA Label Information:
+Boxed Warnings:
+WARNING: LACTIC ACIDOSIS...
 
-`aws s3 mb s3://YOUR_S3_BUCKET_NAME`
-
-3. Navigate to the `Safety-Signal-Detection-Agent` folder
-
-`cd agents_catalog/22-Safety-Signal-Detection-Agent`
-
-4. Package and deploy the agent template
-
-```bash
-export BUCKET_NAME="<REPLACE>"
-export NAME="<REPLACE>"
-export REGION="<REPLACE>"
-export BEDROCK_AGENT_SERVICE_ROLE_ARM="<REPLACE>"
-
-aws cloudformation package --template-file "safety-signal-detection-agent-cfn.yaml" \
-  --s3-bucket $BUCKET_NAME \
-  --output-template-file "safety-signal-detection-agent-cfn-packaged.yaml"
-aws cloudformation deploy --template-file "safety-signal-detection-agent-cfn-packaged.yaml" \
-  --capabilities CAPABILITY_IAM \
-  --stack-name $NAME \
-  --region $REGION \
-  --parameter-overrides \
-  AgentAliasName="Latest" \
-  AgentIAMRoleArn=$BEDROCK_AGENT_SERVICE_ROLE_ARM
-rm safety-signal-detection-agent-cfn-packaged.yaml
+Causality Assessment:
+Evidence Level: Strong
+Causality Score: 5
+Assessment Date: 2025-06-30T10:15:00
 ```
 
-## 4. Usage Examples
-
-### Example 1: Basic Safety Signal Analysis
-**User Query:** "Analyze adverse events for metformin in the last 6 months"
-
-**Agent Response:**
+### Report Generation
 ```
-Analysis Results for Metformin (Last 6 Months)
-=============================================
+Input: "Generate a safety report for metformin adverse events"
 
-SUMMARY:
-- Total Reports: 2,543
-- Serious Events: 892 (35.1%)
-- Death Reports: 124 (4.9%)
-
-TOP ADVERSE EVENTS (by PRR):
-1. Lactic acidosis (PRR: 4.2)
-   - Reports: 156
-   - Statistical Significance: p < 0.001
-2. Diarrhea (PRR: 2.8)
-   - Reports: 423
-   - Statistical Significance: p < 0.001
-3. Vitamin B12 deficiency (PRR: 2.3)
-   - Reports: 89
-   - Statistical Significance: p < 0.01
-
-[Time Series Graph of Report Counts]
-[Bar Chart of Top Adverse Events]
-[Heat Map of Signal Strength]
-
-EVIDENCE ASSESSMENT:
-- Lactic acidosis: Known risk, listed in current labeling
-- Diarrhea: Known common side effect
-- Vitamin B12 deficiency: Documented in literature, monitoring recommended
-
-Report URL: [Link to detailed report]
+Output:
+Report generated and uploaded to s3://safety-signal-detection-reports/reports/metformin/signal_detection_20250630_104200.txt
 ```
 
-### Example 2: Evidence Assessment
-**User Query:** "Evaluate evidence for lactic acidosis with metformin"
-
-**Agent Response:**
+### Advanced Queries
 ```
-Evidence Assessment: Metformin and Lactic Acidosis
-================================================
-
-LITERATURE REVIEW:
-- 15 relevant publications identified
-- 3 systematic reviews
-- 4 observational studies
-- 8 case reports
-
-KEY FINDINGS:
-1. Systematic Reviews:
-   - Rare but serious adverse event
-   - Risk factors identified
-   - Incidence: 4.3 cases per 100,000 patient-years
-
-2. FDA Label Status:
-   - Listed as boxed warning
-   - Contraindicated in severe renal impairment
-   - Risk factors and monitoring requirements specified
-
-3. Biological Plausibility:
-   - Mechanism well understood
-   - Related to renal clearance
-   - Risk factors align with pharmacology
-
-[Forest Plot of Study Results]
-[Evidence Quality Assessment Chart]
-
-Report URL: [Link to detailed report]
+Input: "Analyze metformin adverse events for the past 12 months"
+Input: "Compare adverse events between 2024 and 2025"
+Input: "Assess evidence for both kidney injury and lactic acidosis with metformin"
 ```
 
-### Example 3: Trend Analysis
-**User Query:** "Show adverse event trends for aspirin over the past year"
+## Implementation Details
 
-**Agent Response:**
-```
-Adverse Event Trends: Aspirin (Last 12 Months)
-============================================
+### Adverse Event Analysis
 
-TREND ANALYSIS:
-- Overall reporting trend: Stable
-- Seasonal variation detected
-- No significant new signals identified
+- Uses OpenFDA API to retrieve adverse event reports
+- Calculates PRR for signal detection
+- Performs trend analysis over specified time periods
+- Identifies top adverse events by frequency and severity
 
-QUARTERLY BREAKDOWN:
-Q1: 1,234 reports
-Q2: 1,456 reports
-Q3: 1,345 reports
-Q4: 1,289 reports
+### Evidence Assessment
 
-[Time Series Plot with Trend Line]
-[Seasonal Decomposition Plot]
-[Signal Detection Heat Map]
+- Searches PubMed for relevant literature
+- Retrieves FDA label information
+- Performs basic causality assessment
+- Combines evidence from multiple sources
 
-KEY OBSERVATIONS:
-1. Consistent reporting pattern
-2. Expected seasonal increase in Q2
-3. No emerging safety signals
+### Report Generation
 
-Report URL: [Link to detailed report]
-```
+- Creates standardized text reports
+- Includes analysis results and evidence summaries
+- Stores reports in S3 for future reference
 
-## Common Use Cases
+## Dependencies
 
-### For Signal Detection
-- "Analyze adverse events for [drug name]"
-- "Check for safety signals in [time period]"
-- "Compare adverse event rates between products"
+- AWS Lambda (Python 3.12)
+- Amazon Bedrock
+- OpenFDA API
+- PubMed E-utilities
+- AWS S3 (for report storage)
 
-### For Evidence Assessment
-- "Evaluate evidence for [adverse event] with [drug]"
-- "Check literature support for signal"
-- "Assess biological plausibility of [adverse event]"
+## Deployment
 
-### For Trend Analysis
-- "Show adverse event trends for [drug]"
-- "Track reporting patterns over time"
-- "Analyze seasonal variations in reports"
+The agent is deployed using AWS CloudFormation. The template creates:
 
-### For Report Generation
-- "Generate safety report for [drug]"
-- "Create visualization of signal detection results"
-- "Summarize evidence for detected signals"
+- Amazon Bedrock Agent
+- Lambda functions for each action group
+- Required IAM roles and policies
+- S3 bucket for report storage
 
-## 5. Troubleshooting
+## Limitations
 
-### Common Issues and Solutions
+- Limited to publicly available data
+- Basic statistical signal detection only
+- Preliminary recommendations require expert review
+- API rate limits may affect performance
 
-#### Issue: "No adverse events found"
-**Possible Causes:**
-- Drug name misspelled
-- No reports in specified time period
-- API connection issues
+## Contributing
 
-**Solutions:**
-- Check drug name spelling
-- Extend time period
-- Verify API connectivity
+See [CONTRIBUTING.md](../../CONTRIBUTING.md) for details on how to contribute to this project.
 
-#### Issue: "Error accessing OpenFDA API"
-**Possible Causes:**
-- API key issues
-- Rate limiting
-- Network connectivity
+## License
 
-**Solutions:**
-- Verify API key
-- Implement rate limiting
-- Check network connection
-
-#### Issue: "Report generation failed"
-**Possible Causes:**
-- Invalid data format
-- Missing required information
-- S3 permissions
-
-**Solutions:**
-- Verify data structure
-- Provide all required fields
-- Check S3 access
-
-## 6. API Rate Limiting and Best Practices
-
-### OpenFDA API Guidelines
-
-#### Rate Limiting
-- Standard API key: 240 requests per minute
-- No API key: 1 request per second
-- Implement exponential backoff for failures
-
-#### Best Practices
-- Cache frequently accessed data
-- Use efficient query parameters
-- Handle rate limits gracefully
-- Monitor API response times
-
-### Data Usage and Attribution
-
-When using data retrieved through this agent:
-
-1. **Cite OpenFDA**: Include appropriate citations
-2. **Respect data limitations**: Acknowledge reporting biases
-3. **Use appropriate disclaimers**: Note preliminary nature of signals
-4. **Follow up appropriately**: Verify signals through proper channels
-
-### Recommended Citation
-
-```
-This analysis uses data from the FDA Adverse Event Reporting System (FAERS) 
-database through the OpenFDA API. The data may be incomplete or contain 
-reporting biases. All findings should be verified through appropriate 
-pharmacovigilance procedures.
+This project is licensed under the Apache-2.0 License - see the [LICENSE](../../LICENSE) file for details.

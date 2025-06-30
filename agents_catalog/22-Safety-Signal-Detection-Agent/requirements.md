@@ -31,12 +31,7 @@
   - Signal detection results
   - Evidence summary
   - Recommended actions
-  - Visual representations:
-    - Time series graphs of adverse event trends
-    - Bar charts of top adverse events
-    - Heat maps of signal strength
-    - Statistical plots (e.g., forest plots for PRR analysis)
-- Reports should be clear and scientifically accurate with proper data visualization
+- Reports should be clear and scientifically accurate
 
 ### FR4: API Integration
 

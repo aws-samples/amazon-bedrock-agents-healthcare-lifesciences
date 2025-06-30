@@ -1,197 +1,214 @@
-# Design for Safety Signal Detection Agent
+# Safety Signal Detection Agent Design
 
-## Architecture Overview
+## System Architecture
 
-The Safety Signal Detection Agent follows the standard AWS Healthcare and Life Sciences Agent Toolkit pattern with:
+### Components
 
-- **Amazon Bedrock Agent**: Core conversational AI using Claude 3.5 Sonnet v2
-- **Action Groups**: Lambda functions that interface with OpenFDA, PubMed, and FDA Label APIs
-- **CloudFormation Template**: Infrastructure as Code for deployment
-- **IAM Roles**: Secure access management
+1. **Amazon Bedrock Agent**
+   - Handles natural language interactions
+   - Routes requests to appropriate action groups
+   - Manages conversation context and flow
 
-## Component Design
+2. **Action Groups**
+   - **AdverseEventAnalysis**
+     - Processes OpenFDA data
+     - Performs statistical analysis
+     - Detects safety signals
+   - **EvidenceAssessment**
+     - Searches medical literature
+     - Retrieves label information
+     - Evaluates evidence strength
+   - **ReportGeneration**
+     - Generates standardized reports
+     - Stores reports in S3
 
-### 1. Bedrock Agent Configuration
+3. **External APIs**
+   - OpenFDA API for adverse event data
+   - PubMed E-utilities for literature search
+   - FDA Label API for product information
 
-**Model**: `anthropic.claude-3-5-sonnet-20241022-v2:0` (Claude 3.5 Sonnet v2)
+### Data Flow
 
-**Instructions**: Specialized prompt for safety signal detection and pharmacovigilance
+```mermaid
+sequenceDiagram
+    participant User
+    participant Agent as Bedrock Agent
+    participant AEA as AdverseEventAnalysis
+    participant EA as EvidenceAssessment
+    participant RG as ReportGeneration
+    participant OpenFDA
+    participant PubMed
+    participant S3
 
-**Action Groups**:
-- `AdverseEventAnalysis`: Handles OpenFDA data retrieval and analysis
-- `EvidenceAssessment`: Manages PubMed and FDA Label data integration
-- `ReportGeneration`: Handles report creation with visualizations
+    User->>Agent: Request analysis
+    Agent->>AEA: Analyze adverse events
+    AEA->>OpenFDA: Query adverse events
+    OpenFDA-->>AEA: Return data
+    AEA-->>Agent: Return analysis results
+    
+    Agent->>EA: Assess evidence
+    EA->>PubMed: Search literature
+    PubMed-->>EA: Return publications
+    EA-->>Agent: Return evidence summary
+    
+    Agent->>RG: Generate report
+    RG->>S3: Store report
+    S3-->>RG: Return report URL
+    RG-->>Agent: Return report location
+    Agent-->>User: Present results
+```
 
-### 2. Action Group: AdverseEventAnalysis
+## Action Group Details
 
-**Purpose**: Analyze adverse events and detect safety signals
+### AdverseEventAnalysis
 
-**Lambda Function**: `adverse-event-analysis-function`
+#### Input Parameters
+- `product_name` (string, required): Name of the product to analyze
+- `time_period` (integer, optional): Analysis period in months (default: 6)
+- `signal_threshold` (float, optional): PRR threshold for signal detection (default: 2.0)
 
-**API Schema**:
+#### Processing Steps
+1. Query OpenFDA for adverse event reports
+2. Calculate reporting frequencies
+3. Perform PRR analysis
+4. Identify significant signals
+5. Generate trend analysis
+
+#### Output Format
 ```json
 {
-  "name": "analyze_adverse_events",
-  "description": "Analyze adverse events and detect safety signals",
-  "inputSchema": {
-    "type": "object",
-    "properties": {
-      "product_name": { "type": "string", "description": "Product name to analyze" },
-      "time_period": { "type": "integer", "description": "Analysis period in months (default: 6)" },
-      "signal_threshold": { "type": "number", "description": "PRR threshold for signal detection" }
-    },
-    "required": ["product_name"]
+  "product_name": "string",
+  "analysis_period": {
+    "start": "datetime",
+    "end": "datetime"
+  },
+  "total_reports": "integer",
+  "signals": [
+    {
+      "event": "string",
+      "count": "integer",
+      "prr": "float",
+      "confidence_interval": {
+        "lower": "float",
+        "upper": "float"
+      }
+    }
+  ],
+  "trends": {
+    "daily_counts": "object",
+    "moving_average": "object"
   }
 }
 ```
 
-### 3. Action Group: EvidenceAssessment
+### EvidenceAssessment
 
-**Purpose**: Gather and assess evidence for detected signals
+#### Input Parameters
+- `product_name` (string, required): Product name
+- `adverse_event` (string, required): Adverse event term
+- `include_pubmed` (boolean, optional): Include PubMed search (default: true)
+- `include_label` (boolean, optional): Include FDA label info (default: true)
 
-**Lambda Function**: `evidence-assessment-function`
+#### Processing Steps
+1. Search PubMed for relevant literature
+2. Retrieve FDA label information
+3. Assess causality based on evidence
+4. Combine evidence sources
 
-**API Schema**:
+#### Output Format
 ```json
 {
-  "name": "assess_evidence",
-  "description": "Gather and assess evidence for safety signals",
-  "inputSchema": {
-    "type": "object",
-    "properties": {
-      "product_name": { "type": "string", "description": "Product name" },
-      "adverse_event": { "type": "string", "description": "Adverse event term" },
-      "include_pubmed": { "type": "boolean", "description": "Include PubMed literature" },
-      "include_label": { "type": "boolean", "description": "Include FDA label information" }
-    },
-    "required": ["product_name", "adverse_event"]
+  "product_name": "string",
+  "adverse_event": "string",
+  "literature": [
+    {
+      "title": "string",
+      "abstract": "string",
+      "year": "string",
+      "pmid": "string"
+    }
+  ],
+  "label_info": {
+    "warnings": ["string"],
+    "adverse_reactions": ["string"],
+    "boxed_warnings": ["string"],
+    "contraindications": ["string"]
+  },
+  "causality_assessment": {
+    "evidence_level": "string",
+    "causality_score": "integer",
+    "assessment_date": "datetime"
   }
 }
 ```
 
-### 4. Action Group: ReportGeneration
+### ReportGeneration
 
-**Purpose**: Generate comprehensive safety signal reports with visualizations
+#### Input Parameters
+- `analysis_results` (string, required): JSON string of analysis results
+- `evidence_data` (string, required): JSON string of evidence data
 
-**Lambda Function**: `report-generation-function`
+#### Processing Steps
+1. Parse input JSON data
+2. Generate formatted report
+3. Upload report to S3
+4. Return report location
 
-**API Schema**:
+#### Output Format
 ```json
 {
-  "name": "generate_report",
-  "description": "Generate safety signal detection report",
-  "inputSchema": {
-    "type": "object",
-    "properties": {
-      "analysis_results": { "type": "object", "description": "Analysis results" },
-      "evidence_data": { "type": "object", "description": "Evidence assessment data" },
-      "include_graphs": { "type": "boolean", "description": "Include visualizations" }
-    },
-    "required": ["analysis_results", "evidence_data"]
-  }
+  "report_url": "string",
+  "timestamp": "datetime"
 }
-```
-
-## Data Flow
-
-### Analysis Flow
-1. User requests safety signal analysis for a product
-2. Agent processes request and calls `analyze_adverse_events`
-3. Lambda function queries OpenFDA API and performs analysis
-4. For detected signals, agent calls `assess_evidence`
-5. Evidence assessment function gathers supporting data
-6. Agent calls `generate_report` to create final report
-7. Report URL is returned to user
-
-## API Integration Details
-
-### OpenFDA API Integration
-```
-GET https://api.fda.gov/drug/event.json
-Parameters:
-- search: Drug name and date range
-- count: Adverse event counts
-- limit: Result size
-```
-
-### PubMed API Integration
-```
-GET https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi
-Parameters:
-- db: pubmed
-- term: Search terms
-- retmax: Maximum results
-```
-
-### FDA Label API Integration
-```
-GET https://api.fda.gov/drug/label.json
-Parameters:
-- search: Drug name
-- limit: Result size
 ```
 
 ## Error Handling
 
-### API Error Scenarios
-1. **API Rate Limits**: Implement exponential backoff
-2. **Invalid Product Names**: Return user-friendly error message
-3. **No Data Available**: Handle empty results gracefully
-4. **Network Issues**: Retry with appropriate timeouts
+### API Errors
+- Retry logic for transient failures
+- Graceful degradation for service unavailability
+- Clear error messages for invalid inputs
+
+### Rate Limiting
+- Respect API rate limits
+- Implement backoff strategies
+- Queue requests when necessary
+
+### Data Quality
+- Validate input parameters
+- Handle missing or incomplete data
+- Provide data quality indicators
 
 ## Security Considerations
 
-### IAM Permissions
-- Lambda execution role with minimal required permissions
-- CloudWatch Logs access for monitoring
-- S3 access for report storage
+### Authentication
+- AWS IAM roles for Lambda functions
+- API keys for external services
+- S3 bucket policies
 
-### Data Handling
-- Secure storage of API keys in AWS Secrets Manager
-- HTTPS for all API communications
-- Encryption for stored reports
+### Data Protection
+- Encryption at rest for stored reports
+- Secure API communications
+- Input sanitization
 
-## Performance Considerations
-
-### Optimization
-- Parallel API requests where possible
-- Efficient data processing
-- Response caching for frequent queries
+### Access Control
+- Role-based access to reports
+- Audit logging
+- Resource-level permissions
 
 ## Monitoring and Logging
 
 ### CloudWatch Metrics
-- API success/failure rates
-- Processing times
-- Error rates
+- API latency and success rates
+- Lambda function performance
+- Error rates and types
 
-### Logging Strategy
-- Structured logging
-- Request/response tracking
-- Error monitoring
+### Logging
+- Structured logging format
+- Log levels for debugging
+- Request tracing
 
-## Deployment Architecture
-
-### CloudFormation Resources
-- `AWS::Bedrock::Agent`: Main agent configuration
-- `AWS::Bedrock::AgentAlias`: Agent alias for versioning
-- `AWS::Lambda::Function`: Three functions for action groups
-- `AWS::IAM::Role`: Lambda execution roles
-- `AWS::S3::Bucket`: Report storage
-- `AWS::Logs::LogGroup`: CloudWatch log groups
-
-### Parameters
-- `AgentName`: Name for the Bedrock agent
-- `AgentAliasName`: Alias name (default: "Latest")
-- `AgentIAMRoleArn`: IAM role for Bedrock agent
-- `S3BucketName`: Bucket for report storage
-- `OpenFDAApiKey`: API key for OpenFDA (optional)
-
-## Future Enhancements
-
-### Potential Improvements
-1. **Advanced Analytics**: Implement additional statistical methods
-2. **Real-time Monitoring**: Add continuous signal detection
-3. **Interactive Visualizations**: Enhanced data exploration
-4. **Multi-product Analysis**: Comparative safety analysis
-5. **Automated Alerts**: Signal threshold notifications
+### Alerts
+- Error rate thresholds
+- API availability
+- Resource utilization

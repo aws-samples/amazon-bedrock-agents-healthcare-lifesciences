@@ -3,249 +3,131 @@ import logging
 import os
 import boto3
 from datetime import datetime
-import matplotlib.pyplot as plt
-import seaborn as sns
-import pandas as pd
-import io
-import base64
 
 # Configure logging
 logger = logging.getLogger()
 logger.setLevel(os.environ.get('LOG_LEVEL', 'INFO'))
 
-# Configure matplotlib for non-interactive backend
-plt.switch_backend('agg')
-
-def create_time_series_plot(trends):
+def generate_text_report(analysis_results, evidence_data):
     """
-    Create time series plot of adverse event trends
+    Generate text report
     """
-    plt.figure(figsize=(12, 6))
+    report_lines = []
     
-    dates = pd.to_datetime(list(trends['daily_counts'].keys()))
-    counts = list(trends['daily_counts'].values())
-    ma = list(trends['moving_average'].values())
+    # Analysis Summary
+    report_lines.extend([
+        "Safety Signal Detection Report",
+        "===========================\n",
+        f"Product: {analysis_results['product_name']}",
+        f"Analysis Period: {analysis_results['analysis_period']['start']} to {analysis_results['analysis_period']['end']}",
+        f"Total Reports: {analysis_results['total_reports']}\n",
+    ])
     
-    plt.plot(dates, counts, label='Daily Reports', alpha=0.5)
-    plt.plot(dates, ma, label='7-day Moving Average', linewidth=2)
+    # Signal Detection Results
+    report_lines.append("Signal Detection Results")
+    report_lines.append("----------------------")
+    for signal in analysis_results['signals']:
+        ci = signal['confidence_interval']
+        ci_text = f" (95% CI: {ci['lower']}-{ci['upper']})" if ci else ""
+        report_lines.append(
+            f"- {signal['event']}: PRR={signal['prr']}, Reports={signal['count']}{ci_text}"
+        )
+    report_lines.append("")
     
-    plt.title('Adverse Event Reports Over Time')
-    plt.xlabel('Date')
-    plt.ylabel('Number of Reports')
-    plt.legend()
-    plt.grid(True)
-    plt.xticks(rotation=45)
-    plt.tight_layout()
+    # Trend Analysis
+    if analysis_results['trends']['daily_counts']:
+        dates = sorted(analysis_results['trends']['daily_counts'].keys())
+        report_lines.extend([
+            "Trend Analysis",
+            "--------------",
+            f"Report dates: {dates[0]} to {dates[-1]}",
+            f"Peak daily reports: {max(analysis_results['trends']['daily_counts'].values())}\n"
+        ])
     
-    # Convert plot to base64 string
-    buffer = io.BytesIO()
-    plt.savefig(buffer, format='png')
-    buffer.seek(0)
-    image_png = buffer.getvalue()
-    buffer.close()
-    plt.close()
+    # Evidence Assessment
+    report_lines.extend([
+        "Evidence Assessment",
+        "------------------"
+    ])
     
-    return base64.b64encode(image_png).decode()
-
-def create_signal_bar_chart(signals):
-    """
-    Create bar chart of top adverse events by PRR
-    """
-    plt.figure(figsize=(12, 6))
-    
-    events = [s['event'] for s in signals]
-    prrs = [s['prr'] for s in signals]
-    
-    plt.barh(events, prrs)
-    plt.title('Top Adverse Events by PRR')
-    plt.xlabel('PRR Value')
-    plt.ylabel('Adverse Event')
-    plt.grid(True)
-    plt.tight_layout()
-    
-    # Convert plot to base64 string
-    buffer = io.BytesIO()
-    plt.savefig(buffer, format='png')
-    buffer.seek(0)
-    image_png = buffer.getvalue()
-    buffer.close()
-    plt.close()
-    
-    return base64.b64encode(image_png).decode()
-
-def create_signal_heatmap(signals):
-    """
-    Create heatmap of signal strength
-    """
-    plt.figure(figsize=(12, 8))
-    
-    # Create matrix of signal data
-    data = {
-        'event': [s['event'] for s in signals],
-        'count': [s['count'] for s in signals],
-        'prr': [s['prr'] for s in signals]
-    }
-    df = pd.DataFrame(data)
-    
-    # Pivot data for heatmap
-    pivot_data = df.pivot_table(
-        values=['count', 'prr'],
-        index='event',
-        aggfunc='first'
-    )
-    
-    # Create heatmap
-    sns.heatmap(
-        pivot_data,
-        annot=True,
-        fmt='.2f',
-        cmap='RdYlBu_r',
-        center=0
-    )
-    
-    plt.title('Signal Strength Heatmap')
-    plt.tight_layout()
-    
-    # Convert plot to base64 string
-    buffer = io.BytesIO()
-    plt.savefig(buffer, format='png')
-    buffer.seek(0)
-    image_png = buffer.getvalue()
-    buffer.close()
-    plt.close()
-    
-    return base64.b64encode(image_png).decode()
-
-def generate_html_report(analysis_results, evidence_data):
-    """
-    Generate HTML report with analysis results and visualizations
-    """
-    html_template = """
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Safety Signal Detection Report</title>
-            <style>
-                body {{ font-family: Arial, sans-serif; margin: 20px; }}
-                h1, h2 {{ color: #333; }}
-                .section {{ margin: 20px 0; }}
-                .visualization {{ margin: 20px 0; }}
-                table {{ border-collapse: collapse; width: 100%; }}
-                th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
-                th {{ background-color: #f5f5f5; }}
-            </style>
-    </head>
-    <body>
-        <h1>Safety Signal Detection Report</h1>
-        
-        <div class="section">
-            <h2>Analysis Summary</h2>
-            <p>Product: {product_name}</p>
-            <p>Analysis Period: {start_date} to {end_date}</p>
-            <p>Total Reports: {total_reports}</p>
-        </div>
-        
-        <div class="section">
-            <h2>Trend Analysis</h2>
-            <div class="visualization">
-                <img src="data:image/png;base64,{trend_plot}" alt="Trend Analysis">
-            </div>
-        </div>
-        
-        <div class="section">
-            <h2>Signal Detection Results</h2>
-            <div class="visualization">
-                <img src="data:image/png;base64,{signal_plot}" alt="Signal Analysis">
-            </div>
-            <div class="visualization">
-                <img src="data:image/png;base64,{heatmap}" alt="Signal Heatmap">
-            </div>
-        </div>
-        
-        <div class="section">
-            <h2>Evidence Assessment</h2>
-            <h3>Literature Evidence</h3>
-            {literature_summary}
-            
-            <h3>Label Information</h3>
-            {label_summary}
-            
-            <h3>Causality Assessment</h3>
-            {causality_summary}
-        </div>
-    </body>
-    </html>
-    """
-    
-    # Format literature summary
+    # Literature Evidence
     literature = evidence_data.get('literature', [])
-    literature_summary = "<ul>"
-    for article in literature:
-        literature_summary += f"""
-            <li>
-                <strong>{article['title']}</strong> ({article['year']})<br>
-                PMID: {article['pmid']}<br>
-                {article['abstract'][:300]}...
-            </li>
-        """
-    literature_summary += "</ul>"
+    if literature:
+        report_lines.append("\nLiterature Evidence:")
+        for article in literature:
+            report_lines.extend([
+                f"- {article['title']} ({article['year']}, PMID: {article['pmid']})",
+                f"  Abstract: {article['abstract'][:300]}..."
+            ])
+    else:
+        report_lines.append("\nNo relevant literature evidence found.")
     
-    # Format label summary
+    # Label Information
     label_info = evidence_data.get('label_info', {})
-    label_summary = "<ul>"
-    for category, items in label_info.items():
-        if items:
-            label_summary += f"<li><strong>{category.title()}:</strong><br>{items[0][:300]}...</li>"
-    label_summary += "</ul>"
+    if label_info:
+        report_lines.append("\nFDA Label Information:")
+        for category, items in label_info.items():
+            if items:
+                report_lines.extend([
+                    f"{category.title()}:",
+                    f"{items[0][:300]}..."
+                ])
+    else:
+        report_lines.append("\nNo FDA label information found.")
     
-    # Format causality summary
+    # Causality Assessment
     causality = evidence_data.get('causality_assessment', {})
-    causality_summary = f"""
-        <p><strong>Evidence Level:</strong> {causality.get('evidence_level', 'Unknown')}</p>
-        <p><strong>Causality Score:</strong> {causality.get('causality_score', 0)}</p>
-        <p><strong>Assessment Date:</strong> {causality.get('assessment_date', 'Unknown')}</p>
-    """
+    if causality:
+        report_lines.extend([
+            "\nCausality Assessment:",
+            f"Evidence Level: {causality.get('evidence_level', 'Unknown')}",
+            f"Causality Score: {causality.get('causality_score', 0)}",
+            f"Assessment Date: {causality.get('assessment_date', 'Unknown')}"
+        ])
     
-    # Generate visualizations
-    trend_plot = create_time_series_plot(analysis_results['trends'])
-    signal_plot = create_signal_bar_chart(analysis_results['signals'])
-    heatmap = create_signal_heatmap(analysis_results['signals'])
-    
-    # Fill template
-    report_html = html_template.format(
-        product_name=analysis_results['product_name'],
-        start_date=analysis_results['analysis_period']['start'],
-        end_date=analysis_results['analysis_period']['end'],
-        total_reports=analysis_results['total_reports'],
-        trend_plot=trend_plot,
-        signal_plot=signal_plot,
-        heatmap=heatmap,
-        literature_summary=literature_summary,
-        label_summary=label_summary,
-        causality_summary=causality_summary
-    )
-    
-    return report_html
+    return "\n".join(report_lines)
 
-def upload_to_s3(html_content, bucket_name, product_name):
+def upload_to_s3(report_text, bucket_name, product_name):
     """
-    Upload HTML report to S3
+    Upload report to S3 bucket
     """
     s3 = boto3.client('s3')
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    key = f"reports/{product_name}/signal_detection_{timestamp}.html"
-    
+    key = f"reports/{product_name}/signal_detection_{timestamp}.txt"
+
     try:
         s3.put_object(
             Bucket=bucket_name,
             Key=key,
-            Body=html_content,
-            ContentType='text/html'
+            Body=report_text,
+            ContentType='text/plain'
         )
         return f"s3://{bucket_name}/{key}"
     except Exception as e:
         logger.error(f"Error uploading to S3: {str(e)}")
         raise
+
+def parse_parameters(event):
+    """
+    Parse parameters from Bedrock Agent event
+    """
+    logger.info(f"Parsing parameters from event: {json.dumps(event)}")
+    
+    parameters = {}
+    if 'parameters' in event:
+        for param in event['parameters']:
+            name = param.get('name')
+            value = param.get('value')
+            if name and value is not None:
+                parameters[name] = value
+    
+    analysis_results = json.loads(parameters.get('analysis_results', '{}'))
+    evidence_data = json.loads(parameters.get('evidence_data', '{}'))
+    
+    if not analysis_results or not evidence_data:
+        raise ValueError("Analysis results and evidence data are required")
+    
+    return analysis_results, evidence_data
 
 def lambda_handler(event, context):
     """
@@ -254,52 +136,72 @@ def lambda_handler(event, context):
     try:
         logger.info(f"Received event: {json.dumps(event)}")
         
-        # Parse input parameters
-        body = json.loads(event.get('body', '{}'))
-        analysis_results = body.get('analysis_results')
-        evidence_data = body.get('evidence_data')
-        include_graphs = body.get('include_graphs', True)
-        
-        if not analysis_results or not evidence_data:
+        try:
+            analysis_results, evidence_data = parse_parameters(event)
+        except ValueError as e:
             return {
-                'statusCode': 400,
-                'body': json.dumps({
-                    'error': 'Analysis results and evidence data are required'
-                })
+                "response": {
+                    "actionGroup": event["actionGroup"],
+                    "function": event["function"],
+                    "functionResponse": {
+                        "responseBody": {
+                            "TEXT": {
+                                "body": str(e)
+                            }
+                        }
+                    }
+                }
             }
         
-        # Generate report
-        report_html = generate_html_report(analysis_results, evidence_data)
+        report_text = generate_text_report(analysis_results, evidence_data)
         
-        # Upload to S3
         bucket_name = os.environ.get('REPORT_BUCKET_NAME')
         if not bucket_name:
             return {
-                'statusCode': 500,
-                'body': json.dumps({
-                    'error': 'S3 bucket name not configured'
-                })
+                "response": {
+                    "actionGroup": event["actionGroup"],
+                    "function": event["function"],
+                    "functionResponse": {
+                        "responseBody": {
+                            "TEXT": {
+                                "body": "S3 bucket name not configured"
+                            }
+                        }
+                    }
+                }
             }
         
         report_url = upload_to_s3(
-            report_html,
+            report_text,
             bucket_name,
             analysis_results['product_name']
         )
         
         return {
-            'statusCode': 200,
-            'body': json.dumps({
-                'report_url': report_url,
-                'timestamp': datetime.now().isoformat()
-            })
+            "response": {
+                "actionGroup": event["actionGroup"],
+                "function": event["function"],
+                "functionResponse": {
+                    "responseBody": {
+                        "TEXT": {
+                            "body": f"Report generated and uploaded to {report_url}"
+                        }
+                    }
+                }
+            }
         }
         
     except Exception as e:
-        logger.error(f"Error processing request: {str(e)}")
         return {
-            'statusCode': 500,
-            'body': json.dumps({
-                'error': f"Internal server error: {str(e)}"
-            })
+            "response": {
+                "actionGroup": event["actionGroup"],
+                "function": event["function"],
+                "functionResponse": {
+                    "responseBody": {
+                        "TEXT": {
+                            "body": f"An error occurred while generating report: {str(e)}"
+                        }
+                    }
+                }
+            }
         }

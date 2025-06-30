@@ -1,4 +1,4 @@
-matplotlib==3.7.1
-seaborn==0.12.2
-pandas==2.1.0
-boto3==1.28.0
+matplotlib==3.10.3
+seaborn==0.13.2
+pandas==2.3.0
+numpy==1.26.4
