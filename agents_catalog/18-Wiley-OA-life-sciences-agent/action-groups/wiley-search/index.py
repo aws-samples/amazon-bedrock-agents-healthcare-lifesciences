@@ -50,8 +50,8 @@ def lambda_handler(event, context):
 
     action_response = {
         "actionGroup": event["actionGroup"],
-        "apiPath": event["apiPath"],
-        "httpMethod": event["httpMethod"],
+        "apiPath":"/get-articles-from-wiley", # manually provide missing value from function event format
+        "httpMethod": "get", # manually provide missing value from function event format
         "httpStatusCode": response_code,
         "responseBody": response_body,
     }
