@@ -59,7 +59,9 @@ def search_pubmed(product_name, adverse_event):
                 title = article.find('.//ArticleTitle').text
                 abstract = article.find('.//Abstract/AbstractText')
                 abstract_text = abstract.text if abstract is not None else "No abstract available"
-                year = article.find('.//PubDate/Year')
+                year = article.find('.//DateCompleted/Year')
+                if year is None:
+                    year = article.find('.//PubDate/Year')
                 year_text = year.text if year is not None else "Year not available"
                 
                 articles.append({
@@ -115,27 +117,29 @@ def assess_causality(literature, label_info):
     evidence_level = "Insufficient"
     causality_score = 0
     
-    # Check label information
+    # Check label information and literature evidence
     if label_info:
-        if any('boxed_warnings' in label_info):
+        if 'boxed_warnings' in label_info and label_info['boxed_warnings']:
             causality_score += 3
             evidence_level = "Strong"
-        elif any('warnings' in label_info):
+        elif 'warnings' in label_info and label_info['warnings']:
             causality_score += 2
             evidence_level = "Moderate"
-        elif any('adverse_reactions' in label_info):
+        elif 'adverse_reactions' in label_info and label_info['adverse_reactions']:
             causality_score += 1
             evidence_level = "Possible"
     
-    # Check literature evidence
+    # Check literature evidence and update evidence level
     if literature:
         num_articles = len(literature)
         if num_articles >= 5:
             causality_score += 2
-            evidence_level = max(evidence_level, "Moderate")
+            if evidence_level != "Strong":
+                evidence_level = "Moderate"
         elif num_articles >= 2:
             causality_score += 1
-            evidence_level = max(evidence_level, "Possible")
+            if evidence_level == "Insufficient":
+                evidence_level = "Moderate"
     
     return {
         'evidence_level': evidence_level,

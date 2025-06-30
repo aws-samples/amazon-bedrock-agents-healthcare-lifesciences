@@ -125,15 +125,15 @@ def generate_html_report(analysis_results, evidence_data):
     <html>
     <head>
         <title>Safety Signal Detection Report</title>
-        <style>
-            body { font-family: Arial, sans-serif; margin: 20px; }
-            h1, h2 { color: #333; }
-            .section { margin: 20px 0; }
-            .visualization { margin: 20px 0; }
-            table { border-collapse: collapse; width: 100%; }
-            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-            th { background-color: #f5f5f5; }
-        </style>
+            <style>
+                body {{ font-family: Arial, sans-serif; margin: 20px; }}
+                h1, h2 {{ color: #333; }}
+                .section {{ margin: 20px 0; }}
+                .visualization {{ margin: 20px 0; }}
+                table {{ border-collapse: collapse; width: 100%; }}
+                th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
+                th {{ background-color: #f5f5f5; }}
+            </style>
     </head>
     <body>
         <h1>Safety Signal Detection Report</h1>

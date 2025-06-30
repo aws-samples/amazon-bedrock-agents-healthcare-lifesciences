@@ -19,6 +19,8 @@ def calculate_prr(a, b, c, d):
     c: Number of reports with the adverse event
     d: Total number of reports
     """
+    if a == 0:
+        return None
     try:
         prr = (a/b)/(c/d)
         return prr
@@ -63,9 +65,13 @@ def analyze_trends(data):
     # Calculate moving average
     ma = daily_counts.rolling(window=7).mean()
     
+    # Convert timestamps to strings for JSON serialization
+    daily_counts_dict = {str(k): v for k, v in daily_counts.to_dict().items()}
+    ma_dict = {str(k): v for k, v in ma.to_dict().items()}
+    
     return {
-        'daily_counts': daily_counts.to_dict(),
-        'moving_average': ma.to_dict()
+        'daily_counts': daily_counts_dict,
+        'moving_average': ma_dict
     }
 
 def detect_signals(data, threshold=2.0):
