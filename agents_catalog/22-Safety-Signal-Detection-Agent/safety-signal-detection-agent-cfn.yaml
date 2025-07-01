@@ -78,7 +78,8 @@ Resources:
       Environment:
         Variables:
           LOG_LEVEL: "INFO"
-      Code: ./action-groups/adverse-event-analysis
+      Code: "action-groups/adverse-event-analysis"
+      PackageType: Zip
 
   AdverseEventAnalysisLambdaPermission:
     Type: AWS::Lambda::Permission
@@ -126,7 +127,8 @@ Resources:
       Environment:
         Variables:
           LOG_LEVEL: "INFO"
-      Code: ./action-groups/evidence-assessment
+      Code: "action-groups/evidence-assessment"
+      PackageType: Zip
 
   EvidenceAssessmentLambdaPermission:
     Type: AWS::Lambda::Permission
@@ -184,7 +186,8 @@ Resources:
         Variables:
           LOG_LEVEL: "INFO"
           REPORT_BUCKET_NAME: !Sub "${AWS::StackName}-${AWS::Region}-${AWS::AccountId}"
-      Code: ./action-groups/report-generation
+      Code: "action-groups/report-generation"
+      PackageType: Zip
 
   ReportGenerationLambdaPermission:
     Type: AWS::Lambda::Permission

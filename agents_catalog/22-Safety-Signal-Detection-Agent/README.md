@@ -81,42 +81,41 @@ This agent helps medical professionals detect and evaluate safety signals from a
 
 ## 3. Installation
 
-1. (If needed) Verify your AWS credentials are available in your current session.
-
-`aws sts get-caller-identity`
-
-2. (If needed) Create a Amazon S3 bucket to store the agent template.
-
-`aws s3 mb s3://YOUR_S3_BUCKET_NAME`
-
-3. Navigate to the `Safety-Signal-Detection-Agent` folder
-
-`cd agents_catalog/22-Safety-Signal-Detection-Agent`
-
-4. Package and deploy the agent template
-
-The CloudFormation template includes all Lambda function code, so you only need to deploy the template once:
+1. Verify your AWS credentials are available in your current session:
 
 ```bash
-export BUCKET_NAME="<REPLACE>"
-export NAME="<REPLACE>"
-export REGION="<REPLACE>"
-export BEDROCK_AGENT_SERVICE_ROLE_ARN="<REPLACE>"
-
-aws cloudformation package --template-file "safety-signal-detection-agent-cfn.yaml" \
-  --s3-bucket $BUCKET_NAME \
-  --output-template-file "safety-signal-detection-agent-cfn-packaged.yaml"
-aws cloudformation deploy --template-file "safety-signal-detection-agent-cfn-packaged.yaml" \
-  --capabilities CAPABILITY_IAM \
-  --stack-name $NAME \
-  --region $REGION \
-  --parameter-overrides \
-  AgentAliasName="Latest" \
-  AgentIAMRoleArn=$BEDROCK_AGENT_SERVICE_ROLE_ARN
-rm safety-signal-detection-agent-cfn-packaged.yaml
+aws sts get-caller-identity
 ```
 
-Note: All Lambda function code is included in the CloudFormation template using the `Code.ZipFile` property, so no additional Lambda deployment steps are required.
+2. Navigate to the `Safety-Signal-Detection-Agent` folder:
+
+```bash
+cd agents_catalog/22-Safety-Signal-Detection-Agent
+```
+
+3. Deploy the agent using the provided script:
+
+```bash
+# Set required environment variables
+export BUCKET_NAME="<YOUR_S3_BUCKET_NAME>"        # S3 bucket for Lambda function code
+export REGION="<YOUR_REGION>"                     # AWS region for deployment
+export BEDROCK_AGENT_SERVICE_ROLE_ARN="<YOUR_BEDROCK_AGENT_ROLE_ARN>"  # IAM role for Bedrock Agent
+
+# Run the deployment script
+./deploy.sh
+```
+
+The script will:
+- Package Lambda function code and upload to S3
+- Deploy the CloudFormation stack with all required resources
+- Create the Bedrock Agent with configured action groups
+
+Required Resources:
+- An S3 bucket in the target region
+- An IAM role for Bedrock Agent with appropriate permissions
+- AWS CLI configured with credentials having necessary permissions
+
+Note: The CloudFormation template uses relative paths to reference Lambda function code, which is automatically packaged and uploaded to S3 during deployment.
 
 ## 4. Usage Examples
 
