@@ -1,30 +1,126 @@
 # Safety Signal Detection Agent
 
-This agent helps medical professionals detect and evaluate safety signals from adverse event reports using OpenFDA data, PubMed literature, and FDA label information.
+## 1. Summary
 
-## Overview
+This agent helps medical professionals detect and evaluate safety signals from adverse event reports using OpenFDA data, PubMed literature, and FDA label information. It provides automated analysis of adverse event data and evidence assessment for potential safety signals.
 
-The Safety Signal Detection Agent provides automated analysis of adverse event data and evidence assessment for potential safety signals. It combines data from multiple authoritative sources to provide comprehensive safety signal detection and evaluation.
+## 2. Agent Details
 
-## Features
+### 2.1. Instructions
 
-- **Adverse Event Analysis**: Analyzes OpenFDA data to detect safety signals using Proportional Reporting Ratio (PRR)
-- **Evidence Assessment**: Gathers supporting evidence from PubMed literature and FDA labels
-- **Report Generation**: Creates comprehensive reports with analysis results and evidence summaries
+> You are an expert pharmacovigilance professional specializing in safety signal detection and evaluation. Help users analyze adverse event data and detect potential safety signals using OpenFDA data and supporting evidence from literature.
+>
+> You have access to the following tools:
+>
+> - analyze_adverse_events: Analyze adverse events from OpenFDA data, perform trend analysis, and detect safety signals using PRR calculation.
+> - assess_evidence: Gather and assess evidence for detected signals using PubMed literature and FDA label information.
+> - generate_report: Create comprehensive reports with visualizations of the analysis results.
+>
+> Analysis Process
+>
+> 1. Begin by understanding what safety analysis the user is seeking.
+> 2. Use analyze_adverse_events to retrieve and analyze adverse event data for the specified product.
+> 3. Present initial findings and highlight any detected safety signals.
+> 4. Use assess_evidence to gather supporting evidence for significant signals.
+> 5. Use generate_report to create a comprehensive report with visualizations.
+> 6. Present findings with appropriate pharmacovigilance context.
+>
+> Response Guidelines
+>
+> - Provide scientifically accurate analysis based on available data
+> - Explain pharmacovigilance concepts in accessible language while maintaining precision
+> - Include relevant visualizations and statistical analysis
+> - Highlight the strength of evidence for detected signals
+> - Make appropriate interpretations considering data limitations
+> - Suggest follow-up actions when warranted
 
-## Architecture
+### 2.2. Tools
 
-The agent is implemented using three AWS Lambda functions:
+```json
+{
+  name: "analyze_adverse_events",
+  description: "Analyze adverse events from OpenFDA data, perform trend analysis, and detect safety signals using PRR calculation.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      product_name: { type: "string", description: "Name of the product to analyze"},
+      time_period: { type: "integer", description: "Analysis period in months (default: 6)"},
+      signal_threshold: { type: "number", description: "PRR threshold for signal detection (default: 2.0)"}
+    },
+    required: ["product_name"]
+  }
+},
+{
+  name: "assess_evidence",
+  description: "Gather and assess evidence for detected signals using PubMed literature and FDA label information.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      product_name: { type: "string", description: "Product name"},
+      adverse_event: { type: "string", description: "Adverse event term to assess"},
+      include_pubmed: { type: "boolean", description: "Include PubMed literature search"},
+      include_label: { type: "boolean", description: "Include FDA label information"}
+    },
+    required: ["product_name", "adverse_event"]
+  }
+},
+{
+  name: "generate_report",
+  description: "Generate comprehensive safety signal detection report with visualizations.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      analysis_results: { type: "string", description: "Results from adverse event analysis"},
+      evidence_data: { type: "string", description: "Evidence assessment data"},
+      include_graphs: { type: "boolean", description: "Include data visualizations"}
+    },
+    required: ["analysis_results", "evidence_data"]
+  }
+}
+```
 
-1. **AdverseEventAnalysis**: Retrieves and analyzes adverse event data from OpenFDA
-2. **EvidenceAssessment**: Searches PubMed and FDA labels for supporting evidence
-3. **ReportGeneration**: Generates text reports and stores them in S3
+## 3. Installation
 
-## Usage
+1. (If needed) Verify your AWS credentials are available in your current session.
 
-The agent can be used through natural language interactions. Here are some example prompts and their expected outputs:
+`aws sts get-caller-identity`
 
-### Basic Analysis
+2. (If needed) Create a Amazon S3 bucket to store the agent template.
+
+`aws s3 mb s3://YOUR_S3_BUCKET_NAME`
+
+3. Navigate to the `Safety-Signal-Detection-Agent` folder
+
+`cd agents_catalog/22-Safety-Signal-Detection-Agent`
+
+4. Package and deploy the agent template
+
+The CloudFormation template includes all Lambda function code, so you only need to deploy the template once:
+
+```bash
+export BUCKET_NAME="<REPLACE>"
+export NAME="<REPLACE>"
+export REGION="<REPLACE>"
+export BEDROCK_AGENT_SERVICE_ROLE_ARN="<REPLACE>"
+
+aws cloudformation package --template-file "safety-signal-detection-agent-cfn.yaml" \
+  --s3-bucket $BUCKET_NAME \
+  --output-template-file "safety-signal-detection-agent-cfn-packaged.yaml"
+aws cloudformation deploy --template-file "safety-signal-detection-agent-cfn-packaged.yaml" \
+  --capabilities CAPABILITY_IAM \
+  --stack-name $NAME \
+  --region $REGION \
+  --parameter-overrides \
+  AgentAliasName="Latest" \
+  AgentIAMRoleArn=$BEDROCK_AGENT_SERVICE_ROLE_ARN
+rm safety-signal-detection-agent-cfn-packaged.yaml
+```
+
+Note: All Lambda function code is included in the CloudFormation template using the `Code.ZipFile` property, so no additional Lambda deployment steps are required.
+
+## 4. Usage Examples
+
+### Example 1: Basic Analysis
 ```
 Input: "Analyze adverse events for metformin over the past 6 months"
 
@@ -44,7 +140,7 @@ Report dates: 20250106 to 20250328
 Peak daily reports: 17
 ```
 
-### Evidence Assessment
+### Example 2: Evidence Assessment
 ```
 Input: "Assess evidence for lactic acidosis with metformin"
 
@@ -65,71 +161,81 @@ Causality Score: 5
 Assessment Date: 2025-06-30T10:15:00
 ```
 
-### Report Generation
-```
-Input: "Generate a safety report for metformin adverse events"
+## 5. Troubleshooting
 
-Output:
-Report generated and uploaded to s3://safety-signal-detection-reports/reports/metformin/signal_detection_20250630_104200.txt
-```
+### Common Issues and Solutions
 
-### Advanced Queries
-```
-Input: "Analyze metformin adverse events for the past 12 months"
-Input: "Compare adverse events between 2024 and 2025"
-Input: "Assess evidence for both kidney injury and lactic acidosis with metformin"
-```
+#### Issue: "Module Import Error"
+**Possible Causes:**
+- ZIP file contains incorrect directory structure
+- Lambda function code not properly packaged
 
-## Implementation Details
+**Solutions:**
+- Create ZIP file without directory structure: `zip function.zip lambda_function.py`
+- Avoid using `-r` option when creating ZIP file
+- Verify ZIP file contents before deployment
 
-### Adverse Event Analysis
+#### Issue: "OpenFDA API Error"
+**Possible Causes:**
+- API rate limits exceeded
+- Invalid search parameters
+- Network connectivity issues
 
-- Uses OpenFDA API to retrieve adverse event reports
-- Calculates PRR for signal detection
-- Performs trend analysis over specified time periods
-- Identifies top adverse events by frequency and severity
+**Solutions:**
+- Implement appropriate error handling and retries
+- Verify search parameters format
+- Check OpenFDA service status
 
-### Evidence Assessment
+#### Issue: "S3 Access Denied"
+**Possible Causes:**
+- Insufficient IAM permissions
+- S3 bucket not configured properly
 
-- Searches PubMed for relevant literature
-- Retrieves FDA label information
-- Performs basic causality assessment
-- Combines evidence from multiple sources
+**Solutions:**
+- Verify IAM roles have necessary permissions
+- Check S3 bucket configuration
+- Review CloudWatch logs for specific errors
 
-### Report Generation
+### Performance Tips
 
-- Creates standardized text reports
-- Includes analysis results and evidence summaries
-- Stores reports in S3 for future reference
+- Use specific search terms for more relevant results
+- Implement appropriate error handling
+- Cache results when possible
+- Monitor API rate limits
 
-## Dependencies
+## 6. API Rate Limiting and Best Practices
 
-- AWS Lambda (Python 3.12)
-- Amazon Bedrock
-- OpenFDA API
-- PubMed E-utilities
-- AWS S3 (for report storage)
+### OpenFDA API Guidelines
 
-## Deployment
+The OpenFDA API has usage guidelines to ensure fair access:
 
-The agent is deployed using AWS CloudFormation. The template creates:
+#### Rate Limiting
+- **Anonymous access**: 240 requests per minute, per IP address
+- **API key access**: 240 requests per minute, per key
+- **Maximum results**: 5000 records per request
+- **Pagination**: Use skip parameter for large result sets
 
-- Amazon Bedrock Agent
-- Lambda functions for each action group
-- Required IAM roles and policies
-- S3 bucket for report storage
+#### Best Practices
 
-## Limitations
+**Search Optimization:**
+- Use specific search parameters
+- Implement pagination for large result sets
+- Cache frequently accessed data
+- Monitor response times
 
-- Limited to publicly available data
-- Basic statistical signal detection only
-- Preliminary recommendations require expert review
-- API rate limits may affect performance
+**Error Handling:**
+- Implement exponential backoff
+- Handle HTTP 429 responses
+- Log errors appropriately
+- Validate input parameters
 
-## Contributing
+### Data Usage and Attribution
 
-See [CONTRIBUTING.md](../../CONTRIBUTING.md) for details on how to contribute to this project.
+When using data retrieved through this agent:
 
-## License
+1. **Cite OpenFDA**: Include appropriate citations
+2. **Respect terms of service**: Follow OpenFDA usage guidelines
+3. **Acknowledge sources**: Mention use of OpenFDA API in publications
+4. **Stay updated**: Check for API updates regularly
 
-This project is licensed under the Apache-2.0 License - see the [LICENSE](../../LICENSE) file for details.
+For more information, visit: https://open.fda.gov/apis/

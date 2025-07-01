@@ -12,12 +12,12 @@ Parameters:
     Default: us.anthropic.claude-3-5-sonnet-20241022-v2:0
   AgentIAMRoleArn:
     Type: String
-    Description: (Optional) Amazon Bedrock Agents service role ARN
+    Description: "Required. The ARN of an IAM role that grants Bedrock Agent permissions to invoke Lambda functions and manage agents"
     Default: ""
-  ReportBucketName:
-    Type: String
-    Description: Name prefix for the S3 bucket to store generated reports
-    Default: "safety-signal-reports"
+Conditions:
+  CreateAgentAliasCondition: !Not [!Equals [!Ref AgentAliasName, ""]]
+  AgentIAMRoleCondition: !Not [!Equals [!Ref AgentIAMRoleArn, ""]]
+  CreateReportBucketCondition: !Not [!Equals ["safety-signal-detection-agent", ""]]
 
 Resources:
   ################################
@@ -28,7 +28,7 @@ Resources:
     Type: AWS::S3::Bucket
     Condition: CreateReportBucketCondition
     Properties:
-      BucketName: !Sub "${ReportBucketName}-${AWS::StackName}-${AWS::Region}-${AWS::AccountId}"
+      BucketName: !Sub "${AWS::StackName}-${AWS::Region}-${AWS::AccountId}"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -41,11 +41,6 @@ Resources:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
 
-Conditions:
-  CreateAgentAliasCondition: !Not [!Equals [!Ref AgentAliasName, ""]]
-  AgentIAMRoleCondition: !Not [!Equals [!Ref AgentIAMRoleArn, ""]]
-
-Resources:
   ################################
   ##### Adverse Event Analysis #####
   ################################
@@ -78,154 +73,12 @@ Resources:
       Role: !GetAtt AdverseEventAnalysisLambdaRole.Arn
       Runtime: python3.12
       Handler: lambda_function.lambda_handler
-      Timeout: 30
-      MemorySize: 256
+      Timeout: 300
+      MemorySize: 512
       Environment:
         Variables:
           LOG_LEVEL: "INFO"
-      Code:
-        ZipFile: |
-          import json
-          import logging
-          import os
-          import urllib.request
-          import urllib.parse
-          from datetime import datetime, timedelta
-          import pandas as pd
-          import numpy as np
-
-          # Configure logging
-          logger = logging.getLogger()
-          logger.setLevel(os.environ.get('LOG_LEVEL', 'INFO'))
-
-          def calculate_prr(a, b, c, d):
-              if a == 0:
-                  return None
-              try:
-                  prr = (a/b)/(c/d)
-                  return prr
-              except ZeroDivisionError:
-                  return None
-
-          def query_openfda(product_name, start_date, end_date):
-              base_url = "https://api.fda.gov/drug/event.json"
-              search_query = f'patient.drug.medicinalproduct:"{product_name}" AND receiptdate:[{start_date} TO {end_date}]'
-              params = {
-                  'search': search_query,
-                  'limit': 100
-              }
-              url = f"{base_url}?{urllib.parse.urlencode(params)}"
-              try:
-                  with urllib.request.urlopen(url) as response:
-                      data = json.loads(response.read().decode())
-                      return data
-              except Exception as e:
-                  logger.error(f"Error querying OpenFDA API: {str(e)}")
-                  raise
-
-          def analyze_trends(data):
-              events = pd.DataFrame(data['results'])
-              events['receiptdate'] = pd.to_datetime(events['receiptdate'])
-              daily_counts = events.groupby('receiptdate').size()
-              ma = daily_counts.rolling(window=7).mean()
-              daily_counts_dict = {str(k): v for k, v in daily_counts.to_dict().items()}
-              ma_dict = {str(k): v for k, v in ma.to_dict().items()}
-              return {
-                  'daily_counts': daily_counts_dict,
-                  'moving_average': ma_dict
-              }
-
-          def detect_signals(data, threshold=2.0):
-              signals = []
-              total_drug_reports = len(data['results'])
-              events = {}
-              for report in data['results']:
-                  for event in report.get('patient', {}).get('reaction', []):
-                      event_term = event.get('reactionmeddrapt', '')
-                      if event_term:
-                          events[event_term] = events.get(event_term, 0) + 1
-              
-              for event, count in events.items():
-                  background_rate = 0.01
-                  total_background = 1000000
-                  prr = calculate_prr(
-                      count,
-                      total_drug_reports,
-                      background_rate * total_background,
-                      total_background
-                  )
-                  if prr and prr >= threshold:
-                      signals.append({
-                          'event': event,
-                          'count': count,
-                          'prr': prr,
-                          'confidence_interval': calculate_confidence_interval(count, total_drug_reports)
-                      })
-              return sorted(signals, key=lambda x: x['prr'], reverse=True)
-
-          def calculate_confidence_interval(count, total):
-              if total == 0:
-                  return None
-              proportion = count / total
-              z = 1.96
-              try:
-                  standard_error = np.sqrt((proportion * (1 - proportion)) / total)
-                  ci_lower = max(0, proportion - z * standard_error)
-                  ci_upper = min(1, proportion + z * standard_error)
-                  return {
-                      'lower': ci_lower,
-                      'upper': ci_upper
-                  }
-              except:
-                  return None
-
-          def lambda_handler(event, context):
-              try:
-                  logger.info(f"Received event: {json.dumps(event)}")
-                  body = json.loads(event.get('body', '{}'))
-                  product_name = body.get('product_name')
-                  time_period = int(body.get('time_period', 6))
-                  signal_threshold = float(body.get('signal_threshold', 2.0))
-                  
-                  if not product_name:
-                      return {
-                          'statusCode': 400,
-                          'body': json.dumps({
-                              'error': 'Product name is required'
-                          })
-                      }
-                  
-                  end_date = datetime.now()
-                  start_date = end_date - timedelta(days=30*time_period)
-                  data = query_openfda(
-                      product_name,
-                      start_date.strftime('%Y%m%d'),
-                      end_date.strftime('%Y%m%d')
-                  )
-                  trends = analyze_trends(data)
-                  signals = detect_signals(data, signal_threshold)
-                  
-                  return {
-                      'statusCode': 200,
-                      'body': json.dumps({
-                          'product_name': product_name,
-                          'analysis_period': {
-                              'start': start_date.isoformat(),
-                              'end': end_date.isoformat()
-                          },
-                          'total_reports': len(data['results']),
-                          'trends': trends,
-                          'signals': signals[:10]
-                      })
-                  }
-              except Exception as e:
-                  logger.error(f"Error processing request: {str(e)}")
-                  return {
-                      'statusCode': 500,
-                      'body': json.dumps({
-                          'error': f"Internal server error: {str(e)}"
-                      })
-                  }
+      Code: ./action-groups/adverse-event-analysis
 
   AdverseEventAnalysisLambdaPermission:
     Type: AWS::Lambda::Permission
@@ -273,186 +126,7 @@ Resources:
       Environment:
         Variables:
           LOG_LEVEL: "INFO"
-      Code:
-        ZipFile: |
-          import json
-          import logging
-          import os
-          import urllib.request
-          import urllib.parse
-          from datetime import datetime
-          import xml.etree.ElementTree as ET
-
-          # Configure logging
-          logger = logging.getLogger()
-          logger.setLevel(os.environ.get('LOG_LEVEL', 'INFO'))
-
-          def search_pubmed(product_name, adverse_event):
-              base_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
-              search_term = f'"{product_name}"[Title/Abstract] AND "{adverse_event}"[Title/Abstract] AND "adverse effects"[Subheading]'
-              search_url = f"{base_url}/esearch.fcgi"
-              params = {
-                  'db': 'pubmed',
-                  'term': search_term,
-                  'retmax': 10,
-                  'sort': 'relevance'
-              }
-              
-              try:
-                  url = f"{search_url}?{urllib.parse.urlencode(params)}"
-                  with urllib.request.urlopen(url) as response:
-                      search_data = response.read()
-                      root = ET.fromstring(search_data)
-                      pmids = [id_elem.text for id_elem in root.findall('.//Id')]
-                      
-                  if not pmids:
-                      return []
-                      
-                  fetch_url = f"{base_url}/efetch.fcgi"
-                  fetch_params = {
-                      'db': 'pubmed',
-                      'id': ','.join(pmids),
-                      'rettype': 'abstract',
-                      'retmode': 'xml'
-                  }
-                  
-                  url = f"{fetch_url}?{urllib.parse.urlencode(fetch_params)}"
-                  with urllib.request.urlopen(url) as response:
-                      fetch_data = response.read()
-                      root = ET.fromstring(fetch_data)
-                      
-                  articles = []
-                  for article in root.findall('.//PubmedArticle'):
-                      try:
-                          title = article.find('.//ArticleTitle').text
-                          abstract = article.find('.//Abstract/AbstractText')
-                          abstract_text = abstract.text if abstract is not None else "No abstract available"
-                          year = article.find('.//DateCompleted/Year')
-                          if year is None:
-                              year = article.find('.//PubDate/Year')
-                          year_text = year.text if year is not None else "Year not available"
-                          
-                          articles.append({
-                              'title': title,
-                              'abstract': abstract_text,
-                              'year': year_text,
-                              'pmid': article.find('.//PMID').text
-                          })
-                      except Exception as e:
-                          logger.warning(f"Error parsing article: {str(e)}")
-                          continue
-                          
-                  return articles
-                  
-              except Exception as e:
-                  logger.error(f"Error searching PubMed: {str(e)}")
-                  raise
-
-          def query_fda_label(product_name):
-              base_url = "https://api.fda.gov/drug/label.json"
-              params = {
-                  'search': f'openfda.brand_name:"{product_name}" OR openfda.generic_name:"{product_name}"',
-                  'limit': 1
-              }
-              
-              try:
-                  url = f"{base_url}?{urllib.parse.urlencode(params)}"
-                  with urllib.request.urlopen(url) as response:
-                      data = json.loads(response.read().decode())
-                      
-                  if data['results']:
-                      label = data['results'][0]
-                      return {
-                          'warnings': label.get('warnings', []),
-                          'adverse_reactions': label.get('adverse_reactions', []),
-                          'boxed_warnings': label.get('boxed_warning', []),
-                          'contraindications': label.get('contraindications', [])
-                      }
-                  return None
-                  
-              except Exception as e:
-                  logger.error(f"Error querying FDA Label API: {str(e)}")
-                  raise
-
-          def assess_causality(literature, label_info):
-              evidence_level = "Insufficient"
-              causality_score = 0
-              
-              if label_info:
-                  if 'boxed_warnings' in label_info and label_info['boxed_warnings']:
-                      causality_score += 3
-                      evidence_level = "Strong"
-                  elif 'warnings' in label_info and label_info['warnings']:
-                      causality_score += 2
-                      evidence_level = "Moderate"
-                  elif 'adverse_reactions' in label_info and label_info['adverse_reactions']:
-                      causality_score += 1
-                      evidence_level = "Possible"
-              
-              if literature:
-                  num_articles = len(literature)
-                  if num_articles >= 5:
-                      causality_score += 2
-                      if evidence_level != "Strong":
-                          evidence_level = "Moderate"
-                  elif num_articles >= 2:
-                      causality_score += 1
-                      if evidence_level == "Insufficient":
-                          evidence_level = "Moderate"
-              
-              return {
-                  'evidence_level': evidence_level,
-                  'causality_score': causality_score,
-                  'assessment_date': datetime.now().isoformat()
-              }
-
-          def lambda_handler(event, context):
-              try:
-                  logger.info(f"Received event: {json.dumps(event)}")
-                  
-                  body = json.loads(event.get('body', '{}'))
-                  product_name = body.get('product_name')
-                  adverse_event = body.get('adverse_event')
-                  include_pubmed = body.get('include_pubmed', True)
-                  include_label = body.get('include_label', True)
-                  
-                  if not product_name or not adverse_event:
-                      return {
-                          'statusCode': 400,
-                          'body': json.dumps({
-                              'error': 'Product name and adverse event are required'
-                          })
-                      }
-                  
-                  evidence = {
-                      'product_name': product_name,
-                      'adverse_event': adverse_event
-                  }
-                  
-                  if include_pubmed:
-                      evidence['literature'] = search_pubmed(product_name, adverse_event)
-                  
-                  if include_label:
-                      evidence['label_info'] = query_fda_label(product_name)
-                  
-                  evidence['causality_assessment'] = assess_causality(
-                      evidence.get('literature', []),
-                      evidence.get('label_info', None)
-                  )
-                  
-                  return {
-                      'statusCode': 200,
-                      'body': json.dumps(evidence)
-                  }
-                  
-              except Exception as e:
-                  logger.error(f"Error processing request: {str(e)}")
-                  return {
-                      'statusCode': 500,
-                      'body': json.dumps({
-                          'error': f"Internal server error: {str(e)}"
-                      })
-                  }
+      Code: ./action-groups/evidence-assessment
 
   EvidenceAssessmentLambdaPermission:
     Type: AWS::Lambda::Permission
@@ -489,7 +163,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - s3:PutObject
-                Resource: !Sub "arn:aws:s3:::${ReportBucketName}-${AWS::StackName}-${AWS::Region}-${AWS::AccountId}/*"
+                Resource: !Sub "arn:aws:s3:::${AWS::StackName}-${AWS::Region}-${AWS::AccountId}/*"
 
   ReportGenerationLogGroup:
     Type: AWS::Logs::LogGroup
@@ -509,273 +183,8 @@ Resources:
       Environment:
         Variables:
           LOG_LEVEL: "INFO"
-          REPORT_BUCKET_NAME: !Sub "${ReportBucketName}-${AWS::StackName}-${AWS::Region}-${AWS::AccountId}"
-      Code:
-        ZipFile: |
-          import json
-          import logging
-          import os
-          import boto3
-          from datetime import datetime
-          import matplotlib.pyplot as plt
-          import seaborn as sns
-          import pandas as pd
-          import io
-          import base64
-
-          # Configure logging
-          logger = logging.getLogger()
-          logger.setLevel(os.environ.get('LOG_LEVEL', 'INFO'))
-
-          # Configure matplotlib for non-interactive backend
-          plt.switch_backend('agg')
-
-          def create_time_series_plot(trends):
-              plt.figure(figsize=(12, 6))
-              dates = pd.to_datetime(list(trends['daily_counts'].keys()))
-              counts = list(trends['daily_counts'].values())
-              ma = list(trends['moving_average'].values())
-              plt.plot(dates, counts, label='Daily Reports', alpha=0.5)
-              plt.plot(dates, ma, label='7-day Moving Average', linewidth=2)
-              plt.title('Adverse Event Reports Over Time')
-              plt.xlabel('Date')
-              plt.ylabel('Number of Reports')
-              plt.legend()
-              plt.grid(True)
-              plt.xticks(rotation=45)
-              plt.tight_layout()
-              
-              buffer = io.BytesIO()
-              plt.savefig(buffer, format='png')
-              buffer.seek(0)
-              image_png = buffer.getvalue()
-              buffer.close()
-              plt.close()
-              
-              return base64.b64encode(image_png).decode()
-
-          def create_signal_bar_chart(signals):
-              plt.figure(figsize=(12, 6))
-              events = [s['event'] for s in signals]
-              prrs = [s['prr'] for s in signals]
-              plt.barh(events, prrs)
-              plt.title('Top Adverse Events by PRR')
-              plt.xlabel('PRR Value')
-              plt.ylabel('Adverse Event')
-              plt.grid(True)
-              plt.tight_layout()
-              
-              buffer = io.BytesIO()
-              plt.savefig(buffer, format='png')
-              buffer.seek(0)
-              image_png = buffer.getvalue()
-              buffer.close()
-              plt.close()
-              
-              return base64.b64encode(image_png).decode()
-
-          def create_signal_heatmap(signals):
-              plt.figure(figsize=(12, 8))
-              data = {
-                  'event': [s['event'] for s in signals],
-                  'count': [s['count'] for s in signals],
-                  'prr': [s['prr'] for s in signals]
-              }
-              df = pd.DataFrame(data)
-              pivot_data = df.pivot_table(
-                  values=['count', 'prr'],
-                  index='event',
-                  aggfunc='first'
-              )
-              sns.heatmap(
-                  pivot_data,
-                  annot=True,
-                  fmt='.2f',
-                  cmap='RdYlBu_r',
-                  center=0
-              )
-              plt.title('Signal Strength Heatmap')
-              plt.tight_layout()
-              
-              buffer = io.BytesIO()
-              plt.savefig(buffer, format='png')
-              buffer.seek(0)
-              image_png = buffer.getvalue()
-              buffer.close()
-              plt.close()
-              
-              return base64.b64encode(image_png).decode()
-
-          def generate_html_report(analysis_results, evidence_data):
-              html_template = """
-              <!DOCTYPE html>
-              <html>
-              <head>
-                  <title>Safety Signal Detection Report</title>
-                  <style>
-                      body {{ font-family: Arial, sans-serif; margin: 20px; }}
-                      h1, h2 {{ color: #333; }}
-                      .section {{ margin: 20px 0; }}
-                      .visualization {{ margin: 20px 0; }}
-                      table {{ border-collapse: collapse; width: 100%; }}
-                      th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
-                      th {{ background-color: #f5f5f5; }}
-                  </style>
-              </head>
-              <body>
-                  <h1>Safety Signal Detection Report</h1>
-                  
-                  <div class="section">
-                      <h2>Analysis Summary</h2>
-                      <p>Product: {product_name}</p>
-                      <p>Analysis Period: {start_date} to {end_date}</p>
-                      <p>Total Reports: {total_reports}</p>
-                  </div>
-                  
-                  <div class="section">
-                      <h2>Trend Analysis</h2>
-                      <div class="visualization">
-                          <img src="data:image/png;base64,{trend_plot}" alt="Trend Analysis">
-                      </div>
-                  </div>
-                  
-                  <div class="section">
-                      <h2>Signal Detection Results</h2>
-                      <div class="visualization">
-                          <img src="data:image/png;base64,{signal_plot}" alt="Signal Analysis">
-                      </div>
-                      <div class="visualization">
-                          <img src="data:image/png;base64,{heatmap}" alt="Signal Heatmap">
-                      </div>
-                  </div>
-                  
-                  <div class="section">
-                      <h2>Evidence Assessment</h2>
-                      <h3>Literature Evidence</h3>
-                      {literature_summary}
-                      
-                      <h3>Label Information</h3>
-                      {label_summary}
-                      
-                      <h3>Causality Assessment</h3>
-                      {causality_summary}
-                  </div>
-              </body>
-              </html>
-              """
-              
-              literature = evidence_data.get('literature', [])
-              literature_summary = "<ul>"
-              for article in literature:
-                  literature_summary += f"""
-                      <li>
-                          <strong>{article['title']}</strong> ({article['year']})<br>
-                          PMID: {article['pmid']}<br>
-                          {article['abstract'][:300]}...
-                      </li>
-                  """
-              literature_summary += "</ul>"
-              
-              label_info = evidence_data.get('label_info', {})
-              label_summary = "<ul>"
-              for category, items in label_info.items():
-                  if items:
-                      label_summary += f"<li><strong>{category.title()}:</strong><br>{items[0][:300]}...</li>"
-              label_summary += "</ul>"
-              
-              causality = evidence_data.get('causality_assessment', {})
-              causality_summary = f"""
-                  <p><strong>Evidence Level:</strong> {causality.get('evidence_level', 'Unknown')}</p>
-                  <p><strong>Causality Score:</strong> {causality.get('causality_score', 0)}</p>
-                  <p><strong>Assessment Date:</strong> {causality.get('assessment_date', 'Unknown')}</p>
-              """
-              
-              trend_plot = create_time_series_plot(analysis_results['trends'])
-              signal_plot = create_signal_bar_chart(analysis_results['signals'])
-              heatmap = create_signal_heatmap(analysis_results['signals'])
-              
-              report_html = html_template.format(
-                  product_name=analysis_results['product_name'],
-                  start_date=analysis_results['analysis_period']['start'],
-                  end_date=analysis_results['analysis_period']['end'],
-                  total_reports=analysis_results['total_reports'],
-                  trend_plot=trend_plot,
-                  signal_plot=signal_plot,
-                  heatmap=heatmap,
-                  literature_summary=literature_summary,
-                  label_summary=label_summary,
-                  causality_summary=causality_summary
-              )
-              
-              return report_html
-
-          def upload_to_s3(html_content, bucket_name, product_name):
-              s3 = boto3.client('s3')
-              timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-              key = f"reports/{product_name}/signal_detection_{timestamp}.html"
-              
-              try:
-                  s3.put_object(
-                      Bucket=bucket_name,
-                      Key=key,
-                      Body=html_content,
-                      ContentType='text/html'
-                  )
-                  return f"s3://{bucket_name}/{key}"
-              except Exception as e:
-                  logger.error(f"Error uploading to S3: {str(e)}")
-                  raise
-
-          def lambda_handler(event, context):
-              try:
-                  logger.info(f"Received event: {json.dumps(event)}")
-                  
-                  body = json.loads(event.get('body', '{}'))
-                  analysis_results = body.get('analysis_results')
-                  evidence_data = body.get('evidence_data')
-                  include_graphs = body.get('include_graphs', True)
-                  
-                  if not analysis_results or not evidence_data:
-                      return {
-                          'statusCode': 400,
-                          'body': json.dumps({
-                              'error': 'Analysis results and evidence data are required'
-                          })
-                      }
-                  
-                  report_html = generate_html_report(analysis_results, evidence_data)
-                  
-                  bucket_name = os.environ.get('REPORT_BUCKET_NAME')
-                  if not bucket_name:
-                      return {
-                          'statusCode': 500,
-                          'body': json.dumps({
-                              'error': 'S3 bucket name not configured'
-                          })
-                      }
-                  
-                  report_url = upload_to_s3(
-                      report_html,
-                      bucket_name,
-                      analysis_results['product_name']
-                  )
-                  
-                  return {
-                      'statusCode': 200,
-                      'body': json.dumps({
-                          'report_url': report_url,
-                          'timestamp': datetime.now().isoformat()
-                      })
-                  }
-                  
-              except Exception as e:
-                  logger.error(f"Error processing request: {str(e)}")
-                  return {
-                      'statusCode': 500,
-                      'body': json.dumps({
-                          'error': f"Internal server error: {str(e)}"
-                      })
-                  }
+          REPORT_BUCKET_NAME: !Sub "${AWS::StackName}-${AWS::Region}-${AWS::AccountId}"
+      Code: ./action-groups/report-generation
 
   ReportGenerationLambdaPermission:
     Type: AWS::Lambda::Permission
@@ -868,11 +277,7 @@ Resources:
                     Type: boolean
                     Required: False
       AgentName: "Safety-Signal-Detection-Agent"
-      AgentResourceRoleArn:
-        "Fn::If":
-          - AgentIAMRoleCondition
-          - !Ref AgentIAMRoleArn
-          - "{{resolve:ssm:/bedrock/agent/role/arn:1}}"
+      AgentResourceRoleArn: !Ref AgentIAMRoleArn
       AutoPrepare: True
       Description: "Detect and evaluate safety signals from adverse event reports using OpenFDA, PubMed, and FDA Label data"
       FoundationModel: !Ref BedrockModelId
@@ -905,6 +310,21 @@ Resources:
         - Highlight the strength of evidence for detected signals
         - Make appropriate interpretations considering data limitations
         - Suggest follow-up actions when warranted
+        - Always include evidence sources and data coverage:
+          * Total number of available reports and number of reports analyzed
+          * Time period covered by the analysis
+          * Literature evidence with article titles, authors, and publication years
+          * FDA label information with specific sections referenced
+          * Strength of evidence assessment with clear rationale
+        - Clearly state any data limitations or gaps:
+          * If only a subset of reports was analyzed, explain why
+          * If literature evidence is limited or conflicting
+          * If FDA label information is incomplete or outdated
+        - Support conclusions with specific data points:
+          * PRR values with confidence intervals
+          * Number of cases for each adverse event
+          * Percentage of serious cases
+          * Temporal trends in reporting
 
   AgentAliasResource:
     Type: AWS::Bedrock::AgentAlias

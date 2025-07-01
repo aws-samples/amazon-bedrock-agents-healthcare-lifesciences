@@ -20,7 +20,9 @@ def generate_text_report(analysis_results, evidence_data):
         "===========================\n",
         f"Product: {analysis_results['product_name']}",
         f"Analysis Period: {analysis_results['analysis_period']['start']} to {analysis_results['analysis_period']['end']}",
-        f"Total Reports: {analysis_results['total_reports']}\n",
+        f"Total Reports: {analysis_results['total_reports']}" + (
+            f" (analyzed from {analysis_results['total_available']} available reports)" if 'total_available' in analysis_results else ""
+        ) + "\n",
     ])
     
     # Signal Detection Results

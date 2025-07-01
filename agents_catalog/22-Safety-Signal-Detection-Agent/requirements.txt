@@ -1,5 +1,2 @@
-boto3>=1.34.0
-jupyter>=1.0.0
-notebook>=7.0.0
-pandas>=2.1.0
-numpy>=1.26.0
+# No global dependencies required
+# Each Lambda function has its own requirements.txt

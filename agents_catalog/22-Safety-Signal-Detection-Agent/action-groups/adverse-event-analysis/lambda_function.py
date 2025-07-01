@@ -30,21 +30,48 @@ def query_openfda(product_name, start_date, end_date):
     Query OpenFDA API for adverse event reports
     """
     base_url = "https://api.fda.gov/drug/event.json"
-    search_query = f'patient.drug.medicinalproduct:"{product_name}" AND receiptdate:[{start_date} TO {end_date}]'
-    params = {
-        'search': search_query,
-        'limit': 100
-    }
-    
-    url = f"{base_url}?{urllib.parse.urlencode(params)}"
-    logger.info(f"OpenFDA API URL: {url}")
+    search_query = (
+        f'(patient.drug.medicinalproduct:"{product_name}" OR '
+        f'patient.drug.openfda.generic_name:"{product_name}" OR '
+        f'patient.drug.openfda.brand_name:"{product_name}") '
+        f'AND receivedate:[{start_date} TO {end_date}]'
+    )
+    all_results = []
+    batch_size = 100
+    max_results = 1000
+    total_available = 0
     
     try:
-        req = urllib.request.Request(url, headers={'Accept': 'application/json'})
-        with urllib.request.urlopen(req) as response:
-            data = json.loads(response.read().decode())
-            logger.info(f"OpenFDA API response: {len(data.get('results', []))} results found")
-            return data
+        for skip in range(0, max_results, batch_size):
+            params = {
+                'search': search_query,
+                'limit': min(batch_size, max_results - skip),
+                'skip': skip
+            }
+            
+            url = f"{base_url}?{urllib.parse.urlencode(params)}"
+            logger.info(f"OpenFDA API URL (batch {skip//batch_size + 1}): {url}")
+            
+            req = urllib.request.Request(url, headers={'Accept': 'application/json'})
+            with urllib.request.urlopen(req, timeout=30) as response:
+                data = json.loads(response.read().decode())
+                
+                if skip == 0:  # First batch
+                    total_available = data.get('meta', {}).get('results', {}).get('total', 0)
+                    if total_available > max_results:
+                        logger.info(f"Note: Only retrieving {max_results} out of {total_available} total reports")
+                
+                results = data.get('results', [])
+                if not results:
+                    break
+                
+                all_results.extend(results)
+                logger.info(f"Batch {skip//batch_size + 1}: Retrieved {len(results)} reports (total so far: {len(all_results)})")
+                
+                if len(results) < batch_size:
+                    break
+            
+        return {'results': all_results, 'total_available': total_available}
     except urllib.error.HTTPError as e:
         logger.error(f"OpenFDA API HTTP error: {e.code} - {e.reason}")
         if e.code == 404:
@@ -58,24 +85,39 @@ def analyze_trends(data):
     """
     Analyze trends in adverse event reports
     """
-    daily_counts = defaultdict(int)
+    daily_counts = defaultdict(lambda: {"total": 0, "serious": 0})
+    monthly_counts = defaultdict(lambda: {"total": 0, "serious": 0})
     
     for report in data['results']:
-        date = report.get('receiptdate', '').split('T')[0]
-        if date:
-            daily_counts[date] += 1
+        date_str = report.get('receivedate', '')
+        if date_str:
+            try:
+                date = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
+                month = f"{date_str[:4]}-{date_str[4:6]}"
+                
+                is_serious = report.get('serious') == '1'
+                daily_counts[date]["total"] += 1
+                monthly_counts[month]["total"] += 1
+                if is_serious:
+                    daily_counts[date]["serious"] += 1
+                    monthly_counts[month]["serious"] += 1
+            except IndexError:
+                continue
     
     dates = sorted(daily_counts.keys())
+    moving_average = defaultdict(dict)
     
-    moving_average = {}
     for i, date in enumerate(dates):
         if i >= 3 and i < len(dates) - 3:
-            window_sum = sum(daily_counts[dates[j]] for j in range(i-3, i+4))
-            moving_average[date] = window_sum / 7
+            total_window_sum = sum(daily_counts[dates[j]]["total"] for j in range(i-3, i+4))
+            serious_window_sum = sum(daily_counts[dates[j]]["serious"] for j in range(i-3, i+4))
+            moving_average[date]["total"] = round(total_window_sum / 7, 2)
+            moving_average[date]["serious"] = round(serious_window_sum / 7, 2)
     
     return {
-        'daily_counts': dict(daily_counts),
-        'moving_average': moving_average
+        'daily_counts': {k: dict(v) for k, v in daily_counts.items()},
+        'monthly_counts': {k: dict(v) for k, v in monthly_counts.items()},
+        'moving_average': dict(moving_average)
     }
 
 def detect_signals(data, threshold=2.0):
@@ -85,14 +127,28 @@ def detect_signals(data, threshold=2.0):
     signals = []
     total_drug_reports = len(data['results'])
     
-    events = defaultdict(int)
+    if total_drug_reports == 0:
+        return []
+    
+    events = {}
     for report in data['results']:
-        for event in report.get('patient', {}).get('reaction', []):
+        reactions = report.get('patient', {}).get('reaction', [])
+        is_serious = report.get('serious') == '1'
+        
+        for event in reactions:
             event_term = event.get('reactionmeddrapt', '')
             if event_term:
-                events[event_term] += 1
+                if event_term not in events:
+                    events[event_term] = {
+                        'count': 0,
+                        'serious_count': 0
+                    }
+                events[event_term]['count'] += 1
+                if is_serious:
+                    events[event_term]['serious_count'] += 1
     
-    for event, count in events.items():
+    for event, event_data in events.items():
+        count = event_data['count']
         background_rate = 0.01
         total_background = 1000000
         
@@ -104,13 +160,14 @@ def detect_signals(data, threshold=2.0):
         )
         
         if prr and prr >= threshold:
-            signal = {
+            signals.append({
                 'event': event,
                 'count': count,
+                'serious_count': event_data['serious_count'],
+                'serious_percentage': round(event_data['serious_count'] / count * 100, 2),
                 'prr': round(prr, 2),
                 'confidence_interval': calculate_confidence_interval(count, total_drug_reports)
-            }
-            signals.append(signal)
+            })
     
     return sorted(signals, key=lambda x: x['prr'], reverse=True)
 
@@ -140,29 +197,34 @@ def format_response(data):
     """
     Format the response for Bedrock Agent
     """
-    if not data['signals']:
-        return "No safety signals were detected for the specified criteria."
-    
     response_lines = []
     
     response_lines.append(f"Analysis Results for {data['product_name']}")
     response_lines.append(f"Analysis Period: {data['analysis_period']['start']} to {data['analysis_period']['end']}")
-    response_lines.append(f"Total Reports: {data['total_reports']}")
+    if 'total_available' in data and data['total_available'] > data['total_reports']:
+        response_lines.append(f"Total Reports: {data['total_reports']} (showing top {data['total_reports']} out of {data['total_available']} available reports)")
+    else:
+        response_lines.append(f"Total Reports: {data['total_reports']}")
     
-    response_lines.append("\nTop Safety Signals:")
-    for signal in data['signals']:
-        ci = signal['confidence_interval']
-        ci_text = f" (95% CI: {ci['lower']}-{ci['upper']})" if ci else ""
-        response_lines.append(
-            f"- {signal['event']}: PRR={signal['prr']}, Reports={signal['count']}{ci_text}"
-        )
+    if data['signals']:
+        response_lines.append("\nTop Safety Signals:")
+        for signal in data['signals'][:5]:  # Show top 5 signals
+            ci = signal['confidence_interval']
+            ci_text = f" (95% CI: {ci['lower']}-{ci['upper']})" if ci else ""
+            response_lines.extend([
+                f"- {signal['event']}:",
+                f"  * PRR: {signal['prr']}",
+                f"  * Reports: {signal['count']} ({signal['serious_percentage']}% serious){ci_text}"
+            ])
+    else:
+        response_lines.append("\nNo significant safety signals detected.")
     
     if data['trends']['daily_counts']:
         dates = sorted(data['trends']['daily_counts'].keys())
         response_lines.extend([
             "\nTrend Analysis:",
             f"Report dates: {dates[0]} to {dates[-1]}",
-            f"Peak daily reports: {max(data['trends']['daily_counts'].values())}"
+            f"Peak daily reports: {max(v['total'] for v in data['trends']['daily_counts'].values())}"
         ])
     
     return "\n".join(response_lines)
@@ -227,7 +289,8 @@ def lambda_handler(event, context):
         except ValueError as e:
             return create_response(event, str(e))
         
-        end_date = datetime.now()
+        # Use 2025-04-28 as end date (latest available data in OpenFDA)
+        end_date = datetime(2025, 4, 28)
         start_date = end_date - timedelta(days=30*time_period)
         
         data = query_openfda(
@@ -252,6 +315,7 @@ def lambda_handler(event, context):
                 'end': end_date.isoformat()
             },
             'total_reports': len(data['results']),
+            'total_available': data.get('total_available'),
             'trends': trends,
             'signals': signals[:10]
         }
@@ -261,4 +325,5 @@ def lambda_handler(event, context):
     except urllib.error.HTTPError as e:
         return create_response(event, f"OpenFDA API error: {e.reason}")
     except Exception as e:
+        logger.error(f"Error processing request: {str(e)}", exc_info=True)
         return create_response(event, f"An error occurred while analyzing adverse events: {str(e)}")
