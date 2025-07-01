@@ -215,6 +215,15 @@ The OpenFDA API has usage guidelines to ensure fair access:
 - **Maximum results**: 5000 records per request
 - **Pagination**: Use skip parameter for large result sets
 
+#### Data Retrieval Strategy
+- **Batch size**: 100 records per request
+- **Maximum total**: 1000 records (10 batches)
+- **Process**:
+  1. First batch retrieves total available records count
+  2. Subsequent batches use skip parameter
+  3. Stops after reaching 1000 records or when no more data
+- **Progress tracking**: Logs number of records retrieved in each batch
+
 #### Best Practices
 
 **Search Optimization:**

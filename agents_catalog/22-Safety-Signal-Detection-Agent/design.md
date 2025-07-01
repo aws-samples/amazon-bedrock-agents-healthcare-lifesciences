@@ -69,6 +69,10 @@ sequenceDiagram
 
 #### Processing Steps
 1. Query OpenFDA for adverse event reports
+   - Retrieve data in batches of 100 records
+   - Maximum total of 1000 records
+   - First batch includes total available count
+   - Use skip parameter for pagination
 2. Calculate reporting frequencies
 3. Perform PRR analysis
 4. Identify significant signals
