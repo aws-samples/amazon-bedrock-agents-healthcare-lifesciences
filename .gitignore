@@ -8,4 +8,4 @@ node_modules
 .amazonq
 __pycache__
 *-packaged.yaml
-task.md
+tasks.md
