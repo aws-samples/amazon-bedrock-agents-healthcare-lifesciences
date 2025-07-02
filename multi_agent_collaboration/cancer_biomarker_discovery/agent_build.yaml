@@ -1857,7 +1857,6 @@ Resources:
                   - !Sub arn:aws:s3:::${SubAgentS3Bucket}/*
                   - !Sub arn:aws:s3:::${S3Bucket}
                   - !Sub arn:aws:s3:::${S3Bucket}/*
-
               - Effect: Allow
                 Action:
                   - cloudformation:CreateStack
@@ -1923,6 +1922,8 @@ Resources:
                   - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:biomarker-agent-*
                   - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:matplotliblayer
                   - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:matplotliblayer:*
+                  - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:statmatplotliblayer
+                  - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:statmatplotliblayer:*
                   - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:MatPlotBarChartLambda
                   - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:PubMedQueryFunction
                   - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*-Clinical-evidence-*-OpenSearchIndexLambda-*
