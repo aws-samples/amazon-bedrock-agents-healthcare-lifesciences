@@ -1047,7 +1047,7 @@ Resources:
                 - git lfs install
                 - echo "downloading Ncbi article for KB ingestion"
                 - yum install -y wget
-                - python3.12 -m pip install --upgrade pip
+                - 3.12.8 -m pip install --upgrade pip
                
             build:
               commands:
@@ -1108,7 +1108,7 @@ Resources:
                 - echo "lambda layer preperation phase starts"
                 - cd repo
                 - mkdir -p python
-                - python3.12 -m pip install -r multi_agent_collaboration/cancer_biomarker_discovery/lambdalayers/requirements.txt -t python
+                - 3.12.8 -m pip install -r multi_agent_collaboration/cancer_biomarker_discovery/lambdalayers/requirements.txt -t python
                 - zip -r9 lambda-layer.zip python
                 - cp lambda-layer.zip ../
                 - cd ..
