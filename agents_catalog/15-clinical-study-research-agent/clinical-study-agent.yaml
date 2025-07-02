@@ -92,7 +92,8 @@ Resources:
       Description: Layer containing matplotlib and dependencies
       CompatibleRuntimes:
         - python3.12
-      Content: lambdalayers/matplotlib.zip
+      # Content: lambdalayers/matplotlib.zip
+      Content: ../../build/lambda_layers/matplotlib.zip
 
   #######################
   ##### Lambda Functions #####

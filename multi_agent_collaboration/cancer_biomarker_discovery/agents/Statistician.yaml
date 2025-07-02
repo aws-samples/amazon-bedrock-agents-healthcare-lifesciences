@@ -173,11 +173,12 @@ Resources:
     Properties:
       LayerName: statmatplotliblayer
       Description: Layer containing matplotlib and its dependencies
-      Content:
-        S3Bucket: !Ref S3Bucket
-        S3Key: lambda-layer.zip
       CompatibleRuntimes:
         - python3.12
+      Content: ../../../build/lambda_layers/matplotlib.zip
+        # S3Bucket: !Ref S3Bucket
+        # S3Key: lambda-layer.zip
+      
     
 
   MatPlotBarChartLambdaFunction:
