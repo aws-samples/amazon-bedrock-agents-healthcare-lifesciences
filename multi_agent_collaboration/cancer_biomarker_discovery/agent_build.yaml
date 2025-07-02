@@ -1109,10 +1109,9 @@ Resources:
                 - cd repo
                 - mkdir -p python
                 - pip install -r multi_agent_collaboration/cancer_biomarker_discovery/lambdalayers/requirements.txt -t python
-                - zip -r9 lambda-layer.zip python
-                - cp lambda-layer.zip ../
-                - cd ..
-                - aws s3 cp lambda-layer.zip s3://${S3Bucket}/lambda-layer.zip
+                - cd python
+                - zip -r9 ../lambda-layer.zip .
+                - aws s3 cp ../lambda-layer.zip s3://${S3Bucket}/lambda-layer.zip
 
       TimeoutInMinutes: 10
 
