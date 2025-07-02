@@ -171,7 +171,7 @@ Resources:
     Type: AWS::Lambda::LayerVersion
     DependsOn: ScientificPlotLambdaFunction
     Properties:
-      LayerName: matplotliblayer
+      LayerName: statmatplotliblayer
       Description: Layer containing matplotlib and its dependencies
       Content:
         S3Bucket: !Ref S3Bucket
