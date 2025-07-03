@@ -1857,6 +1857,9 @@ Resources:
                   - !Sub arn:aws:s3:::${SubAgentS3Bucket}/*
                   - !Sub arn:aws:s3:::${S3Bucket}
                   - !Sub arn:aws:s3:::${S3Bucket}/*
+                  - !Sub arn:aws:s3:::5d1a4b76751b4c8a994ce96bafd91ec9-${AWS::Region}
+                  - !Sub arn:aws:s3:::5d1a4b76751b4c8a994ce96bafd91ec9-${AWS::Region}/*
+
               - Effect: Allow
                 Action:
                   - cloudformation:CreateStack
