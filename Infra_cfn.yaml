@@ -63,15 +63,19 @@ Parameters:
     Default: ""
 
 Conditions:
-  
   HasVpcId: !Not [!Equals [!Ref ExistingVpcId, ""]]
   HasTwoPublicSubnets: !Equals [Fn::Length: !Ref ExistingPublicSubnets, 2]
   HasTwoPrivateSubnets: !Equals [Fn::Length: !Ref ExistingPrivateSubnets, 2]
-  CreateNetworking: !Not [!And [!Condition HasVpcId, !Condition HasTwoPublicSubnets, !Condition HasTwoPrivateSubnets]]
-  CreateWebSearchAgent:
-    !Not [!Equals [!Ref TavilyApiKey, ""]]
-  CreateUSPTOSearchAgent:
-    !Not [!Equals [!Ref USPTOApiKey, ""]]
+  CreateNetworking:
+    !Not [
+      !And [
+        !Condition HasVpcId,
+        !Condition HasTwoPublicSubnets,
+        !Condition HasTwoPrivateSubnets,
+      ],
+    ]
+  CreateWebSearchAgent: !Not [!Equals [!Ref TavilyApiKey, ""]]
+  CreateUSPTOSearchAgent: !Not [!Equals [!Ref USPTOApiKey, ""]]
   CreateCompetitiveIntelAgent:
     !Not [!Or [!Equals [!Ref TavilyApiKey, ""], !Equals [!Ref USPTOApiKey, ""]]]
   CreateReactApp: !Equals [!Ref DeployApplication, "true"]
@@ -153,9 +157,24 @@ Resources:
       TemplateURL: ui/cloudformation/ecs.yml
       Parameters:
         AllowedCidr: !Ref ReactAppAllowedCidr
-        VPCId: !If [ CreateNetworking, !GetAtt "Network.Outputs.VPC" , !Ref ExistingVpcId ]
-        PublicSubnet1: !If [ CreateNetworking, !GetAtt "Network.Outputs.PublicSubnet1" , !Select [ 0, !Ref ExistingPublicSubnets ] ]
-        PublicSubnet2: !If [ CreateNetworking, !GetAtt "Network.Outputs.PublicSubnet2" , !Select [ 1, !Ref ExistingPublicSubnets ] ]
+        VPCId:
+          !If [
+            CreateNetworking,
+            !GetAtt "Network.Outputs.VPC",
+            !Ref ExistingVpcId,
+          ]
+        PublicSubnet1:
+          !If [
+            CreateNetworking,
+            !GetAtt "Network.Outputs.PublicSubnet1",
+            !Select [0, !Ref ExistingPublicSubnets],
+          ]
+        PublicSubnet2:
+          !If [
+            CreateNetworking,
+            !GetAtt "Network.Outputs.PublicSubnet2",
+            !Select [1, !Ref ExistingPublicSubnets],
+          ]
         S3Bucket: !Ref S3Bucket
         S3CodeKey: !GetAtt CodeRepo.Outputs.S3Key
       TimeoutInMinutes: 35
@@ -227,9 +246,24 @@ Resources:
         GitRepoURL: !Ref GithubLink
         GitBranch: !Ref GitBranch
         SubAgentS3Bucket: !Ref S3Bucket
-        VPC: !If [ CreateNetworking, !GetAtt "Network.Outputs.VPC" , !Ref ExistingVpcId ]
-        PrivateSubnet1: !If [ CreateNetworking, !GetAtt "Network.Outputs.PrivateSubnet1" , !Select [ 0, !Ref ExistingPrivateSubnets ] ]
-        PrivateSubnet2: !If [ CreateNetworking, !GetAtt "Network.Outputs.PrivateSubnet2" , !Select [ 1, !Ref ExistingPrivateSubnets ] ]
+        VPC:
+          !If [
+            CreateNetworking,
+            !GetAtt "Network.Outputs.VPC",
+            !Ref ExistingVpcId,
+          ]
+        PrivateSubnet1:
+          !If [
+            CreateNetworking,
+            !GetAtt "Network.Outputs.PrivateSubnet1",
+            !Select [0, !Ref ExistingPrivateSubnets],
+          ]
+        PrivateSubnet2:
+          !If [
+            CreateNetworking,
+            !GetAtt "Network.Outputs.PrivateSubnet2",
+            !Select [1, !Ref ExistingPrivateSubnets],
+          ]
         AgentRole: !GetAtt AgentRole.Arn
       TimeoutInMinutes: 30
       Tags:
@@ -362,7 +396,7 @@ Resources:
       TimeoutInMinutes: 35
       Tags:
         - Key: Project
-          Value: "hcls-agents-toolkit"          
+          Value: "hcls-agents-toolkit"
 
   SafetySignalDetectionAgent:
     Type: AWS::CloudFormation::Stack
