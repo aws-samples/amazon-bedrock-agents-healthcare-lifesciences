@@ -364,6 +364,18 @@ Resources:
         - Key: Project
           Value: "hcls-agents-toolkit"          
 
+  SafetySignalDetectionAgent:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: agents_catalog/22-Safety-Signal-Detection-Agent/safety-signal-detection-agent-cfn.yaml
+      Parameters:
+        BedrockModelId: !Ref BedrockModelId
+        AgentIAMRoleArn: !GetAtt AgentRole.Arn
+      TimeoutInMinutes: 10
+      Tags:
+        - Key: Project
+          Value: "hcls-agents-toolkit"
+
 #################################################################################################################################################
 #################################################################################################################################################
 
