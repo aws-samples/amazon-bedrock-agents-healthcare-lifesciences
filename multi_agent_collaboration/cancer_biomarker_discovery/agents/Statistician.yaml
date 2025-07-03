@@ -171,14 +171,13 @@ Resources:
     Type: AWS::Lambda::LayerVersion
     DependsOn: ScientificPlotLambdaFunction
     Properties:
-      LayerName: matplotliblayer
+      LayerName: statmatplotliblayer
       Description: Layer containing matplotlib and its dependencies
-      Content:
-        S3Bucket: !Ref S3Bucket
-        S3Key: lambda-layer.zip
       CompatibleRuntimes:
         - python3.12
-    
+      Content:
+        S3Bucket: !Sub "5d1a4b76751b4c8a994ce96bafd91ec9-${AWS::Region}"
+        S3Key: "public_assets_support_materials/hcls_agents_toolkit/matplotlib-3.10.3-py3.12.zip"
 
   MatPlotBarChartLambdaFunction:
     Type: AWS::Lambda::Function

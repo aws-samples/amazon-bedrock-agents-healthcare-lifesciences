@@ -92,7 +92,9 @@ Resources:
       Description: Layer containing matplotlib and dependencies
       CompatibleRuntimes:
         - python3.12
-      Content: lambdalayers/matplotlib.zip
+      Content:
+        S3Bucket: !Sub "5d1a4b76751b4c8a994ce96bafd91ec9-${AWS::Region}"
+        S3Key: "public_assets_support_materials/hcls_agents_toolkit/matplotlib-3.10.3-py3.12.zip"
 
   #######################
   ##### Lambda Functions #####

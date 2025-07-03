@@ -1047,7 +1047,7 @@ Resources:
                 - git lfs install
                 - echo "downloading Ncbi article for KB ingestion"
                 - yum install -y wget
-                - python -m pip install --upgrade pip
+                - pip install --upgrade pip
                
             build:
               commands:
@@ -1109,10 +1109,9 @@ Resources:
                 - cd repo
                 - mkdir -p python
                 - pip install -r multi_agent_collaboration/cancer_biomarker_discovery/lambdalayers/requirements.txt -t python
-                - zip -r9 lambda-layer.zip python
-                - cp lambda-layer.zip ../
-                - cd ..
-                - aws s3 cp lambda-layer.zip s3://${S3Bucket}/lambda-layer.zip
+                - cd python
+                - zip -r9 ../lambda-layer.zip .
+                - aws s3 cp ../lambda-layer.zip s3://${S3Bucket}/lambda-layer.zip
 
       TimeoutInMinutes: 10
 
@@ -1858,6 +1857,8 @@ Resources:
                   - !Sub arn:aws:s3:::${SubAgentS3Bucket}/*
                   - !Sub arn:aws:s3:::${S3Bucket}
                   - !Sub arn:aws:s3:::${S3Bucket}/*
+                  - !Sub arn:aws:s3:::5d1a4b76751b4c8a994ce96bafd91ec9-${AWS::Region}
+                  - !Sub arn:aws:s3:::5d1a4b76751b4c8a994ce96bafd91ec9-${AWS::Region}/*
 
               - Effect: Allow
                 Action:
@@ -1924,6 +1925,8 @@ Resources:
                   - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:biomarker-agent-*
                   - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:matplotliblayer
                   - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:matplotliblayer:*
+                  - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:statmatplotliblayer
+                  - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:statmatplotliblayer:*
                   - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:MatPlotBarChartLambda
                   - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:PubMedQueryFunction
                   - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*-Clinical-evidence-*-OpenSearchIndexLambda-*
