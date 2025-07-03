@@ -17,7 +17,6 @@ Parameters:
 Conditions:
   CreateAgentAliasCondition: !Not [!Equals [!Ref AgentAliasName, ""]]
   AgentIAMRoleCondition: !Not [!Equals [!Ref AgentIAMRoleArn, ""]]
-  CreateReportBucketCondition: !Not [!Equals ["safety-signal-detection-agent", ""]]
 
 Resources:
   ################################
@@ -26,9 +25,7 @@ Resources:
 
   ReportBucket:
     Type: AWS::S3::Bucket
-    Condition: CreateReportBucketCondition
     Properties:
-      BucketName: !Sub "${AWS::StackName}-${AWS::Region}-${AWS::AccountId}"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -165,7 +162,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - s3:PutObject
-                Resource: !Sub "arn:aws:s3:::${AWS::StackName}-${AWS::Region}-${AWS::AccountId}/*"
+                Resource: !GetAtt ReportBucket.Arn
 
   ReportGenerationLogGroup:
     Type: AWS::Logs::LogGroup
@@ -185,7 +182,7 @@ Resources:
       Environment:
         Variables:
           LOG_LEVEL: "INFO"
-          REPORT_BUCKET_NAME: !Sub "${AWS::StackName}-${AWS::Region}-${AWS::AccountId}"
+          REPORT_BUCKET_NAME: !Ref ReportBucket
       Code: "action-groups/report-generation"
       PackageType: Zip
 
@@ -280,7 +277,11 @@ Resources:
                     Type: boolean
                     Required: False
       AgentName: "Safety-Signal-Detection-Agent"
-      AgentResourceRoleArn: !Ref AgentIAMRoleArn
+      AgentResourceRoleArn:
+        "Fn::If":
+          - AgentIAMRoleCondition
+          - !Ref AgentIAMRoleArn
+          - "{{resolve:ssm:/bedrock/agent/role/arn:1}}"
       AutoPrepare: True
       Description: "Detect and evaluate safety signals from adverse event reports using OpenFDA, PubMed, and FDA Label data"
       FoundationModel: !Ref BedrockModelId
