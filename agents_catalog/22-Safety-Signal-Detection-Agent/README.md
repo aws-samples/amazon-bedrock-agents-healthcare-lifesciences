@@ -106,11 +106,13 @@ export BEDROCK_AGENT_SERVICE_ROLE_ARN="<YOUR_BEDROCK_AGENT_ROLE_ARN>"  # IAM rol
 ```
 
 The script will:
+
 - Package Lambda function code and upload to S3
 - Deploy the CloudFormation stack with all required resources
 - Create the Bedrock Agent with configured action groups
 
 Required Resources:
+
 - An S3 bucket in the target region
 - An IAM role for Bedrock Agent with appropriate permissions
 - AWS CLI configured with credentials having necessary permissions
@@ -120,6 +122,7 @@ Note: The CloudFormation template uses relative paths to reference Lambda functi
 ## 4. Usage Examples
 
 ### Example 1: Basic Analysis
+
 ```
 Input: "Analyze adverse events for metformin over the past 6 months"
 
@@ -140,6 +143,7 @@ Peak daily reports: 17
 ```
 
 ### Example 2: Evidence Assessment
+
 ```
 Input: "Assess evidence for lactic acidosis with metformin"
 
@@ -165,32 +169,41 @@ Assessment Date: 2025-06-30T10:15:00
 ### Common Issues and Solutions
 
 #### Issue: "Module Import Error"
+
 **Possible Causes:**
+
 - ZIP file contains incorrect directory structure
 - Lambda function code not properly packaged
 
 **Solutions:**
+
 - Create ZIP file without directory structure: `zip function.zip lambda_function.py`
 - Avoid using `-r` option when creating ZIP file
 - Verify ZIP file contents before deployment
 
 #### Issue: "OpenFDA API Error"
+
 **Possible Causes:**
+
 - API rate limits exceeded
 - Invalid search parameters
 - Network connectivity issues
 
 **Solutions:**
+
 - Implement appropriate error handling and retries
 - Verify search parameters format
 - Check OpenFDA service status
 
 #### Issue: "S3 Access Denied"
+
 **Possible Causes:**
+
 - Insufficient IAM permissions
 - S3 bucket not configured properly
 
 **Solutions:**
+
 - Verify IAM roles have necessary permissions
 - Check S3 bucket configuration
 - Review CloudWatch logs for specific errors
@@ -209,12 +222,14 @@ Assessment Date: 2025-06-30T10:15:00
 The OpenFDA API has usage guidelines to ensure fair access:
 
 #### Rate Limiting
+
 - **Anonymous access**: 240 requests per minute, per IP address
 - **API key access**: 240 requests per minute, per key
 - **Maximum results**: 5000 records per request
 - **Pagination**: Use skip parameter for large result sets
 
 #### Data Retrieval Strategy
+
 - **Batch size**: 100 records per request
 - **Maximum total**: 1000 records (10 batches)
 - **Process**:
@@ -226,12 +241,14 @@ The OpenFDA API has usage guidelines to ensure fair access:
 #### Best Practices
 
 **Search Optimization:**
+
 - Use specific search parameters
 - Implement pagination for large result sets
 - Cache frequently accessed data
 - Monitor response times
 
 **Error Handling:**
+
 - Implement exponential backoff
 - Handle HTTP 429 responses
 - Log errors appropriately
@@ -246,4 +263,4 @@ When using data retrieved through this agent:
 3. **Acknowledge sources**: Mention use of OpenFDA API in publications
 4. **Stay updated**: Check for API updates regularly
 
-For more information, visit: https://open.fda.gov/apis/
+For more information, visit: <https://open.fda.gov/apis/>
