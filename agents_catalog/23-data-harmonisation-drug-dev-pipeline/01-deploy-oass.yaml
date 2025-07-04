@@ -69,6 +69,7 @@ Resources:
                   - s3:Get*
                   - s3:List*
                   - s3:Describe*
+                  - s3:ListBucket*
                 Resource:
                   - !Sub arn:aws:s3:::${S3Bucket}/*
         - PolicyName: AOSSAPIAccessAll
