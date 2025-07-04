@@ -69,13 +69,17 @@ Resources:
                   - s3:Get*
                   - s3:List*
                   - s3:Describe*
-                Resource:
-                  - !Sub arn:aws:s3:::${S3Bucket}/*
+                  - s3:ListBucket
+                  - s3:GetObject
+                Resource: !Sub arn:aws:s3:::${S3Bucket}/*
+        - PolicyName: S3ListBucket
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
               - Effect: Allow
                 Action:
                   - s3:ListBucket
-                Resource:
-                  - !Sub arn:aws:s3:::${S3Bucket}
+                Resource: !Sub arn:aws:s3:::${S3Bucket}
         - PolicyName: AOSSAPIAccessAll
           PolicyDocument:
             Version: '2012-10-17'
