@@ -22,7 +22,7 @@ An automated solution that retrieves, extracts, compiles to a common data model,
 
 ## Solution Overview
 
-This notebook demonstrates how to extract and process pharmaceutical pipeline data using prompts without coding.
+This notebook demonstrates how to extract and process pharmaceutical pipeline data using Q CLI and a simple prompt. This solution respects `robots.txt` directives and only collects data from websites that permit it.
 
 ### Step 1: Data Collection
 Using Fetch MCP to collect data from Novartis, Novo Nordisk, and Pfizer pipeline web pages, extracting the data and saving it as individual JSON objects.
@@ -35,14 +35,14 @@ Automatically detecting appropriate ontologies to standardize the data, ensuring
 
 The final data is saved as a JSON file, ready for downstream analysis.
 
-For implementation details, please see `./pipeline_data/PROJECT_SUMMARY.md` and `README.md`. This folder was generated entirely using Q CLI.
+For implementation details, please see `./pipeline_data/PROJECT_SUMMARY.md`.
+
+This folder was generated entirely using Q CLI.
 
 ### Step 4: Create RAG application and and Agent
+Using CloudFormation template, this steps deploys Amazon Bedrock Agent that has a Knowledgebase. The Knowledgebase allows to ask questions about the drug development pipeline from the harmonised data in `enriched_pipeline_data.json`
 
-## Data Collection
-Use Fetch MCP fot web scraping to collect pipeline data from companies' official websites. This solution respects `robots.txt` directives and only collects data from websites that permit it.
-
-### Deployment
+## Deployment
 
 The solution deployment automation script uses two parameterized CloudFormation template, 01-deploy-oass.yml and 02-deploy-kb-agent.yml, to automate provisioning of following solution resources:
 - OpenSearch Service Serverless collection
@@ -53,7 +53,7 @@ The solution deployment automation script uses two parameterized CloudFormation 
 
 There are two stacks to deploy
 
-#### 01-deploy-oass.yaml
+### Deploy 01-deploy-oass.yaml
 
 1. You need to add the ARN of the IAM role with which you are currently logged into your AWS account. 
 
@@ -75,7 +75,7 @@ There are two stacks to deploy
 			- Dimensions: `1536`
 			- Distance metric: `Euclidean`
 
-#### 02-02-agent-with-kb.yaml
+### Deploy 02-agent-with-kb.yaml
 You can either use the AWS Console or AWS CLI
 
 `aws cloudformation create-stack --stack-name <stack-name> --template-body file://02-agent-with-kb.yaml --parameters ParameterKey=<parameter key>,ParameterValue=<parameter value> ParameterKey=<parameter key>,ParameterValue=<parameter value>` 
@@ -83,7 +83,7 @@ You can either use the AWS Console or AWS CLI
 Fill the following fields
 - Stack name: name of your choice e.g. `data-harmonisation-agent`
 - AmazonBedrockExecutionRoleForKnowledgeBasearn: you can find it in the Output section of the first stack, as shown in the image above
-- CollectionArn: you can find it in the Output section of the first stack
-- DataSource: you can find it in the Output section of the first stack
-- S3bucketarn: you can find it in the Output section of the first stack
+- CollectionArn: same as above
+- DataSource: same as above
+- S3bucketarn: same as above
 
