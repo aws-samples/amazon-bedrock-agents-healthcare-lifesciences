@@ -1,0 +1,148 @@
+{
+  "company": "Pfizer",
+  "data_source": "https://www.pfizer.com/science/drug-product-pipeline",
+  "extraction_date": "2025-07-03",
+  "pipeline_overview": {
+    "description": "We're in relentless pursuit of medicines and vaccines that will benefit patients around the world. Our ambitions are big and our product pipeline has never been stronger.",
+    "areas_of_focus": [
+      "Inflammation & Immunology",
+      "Internal Medicine", 
+      "Oncology",
+      "Vaccines"
+    ],
+    "development_phases": [
+      "Phase 1",
+      "Phase 2",
+      "Phase 3", 
+      "Registration"
+    ],
+    "submission_types": [
+      "New Molecular Entity",
+      "Product Enhancement"
+    ],
+    "compound_types": [
+      "Biologic",
+      "Small Molecule",
+      "Vaccine"
+    ]
+  },
+  "pipeline_statistics": {
+    "total_candidates": 108,
+    "phase_1": 47,
+    "phase_2": 28,
+    "phase_3": 30,
+    "registration": 3
+  },
+  "sample_pipeline_candidates": {
+    "phase_1": [
+      {
+        "name": "ABRYSVO",
+        "indication": "Respiratory Syncytial Virus Infection (pediatric)",
+        "area_of_focus": "Vaccines",
+        "submission_type": "Product Enhancement",
+        "compound_type": "Vaccine",
+        "status": "Current"
+      },
+      {
+        "name": "CTB+AVP (PF-07612577)",
+        "indication": "Complicated Urinary Tract Infections (cUTI), Including Pyelonephritis (FAST TRACK - U.S.)",
+        "area_of_focus": "Inflammation & Immunology",
+        "submission_type": "New Molecular Entity",
+        "compound_type": "Small Molecule",
+        "status": "Current"
+      },
+      {
+        "name": "Dekavil",
+        "indication": "Rheumatoid Arthritis (Biologic)",
+        "area_of_focus": "Inflammation & Immunology",
+        "submission_type": "New Molecular Entity",
+        "compound_type": "Biologic",
+        "status": "Current"
+      },
+      {
+        "name": "felmetatug vedotin (PF-08046048) (B7H4V)",
+        "indication": "Advanced Solid Tumors (Biologic)",
+        "area_of_focus": "Oncology",
+        "submission_type": "New Molecular Entity",
+        "compound_type": "Biologic",
+        "status": "Current"
+      },
+      {
+        "name": "PADCEV (enfortumab vedotin)",
+        "indication": "BCG-Unresponsive Non-Muscle-Invasive Bladder Cancer (Biologic)",
+        "area_of_focus": "Oncology",
+        "submission_type": "Product Enhancement",
+        "compound_type": "Biologic",
+        "status": "Current"
+      },
+      {
+        "name": "PF-06414300",
+        "indication": "Ulcerative Colitis",
+        "area_of_focus": "Inflammation & Immunology",
+        "submission_type": "New Molecular Entity",
+        "compound_type": "Small Molecule",
+        "status": "Current"
+      },
+      {
+        "name": "PF-06835375",
+        "indication": "Lupus (Biologic)",
+        "area_of_focus": "Inflammation & Immunology",
+        "submission_type": "Product Enhancement",
+        "compound_type": "Biologic",
+        "status": "Current"
+      },
+      {
+        "name": "PF-06940434",
+        "indication": "Advanced Solid Tumors (Biologic)",
+        "area_of_focus": "Oncology",
+        "submission_type": "New Molecular Entity",
+        "compound_type": "Biologic",
+        "status": "Current"
+      },
+      {
+        "name": "PF-06954522",
+        "indication": "Chronic Weight Management",
+        "area_of_focus": "Internal Medicine",
+        "submission_type": "New Molecular Entity",
+        "compound_type": "Small Molecule",
+        "status": "Current"
+      },
+      {
+        "name": "PF-07054894",
+        "indication": "Inflammatory Bowel Disease",
+        "area_of_focus": "Inflammation & Immunology",
+        "submission_type": "New Molecular Entity",
+        "compound_type": "Small Molecule",
+        "status": "Current"
+      }
+    ]
+  },
+  "development_phase_definitions": {
+    "phase_1": {
+      "description": "Phase 1 asks the questions 'Is an investigational drug or vaccine safe?' and 'What is the correct dose?' Typically, these studies are done with a small group of healthy volunteers.",
+      "success_rate": "Only 10% of Phase 1 candidates will make it to approval industry-wide",
+      "timeline": "On average, it takes 10 years to move from Phase 1 to regulatory approval"
+    },
+    "phase_2": {
+      "description": "Phase 2 asks the questions 'Does this investigational medicine or vaccine work in the disease that's targeted?' and 'Are there any side effects that may occur?'",
+      "participants": "Several hundred participants who have the condition",
+      "duration": "Several months to a few years",
+      "failure_rate": "70% of Phase 2 candidates industry-wide fail in this stage"
+    },
+    "phase_3": {
+      "description": "Phase 3 studies seek to find out how safe and effective the investigational drug or vaccine is for people with the condition, and also if it works compared to a placebo or something else currently available",
+      "timeline": "Usually signifies when an investigational medicine or vaccine may be two to three years from approval"
+    },
+    "registration": {
+      "description": "After Phase 3, if the clinical trial data supports it, an extensive data package is submitted to the U.S. Food and Drug Administration (FDA) and other regulatory authorities for review",
+      "review_time": "This review process typically takes a year"
+    }
+  },
+  "regulatory_designations": {
+    "fast_track": "A designation available to a product if it is intended for the treatment of a serious or life-threatening disease or condition, and it demonstrates the potential to address unmet medical needs",
+    "breakthrough_designation": "May be granted to a drug intended to treat a serious or life-threatening disease or condition, and preliminary clinical evidence indicates substantial improvement over existing therapies",
+    "orphan_drug": "Status may be granted to drugs intended for rare diseases/disorders that affect fewer than 200,000 people in the U.S.",
+    "priority_review": "A U.S. drug application will receive priority review if it treats a serious condition and would provide significant improvement in safety or effectiveness"
+  },
+  "last_updated": "April 29, 2025"
+}

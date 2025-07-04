@@ -1,0 +1,112 @@
+{
+  "overall_status": "FAIL",
+  "total_candidates": 77,
+  "validation_checks": {
+    "schema_structure": {
+      "status": "PASS",
+      "errors": []
+    },
+    "metadata": {
+      "status": "PASS",
+      "errors": [],
+      "warnings": []
+    },
+    "candidate_records": {
+      "status": "PASS",
+      "total_records": 77,
+      "unique_candidate_ids": 77,
+      "errors": [],
+      "warnings": []
+    },
+    "data_consistency": {
+      "status": "FAIL",
+      "errors": [
+        "Company Pfizer: expected 108 candidates, found 10"
+      ],
+      "warnings": []
+    }
+  },
+  "errors": [
+    "Company Pfizer: expected 108 candidates, found 10"
+  ],
+  "warnings": [],
+  "summary": {
+    "total_records": 77,
+    "field_completeness": {
+      "compound_name": {
+        "count": 77,
+        "percentage": 100.0
+      },
+      "compound_code": {
+        "count": 44,
+        "percentage": 57.1
+      },
+      "brand_name": {
+        "count": 20,
+        "percentage": 26.0
+      },
+      "indication": {
+        "count": 77,
+        "percentage": 100.0
+      },
+      "therapeutic_area": {
+        "count": 77,
+        "percentage": 100.0
+      },
+      "development_phase": {
+        "count": 77,
+        "percentage": 100.0
+      },
+      "compound_type": {
+        "count": 77,
+        "percentage": 100.0
+      },
+      "mechanism_of_action": {
+        "count": 67,
+        "percentage": 87.0
+      },
+      "submission_type": {
+        "count": 10,
+        "percentage": 13.0
+      },
+      "filing_date": {
+        "count": 12,
+        "percentage": 15.6
+      }
+    },
+    "value_distributions": {
+      "by_company": {
+        "Novo Nordisk": 47,
+        "Pfizer": 10,
+        "Novartis": 20
+      },
+      "by_phase": {
+        "Phase 1": 34,
+        "Phase 2": 19,
+        "Phase 3": 18,
+        "Registration/Filed": 6
+      },
+      "by_therapeutic_area": {
+        "Diabetes": 12,
+        "Obesity": 13,
+        "Cardiovascular/Metabolic": 10,
+        "Other/Emerging": 7,
+        "Rare Diseases": 7,
+        "Vaccines": 1,
+        "Immunology": 7,
+        "Oncology": 19,
+        "Neuroscience": 1
+      },
+      "by_compound_type": {
+        "Biologic": 19,
+        "Unknown": 24,
+        "Small Molecule": 15,
+        "Cell Therapy": 2,
+        "RNA Therapy": 2,
+        "Vaccine": 1,
+        "Radioligand": 14
+      }
+    },
+    "data_quality_score": 95.0
+  }
+}

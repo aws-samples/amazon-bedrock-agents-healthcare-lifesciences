@@ -1,0 +1,188 @@
+{
+  "pipeline_comparison_summary": {
+    "extraction_date": "2025-07-03",
+    "companies_analyzed": ["Novo Nordisk", "Pfizer", "Novartis"],
+    "data_sources": [
+      "https://www.novonordisk.com/science-and-technology/r-d-pipeline.html",
+      "https://www.pfizer.com/science/drug-product-pipeline", 
+      "https://www.novartis.com/research-development/novartis-pipeline"
+    ],
+    "company_profiles": {
+      "novo_nordisk": {
+        "focus": "Diabetes, obesity, cardiovascular disease, rare blood and endocrine disorders",
+        "total_candidates": 108,
+        "key_strengths": [
+          "Leading position in diabetes and obesity treatments",
+          "Strong GLP-1 and insulin pipeline",
+          "Focus on rare diseases",
+          "Advanced combination therapies"
+        ],
+        "notable_technologies": [
+          "GLP-1 receptor agonists",
+          "Insulin analogues", 
+          "Amylin analogues",
+          "Cell therapies",
+          "siRNA therapeutics"
+        ]
+      },
+      "pfizer": {
+        "focus": "Inflammation & immunology, internal medicine, oncology, vaccines",
+        "total_candidates": 108,
+        "key_strengths": [
+          "Broad therapeutic area coverage",
+          "Strong oncology pipeline",
+          "Vaccine development expertise",
+          "Regulatory designation success"
+        ],
+        "notable_technologies": [
+          "Biologics",
+          "Small molecules",
+          "Vaccines",
+          "Antibody-drug conjugates"
+        ]
+      },
+      "novartis": {
+        "focus": "Oncology, immunology, neuroscience, radioligand therapy",
+        "total_candidates": "100+",
+        "key_strengths": [
+          "Leading radioligand therapy pipeline",
+          "Strong oncology focus",
+          "Innovative targeting mechanisms",
+          "Precision medicine approach"
+        ],
+        "notable_technologies": [
+          "Radioligand therapy",
+          "Monoclonal antibodies",
+          "Targeted therapies",
+          "Gene therapies"
+        ]
+      }
+    },
+    "therapeutic_area_comparison": {
+      "oncology": {
+        "pfizer": "Strong focus on solid tumors and hematologic malignancies",
+        "novartis": "Leading radioligand therapy platform, precision oncology",
+        "novo_nordisk": "Limited oncology presence"
+      },
+      "diabetes_metabolic": {
+        "novo_nordisk": "Market leader with comprehensive pipeline",
+        "pfizer": "Internal medicine focus including metabolic diseases",
+        "novartis": "Limited presence"
+      },
+      "immunology_inflammation": {
+        "pfizer": "Major focus area with multiple candidates",
+        "novartis": "Strong immunology pipeline",
+        "novo_nordisk": "Limited presence"
+      },
+      "cardiovascular": {
+        "novo_nordisk": "Strong pipeline with novel mechanisms",
+        "pfizer": "Part of internal medicine focus",
+        "novartis": "Limited cardiovascular presence"
+      },
+      "neuroscience": {
+        "novartis": "Dedicated neuroscience pipeline",
+        "novo_nordisk": "Emerging area (Alzheimer's, Parkinson's)",
+        "pfizer": "Limited presence"
+      },
+      "rare_diseases": {
+        "novo_nordisk": "Strong focus on rare blood and endocrine disorders",
+        "pfizer": "Some orphan drug designations",
+        "novartis": "Selective rare disease programs"
+      }
+    },
+    "development_phase_distribution": {
+      "novo_nordisk": {
+        "phase_1": "19 candidates",
+        "phase_2": "13 candidates", 
+        "phase_3": "10 candidates",
+        "filed": "5 candidates"
+      },
+      "pfizer": {
+        "phase_1": "47 candidates",
+        "phase_2": "28 candidates",
+        "phase_3": "30 candidates", 
+        "registration": "3 candidates"
+      },
+      "novartis": {
+        "phase_1": "Multiple candidates",
+        "phase_2": "Multiple candidates",
+        "phase_3": "Multiple candidates",
+        "registration": "Multiple candidates"
+      }
+    },
+    "innovation_highlights": {
+      "novo_nordisk": [
+        "Glucose-sensitive insulin (NN1845)",
+        "Triple agonist therapies (GLP-1/GIP/Glucagon)",
+        "Cell therapy for heart failure and Parkinson's",
+        "Oral GLP-1/Amylin combinations"
+      ],
+      "pfizer": [
+        "Antibody-drug conjugates",
+        "Novel vaccine platforms",
+        "Breakthrough therapy designations",
+        "Fast track designations"
+      ],
+      "novartis": [
+        "Radioligand therapy platform",
+        "Precision targeting (PSMA, SSTR, GRPR, FAP)",
+        "Next-generation CAR-T therapies",
+        "Pediatric formulations of existing drugs"
+      ]
+    },
+    "regulatory_strategy_comparison": {
+      "novo_nordisk": {
+        "approach": "Focus on filing advanced candidates",
+        "recent_filings": ["Icosema", "Insulin icodec", "Oral Semaglutide for obesity"]
+      },
+      "pfizer": {
+        "approach": "Extensive use of regulatory designations",
+        "designations": ["Fast Track", "Breakthrough", "Orphan Drug", "Priority Review"]
+      },
+      "novartis": {
+        "approach": "Strategic filing timeline with projected dates",
+        "filing_timeline": "2024-2028 projected filings"
+      }
+    },
+    "competitive_landscape_insights": {
+      "diabetes_obesity": {
+        "leader": "Novo Nordisk",
+        "competitive_advantage": "Most comprehensive pipeline with novel mechanisms and combinations"
+      },
+      "oncology": {
+        "leaders": ["Pfizer", "Novartis"],
+        "differentiation": "Novartis leads in radioligand therapy, Pfizer strong in ADCs and broad oncology"
+      },
+      "immunology": {
+        "leaders": ["Pfizer", "Novartis"],
+        "focus": "Autoimmune and inflammatory conditions"
+      },
+      "rare_diseases": {
+        "leader": "Novo Nordisk",
+        "focus": "Blood and endocrine disorders"
+      }
+    },
+    "technology_platform_comparison": {
+      "biologics": {
+        "all_companies": "Strong presence across all three companies",
+        "differentiation": "Novartis focuses on radioligand conjugates, Pfizer on ADCs, Novo Nordisk on peptides/proteins"
+      },
+      "small_molecules": {
+        "pfizer": "Broad small molecule pipeline",
+        "novo_nordisk": "Selective small molecule programs",
+        "novartis": "Targeted small molecules"
+      },
+      "cell_gene_therapy": {
+        "novo_nordisk": "Cell therapy for heart failure and Parkinson's",
+        "novartis": "Gene therapy programs",
+        "pfizer": "Limited presence"
+      }
+    },
+    "market_implications": {
+      "diabetes_market": "Novo Nordisk positioned to maintain leadership with innovative combinations",
+      "oncology_market": "Intense competition between Pfizer and Novartis with different technological approaches",
+      "rare_disease_market": "Novo Nordisk building strong position in blood disorders",
+      "immunology_market": "Pfizer and Novartis competing with different mechanisms"
+    }
+  }
+}
