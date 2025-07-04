@@ -87,3 +87,7 @@ Fill the following fields
 - DataSource: same as above
 - S3bucketarn: same as above
 
+After the stack is deployed, go to AWS Console
+1. Nagivate to Amazon Bedrock
+2. KnowledgeBases and sync the data source
+3. Test both your agent and the knowledgebase
