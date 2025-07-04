@@ -89,7 +89,7 @@ Resources:
         AgentName: !Ref AgentName
         AgentResourceRoleArn: !GetAtt AmazonBedrockExecutionRoleForAgentsQA.Arn
         AutoPrepare: true
-        FoundationModel: "anthropic.claude-v2"
+        FoundationModel: "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
         Instruction: "You are an agent that can answer question about drug development pipeine from pharmaceutical companies"
         Description: "Pipeline Data Agent"
         IdleSessionTTLInSeconds: 900
