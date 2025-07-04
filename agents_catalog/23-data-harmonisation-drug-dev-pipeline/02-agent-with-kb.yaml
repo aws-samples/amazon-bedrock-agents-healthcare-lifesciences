@@ -1,0 +1,99 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: 'Bedrock Agents application using Knowledge Base, Agents, and OpenSearch Serverless'
+
+Parameters:
+  KnowledgeBaseName:
+    Default: pipeline-data-kb
+    Type: String
+    Description: The name of the knowledge base.
+  KnowledgeBaseDescription:
+    Default: Answer based only on information contained in knowledge base. 
+    Type: String
+    Description: The description of the knowledge base.
+  AmazonBedrockExecutionRoleForKnowledgeBasearn:
+    Type: String
+    Description: Execution Role for Knowledge Base Arn.
+  
+  AgentName:
+    Default: pipeline-data-agent
+    Type: String
+    Description: The name of the agent.
+  AOSSIndexName:
+    Default: rag-pipeline-readthedocs-io
+    Type: String
+    Description: Name of the vector index in the Amazon OpenSearch Service Serverless (AOSS) collection. You can get the name from the output section of the previous stack
+  DataSource:
+    
+    Type: String
+    Description: S3 bucket name from the previous stack.
+
+  S3bucketarn:
+    Type: String
+    Description: S3 bucket arn from the previous stack.
+
+  CollectionArn:
+    Type: String
+    Description: Collection Arn from the previous stack.
+
+Resources:
+  
+
+  AmazonBedrockExecutionRoleForAgentsQA:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: AmazonBedrockExecutionRoleForAgents_SageMakerQA
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: bedrock.amazonaws.com
+          Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonBedrockFullAccess
+
+  
+
+  KnowledgeBaseWithAoss:
+    Type: AWS::Bedrock::KnowledgeBase
+    Properties:
+      Name: !Ref KnowledgeBaseName
+      Description: !Ref KnowledgeBaseDescription
+      RoleArn: !Ref AmazonBedrockExecutionRoleForKnowledgeBasearn
+      KnowledgeBaseConfiguration:
+        Type: "VECTOR"
+        VectorKnowledgeBaseConfiguration:
+          EmbeddingModelArn: !Sub "arn:${AWS::Partition}:bedrock:${AWS::Region}::foundation-model/amazon.titan-embed-text-v1"
+      StorageConfiguration:
+        Type: "OPENSEARCH_SERVERLESS"
+        OpensearchServerlessConfiguration:
+          CollectionArn: !Ref CollectionArn
+          VectorIndexName: !Ref AOSSIndexName
+          FieldMapping:
+            VectorField: "vector"
+            TextField: "text"
+            MetadataField: "metadata"
+  SampleDataSource:
+    Type: AWS::Bedrock::DataSource
+    Properties:
+      KnowledgeBaseId: !Ref KnowledgeBaseWithAoss
+      Name: !Ref DataSource
+      DataSourceConfiguration:
+        Type: "S3"
+        S3Configuration:
+          BucketArn: !Ref S3bucketarn
+
+  
+  AgentResource:
+      Type: AWS::Bedrock::Agent
+      Properties:
+        AgentName: !Ref AgentName
+        AgentResourceRoleArn: !GetAtt AmazonBedrockExecutionRoleForAgentsQA.Arn
+        AutoPrepare: true
+        FoundationModel: "anthropic.claude-v2"
+        Instruction: "You are an agent that can answer question about drug development pipeine from pharmaceutical companies"
+        Description: "Pipeline Data Agent"
+        IdleSessionTTLInSeconds: 900
+        KnowledgeBases:
+          - KnowledgeBaseId: !Ref KnowledgeBaseWithAoss
+            Description: !Ref KnowledgeBaseDescription
+            KnowledgeBaseState: ENABLED     

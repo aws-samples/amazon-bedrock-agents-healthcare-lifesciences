@@ -13,6 +13,13 @@ Harmonising data from disparate systems is time-consuming and costly. Pharmaceut
 
 An automated solution that retrieves, extracts, compiles to a common data model, and standardises with ontologies is essential to make the data FAIR (Findable, Accessible, Interoperable, Reusable) and ready for upstream analysis.
 
+## Sample Questions
+- "What diabetes drug candidates are in Phase 1 development?"
+- "Compare the pipeline strategies of Novo Nordisk vs Pfizer"
+- "Which compounds have Fast Track designation?"
+- "Show me all biologics targeting oncology indications"
+- "Analyze the distribution of development phases across therapeutic areas"
+
 ## Solution Overview
 
 This notebook demonstrates how to extract and process pharmaceutical pipeline data using prompts without coding.
@@ -30,5 +37,53 @@ The final data is saved as a JSON file, ready for downstream analysis.
 
 For implementation details, please see `./pipeline_data/PROJECT_SUMMARY.md` and `README.md`. This folder was generated entirely using Q CLI.
 
-### Data Collection
-We utilize web scraping techniques to collect pipeline data from companies' official websites. This solution respects `robots.txt` directives and only collects data from websites that permit it.
+### Step 4: Create RAG application and and Agent
+
+## Data Collection
+Use Fetch MCP fot web scraping to collect pipeline data from companies' official websites. This solution respects `robots.txt` directives and only collects data from websites that permit it.
+
+### Deployment
+
+The solution deployment automation script uses two parameterized CloudFormation template, 01-deploy-oass.yml and 02-deploy-kb-agent.yml, to automate provisioning of following solution resources:
+- OpenSearch Service Serverless collection
+- Amazon S3 Bucket (DataSource)
+- Amazon Bedrock KnowledgeBase
+- Amazon Bedrock Agent
+- IAM Roles
+
+There are two stacks to deploy
+
+#### 01-deploy-oass.yaml
+
+1. You need to add the ARN of the IAM role with which you are currently logged into your AWS account. 
+
+`cloudformation create-stack --stack-name <stack-name> --template-body 01-deploy-oass.yaml --parameters ParameterKey=<parameter key>,ParameterValue=<parameter value> ParameterKey=<parameter key>,ParameterValue=<parameter value> `
+
+2. After the stack is deployed, go to 'Outputs' tab and make a note of the output fields highlighted below
+
+3. Go to AWS Consle 
+	1. Go to S3 and upload `enriched_pipeline_data.json` to your bucket. You can find your bucket name marked as 1 in the image above
+	`aws s3 sync /<your dir>/pipeline_data/final_enriched_data/enriched_pipeline_data.json s3://$BUCKET_NAME/`
+	2. Go to Amazon OpenSearch Serverless
+		- Collections
+		- Find `pipeline-rag`
+		- `Create index`
+			- Index name: `rag-pipeline-readthedocs-io`
+			- Vector field name: `vector`
+			- Engine: `faiss`
+			- Precision: `FP16`
+			- Dimensions: `1536`
+			- Distance metric: `Euclidean`
+
+#### 02-02-agent-with-kb.yaml
+You can either use the AWS Console or AWS CLI
+
+`aws cloudformation create-stack --stack-name <stack-name> --template-body file://02-agent-with-kb.yaml --parameters ParameterKey=<parameter key>,ParameterValue=<parameter value> ParameterKey=<parameter key>,ParameterValue=<parameter value>` 
+
+Fill the following fields
+- Stack name: name of your choice e.g. `data-harmonisation-agent`
+- AmazonBedrockExecutionRoleForKnowledgeBasearn: you can find it in the Output section of the first stack, as shown in the image above
+- CollectionArn: you can find it in the Output section of the first stack
+- DataSource: you can find it in the Output section of the first stack
+- S3bucketarn: you can find it in the Output section of the first stack
+
