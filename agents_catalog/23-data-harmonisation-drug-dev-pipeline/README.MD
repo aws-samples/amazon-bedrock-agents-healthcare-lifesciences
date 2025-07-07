@@ -100,7 +100,7 @@ The solution deployment automation script uses two parameterized CloudFormation 
 
 There are two stacks to deploy. For the first stack, you'll need IAM ARN for the AWS account you are logged in with. After the first deployment is successful, please manually create vector index. The steps are given below. 
 
-### Deploy 01-deploy-oass.yaml
+### Deploy OpenSearch Serverless as Vector DB with 01-deploy-oass.yaml
 
 1. You need to add the **ARN of the IAM role** with which you are currently logged into your AWS account. 
 
@@ -123,7 +123,7 @@ There are two stacks to deploy. For the first stack, you'll need IAM ARN for the
 3. After the stack is deployed, go to 'Outputs' tab and make a note of the output fields highlighted in the image.
 ![alt text](images/cf_stack_aoss.png)
 
-### Deploy 02-agent-with-kb.yaml
+### Deploy Agent and Knowledgebase with 02-agent-with-kb.yaml
 You can either use the AWS Console or AWS CLI
 
 `aws cloudformation create-stack --stack-name <stack-name> --template-body file://02-agent-with-kb.yaml --parameters ParameterKey=<parameter key>,ParameterValue=<parameter value> ParameterKey=<parameter key>,ParameterValue=<parameter value>` 
