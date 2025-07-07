@@ -106,6 +106,6 @@
 - Simplified nanobody sequence representation
 
 ### C3: Implementation Scope
-- Two Action Groups: plan_cycle and analyze_results
-- Chat-based interaction workflow
-- No user management or complex state persistence
+- Four Action Groups: plan_project, design_variants, make_test, analyze_results
+- Chat-based interaction workflow with phase-by-phase confirmation
+- DynamoDB state persistence with 3-table architecture

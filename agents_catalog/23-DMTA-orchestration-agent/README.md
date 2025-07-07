@@ -52,7 +52,7 @@ You are an expert nanobody engineer specializing in DMTA cycle orchestration for
       optimization_objective: { type: "string", description: "vWF binding affinity improvement objective"},
       target_kd: { type: "number", description: "Target KD value in nM (default: 1.0)"},
       timeline_weeks: { type: "integer", description: "Project timeline in weeks (default: 8)"},
-      knowledge_base_query: { type: "string", description: "Query for similar nanobody optimization experiments"}
+      knowledge_base_query: { type: "string", description: "Query for similar nanobody optimization project plan templates"}
     },
     required: ["target_nanobody", "optimization_objective"]
   }

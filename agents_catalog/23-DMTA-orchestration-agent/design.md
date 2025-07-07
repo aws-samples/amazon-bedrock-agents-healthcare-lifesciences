@@ -266,40 +266,84 @@ def analyze_binding_results(binding_data, cycle_num, history, criteria, target):
 
 ### 1. DynamoDB Tables
 
-#### Workflow State Table
+#### ProjectTable
 ```json
 {
-  "TableName": "DMTAWorkflowState",
+  "TableName": "DMTAProjectTable",
   "KeySchema": [
-    {"AttributeName": "workflow_id", "KeyType": "HASH"},
-    {"AttributeName": "timestamp", "KeyType": "RANGE"}
+    {"AttributeName": "project_id", "KeyType": "HASH"}
   ],
   "AttributeDefinitions": [
-    {"AttributeName": "workflow_id", "AttributeType": "S"},
-    {"AttributeName": "timestamp", "AttributeType": "S"},
-    {"AttributeName": "cycle_number", "AttributeType": "N"}
+    {"AttributeName": "project_id", "AttributeType": "S"},
+    {"AttributeName": "status", "AttributeType": "S"}
   ],
   "GlobalSecondaryIndexes": [
     {
-      "IndexName": "CycleIndex",
+      "IndexName": "StatusIndex",
       "KeySchema": [
-        {"AttributeName": "workflow_id", "KeyType": "HASH"},
-        {"AttributeName": "cycle_number", "KeyType": "RANGE"}
+        {"AttributeName": "status", "KeyType": "HASH"}
       ]
     }
   ]
 }
 ```
 
-#### Compound Registry Table
+**Sample Record**:
 ```json
 {
-  "TableName": "CompoundRegistry",
+  "project_id": "cablivi-opt-001",
+  "target_nanobody": "Caplacizumab",
+  "optimization_objective": "vWF binding affinity improvement",
+  "target_kd": 1.0,
+  "baseline_kd": 3.2,
+  "status": "in_progress",
+  "created_at": "2025-01-15T10:00:00Z",
+  "current_cycle": 2,
+  "best_variant": {
+    "variant_id": "N2-008",
+    "kd_value": 0.8
+  }
+}
+```
+
+#### CycleTable
+```json
+{
+  "TableName": "DMTACycleTable",
   "KeySchema": [
-    {"AttributeName": "compound_id", "KeyType": "HASH"}
+    {"AttributeName": "project_id", "KeyType": "HASH"},
+    {"AttributeName": "cycle_number", "KeyType": "RANGE"}
   ],
   "AttributeDefinitions": [
-    {"AttributeName": "compound_id", "AttributeType": "S"},
+    {"AttributeName": "project_id", "AttributeType": "S"},
+    {"AttributeName": "cycle_number", "AttributeType": "N"}
+  ]
+}
+```
+
+**Sample Record**:
+```json
+{
+  "project_id": "cablivi-opt-001",
+  "cycle_number": 1,
+  "status": "completed",
+  "variants_tested": 8,
+  "best_kd": 1.8,
+  "gp_model_r2": 0.74,
+  "acquisition_function": "EI",
+  "completed_at": "2025-01-15T14:00:00Z"
+}
+```
+
+#### VariantTable
+```json
+{
+  "TableName": "DMTAVariantTable",
+  "KeySchema": [
+    {"AttributeName": "variant_id", "KeyType": "HASH"}
+  ],
+  "AttributeDefinitions": [
+    {"AttributeName": "variant_id", "AttributeType": "S"},
     {"AttributeName": "project_id", "AttributeType": "S"}
   ],
   "GlobalSecondaryIndexes": [
@@ -310,6 +354,20 @@ def analyze_binding_results(binding_data, cycle_num, history, criteria, target):
       ]
     }
   ]
+}
+```
+
+**Sample Record**:
+```json
+{
+  "variant_id": "N1-001",
+  "project_id": "cablivi-opt-001",
+  "cycle_number": 1,
+  "mutations": ["S101A"],
+  "predicted_kd": 2.1,
+  "actual_kd": 1.8,
+  "expression_yield": 12.4,
+  "status": "tested"
 }
 ```
 
