@@ -112,8 +112,7 @@ Resources:
       Handler: index.handler
       Role: !GetAtt CollaboratorLambdaRole.Arn
       Layers:
-        # - !Ref LambdaLayer
-        - "arn:aws:lambda:us-east-1:017000801446:layer:AWSLambdaPowertoolsPythonV3-python312-x86_64:14"
+        - !Sub "arn:aws:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV3-python312-x86_64:14"
       Code:
         ZipFile: |
           import cfnresponse
@@ -200,8 +199,7 @@ Resources:
     Properties:
       Runtime: python3.12
       Layers:
-        # - !Ref LambdaLayer
-        - "arn:aws:lambda:us-east-1:017000801446:layer:AWSLambdaPowertoolsPythonV3-python312-x86_64:14"
+        - !Sub "arn:aws:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV3-python312-x86_64:14"
       Handler: index.handler
       Role: !GetAtt CollaboratorLambdaRole.Arn
       Code:
