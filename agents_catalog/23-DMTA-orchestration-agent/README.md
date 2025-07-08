@@ -1,336 +1,284 @@
 # DMTA Orchestration Agent
 
-## 1. Summary
+Design-Make-Test-Analyze (DMTA) cycle orchestration agent for Cablivi (Caplacizumab) optimization using active learning approaches.
 
-This agent orchestrates Design-Make-Test-Analyze (DMTA) cycles for Cablivi (Caplacizumab) optimization. It coordinates experimental planning, nanobody engineering, expression/testing, and results analysis to improve vWF binding affinity through iterative active learning cycles.
+## Overview
 
-## 2. Agent Details
+This agent helps orchestrate iterative experimental cycles to improve vWF A1 domain binding affinity through active learning approaches. It provides tools for:
 
-### 2.1. Instructions
+- **Plan Project**: Create initial project setup and active learning strategy
+- **Design Variants**: Generate nanobody variants using acquisition functions (EI/UCB)
+- **Make Test**: Execute expression and SPR binding assays with FactorX simulation
+- **Analyze Results**: Analyze results using Gaussian Process modeling and recommend next steps
 
-You are an expert nanobody engineer specializing in DMTA cycle orchestration for Cablivi (Caplacizumab) optimization. Help users plan, execute, and analyze iterative experimental cycles to improve vWF A1 domain binding affinity through active learning approaches.
->
-> You have access to the following tools:
->
-> - plan_project: Create initial project setup and active learning strategy
-> - design_variants: Generate nanobody variants using acquisition functions (EI/UCB)
-> - make_test: Execute expression and SPR binding assays with FactorX simulation
-> - analyze_results: Analyze results using Gaussian Process modeling and recommend next steps
->
-> DMTA Workflow Process
->
-> 1. Begin by understanding the optimization objectives (improve vWF binding affinity for Cablivi)
-> 2. Use plan_project to create initial project setup and active learning strategy
-> 3. For each cycle, execute phases sequentially with user confirmation:
->    - Use design_variants to select nanobody variants using acquisition functions
->    - Use make_test to simulate expression and SPR binding assays with FactorX data
->    - Use analyze_results to update Gaussian Process model and assess progress
-> 4. Ask user permission before starting each phase: "Design phase completed. Would you like to start the Make phase?"
-> 5. Continue cycles until convergence criteria met or optimal nanobody variants found
-> 6. Provide final optimization summary with best candidates
->
-> Response Guidelines
->
-> - Execute phases sequentially with user confirmation between each phase
-> - Provide clear phase completion messages: "[Phase] completed. Would you like to start the [Next Phase]?"
-> - Generate realistic FactorX dummy data for Make and Test phases
-> - Update Gaussian Process models with new experimental data
-> - Track optimization progress and convergence criteria
-- Highlight best nanobody variants and binding improvements achieved
-> - Recommend next cycle strategies based on active learning principles
+## Prerequisites
 
-### 2.2. Tools
+1. **AWS Account**: You need an AWS account with appropriate permissions
+2. **Bedrock Access**: Request access to the following models:
+   - Anthropic Claude 3.5 Sonnet v2
+3. **Bedrock Agent Service Role**: Create an IAM role for Bedrock Agent service
 
+### Create Bedrock Agent Service Role
+
+```bash
+# Create trust policy
+cat > bedrock-agent-trust-policy.json << EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "bedrock.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+EOF
+
+# Create the role
+aws iam create-role \
+    --role-name AmazonBedrockExecutionRoleForAgents_DMTA \
+    --assume-role-policy-document file://bedrock-agent-trust-policy.json
+
+# Attach the required policy
+aws iam attach-role-policy \
+    --role-name AmazonBedrockExecutionRoleForAgents_DMTA \
+    --policy-arn arn:aws:iam::aws:policy/AmazonBedrockFullAccess
+
+# Get the role ARN (you'll need this for deployment)
+aws iam get-role \
+    --role-name AmazonBedrockExecutionRoleForAgents_DMTA \
+    --query 'Role.Arn' \
+    --output text
+```
+
+## Deployment
+
+1. **Set Environment Variable**:
+   ```bash
+   export BEDROCK_AGENT_SERVICE_ROLE_ARN="arn:aws:iam::YOUR-ACCOUNT-ID:role/AmazonBedrockExecutionRoleForAgents_DMTA"
+   ```
+
+2. **Deploy the Stack**:
+   ```bash
+   ./deploy.sh
+   ```
+
+   Or manually using AWS CLI:
+   ```bash
+   aws cloudformation deploy \
+       --template-file dmta-orchestration-agent-cfn.yaml \
+       --stack-name dmta-orchestration-agent \
+       --region us-west-2 \
+       --capabilities CAPABILITY_NAMED_IAM \
+       --parameter-overrides \
+           BedrockAgentServiceRoleArn=$BEDROCK_AGENT_SERVICE_ROLE_ARN \
+           ProjectName=DMTA-Orchestration
+   ```
+
+## Architecture
+
+The solution creates:
+
+- **S3 Bucket**: For storing experimental data and project plans (auto-generated unique name)
+- **DynamoDB Tables**: For tracking projects, cycles, and variants
+- **Lambda Functions**: Four functions for each DMTA phase
+- **Bedrock Agent**: Orchestrates the DMTA workflow
+- **IAM Roles**: Appropriate permissions for all components
+
+### Data Storage Structure
+
+#### S3 Bucket Organization
+```
+s3://dmta-orchestration-agent-{region}-{account-id}/
+└── projects/
+    └── {project_id}/
+        ├── project_plan.md                     # Comprehensive project plan (Markdown)
+        ├── experiments/
+        │   └── {experiment_id}/
+        │       └── results.json                 # SPR binding assay results
+        └── analysis/
+            └── {analysis_id}/
+                └── detailed_results.json       # GP model analysis results
+```
+
+#### DynamoDB Tables
+- **ProjectTable**: Project metadata and status tracking (PK: project_id)
+- **CycleTable**: DMTA cycle information and progress (PK: project_id, SK: cycle_number)
+- **VariantTable**: Nanobody variant designs and results (PK: project_id, SK: variant_id)
+
+## Usage
+
+After deployment, you can interact with the agent through:
+
+1. **AWS Console**: Navigate to Amazon Bedrock > Agents
+2. **AWS CLI**: Use the Bedrock Runtime API
+3. **SDK**: Integrate with your applications
+
+### Data Management
+
+#### Project Plan Documents
+Each project generates a comprehensive plan document stored in S3:
+- **Location**: `s3://bucket/projects/{project_id}/project_plan.json`
+- **Contents**: 
+  - Project overview and objectives
+  - Experimental design and methodology
+  - Knowledge base insights
+  - Timeline and deliverables
+  - Risk assessment and mitigation strategies
+
+#### Experimental Data
+SPR binding assay results are stored under each project:
+- **Location**: `s3://bucket/projects/{project_id}/experiments/{experiment_id}/results.json`
+- **Contents**:
+  - Expression data (yield, purity, aggregation)
+  - SPR binding kinetics (ka, kd, KD, Rmax)
+  - Quality assessment scores
+  - Assay conditions and parameters
+
+#### Analysis Results
+Gaussian Process modeling and optimization analysis:
+- **Location**: `s3://bucket/projects/{project_id}/analysis/{analysis_id}/detailed_results.json`
+- **Contents**:
+  - Cycle summary and statistics
+  - GP model performance metrics
+  - Optimization progress assessment
+  - Next cycle recommendations
+
+### Example Conversation
+
+```
+User: "I want to optimize Cablivi for better vWF binding affinity. Can you help me plan a DMTA project?"
+
+Agent: "I'll help you create a DMTA optimization project for Cablivi. Let me start by planning the project..."
+[Calls plan_project function]
+
+Agent: "Project created! Now let's design the first set of variants..."
+[Calls design_variants function]
+```
+
+## Resource Naming
+
+All resources are automatically named with unique identifiers to avoid conflicts:
+
+- S3 Bucket: AWS auto-generates unique name
+- DynamoDB Tables: `{StackName}-{TableType}`
+- Lambda Functions: `{StackName}-{FunctionName}`
+- IAM Role: `{StackName}-Lambda-Role`
+
+## Data Access and Management
+
+### Accessing Stored Data
+
+#### List All Projects
+```bash
+aws s3 ls s3://dmta-orchestration-agent-{region}-{account-id}/projects/
+```
+
+#### List Project Contents
+```bash
+aws s3 ls s3://dmta-orchestration-agent-{region}-{account-id}/projects/{project_id}/ --recursive
+```
+
+#### Download Project Plan
+```bash
+aws s3 cp s3://dmta-orchestration-agent-{region}-{account-id}/projects/{project_id}/project_plan.json ./
+```
+
+#### Download All Project Data
+```bash
+aws s3 sync s3://dmta-orchestration-agent-{region}-{account-id}/projects/{project_id}/ ./project_data/
+```
+
+#### Query DynamoDB Tables
+```bash
+# List all projects
+aws dynamodb scan --table-name dmta-orchestration-agent-ProjectTable
+
+# Get specific project
+aws dynamodb get-item --table-name dmta-orchestration-agent-ProjectTable --key '{"project_id":{"S":"your-project-id"}}'
+```
+
+### File Formats
+
+#### Project Plan Document Structure
 ```json
 {
-  name: "plan_project",
-  description: "Create initial Cablivi optimization project plan with active learning strategy",
-  inputSchema: {
-    type: "object",
-    properties: {
-      target_nanobody: { type: "string", description: "Starting nanobody (Cablivi/Caplacizumab)"},
-      optimization_objective: { type: "string", description: "vWF binding affinity improvement objective"},
-      target_kd: { type: "number", description: "Target KD value in nM (default: 1.0)"},
-      timeline_weeks: { type: "integer", description: "Project timeline in weeks (default: 8)"},
-      knowledge_base_query: { type: "string", description: "Query for similar nanobody optimization project plan templates"}
-    },
-    required: ["target_nanobody", "optimization_objective"]
-  }
-},
-{
-  name: "design_variants",
-  description: "Generate nanobody variants using active learning acquisition functions",
-  inputSchema: {
-    type: "object",
-    properties: {
-      parent_nanobody: { type: "string", description: "Base nanobody sequence"},
-      cycle_number: { type: "integer", description: "Current DMTA cycle number"},
-      acquisition_function: { type: "string", enum: ["EI", "UCB", "hybrid"], description: "Active learning strategy"},
-      num_variants: { type: "integer", description: "Number of variants to generate (default: 8)"},
-      previous_results: { type: "string", description: "Historical binding data for GP model"}
-    },
-    required: ["parent_nanobody", "cycle_number"]
-  }
-},
-{
-  name: "make_test",
-  description: "Execute nanobody expression and SPR binding assays with FactorX simulation",
-  inputSchema: {
-    type: "object",
-    properties: {
-      variant_list: { type: "array", items: { type: "string" }, description: "Nanobody variants to express and test"},
-      assay_type: { type: "string", description: "SPR binding assay configuration"},
-      target_protein: { type: "string", description: "Target protein (vWF A1 domain)"},
-      quality_controls: { type: "object", description: "Expression and binding QC parameters"}
-    },
-    required: ["variant_list"]
-  }
-},
-{
-  name: "analyze_results",
-  description: "Analyze SPR binding results using Gaussian Process modeling and recommend next cycle strategy",
-  inputSchema: {
-    type: "object",
-    properties: {
-      binding_data: { type: "string", description: "SPR binding results from make-test phase"},
-      cycle_number: { type: "integer", description: "Current cycle number"},
-      previous_cycles: { type: "string", description: "Historical optimization data"},
-      convergence_criteria: { type: "object", description: "Optimization targets and thresholds"},
-      target_kd: { type: "number", description: "Target binding affinity KD value in nM"}
-    },
-    required: ["binding_data", "cycle_number"]
-  }
+  "project_overview": {
+    "project_id": "uuid",
+    "title": "DMTA Optimization of Cablivi",
+    "objective": "Improve vWF binding affinity",
+    "target_kd_nm": 0.5,
+    "timeline_weeks": 8
+  },
+  "experimental_design": {
+    "active_learning_strategy": "Expected Improvement (EI)",
+    "cycles_planned": 3,
+    "variants_per_cycle": 8
+  },
+  "methodology": {
+    "phase_1_design": {...},
+    "phase_2_make": {...},
+    "phase_3_test": {...},
+    "phase_4_analyze": {...}
+  },
+  "timeline": {...}
 }
 ```
 
-## 3. Installation
+## Cleanup
 
-1. Verify your AWS credentials are available in your current session:
-
-```bash
-aws sts get-caller-identity
-```
-
-2. Navigate to the `DMTA-orchestration-agent` folder:
+To remove all resources:
 
 ```bash
-cd agents_catalog/23-DMTA-orchestration-agent
+aws cloudformation delete-stack \
+    --stack-name dmta-orchestration-agent \
+    --region us-west-2
 ```
 
-3. Deploy the agent using the provided script:
+**Note**: S3 bucket contents are not automatically deleted. To remove all data:
 
 ```bash
-# Set required environment variables
-export BUCKET_NAME="<YOUR_S3_BUCKET_NAME>"        # S3 bucket for Lambda function code
-export REGION="<YOUR_REGION>"                     # AWS region for deployment
-export BEDROCK_AGENT_SERVICE_ROLE_ARN="<YOUR_BEDROCK_AGENT_ROLE_ARN>"  # IAM role for Bedrock Agent
-
-# Run the deployment script
-./deploy.sh
+aws s3 rm s3://dmta-orchestration-agent-{region}-{account-id}/ --recursive
 ```
 
-The script will:
-- Package Lambda function code and upload to S3
-- Deploy the CloudFormation stack with all required resources
-- Create the Bedrock Agent with configured action groups
+## Security Considerations
 
-Required Resources:
-- An S3 bucket in the target region
-- An IAM role for Bedrock Agent with appropriate permissions
-- AWS CLI configured with credentials having necessary permissions
+- All S3 buckets have public access blocked
+- DynamoDB tables use encryption at rest
+- Lambda functions follow least privilege principle
+- IAM roles have minimal required permissions
 
-## 4. Usage Examples
+## Cost Considerations
 
-### Example 1: Complete DMTA Cycle Planning
-```
-Input: "Plan a DMTA cycle to optimize Cablivi (Caplacizumab) for improved vWF binding affinity"
+This solution uses:
+- Amazon Bedrock (pay-per-use)
+- AWS Lambda (pay-per-invocation)
+- DynamoDB (on-demand billing)
+- S3 (pay-per-use)
 
-Output:
-DMTA Cycle Plan for Cablivi Optimization
-Cycle: 1
-Timeline: 6 weeks
-Objectives: Improve vWF A1 binding (target KD < 1 nM vs current 3.2 nM)
+Estimated cost for typical usage: $10-50/month depending on usage patterns.
 
-Phase 1 - Design (Week 1-2):
-- CDR sequence analysis of existing nanobody variants
-- Generate 8 nanobody variants using active learning
-- Prioritize based on predicted binding affinity
+## Troubleshooting
 
-Phase 2 - Make (Week 3-4):
-- Express top 8 nanobody variants
-- Purification and characterization
-- Quality assessment
+### Common Issues
 
-Phase 3 - Test (Week 5):
-- SPR binding assays vs vWF A1 domain
-- Kinetic analysis (kon, koff, KD)
-- Binding specificity assessment
+1. **Stack Creation Failed**: Check that the Bedrock Agent Service Role ARN is correct
+2. **Permission Denied**: Ensure your AWS credentials have sufficient permissions
+3. **Model Access**: Verify you have access to Claude 3.5 Sonnet v2 in Bedrock
 
-Phase 4 - Analyze (Week 6):
-- Gaussian Process model update
-- Next cycle recommendations
-- Lead variant selection
+### Getting Help
+
+Check CloudFormation events for detailed error messages:
+
+```bash
+aws cloudformation describe-stack-events \
+    --stack-name dmta-orchestration-agent \
+    --region us-west-2
 ```
 
-### Example 2: Nanobody Design
-```
-Input: "Design nanobody variants of Caplacizumab with improved vWF binding affinity"
+## License
 
-Output:
-Nanobody Design Results for Cablivi Optimization
-
-Base Structure: Caplacizumab (ALX-0081)
-Design Strategy: CDR optimization with binding affinity focus
-
-Top 5 Variants:
-1. Variant N1-001: CDR3 S101A mutation
-   - Predicted KD: 2.1 nM (vs 3.2 nM parent)
-   - Expected Improvement score: 0.89
-   - Expression feasibility: High
-
-2. Variant N1-002: CDR1 G26D mutation
-   - Predicted KD: 2.8 nM
-   - Expected Improvement score: 0.82
-   - Expression feasibility: High
-
-[Additional variants...]
-
-Rationale: Mutations target vWF A1 binding interface while preserving nanobody stability and expression.
-```
-
-### Example 3: Results Analysis
-```
-Input: "Analyze the experimental results from DMTA cycle 2 and recommend next steps"
-
-Output:
-DMTA Cycle 2 Analysis Results
-
-Experimental Summary:
-- 8 nanobody variants expressed and tested
-- Binding affinity range: 0.8-2.0 nM
-- Best variant: N2-008 (KD: 0.8 nM)
-- Lead variant: N2-003 (KD: 0.9 nM, excellent stability)
-
-SAR Insights:
-- CDR3 S101A provides foundation for improvement
-- Y100H mutation enhances binding further
-- Framework mutations maintain stability
-
-Cycle 3 Recommendations:
-1. Optimize N2-008 with complementary CDR mutations
-2. Explore triple mutations combining best features
-3. Include stability profiling for top 3 variants
-4. Target: KD < 0.5 nM, maintain expression levels
-```
-
-## 5. Troubleshooting
-
-### Common Issues and Solutions
-
-#### Issue: "Experimental Plan Validation Error"
-**Possible Causes:**
-- Insufficient resource allocation
-- Unrealistic timeline constraints
-- Missing required parameters
-
-**Solutions:**
-- Review resource requirements and adjust allocation
-- Extend timeline for complex syntheses
-- Provide complete optimization objectives
-
-#### Issue: "Molecular Design Generation Failed"
-**Possible Causes:**
-- Invalid starting structure format
-- Conflicting property requirements
-- Limited chemical space
-
-**Solutions:**
-- Verify SMILES format or compound name
-- Adjust target property ranges
-- Consider alternative design strategies
-
-#### Issue: "Experiment Execution Timeout"
-**Possible Causes:**
-- Complex synthetic routes
-- Laboratory resource conflicts
-- Automation system issues
-
-**Solutions:**
-- Simplify synthetic approaches
-- Adjust priority levels and scheduling
-- Implement manual backup procedures
-
-### Performance Tips
-
-- Start with focused optimization objectives
-- Use historical SAR data when available
-- Balance automation with manual oversight
-- Plan for iterative refinement cycles
-- Monitor resource utilization continuously
-
-## 6. DMTA Best Practices
-
-### Cycle Planning Guidelines
-
-**Objective Setting:**
-- Define clear, measurable optimization goals
-- Prioritize objectives based on project needs
-- Consider trade-offs between properties
-- Set realistic timelines and milestones
-
-**Resource Management:**
-- Allocate sufficient synthetic chemistry resources
-- Plan for analytical characterization time
-- Reserve assay capacity for testing
-- Include buffer time for unexpected challenges
-
-### Design Strategy Recommendations
-
-**Structure-Activity Relationships:**
-- Leverage existing SAR knowledge
-- Focus on validated chemical series
-- Consider synthetic accessibility
-- Balance novelty with risk
-
-**Property Optimization:**
-- Use multi-parameter optimization approaches
-- Consider ADMET properties early
-- Plan for selectivity assessment
-- Include physicochemical property analysis
-
-### Experimental Execution
-
-**Quality Control:**
-- Implement analytical verification steps
-- Use appropriate controls and standards
-- Document experimental conditions
-- Validate assay performance
-
-**Data Management:**
-- Maintain comprehensive experimental records
-- Use standardized data formats
-- Implement version control for protocols
-- Enable data sharing across cycles
-
-## 7. Integration with Laboratory Systems
-
-### Supported Data Formats
-
-- **Chemical Structures**: SMILES, SDF, MOL files
-- **Experimental Data**: CSV, Excel, JSON formats
-- **Assay Results**: Standardized plate reader formats
-- **Analytical Data**: LC-MS, NMR integration
-
-### API Integration Points
-
-- **LIMS Integration**: Laboratory information management systems
-- **ELN Connectivity**: Electronic laboratory notebooks
-- **Compound Registration**: Chemical inventory systems
-- **Assay Platforms**: High-throughput screening systems
-
-### Workflow Automation
-
-- **Protocol Generation**: Automated experimental procedure creation
-- **Sample Tracking**: Barcode and RFID integration
-- **Result Processing**: Automated data analysis pipelines
-- **Report Generation**: Standardized output formats
+This project is licensed under the MIT-0 License.
