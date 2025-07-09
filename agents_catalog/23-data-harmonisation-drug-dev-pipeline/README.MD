@@ -1,6 +1,6 @@
 # Data Harmonisation for Drug Development Pipeline
 
-This solution automatically collects, standardises, and enriches drug development pipeline data from pharmaceutical companies.
+This solution automatically collects, standardises, and enriches drug development pipeline data from pharmaceutical companies. It uses an agentic solution to ask questions related to pipelines.
 
 ## Problem Statement
 
@@ -15,7 +15,7 @@ An automated solution that retrieves, extracts, compiles to a common data model,
 
 ## Sample Questions
 - "What diabetes drug candidates are in Phase 1 development?"
-- "Compare the pipeline strategies of Novo Nordisk vs Pfizer"
+- "Compare the pipeline strategies of Novo Nordisk vs Novartis"
 - "Which compounds have Fast Track designation?"
 - "Show me all biologics targeting oncology indications"
 - "Analyze the distribution of development phases across therapeutic areas"
@@ -24,15 +24,15 @@ An automated solution that retrieves, extracts, compiles to a common data model,
 
 ### Prerequisite
 
-This project demonstrates how to extract and process pharmaceutical pipeline data using Q CLI and simple prompts. Our solution respectfully follows robots.txt directives, only collecting data from websites that permit it.
+This project demonstrates how to extract and process pharmaceutical pipeline data using Q CLI and simple prompts. Sample data is collected from [Pfizer](https://www.pfizer.com/science/drug-product-pipeline), [Novo Nordisk](https://www.novonordisk.com/science-and-technology/r-d-pipeline.html) and [Novartis](https://www.novartis.com/research-development/novartis-pipeline). Our solution respectfully follows robots.txt directives, only collecting data from websites that permit it.
 
 #### Data Collection Process
-The data is collected and harmonized as a prerequisite step using Q CLI, which is a command line interface for Amazon Q, an AI-powered coding assistant. The implementation primarily uses Fetch MCP to crawl company pipeline webpages and download the data. Please see `pipeline_data` folder for the step by step data collection. Below are explanation of each step. 
+The data is collected and harmonized as a prerequisite step using [Q CLI](https://docs.aws.amazon.com/amazonq/latest/qdeveloper-ug/command-line.html), which is a command line interface for Amazon Q, an AI-powered coding assistant. The implementation primarily uses Fetch MCP to crawl company pipeline webpages and download the data. Please see `pipeline_data` folder for the step by step data collection. Below are explanation of each step.
 
 The final data is saved as a JSON file in `pipeline_data/final_enriched_data/enriched_pipeline_data.json`, ready for downstream analysis. For implementation details, please see `./pipeline_data/PROJECT_SUMMARY.md`.
 
 ##### Step 1: Data Collection 
-Using Fetch MCP to collect data from Novartis, Novo Nordisk, and Pfizer pipeline web pages, extracting the data and saving it as individual JSON objects.
+Using [Fetch MCP](https://github.com/modelcontextprotocol/servers/tree/main/src/fetch) to collect data from Novartis, Novo Nordisk, and Pfizer pipeline web pages, extracting the data and saving it as individual JSON objects.
 
 ##### Step 2: Common Data Model Creation
 Analyzing each JSON file to create a unified data model that represents all collected data. This step combines data from the three companies into a single dataset.
@@ -80,7 +80,7 @@ This project leverages several standardized biomedical ontologies to ensure data
 Alternatively, you could also:
 
 - Create an agent to collect the data using Strands SDK (https://strandsagents.com/latest/), which has native support for MCP as tools
-- Utilize the Inline agent feature in Amazon Bedrock Agents to connect to the MCP
+- Utilize the Inline agent feature in Amazon Bedrock Agents to connect to the MCP. 
 
 Our current solution focuses on using Q CLI for data collection and preparation, which offers a straightforward approach to gathering pharmaceutical pipeline information.
 
@@ -91,53 +91,51 @@ To create the agent and the knowledgebase, use the CloudFormation template in th
 
 ## Deployment
 
-The solution deployment automation script uses two parameterized CloudFormation template, 01-deploy-oass.yml and 02-deploy-kb-agent.yml, to automate provisioning of following solution resources:
-- OpenSearch Service Serverless collection
-- Amazon S3 Bucket (DataSource)
+The solution deployment automation script uses two parameterized CloudFormation template, `pipeline-data-agent-cfn.yaml` to automate provisioning of following solution resources:
+- OpenSearch Service Serverless
 - Amazon Bedrock KnowledgeBase
 - Amazon Bedrock Agent
 - IAM Roles
 
-There are two stacks to deploy. For the first stack, you'll need IAM ARN for the AWS account you are logged in with. After the first deployment is successful, please manually create vector index. The steps are given below. 
+Please note that you need **S3Bucket** and **AgentRole** from the main stack. 
 
-### Deploy OpenSearch Serverless as Vector DB with 01-deploy-oass.yaml
+bash
+`aws cloudformation deploy \
+  --template-file /Users/necibea/Documents/GitHub/HCLS_Agents_Toolkit/amazon-bedrock-agents-healthcare-lifesciences/agents_catalog/23-data-harmonisation-drug-dev-pipeline/pipeline-data-agent-cfn.yaml \
+  --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
+  --stack-name pipeline-data-agent \
+  --parameter-overrides \
+    S3Bucket=your-s3-bucket-name \
+    AgentRole=arn:aws:iam::your-account-id:role/your-agent-execution-role \
+    S3Key=enriched_pipeline_data.json \
+    BedrockModelId=anthropic.claude-3-5-sonnet-20241022-v2:0 \
+    AgentAliasName=Latest \
+    IndexName=pipeline-data-index`
+![alt text](images/cfn-deployment.png)
 
-1. You need to add the **ARN of the IAM role** with which you are currently logged into your AWS account. 
+After successful deployment, synch your data source
+- From Amazon Console, local Amazon Bedrock
+- In Knowledge Bases, find the knowledgebase that includes 'PipleinaData' in the name
+- In Data source, click on the data source and Sync
 
-`cloudformation create-stack --stack-name <stack-name> --template-body 01-deploy-oass.yaml --parameters ParameterKey=<parameter key>,ParameterValue=<parameter value> ParameterKey=<parameter key>,ParameterValue=<parameter value> `
 
-2. Go to AWS Consle 
-	1. Go to S3 and upload `enriched_pipeline_data.json` to your bucket. You can find your bucket name marked as 1 in the image above
-	`aws s3 sync /<your dir>/pipeline_data/final_enriched_data/enriched_pipeline_data.json s3://$BUCKET_NAME/`
-	2. Go to Amazon OpenSearch Serverless
+### Troubleshooting
+If your stack fails, please check
+
+1. Data is uploaded to S3
+	- From Amazon Console
+	- Go to S3 and find the S3 bucket
+	- Check if `enriched_pipeline_data.json` is there. Upload, if it isn't. 
+
+2. Index is created in Amazon OpenSearch Serverless
+	1. Go to Amazon OpenSearch Serverless
 		- Collections
 		- Find `pipeline-rag`
 		- `Create index`
-			- Index name: `rag-pipeline-readthedocs-io`
-			- Vector field name: `vector`
+			- Index name: `pipeline-data-index`
+			- Vector field name: `pipeline-vs`
 			- Engine: `faiss`
 			- Precision: `FP16`
 			- Dimensions: `1536`
 			- Distance metric: `Euclidean`
-
-3. After the stack is deployed, go to 'Outputs' tab and make a note of the output fields highlighted in the image.
-![alt text](images/cf_stack_aoss.png)
-
-### Deploy Agent and Knowledgebase with 02-agent-with-kb.yaml
-You can either use the AWS Console or AWS CLI
-
-`aws cloudformation create-stack --stack-name <stack-name> --template-body file://02-agent-with-kb.yaml --parameters ParameterKey=<parameter key>,ParameterValue=<parameter value> ParameterKey=<parameter key>,ParameterValue=<parameter value>` 
-
-Fill the following fields
-- Stack name: name of your choice e.g. `data-harmonisation-agent`
-- AmazonBedrockExecutionRoleForKnowledgeBasearn: you can find it in the Output section of the first stack, as shown in the image above
-- CollectionArn: same as above
-- DataSource: same as above
-- S3bucketarn: same as above
-
-![alt text](images/cf_stack_agent.png)
-
-After the stack is deployed, go to AWS Console
-1. Nagivate to Amazon Bedrock
-2. KnowledgeBases and sync the data source
-3. Test both your agent and the knowledgebase
+![alt text](images/cfn-oass-index.png)
