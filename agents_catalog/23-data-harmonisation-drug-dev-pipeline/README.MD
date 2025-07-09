@@ -74,6 +74,12 @@ This project leverages several standardized biomedical ontologies to ensure data
    - Comprehensive clinical healthcare terminology
    - Applied to disease indication standardization
 
+### Pipeline Data Agent
+This implementation uses Amazon Bedrock agents with knowledge bases to answer questions about pharmaceutical companies' new product development pipelines. The final data created in the preprocessing step `pipeline_data/final_enriched_data/enriched_pipeline_data.json` is ingested as a knowledge base. The Amazon Bedrock agent uses the knowledge base as a tool to answer questions from users. 
+
+The agent can answer natural language questions about drug development pipelines, do cross-company analysis, provide insights on development phase or therapeutic area and more. 
+
+To create the agent and the knowledge base, use the CloudFormation template in this directory. Step-by-step deployment instructions are below. 
 
 #### Alternative Approaches
 
@@ -84,10 +90,12 @@ Alternatively, you could also:
 
 Our current solution focuses on using Q CLI for data collection and preparation, which offers a straightforward approach to gathering pharmaceutical pipeline information.
 
-### Pipeline Data Agent
-This implementation uses Amazon Bedrock agents with knowledge bases to answer questions about pharmaceutical companies' new product development pipelines. The final data created in the preprocessing step `pipeline_data/final_enriched_data/enriched_pipeline_data.json` is ingested as a knowledge base. The Amazon Bedrock agent uses the knowledge base as a tool to answer questions from users. 
+## Next Steps
 
-To create the agent and the knowledge base, use the CloudFormation template in this directory. Step-by-step deployment instructions are below. 
+Going forward, 
+- this agent can be enhaced to dynamically collect and harmonise data based on user requrest
+- Add FDA IND (Investigational New Drug) application data to cross-reference company pipeline announcements with actual FDA submissions or Analyze regulatory pathway strategies and approval probabilities
+- Add Clinical Trial (ct.gov) data to verify pipeline compounds against active clinical trials or monitor actual vs. planned study completion dates
 
 ## Deployment
 
