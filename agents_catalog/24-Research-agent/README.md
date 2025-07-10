@@ -32,9 +32,8 @@ Strands Agents is a framework for building AI agents that can interact with AWS 
 
 This folder contains a getting-started notebook and a simple usecase to help you get started:
 
-1. **01-first-agent.ipynb**: A Jupyter notebook with a comprehensive quickstart guide and a usecase.
-1. **02-pubmed-agent.ipynb**: Build a research agent with tools for searching and reading open access PubMed articles.
-1. **03-deploy.ipynb**: Deploy the research agent as a lambda function.
+1. **pubmed-agent.ipynb**: Build a research agent with tools for searching and reading open access PubMed articles.
+1. **deploy.ipynb**: Deploy the research agent as a lambda function.
 
 ## Resources
 
