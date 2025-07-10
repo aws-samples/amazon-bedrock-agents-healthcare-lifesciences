@@ -1,47 +1,96 @@
-# Getting Started with Strands Agents
+# PubMed Research Agent on Strands Agents
 
-This guide will help you understand the basic concepts of Strands Agents and get you up and running with your first agent.
+## Introduction
+
+The example deploys a PubMed research agent application that requires AWS authentication to invoke the Lambda function. It uses a TypeScript-based CDK (Cloud Development Kit) example to deploy the Python agent code AWS Lambda. 
+
+This agent uses tools to find and read scientific articles from the PubMed database. These tools have some special features to help the agent focus on the most relevant articles:
+
+- It limits the search to only articles licensed for commercial use
+- For each article in the search results, the tool calculates how many OTHER articles include it as a reference. These are likely to be the most impactful and valuable to the agent.
+
+You can view the tool code in thr `lambda` folder
 
 ## Prerequisites
 
-- Python 3.10 or later
-- AWS account configured with appropriate permissions
-- Basic understanding of Python programming
-- Access to the Anthropic Claude 3.5 Haiku and Claude 3.7 Sonnet models in Amazon Bedrock
+- [AWS CLI](https://aws.amazon.com/cli/) installed and configured
+- [Node.js](https://nodejs.org/) (v18.x or later)
+- Python 3.12 or later
+- [jq](https://stedolan.github.io/jq/) (optional) for formatting JSON output
 
-## Installation
+## Project Structure
 
-Install Strands Agents and the tools package using pip:
+- `lib/` - Contains the CDK stack definition in TypeScript
+- `bin/` - Contains the CDK app entry point and deployment scripts:
+  - `cdk-app.ts` - Main CDK application entry point
+  - `package_for_lambda.py` - Python script that packages Lambda code and dependencies into deployment archives
+- `lambda/` - Contains the Python Lambda function code
+- `packaging/` - Directory used to store Lambda deployment assets and dependencies
+
+## Setup and Deployment
+
+1. Install dependencies:
 
 ```bash
-pip install strands-agents strands-agents-tools
+# Install Node.js dependencies including CDK and TypeScript locally
+npm install
+
+# Create a Python virtual environment (optional but recommended)
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# Install Python dependencies for lambda with correct architecture
+pip install -r requirements.txt --python-version 3.12 --platform manylinux2014_aarch64 --target ./packaging/_dependencies --only-binary=:all:
 ```
 
-## Basic Concepts
+2. Package the lambda:
 
-Strands Agents is a framework for building AI agents that can interact with AWS services and perform complex tasks. The key components are:
+```bash
+python ./bin/package_for_lambda.py
+```
 
-1. **Agent**: The core component that manages the conversation and orchestrates tools
-2. **Model**: The underlying LLM (Large Language Model) that powers the agent
-3. **Tools**: Functions that the agent can use to perform specific tasks
-4. **Sessions and State**: Mechanisms for maintaining conversation history and agent state across interactions
-5. **Agent Loop**: The process flow of how agents receive input, process it, and generate responses
-6. **Context Management**: How agents maintain and manage conversation context, including memory and retrieval
+3. Bootstrap your AWS environment (if not already done):
 
-## Quick Start Guide
+```bash
+npx cdk bootstrap
+```
 
-This folder contains a getting-started notebook and a simple usecase to help you get started:
+4. Deploy the lambda:
 
-1. **pubmed-agent.ipynb**: Build a research agent with tools for searching and reading open access PubMed articles.
-1. **deploy.ipynb**: Deploy the research agent as a lambda function.
+```
+npx cdk deploy
+```
 
-## Resources
+## Usage
 
-- Explore the [Strands documentation](https://strandsagents.com/latest/user-guide/quickstart/) for more detailed guides
-- Learn more about [Sessions and State](https://strandsagents.com/latest/user-guide/concepts/agents/sessions-state)
-- Understand the [Agent Loop](https://strandsagents.com/latest/user-guide/concepts/agents/agent-loop/)
-- Dive into [Context Management](https://strandsagents.com/latest/user-guide/concepts/agents/context-management/)
-- Check out the [strands-agents-tools](https://github.com/strands-agents/tools) repository for pre-implemented tools
-- Try building your own task-specific agent by customizing the system prompt and adding relevant tools
+After deployment, you can invoke the Lambda function using the AWS CLI or AWS Console. The function requires proper AWS authentication to be invoked.
 
-Happy building with Strands Agents! 🚀
+```bash
+aws lambda invoke --function-name PubMedResearchAgentLambda \
+      --cli-binary-format raw-in-base64-out \
+      --cli-read-timeout 900 \
+      --payload '{"prompt": "What are some recent advances in GLP-1 drugs?"}' \
+      output.json
+```
+
+If you have jq installed, you can output the response from output.json like so:
+
+```bash
+jq -r '.' ./output.json
+```
+
+Otherwise, open output.json to view the result.
+
+## Cleanup
+
+To remove all resources created by this example:
+
+```bash
+npx cdk destroy
+```
+
+## Additional Resources
+
+- [AWS CDK TypeScript Documentation](https://docs.aws.amazon.com/cdk/latest/guide/work-with-cdk-typescript.html)
+- [AWS Lambda Documentation](https://docs.aws.amazon.com/lambda/latest/dg/welcome.html)
+- [TypeScript Documentation](https://www.typescriptlang.org/docs/)
