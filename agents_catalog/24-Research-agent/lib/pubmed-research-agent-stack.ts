@@ -4,7 +4,7 @@ import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as path from "path";
 
-export class PubMedResearchAgentStack extends Stack {
+export class ResearchAgentStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
@@ -21,10 +21,10 @@ export class PubMedResearchAgentStack extends Stack {
     });
 
     // Define the Lambda function
-    const weatherFunction = new lambda.Function(this, "PubMedResearchAgentLambda", {
+    const researchAgentFunction = new lambda.Function(this, "ResearchAgentLambda", {
       runtime: lambda.Runtime.PYTHON_3_12,
-      functionName: "PubMedResearchAgentLambda",
-      description: "A function that invokes a weather forecasting agent",
+      functionName: "ResearchAgentLambda",
+      description: "A function that invokes a research agent",
       handler: "agent_handler.handler",
       code: lambda.Code.fromAsset(zipApp),
 
@@ -35,7 +35,7 @@ export class PubMedResearchAgentStack extends Stack {
     });
 
     // Add permissions for the Lambda function to invoke Bedrock APIs
-    weatherFunction.addToRolePolicy(
+    researchAgentFunction.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"],
         resources: ["*"],

@@ -1,15 +1,20 @@
-# PubMed Research Agent on Strands Agents
+# Life Sciences Research Agent on Strands Agents
 
 ## Introduction
 
-The example deploys a PubMed research agent application that requires AWS authentication to invoke the Lambda function. It uses a TypeScript-based CDK (Cloud Development Kit) example to deploy the Python agent code AWS Lambda. 
+The example deploys a life sciences research agent build with the Strands Agents SDK. It uses the AWS Cloud Development Kit (CDK) to deploy the Python agent code AWS Lambda.
 
-This agent uses tools to find and read scientific articles from the PubMed database. These tools have some special features to help the agent focus on the most relevant articles:
+This agent uses several tools to gather scientific information, defined in the `lambda` folder.
 
-- It limits the search to only articles licensed for commercial use
-- For each article in the search results, the tool calculates how many OTHER articles include it as a reference. These are likely to be the most impactful and valuable to the agent.
+### search_pubmed
 
-You can view the tool code in thr `lambda` folder
+Use the PubMed search API to find articles from the PubMed database. By default, this tool will only return results for materials licensed for commercial use ([CC0](https://creativecommons.org/publicdomain/zero/1.0/), [CC BY](https://creativecommons.org/licenses/by/4.0/), [CC BY-SA](https://creativecommons.org/licenses/by-sa/4.0/), [CC BY-ND](https://creativecommons.org/licenses/by-nd/4.0/)).
+
+This tool will rerank the search results by the "Referenced By" count. For each article, this is the number of other articles in the search results that include it as a reference. For best results, set the "max_results" parameter to a large number (200-500) to increase the number of articles examined.
+
+### read_pubmed
+
+Retrieve the full text of a PubMed Central article from the [NIH NCBI PubMed Central (PMC) Article Dataset](https://aws.amazon.com/marketplace/pp/prodview-qh4qqd6ebnqio) on AWS. This product is provided as part of the [AWS Open Data Sponsorship Program](https://aws.amazon.com/marketplace/seller-profile?id=351d941c-b5a5-4250-aa21-9834ba65b1fb). The tool will download the contents of requested articles from Amazon S3 and summarize them using Amazon Bedrock to conserve space in the agent's context window.
 
 ## Prerequisites
 
@@ -66,7 +71,7 @@ npx cdk deploy
 After deployment, you can invoke the Lambda function using the AWS CLI or AWS Console. The function requires proper AWS authentication to be invoked.
 
 ```bash
-aws lambda invoke --function-name PubMedResearchAgentLambda \
+aws lambda invoke --function-name ResearchAgentLambda \
       --cli-binary-format raw-in-base64-out \
       --cli-read-timeout 900 \
       --payload '{"prompt": "What are some recent advances in GLP-1 drugs?"}' \

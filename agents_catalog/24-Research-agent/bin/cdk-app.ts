@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 import { App } from "aws-cdk-lib";
-import { PubMedResearchAgentStack } from "../lib/pubmed-research-agent-stack";
+import { ResearchAgentStack } from "../lib/pubmed-research-agent-stack";
 
 const app = new App();
 
 // prettier-ignore
-new PubMedResearchAgentStack(app, "PubMedResearchAgentStack", {
+new ResearchAgentStack(app, "ResearchAgentStack", {
   /* If you don't specify 'env', this stack will be environment-agnostic.
    * Account/Region-dependent features and context lookups will not work,
    * but a single synthesized template can be deployed anywhere. */
