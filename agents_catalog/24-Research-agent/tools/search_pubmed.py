@@ -5,11 +5,11 @@
 # SPDX-License-Identifier: MIT
 
 import logging
-import os
-from typing import Any, Dict, List
+from typing import List, Any, Dict
 from xml.etree.ElementTree import Element
-import httpx
 from defusedxml import ElementTree as ET
+import httpx
+import os
 
 # Global configuration for commercial use filtering
 COMMERCIAL_USE_ONLY = True
