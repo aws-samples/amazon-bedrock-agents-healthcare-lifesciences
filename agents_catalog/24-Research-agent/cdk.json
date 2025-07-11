@@ -1,15 +1,15 @@
 {
-  "app": "npx tsx bin/cdk-app.ts",
+  "app": "uv run python app.py",
   "watch": {
     "include": ["**"],
     "exclude": [
       "README.md",
       "cdk*.json",
-      "**/*.d.ts",
-      "**/*.js",
-      "tsconfig.json",
-      "package*.json",
-      "yarn.lock",
+      "requirements*.txt",
+      "pyproject.toml",
+      "**/*.pyc",
+      "**/__pycache__",
+      ".venv",
       "node_modules",
       "test"
     ]

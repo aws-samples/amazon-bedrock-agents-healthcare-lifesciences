@@ -1,7 +1,7 @@
-from strands import Agent
-from typing import Dict, Any
-import search_pubmed
+from typing import Any, Dict
 import read_pubmed
+import search_pubmed
+from strands import Agent
 
 # Define a system prompt
 SYSTEM_PROMPT = """You are a life science research assistant. When given a scientific question, follow this process:

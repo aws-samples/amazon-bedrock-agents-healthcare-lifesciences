@@ -10,13 +10,14 @@ This script creates deployment packages for AWS Lambda by:
 3. Any existing zip files are removed before creating new ones
 4. Both zip files are stored in the 'packaging' directory for CDK to use during deployment
 
-Note: This script assumes dependencies have already been installed to the 'packaging/_dependencies' 
+Note: This script assumes dependencies have already been installed to the 'packaging/_dependencies'
 directory using the pip command with the appropriate platform flag.
 """
 
 import os
 import zipfile
 from pathlib import Path
+
 
 def create_lambda_package():
     # Define paths
@@ -44,7 +45,9 @@ def create_lambda_package():
     os.makedirs(app_deployment_zip.parent, exist_ok=True)
 
     print(f"  Creating {dependencies_deployment_zip.name}...")
-    with zipfile.ZipFile(dependencies_deployment_zip, 'w', zipfile.ZIP_DEFLATED) as zipf:
+    with zipfile.ZipFile(
+        dependencies_deployment_zip, "w", zipfile.ZIP_DEFLATED
+    ) as zipf:
         for root, _, files in os.walk(dependencies_dir):
             for file in files:
                 file_path = os.path.join(root, file)
@@ -52,14 +55,16 @@ def create_lambda_package():
                 zipf.write(file_path, arcname)
 
     print(f"  Creating {app_deployment_zip.name}...")
-    with zipfile.ZipFile(app_deployment_zip, 'w', zipfile.ZIP_DEFLATED) as zipf:
+    with zipfile.ZipFile(app_deployment_zip, "w", zipfile.ZIP_DEFLATED) as zipf:
         for root, _, files in os.walk(app_dir):
             for file in files:
                 file_path = os.path.join(root, file)
                 arcname = os.path.relpath(file_path, app_dir)
                 zipf.write(file_path, arcname)
 
-    print(f"Lambda deployment packages created successfully: {dependencies_deployment_zip.name} {app_deployment_zip.name}")
+    print(
+        f"Lambda deployment packages created successfully: {dependencies_deployment_zip.name} {app_deployment_zip.name}"
+    )
     return True
 
 

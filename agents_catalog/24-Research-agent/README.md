@@ -1,8 +1,8 @@
-# Life Sciences Research Agent on Strands Agents
+# Life Sciences Research Agent on Strands Agents (Python CDK)
 
 ## Introduction
 
-The example deploys a life sciences research agent build with the Strands Agents SDK. It uses the AWS Cloud Development Kit (CDK) to deploy the Python agent code AWS Lambda.
+This example deploys a life sciences research agent built with the Strands Agents SDK using the AWS Cloud Development Kit (CDK) Python version. It uses Python CDK to deploy the Python agent code to AWS Lambda.
 
 This agent uses several tools to gather scientific information, defined in the `lambda` folder.
 
@@ -19,16 +19,15 @@ Retrieve the full text of a PubMed Central article from the [NIH NCBI PubMed Cen
 ## Prerequisites
 
 - [AWS CLI](https://aws.amazon.com/cli/) installed and configured
-- [Node.js](https://nodejs.org/) (v18.x or later)
 - Python 3.12 or later
+- [uv](https://docs.astral.sh/uv/) for Python package management
 - [jq](https://stedolan.github.io/jq/) (optional) for formatting JSON output
 
 ## Project Structure
 
-- `lib/` - Contains the CDK stack definition in TypeScript
-- `bin/` - Contains the CDK app entry point and deployment scripts:
-  - `cdk-app.ts` - Main CDK application entry point
-  - `package_for_lambda.py` - Python script that packages Lambda code and dependencies into deployment archives
+- `research_agent/` - Contains the CDK stack definition in Python
+- `app.py` - Main CDK application entry point
+- `bin/package_for_lambda.py` - Python script that packages Lambda code and dependencies into deployment archives
 - `lambda/` - Contains the Python Lambda function code
 - `packaging/` - Directory used to store Lambda deployment assets and dependencies
 
@@ -37,33 +36,34 @@ Retrieve the full text of a PubMed Central article from the [NIH NCBI PubMed Cen
 1. Install dependencies:
 
 ```bash
-# Install Node.js dependencies including CDK and TypeScript locally
-npm install
+cd amazon-bedrock-agents-healthcare-lifesciences/agents_catalog/24-Research-agent
 
-# Create a Python virtual environment (optional but recommended)
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+# Install uv - see https://docs.astral.sh/uv/getting-started/installation/ for more options
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Install Python dependencies for CDK
+uv add aws-cdk-lib constructs
 
 # Install Python dependencies for lambda with correct architecture
-pip install -r requirements.txt --python-version 3.12 --platform manylinux2014_aarch64 --target ./packaging/_dependencies --only-binary=:all:
+uv run pip install -r requirements.txt --python-version 3.12 --platform manylinux2014_aarch64 --target ./packaging/_dependencies --only-binary=:all:
 ```
 
 2. Package the lambda:
 
 ```bash
-python ./bin/package_for_lambda.py
+uv run python ./bin/package_for_lambda.py
 ```
 
 3. Bootstrap your AWS environment (if not already done):
 
 ```bash
-npx cdk bootstrap
+uv run cdk bootstrap
 ```
 
 4. Deploy the lambda:
 
-```
-npx cdk deploy
+```bash
+uv run cdk deploy
 ```
 
 ## Usage
@@ -91,11 +91,11 @@ Otherwise, open output.json to view the result.
 To remove all resources created by this example:
 
 ```bash
-npx cdk destroy
+uv run cdk destroy
 ```
 
 ## Additional Resources
 
-- [AWS CDK TypeScript Documentation](https://docs.aws.amazon.com/cdk/latest/guide/work-with-cdk-typescript.html)
+- [AWS CDK Python Documentation](https://docs.aws.amazon.com/cdk/latest/guide/work-with-cdk-python.html)
 - [AWS Lambda Documentation](https://docs.aws.amazon.com/lambda/latest/dg/welcome.html)
-- [TypeScript Documentation](https://www.typescriptlang.org/docs/)
+- [Python CDK API Reference](https://docs.aws.amazon.com/cdk/api/v2/python/)

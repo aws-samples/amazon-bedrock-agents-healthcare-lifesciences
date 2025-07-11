@@ -1,16 +1,14 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
-import boto3
-from botocore.exceptions import ClientError, NoCredentialsError
-from dataclasses import dataclass
 import json
 import logging
-# import os
 import re
-from strands import tool
-# from typing import Optional, Any, Dict
+from dataclasses import dataclass
 from typing import Optional
 
+import boto3
+from botocore.exceptions import ClientError, NoCredentialsError
+from strands import tool
 
 logger = logging.getLogger("read_pubmed")
 
