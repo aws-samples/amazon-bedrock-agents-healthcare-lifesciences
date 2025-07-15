@@ -35,3 +35,10 @@ aws cloudformation deploy \
   --parameter-overrides \
     BedrockAgentServiceRoleArn="$BEDROCK_AGENT_SERVICE_ROLE_ARN" \
   --capabilities CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND
+
+# Cleanup temporary files
+echo "Cleaning up temporary files..."
+rm -rf lambda_layer/
+rm -f dmta-orchestration-agent-packaged.yaml
+
+echo "Deployment completed successfully"

@@ -35,28 +35,6 @@ Resources:
         - Key: Purpose
           Value: ExperimentalData
 
-  # S3 Bucket for Knowledge Base
-  KnowledgeBaseBucket:
-    Type: AWS::S3::Bucket
-    DeletionPolicy: Delete
-    Properties:
-      BucketName: !Sub '${AWS::StackName}-kb-${AWS::Region}-${AWS::AccountId}'
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: true
-        BlockPublicPolicy: true
-        IgnorePublicAcls: true
-        RestrictPublicBuckets: true
-      BucketEncryption:
-        ServerSideEncryptionConfiguration:
-          - ServerSideEncryptionByDefault:
-              SSEAlgorithm: AES256
-      Tags:
-        - Key: Project
-          Value: DMTA-Orchestration
-        - Key: Purpose
-          Value: KnowledgeBase
-
-
 
   # DynamoDB Tables
   ProjectTable:
@@ -106,7 +84,7 @@ Resources:
     Type: AWS::DynamoDB::Table
     DeletionPolicy: Delete
     Properties:
-      TableName: !Sub '${AWS::StackName}-VariantTableV2'
+      TableName: !Sub '${AWS::StackName}-VariantTable'
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
         - AttributeName: project_id
@@ -164,13 +142,11 @@ Resources:
                   - s3:DeleteObject
                 Resource: 
                   - !Sub '${ExperimentalDataBucket.Arn}/*'
-                  - !Sub '${KnowledgeBaseBucket.Arn}/*'
               - Effect: Allow
                 Action:
                   - s3:ListBucket
                 Resource: 
                   - !GetAtt ExperimentalDataBucket.Arn
-                  - !GetAtt KnowledgeBaseBucket.Arn
         - PolicyName: LambdaInvokeAccess
           PolicyDocument:
             Version: '2012-10-17'
@@ -297,7 +273,6 @@ Resources:
       Environment:
         Variables:
           S3_BUCKET: !Ref ExperimentalDataBucket
-          KB_BUCKET: !Ref KnowledgeBaseBucket
           LOG_LEVEL: INFO
       Timeout: 600
       MemorySize: 1024
@@ -562,20 +537,6 @@ Outputs:
     Value: !Ref ExperimentalDataBucket
     Export:
       Name: !Sub '${AWS::StackName}-S3Bucket'
-  
-  KnowledgeBaseBucketName:
-    Description: 'S3 Bucket for Knowledge Base data'
-    Value: !Ref KnowledgeBaseBucket
-    Export:
-      Name: !Sub '${AWS::StackName}-KBBucket'
-  
-  KnowledgeBaseInstructions:
-    Description: 'Instructions for creating Knowledge Base'
-    Value: !Sub |
-      1. Upload KB data: aws s3 cp knowledge-base/ s3://${KnowledgeBaseBucket}/projects/ --recursive
-      2. Run: ./setup-knowledge-base.sh (uses existing bucket: ${KnowledgeBaseBucket})
-      3. Create KB manually in AWS Console with S3 URI: s3://${KnowledgeBaseBucket}/projects/
-      4. Associate with Agent ID: ${DMTAAgent}
   
   ProjectTableName:
     Description: 'DynamoDB Project Table Name'

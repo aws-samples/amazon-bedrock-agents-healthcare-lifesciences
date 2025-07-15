@@ -75,14 +75,14 @@ export AWS_DEFAULT_REGION="us-west-2"
 This deployment creates:
 - ✅ **Basic DMTA Agent**: All Lambda functions and DynamoDB tables
 - ✅ **Opentrons Integration**: OT-2 automation with enhanced precision
-- ✅ **Data Storage**: S3 bucket for experimental data and DynamoDB tables for metadata
+- ✅ **Data Storage**: S3 bucket for experimental data and DynamoDB tables for metadata tracking
 
 ## Architecture
 
 The solution creates:
 
 - **Bedrock Agent**: Orchestrates the DMTA workflow
-- **S3 Bucket**: For storing experimental data and project plans
+- **S3 Bucket**: For storing experimental data
 - **DynamoDB Tables**: For tracking projects, cycles, and variants
 - **Lambda Functions**: For executing DMTA workflow phases
 - **Opentrons Integration**: Dedicated Lambda function for OT-2 automation
@@ -95,7 +95,6 @@ The solution creates:
 s3://dmta-orchestration-agent-{region}-{account-id}/
 └── projects/
     └── {project_id}/
-        ├── project_plan.md                     # Comprehensive project plan (Markdown)
         ├── experiments/
         │   └── {experiment_id}/
         │       └── results.json                 # SPR binding assay results
@@ -111,11 +110,11 @@ s3://dmta-orchestration-agent-{region}-{account-id}/
 
 ### Lambda Functions
 
-- **plan_project**: Project planning with S3 storage
-- **design_variants**: Variant design with S3 data access
+- **plan_project**: Project planning and initialization
+- **design_variants**: Variant design using active learning
 - **make_test**: Experimental execution with Opentrons OT-2 integration
-- **analyze_results**: Analysis with S3 data management
-- **project_status**: Status queries with S3 access
+- **analyze_results**: Analysis using Gaussian Process modeling
+- **project_status**: Project status and progress tracking
 
 ### Opentrons OT-2 Integration
 
