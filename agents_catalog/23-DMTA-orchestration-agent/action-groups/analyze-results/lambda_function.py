@@ -253,19 +253,34 @@ def store_analysis_results(cycle_analysis, gp_model, cycle_number):
         
         # Store in DynamoDB CycleTable
         cycle_table = dynamodb.Table(os.environ['CYCLE_TABLE'])
-        analysis_record = {
-            'project_id': project_id,
-            'cycle_number': cycle_number,
-            'analysis_id': analysis_id,
-            'timestamp': datetime.now().isoformat(),
-            'best_kd_nm': cycle_analysis['binding_results']['best_kd_nm'],
-            'model_accuracy': gp_model['model_performance']['accuracy_r2'],
-            'variants_tested': cycle_analysis['variants_tested'],
-            'target_achieved': cycle_analysis['improvement_metrics']['variants_better_than_target'] > 0
-        }
         
-        cycle_table.put_item(Item=analysis_record)
-        print(f"Cycle data stored in DynamoDB: {project_id}, cycle {cycle_number}")
+        # Convert data to Decimal before storing in DynamoDB
+        dynamodb_cycle_analysis = convert_floats_to_decimals(cycle_analysis)
+        dynamodb_gp_model = convert_floats_to_decimals(gp_model)
+        
+        # Update cycle with analysis results and final GP model
+        cycle_table.update_item(
+            Key={
+                'project_id': project_id,
+                'cycle_number': cycle_number
+            },
+            UpdateExpression="SET analysis_results = :a, final_gp_model = :g, cycle_stage = :s, #ts = :t, analysis_id = :aid, best_kd_nm = :kd, model_accuracy = :ma, variants_tested = :vt, target_achieved = :ta",
+            ExpressionAttributeValues={
+                ':a': dynamodb_cycle_analysis,
+                ':g': dynamodb_gp_model,
+                ':s': 'complete',
+                ':t': datetime.now().isoformat(),
+                ':aid': analysis_id,
+                ':kd': cycle_analysis['binding_results']['best_kd_nm'],
+                ':ma': gp_model['model_performance']['accuracy_r2'],
+                ':vt': cycle_analysis['variants_tested'],
+                ':ta': cycle_analysis['improvement_metrics']['variants_better_than_target'] > 0
+            },
+            ExpressionAttributeNames={
+                '#ts': 'timestamp'
+            }
+        )
+        print(f"Cycle data updated in DynamoDB: {project_id}, cycle {cycle_number}")
         
         # Store detailed results in S3 under project
         s3_key = f'projects/{project_id}/analysis/{analysis_id}/detailed_results.json'
@@ -315,5 +330,16 @@ def convert_decimals_to_float(obj):
         return {key: convert_decimals_to_float(value) for key, value in obj.items()}
     elif isinstance(obj, Decimal):
         return float(obj)
+    else:
+        return obj
+
+def convert_floats_to_decimals(obj):
+    """Recursively convert float objects to Decimal for DynamoDB storage"""
+    if isinstance(obj, list):
+        return [convert_floats_to_decimals(item) for item in obj]
+    elif isinstance(obj, dict):
+        return {key: convert_floats_to_decimals(value) for key, value in obj.items()}
+    elif isinstance(obj, float):
+        return Decimal(str(obj))
     else:
         return obj

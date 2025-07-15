@@ -2,6 +2,7 @@ import json
 import uuid
 import boto3
 import os
+import traceback
 from datetime import datetime
 from decimal import Decimal
 
@@ -9,90 +10,107 @@ from decimal import Decimal
 s3 = boto3.client('s3')
 dynamodb = boto3.resource('dynamodb')
 
+def validate_environment():
+    """Validate required environment variables"""
+    required_vars = ['PROJECT_TABLE', 'S3_BUCKET']
+    missing_vars = [var for var in required_vars if not os.environ.get(var)]
+    if missing_vars:
+        raise ValueError(f"Missing required environment variables: {', '.join(missing_vars)}")
+
 def lambda_handler(event, context):
     """Handle plan_project function"""
-    print(f"Received event: {json.dumps(event)}")
-    
-    # Extract parameters from the event
-    parameters = event.get('parameters', [])
-    param_dict = {param['name']: param['value'] for param in parameters}
-    
-    target_nanobody = param_dict.get('target_nanobody', 'Cablivi')
-    optimization_objective = param_dict.get('optimization_objective', 'Improve vWF binding affinity')
-    target_kd = float(param_dict.get('target_kd', 1.0))
-    timeline_weeks = int(param_dict.get('timeline_weeks', 8))
-    knowledge_base_query = param_dict.get('knowledge_base_query', '')
-    
-    project_id = str(uuid.uuid4())
-    
-    # Query knowledge base for similar experiments
-    knowledge_insights = query_knowledge_base(knowledge_base_query, target_nanobody, timeline_weeks)
-    
-    # Create project plan
-    project_plan = {
-        'project_id': project_id,
-        'target_nanobody': target_nanobody,
-        'optimization_objective': optimization_objective,
-        'target_kd_nm': Decimal(str(target_kd)),
-        'timeline_weeks': timeline_weeks,
-        'status': 'planned',
-        'created_at': datetime.now().isoformat(),
-        'active_learning_strategy': 'Expected Improvement (EI)',
-        'initial_sequence': 'QVQLVESGGGLVQPGGSLRLSCAASGFTFSSYAMSWVRQAPGKGLEWVSAISGSGGSTYYADSVKGRFTISRDNSKNTLYLQMNSLRAEDTAVYYCAKVSYLSTASSLDYWGQGTLVTVSS',
-        'cycles_planned': 3,
-        'variants_per_cycle': 8,
-        'knowledge_insights': knowledge_insights
-    }
-    
-    # Store project in DynamoDB
     try:
-        table = dynamodb.Table(os.environ['PROJECT_TABLE'])
-        table.put_item(Item=project_plan)
-        print(f"Project stored in DynamoDB: {project_id}")
-    except Exception as e:
-        print(f"Error storing project in DynamoDB: {str(e)}")
-        raise e
-    
-    # Convert all Decimal values to float for JSON serialization
-    project_plan_json = convert_decimals_to_float(project_plan)
-    knowledge_insights_json = convert_decimals_to_float(knowledge_insights)
-    
-    # Store project plan document in S3 as Markdown
-    try:
-        s3_key = f'projects/{project_id}/project_plan.md'
-        project_document = generate_project_markdown(project_plan_json, knowledge_insights_json)
+        print(f"Received event: {json.dumps(event)}")
         
-        s3.put_object(
-            Bucket=os.environ['S3_BUCKET'],
-            Key=s3_key,
-            Body=project_document,
-            ContentType='text/markdown'
-        )
-        print(f"Project plan document saved to S3: {s3_key}")
-    except Exception as e:
-        print(f"Error saving project document: {str(e)}")
-        raise e
-    
-    response_body = {
-        'message': f'DMTA project planned successfully for {target_nanobody} optimization',
-        'project_plan': project_plan_json,
-        'knowledge_insights': knowledge_insights_json,
-        'next_steps': 'Ready to start Design phase - generate nanobody variants using active learning'
-    }
-    
-    return {
-        'response': {
-            'actionGroup': event['actionGroup'],
-            'function': event['function'],
-            'functionResponse': {
-                'responseBody': {
-                    'TEXT': {
-                        'body': json.dumps(response_body)
+        # Validate environment variables
+        validate_environment()
+        
+        # Extract parameters from the event
+        parameters = event.get('parameters', [])
+        param_dict = {param['name']: param['value'] for param in parameters}
+        
+        target_nanobody = param_dict.get('target_nanobody', 'Cablivi')
+        optimization_objective = param_dict.get('optimization_objective', 'Improve vWF binding affinity')
+        target_kd = float(param_dict.get('target_kd', 1.0))
+        timeline_weeks = int(param_dict.get('timeline_weeks', 8))
+        knowledge_base_query = param_dict.get('knowledge_base_query', '')
+        
+        project_id = str(uuid.uuid4())
+        
+        # Query knowledge base for similar experiments
+        knowledge_insights = query_knowledge_base(knowledge_base_query, target_nanobody, timeline_weeks)
+        
+        # Create project plan
+        project_plan = {
+            'project_id': project_id,
+            'target_nanobody': target_nanobody,
+            'optimization_objective': optimization_objective,
+            'target_kd_nm': Decimal(str(target_kd)),
+            'timeline_weeks': timeline_weeks,
+            'status': 'planned',
+            'created_at': datetime.now().isoformat(),
+            'active_learning_strategy': 'Expected Improvement (EI)',
+            'initial_sequence': 'QVQLVESGGGLVQPGGSLRLSCAASGFTFSSYAMSWVRQAPGKGLEWVSAISGSGGSTYYADSVKGRFTISRDNSKNTLYLQMNSLRAEDTAVYYCAKVSYLSTASSLDYWGQGTLVTVSS',
+            'cycles_planned': 3,
+            'variants_per_cycle': 8,
+            'knowledge_insights': knowledge_insights
+        }
+        
+        # Store project in DynamoDB
+        try:
+            table = dynamodb.Table(os.environ['PROJECT_TABLE'])
+            table.put_item(Item=project_plan)
+            print(f"Project stored in DynamoDB: {project_id}")
+        except Exception as e:
+            print(f"Error storing project in DynamoDB: {str(e)}")
+            print(f"Traceback: {traceback.format_exc()}")
+            raise e
+        
+        # Convert all Decimal values to float for JSON serialization
+        project_plan_json = convert_decimals_to_float(project_plan)
+        knowledge_insights_json = convert_decimals_to_float(knowledge_insights)
+        
+        # Store project plan document in S3 as Markdown
+        try:
+            s3_key = f'projects/{project_id}/project_plan.md'
+            project_document = generate_project_markdown(project_plan_json, knowledge_insights_json)
+            
+            s3.put_object(
+                Bucket=os.environ['S3_BUCKET'],
+                Key=s3_key,
+                Body=project_document,
+                ContentType='text/markdown'
+            )
+            print(f"Project plan document saved to S3: {s3_key}")
+        except Exception as e:
+            print(f"Error saving project document: {str(e)}")
+            print(f"Traceback: {traceback.format_exc()}")
+            raise e
+        
+        response_body = {
+            'message': f'DMTA project planned successfully for {target_nanobody} optimization',
+            'project_plan': project_plan_json,
+            'knowledge_insights': knowledge_insights_json,
+            'next_steps': 'Ready to start Design phase - generate nanobody variants using active learning'
+        }
+        
+        return {
+            'response': {
+                'actionGroup': event['actionGroup'],
+                'function': event['function'],
+                'functionResponse': {
+                    'responseBody': {
+                        'TEXT': {
+                            'body': json.dumps(response_body)
+                        }
                     }
                 }
             }
         }
-    }
+    except Exception as e:
+        print(f"Error in lambda_handler: {str(e)}")
+        print(f"Traceback: {traceback.format_exc()}")
+        raise e
 
 def query_knowledge_base(query, target_nanobody, timeline_weeks):
     """Query knowledge base for similar nanobody optimization project plans"""
@@ -191,78 +209,6 @@ def query_knowledge_base(query, target_nanobody, timeline_weeks):
 
 def generate_project_markdown(project_plan, knowledge_insights):
     """Generate comprehensive project plan document"""
-    document = {
-        'project_overview': {
-            'project_id': project_plan['project_id'],
-            'title': f"DMTA Optimization of {project_plan['target_nanobody']}",
-            'objective': project_plan['optimization_objective'],
-            'target_kd_nm': project_plan['target_kd_nm'],
-            'timeline_weeks': project_plan['timeline_weeks'],
-            'created_date': project_plan['created_at'],
-            'status': project_plan['status']
-        },
-        'experimental_design': {
-            'active_learning_strategy': project_plan['active_learning_strategy'],
-            'cycles_planned': project_plan['cycles_planned'],
-            'variants_per_cycle': project_plan['variants_per_cycle'],
-            'initial_sequence': project_plan['initial_sequence']
-        },
-        'knowledge_base_insights': knowledge_insights,
-        'methodology': {
-            'phase_1_design': {
-                'description': 'Generate nanobody variants using acquisition functions',
-                'acquisition_functions': ['Expected Improvement (EI)', 'Upper Confidence Bound (UCB)'],
-                'target_regions': ['CDR1', 'CDR3'],
-                'mutation_strategy': 'Targeted mutations in binding regions'
-            },
-            'phase_2_make': {
-                'description': 'Express nanobody variants and prepare for testing',
-                'expression_system': 'E. coli or mammalian cells',
-                'purification': 'Protein A/G affinity chromatography',
-                'quality_control': 'SDS-PAGE, SEC, dynamic light scattering'
-            },
-            'phase_3_test': {
-                'description': 'SPR binding assays against vWF A1 domain',
-                'assay_conditions': {
-                    'temperature': '25°C',
-                    'buffer': 'HBS-EP+ (10mM HEPES, 150mM NaCl, 3mM EDTA, 0.05% P20)',
-                    'flow_rate': '30 μL/min',
-                    'contact_time': '120 seconds',
-                    'dissociation_time': '300 seconds'
-                },
-                'data_analysis': 'Kinetic analysis using 1:1 Langmuir binding model'
-            },
-            'phase_4_analyze': {
-                'description': 'Gaussian Process modeling and next cycle planning',
-                'gp_modeling': 'Update model with new binding data',
-                'convergence_criteria': 'Target KD achieved or model uncertainty < 0.15',
-                'next_cycle_strategy': 'Acquisition function-based variant selection'
-            }
-        },
-        'success_criteria': {
-            'primary_endpoint': f"Achieve binding affinity KD ≤ {project_plan['target_kd_nm']} nM",
-            'secondary_endpoints': [
-                'Maintain expression yield > 30 mg/L',
-                'Preserve nanobody stability',
-                'Minimize off-target binding'
-            ]
-        },
-        'risk_assessment': {
-            'technical_risks': [
-                'Expression failure of designed variants',
-                'Loss of binding specificity',
-                'Protein aggregation or instability'
-            ],
-            'mitigation_strategies': [
-                'Conservative mutation approach in early cycles',
-                'Stability prediction using computational tools',
-                'Parallel expression in multiple systems'
-            ]
-        },
-        'timeline': generate_project_timeline(project_plan['timeline_weeks'], project_plan['cycles_planned'])
-    }
-    
-    # Convert to Markdown format
     markdown = f"""# DMTA Optimization Project: {project_plan['target_nanobody']}
 
 ## Project Overview

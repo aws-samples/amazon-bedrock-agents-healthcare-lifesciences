@@ -7,9 +7,9 @@ Design-Make-Test-Analyze (DMTA) cycle orchestration agent for Cablivi (Caplacizu
 This agent helps orchestrate iterative experimental cycles to improve vWF A1 domain binding affinity through active learning approaches. It provides tools for:
 
 - **Plan Project**: Create initial project setup and active learning strategy
-- **Design Variants**: Generate nanobody variants using acquisition functions (EI/UCB)
+- **Design Variants**: Generate nanobody variants using acquisition functions (EI/UCB) [Currently a prototype implementation]
 - **Make Test**: Execute expression and SPR binding assays with Opentrons OT-2 automation
-- **Analyze Results**: Analyze results using Gaussian Process modeling and recommend next steps
+- **Analyze Results**: Analyze results using Gaussian Process modeling and recommend next steps [Currently a prototype implementation]
 
 ## Prerequisites
 
@@ -105,7 +105,16 @@ s3://dmta-orchestration-agent-{region}-{account-id}/
 
 #### DynamoDB Tables
 - **ProjectTable**: Project metadata and status tracking (PK: project_id)
-- **CycleTable**: DMTA cycle information and progress (PK: project_id, SK: cycle_number)
+- **CycleTable**: DMTA cycle information and progress 
+  * Primary Key: project_id
+  * Sort Key: cycle_number
+  * Attributes:
+    - cycle_stage: Current stage (design, test, analysis, complete)
+    - timestamp: Last update time
+    - gp_model_params: GP model parameters and state
+    - design_strategy: Design phase configuration
+    - experimental_results: Make-test phase results
+    - analysis_results: Analysis phase outcomes
 - **VariantTable**: Nanobody variant designs and results (PK: project_id, SK: variant_id)
 
 ### Lambda Functions
@@ -188,6 +197,42 @@ aws dynamodb scan --table-name dmta-orchestration-agent-ProjectTable
 
 ### File Formats
 
+#### Cycle Data Structure
+```json
+{
+  "cycle_info": {
+    "project_id": "uuid",
+    "cycle_number": 1,
+    "cycle_stage": "design",
+    "timestamp": "2025-07-15T07:46:17Z"
+  },
+  "gp_model_params": {
+    "hyperparameters": {
+      "length_scale": 1.2,
+      "signal_variance": 0.8,
+      "noise_variance": 0.1
+    },
+    "model_accuracy": 0.85,  // Note: Currently using mock values for prototype
+    "uncertainty_estimate": 0.3  // Note: Currently using mock values for prototype
+  },
+  "design_strategy": {
+    "acquisition_function": "Expected Improvement",
+    "num_variants": 8,
+    "target_regions": ["CDR1", "CDR3"]
+  },
+  "experimental_results": {
+    "variants": [],
+    "binding_data": [],
+    "quality_metrics": []
+  },
+  "analysis_results": {
+    "cycle_summary": {},
+    "model_update": {},
+    "recommendations": {}
+  }
+}
+```
+
 #### Project Plan Document Structure
 ```json
 {
@@ -253,6 +298,22 @@ Estimated cost for typical usage: $10-50/month depending on usage patterns.
 1. **Stack Creation Failed**: Check that the Bedrock Agent Service Role ARN is correct
 2. **Permission Denied**: Ensure your AWS credentials have sufficient permissions
 3. **Model Access**: Verify you have access to Claude 3.5 Sonnet v2 in Bedrock
+
+### Data Access Examples
+
+#### Query Cycle Data
+```bash
+# Get cycle data with GP model parameters
+aws dynamodb get-item \
+    --table-name dmta-orchestration-agent-CycleTable \
+    --key '{"project_id": {"S": "your-project-id"}, "cycle_number": {"N": "1"}}'
+
+# List all cycles for a project
+aws dynamodb query \
+    --table-name dmta-orchestration-agent-CycleTable \
+    --key-condition-expression "project_id = :pid" \
+    --expression-attribute-values '{":pid": {"S": "your-project-id"}}'
+```
 
 ### Getting Help
 

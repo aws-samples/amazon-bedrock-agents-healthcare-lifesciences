@@ -21,6 +21,7 @@ def lambda_handler(event, context):
     
     variant_list = param_dict.get('variant_list', '[]')
     config_str = param_dict.get('config', '{}')
+    cycle_number = int(param_dict.get('cycle_number', 1))  # Added cycle_number parameter
     
     try:
         config = json.loads(config_str) if config_str else {}
@@ -59,6 +60,42 @@ def lambda_handler(event, context):
     
     # Store results in DynamoDB and S3
     experiment_id = store_experimental_data(results, assay_type)
+    
+    # Update cycle data with experimental results
+    try:
+        project_table = dynamodb.Table(os.environ['PROJECT_TABLE'])
+        cycle_table = dynamodb.Table(os.environ['CYCLE_TABLE'])
+        
+        # Get the latest project
+        response = project_table.scan(
+            ProjectionExpression='project_id',
+            Limit=1
+        )
+        project_id = response['Items'][0]['project_id'] if response['Items'] else 'default-project'
+        
+        # Convert results to Decimal before storing in DynamoDB
+        dynamodb_results = convert_floats_to_decimals(results)
+        
+        # Update cycle with experimental results
+        cycle_table.update_item(
+            Key={
+                'project_id': project_id,
+                'cycle_number': cycle_number
+            },
+            UpdateExpression="SET experimental_results = :r, cycle_stage = :s, #ts = :t",
+            ExpressionAttributeValues={
+                ':r': dynamodb_results,
+                ':s': 'test',
+                ':t': datetime.now().isoformat()
+            },
+            ExpressionAttributeNames={
+                '#ts': 'timestamp'
+            }
+        )
+        print(f"Updated cycle data with experimental results: {project_id}, cycle {cycle_number}")
+    except Exception as e:
+        print(f"Error updating cycle data: {str(e)}")
+        raise e
     
     # Generate assay report
     assay_report = generate_assay_report(results, assay_type, target_protein)
@@ -262,15 +299,15 @@ def store_experimental_data(results, assay_type):
 def generate_assay_report(results, assay_type, target_protein):
     """Generate comprehensive assay report"""
     # Calculate summary statistics
-    kd_values = [r['spr_binding_data']['binding_kd_nm'] for r in results]
-    expression_yields = [r['expression_data']['yield_mg_per_l'] for r in results]
+    kd_values = [float(r['spr_binding_data']['binding_kd_nm']) for r in results]
+    expression_yields = [float(r['expression_data']['yield_mg_per_l']) for r in results]
     
     report = {
         'assay_summary': {
             'assay_type': assay_type,
             'target_protein': target_protein,
             'variants_tested': len(results),
-            'success_rate': len([r for r in results if r['expression_data']['yield_mg_per_l'] > 20]) / len(results)
+            'success_rate': len([r for r in results if float(r['expression_data']['yield_mg_per_l']) > 20]) / len(results)
         },
         'binding_statistics': {
             'best_kd_nm': round(min(kd_values), 2),
@@ -300,5 +337,16 @@ def convert_decimals_to_float(obj):
         return {key: convert_decimals_to_float(value) for key, value in obj.items()}
     elif isinstance(obj, Decimal):
         return float(obj)
+    else:
+        return obj
+
+def convert_floats_to_decimals(obj):
+    """Recursively convert float objects to Decimal for DynamoDB storage"""
+    if isinstance(obj, list):
+        return [convert_floats_to_decimals(item) for item in obj]
+    elif isinstance(obj, dict):
+        return {key: convert_floats_to_decimals(value) for key, value in obj.items()}
+    elif isinstance(obj, float):
+        return Decimal(str(obj))
     else:
         return obj

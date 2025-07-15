@@ -38,17 +38,46 @@ def lambda_handler(event, context):
         num_variants, gp_model
     )
     
-    # Store variants in DynamoDB
+    # Store cycle start data with GP model parameters
     try:
         project_table = dynamodb.Table(os.environ['PROJECT_TABLE'])
-        variant_table = dynamodb.Table(os.environ['VARIANT_TABLE'])
+        cycle_table = dynamodb.Table(os.environ['CYCLE_TABLE'])
         
-        # Get the latest project by scanning the project table
+        # Get the latest project
         response = project_table.scan(
             ProjectionExpression='project_id',
             Limit=1
         )
         project_id = response['Items'][0]['project_id'] if response['Items'] else 'default-project'
+        
+        # Store cycle data
+        cycle_record = {
+            'project_id': project_id,
+            'cycle_number': cycle_number,
+            'cycle_stage': 'design',
+            'created_at': datetime.now().isoformat(),
+            'gp_model_params': {
+                'hyperparameters': gp_model['hyperparameters'],
+                'model_accuracy': gp_model['model_accuracy'],
+                'uncertainty_estimate': gp_model['uncertainty_estimate']
+            },
+            'design_strategy': {
+                'acquisition_function': acquisition_function,
+                'num_variants': num_variants,
+                'target_regions': ['CDR1', 'CDR3']
+            }
+        }
+        # Convert float values to Decimal for DynamoDB storage
+        dynamodb_cycle_record = convert_floats_to_decimals(cycle_record)
+        cycle_table.put_item(Item=dynamodb_cycle_record)
+        print(f"Stored cycle data in DynamoDB: {project_id}, cycle {cycle_number}")
+    except Exception as e:
+        print(f"Error storing cycle data in DynamoDB: {str(e)}")
+        raise e
+    
+    # Store variants in DynamoDB
+    try:
+        variant_table = dynamodb.Table(os.environ['VARIANT_TABLE'])
         
         # Store variants in DynamoDB
         for i, variant in enumerate(variants):
@@ -64,7 +93,9 @@ def lambda_handler(event, context):
                 'cycle_number': cycle_number
             }
             
-            variant_table.put_item(Item=variant_data)
+            # Convert float values to Decimal for DynamoDB storage
+            dynamodb_variant_data = convert_floats_to_decimals(variant_data)
+            variant_table.put_item(Item=dynamodb_variant_data)
             print(f"Stored variant {i+1} in DynamoDB: {variant['variant_id']}")
         print(f"Successfully stored {len(variants)} variants in DynamoDB")
     except Exception as e:
@@ -175,3 +206,25 @@ def calculate_ucb_score(variant_index, gp_model):
     mean_prediction = 0.8 - (variant_index * 0.06)
     confidence_interval = float(gp_model['uncertainty_estimate']) * 1.96
     return max(0.1, mean_prediction + confidence_interval + random.gauss(0, 0.03))
+
+def convert_decimals_to_float(obj):
+    """Recursively convert Decimal objects to float for JSON serialization"""
+    if isinstance(obj, list):
+        return [convert_decimals_to_float(item) for item in obj]
+    elif isinstance(obj, dict):
+        return {key: convert_decimals_to_float(value) for key, value in obj.items()}
+    elif isinstance(obj, Decimal):
+        return float(obj)
+    else:
+        return obj
+
+def convert_floats_to_decimals(obj):
+    """Recursively convert float objects to Decimal for DynamoDB storage"""
+    if isinstance(obj, list):
+        return [convert_floats_to_decimals(item) for item in obj]
+    elif isinstance(obj, dict):
+        return {key: convert_floats_to_decimals(value) for key, value in obj.items()}
+    elif isinstance(obj, float):
+        return Decimal(str(obj))
+    else:
+        return obj

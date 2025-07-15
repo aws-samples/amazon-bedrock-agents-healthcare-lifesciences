@@ -14,8 +14,6 @@ from opentrons.simulate import simulate, format_runlog
 
 def lambda_handler(event, context):
     """Dedicated Opentrons OT-2 simulation Lambda for DMTA workflows"""
-    print(f"Opentrons Lambda received: {json.dumps(event)}")
-    
     # Extract parameters
     variant_list = event.get('variant_list', [])
     protocol_type = event.get('protocol_type', 'spr_sample_prep')
@@ -42,16 +40,22 @@ def lambda_handler(event, context):
     try:
         # Execute simulation using opentrons.simulate
         with open(protocol_path, 'r') as protocol_file:
-            protocol = simulate(protocol_file)
-            runlog = "Simulation completed successfully"
-        
-        # Clean up temporary file
-        os.unlink(protocol_path)
-        
-        # Generate simulation results
-        simulation_result = execute_opentrons_simulation(protocol_content, variant_list, concentrations)
-        simulation_result['simulation_output'] = runlog
-        simulation_result['opentrons_simulation_success'] = True
+            protocol_steps = simulate(protocol_file)
+            
+            # Basic validation
+            required_tips = len(variant_list) * len(concentrations) * 2  # 2 tips per sample
+            
+            # Generate simulation results
+            simulation_result = execute_opentrons_simulation(protocol_content, variant_list, concentrations)
+            simulation_result['opentrons_simulation_success'] = True
+            simulation_result['validation'] = {
+                'tips_required': required_tips,
+                'protocol_simulated': True,
+                'steps_executed': len(protocol_steps) if protocol_steps else 0
+            }
+            
+            # Clean up temporary file
+            os.unlink(protocol_path)
         
     except Exception as e:
         # Clean up temporary file in case of error
@@ -139,72 +143,70 @@ def run(protocol: protocol_api.ProtocolContext):
     return protocol_template
 
 def execute_opentrons_simulation(protocol_content, variant_list, concentrations):
-    """Simulate OT-2 protocol execution"""
+    """Supplement Opentrons simulation with additional analysis"""
     
-    # Calculate execution parameters
+    # Calculate basic parameters
     num_variants = len(variant_list)
     num_concentrations = len(concentrations)
     total_samples = num_variants * num_concentrations
     
-    # Realistic timing calculation
-    base_time = 15  # Setup time
-    pipetting_time = total_samples * 1.2  # 1.2 min per sample
-    tip_changes = total_samples * 2
-    tip_time = tip_changes * 0.1
+    # Estimate execution time based on standard operation durations
+    operation_durations = {
+        'setup': 15,        # Initial setup time (minutes)
+        'per_sample': 1.2,  # Average time per sample including all operations
+        'cleanup': 5        # Final cleanup time
+    }
     
-    total_duration = base_time + pipetting_time + tip_time
-    final_duration = max(20, total_duration + random.gauss(0, total_duration * 0.05))
+    # Calculate total duration with 5% random variation
+    base_duration = (operation_durations['setup'] + 
+                    operation_durations['per_sample'] * total_samples + 
+                    operation_durations['cleanup'])
+    final_duration = max(20, base_duration * (1 + random.gauss(0, 0.05)))
     
-    # Generate sample preparation results
+    # Generate sample preparation quality estimates
     sample_results = []
+    pipetting_error_rate = 0.015  # ±1.5% pipetting accuracy
+    
     for i, variant in enumerate(variant_list):
         variant_id = variant.get('variant_id', f'VAR_{i+1:02d}')
-        
         for j, target_conc in enumerate(concentrations):
-            actual_conc = target_conc * (1 + random.gauss(0, 0.015))  # ±1.5% accuracy
-            cv_percent = abs(random.gauss(0, 1.2))
+            # Estimate pipetting accuracy
+            cv_percent = abs(random.gauss(0, pipetting_error_rate * 100))
             
             sample_results.append({
                 'variant_id': variant_id,
                 'target_concentration_nm': target_conc,
-                'actual_concentration_nm': round(actual_conc, 2),
-                'cv_percent': round(cv_percent, 1),
                 'well_position': f'{chr(65 + i)}{j + 1}',
-                'volume_ul': 200,
+                'cv_percent': round(cv_percent, 1),
                 'preparation_quality': 'excellent' if cv_percent < 2.0 else 'good'
             })
     
     # Calculate quality metrics
     cv_values = [s['cv_percent'] for s in sample_results]
-    if cv_values:  # Only calculate if we have values
-        avg_cv = sum(cv_values) / len(cv_values)
-        accuracy_percent = 100 - avg_cv
-    else:
-        avg_cv = 0
-        accuracy_percent = 0
+    avg_cv = sum(cv_values) / len(cv_values) if cv_values else 0
+    max_cv = max(cv_values) if cv_values else 0
+    accuracy_percent = 100 - avg_cv
     
     return {
         'protocol_validated': True,
         'duration_minutes': round(final_duration, 1),
+        'operation_timing': {
+            'setup': operation_durations['setup'],
+            'per_sample': operation_durations['per_sample'],
+            'cleanup': operation_durations['cleanup']
+        },
         'total_samples': total_samples,
         'sample_results': sample_results,
         'quality_metrics': {
             'average_cv_percent': round(avg_cv, 2),
+            'max_cv_percent': round(max_cv, 2),
             'accuracy_percent': round(accuracy_percent, 1),
             'samples_excellent': len([s for s in sample_results if s['preparation_quality'] == 'excellent']),
             'samples_good': len([s for s in sample_results if s['preparation_quality'] == 'good'])
         },
         'automation_benefits': {
             'time_saved_hours': round((3 * 60 - final_duration) / 60, 1),
-            'precision_improvement': 'Manual ±5% → OT-2 ±1.5%',
+            'precision_improvement': f'Manual ±5% → OT-2 ±{pipetting_error_rate*100}%',
             'throughput_increase': f'{total_samples} samples in {round(final_duration, 1)} min'
-        },
-        'execution_log': [
-            f'Protocol validation: PASSED',
-            f'Labware setup: {num_variants} variants, {num_concentrations} concentrations',
-            f'Buffer dispensing: {total_samples} wells',
-            f'Serial dilutions: {num_variants} series',
-            f'Quality control: {accuracy_percent:.1f}% accuracy achieved',
-            f'Execution completed in {final_duration:.1f} minutes'
-        ]
+        }
     }
