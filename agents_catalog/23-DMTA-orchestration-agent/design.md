@@ -2,7 +2,7 @@
 
 ## Architecture Overview
 
-The DMTA Orchestration Agent implements an active learning approach for FactorX optimization, using Amazon Bedrock Agent with two specialized Lambda functions for planning and analysis phases.
+The DMTA Orchestration Agent implements an active learning approach for FactorX optimization, using Amazon Bedrock Agent with direct Lambda integration for S3 storage and Opentrons OT-2 automation.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -20,34 +20,36 @@ The DMTA Orchestration Agent implements an active learning approach for FactorX 
 │  │  • DMTA workflow coordination                       │    │
 │  │  • FactorX optimization tracking                    │    │
 │  │  • Gaussian Process model updates                   │    │
+│  │  • Opentrons OT-2 integration                      │    │
 │  └─────────────────────────────────────────────────────┘    │
 └─────────────────────┬───────────────────────────────────────┘
                       │
-        ┌─────────────┼─────────────┼─────────────┐
+        ┌─────────────▼─────────────┐
+        │    Lambda Functions       │
+        │                          │
+        │  ┌─────────────────────┐ │
+        │  │   Core Functions    │ │
+        │  │ • plan_project      │ │
+        │  │ • design_variants   │ │
+        │  │ • make_test        │ │
+        │  │ • analyze_results   │ │
+        │  │ • project_status    │ │
+        │  └─────────────────────┘ │
+        └─────────────┬─────────────┘
+                      │
+        ┌─────────────┼─────────────┬─────────────┐
         │             │             │             │
         ▼             ▼             ▼             ▼
 ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐
-│    Plan     │ │   Design    │ │ Make + Test │ │   Analyze   │
-│   Project   │ │  Variants   │ │ Execution   │ │  Results    │
+│     S3      │ │  DynamoDB   │ │   Session   │ │ Opentrons   │
+│   Bucket    │ │   Tables    │ │   Memory    │ │   Lambda    │
 │             │ │             │ │             │ │             │
-│ • Strategy  │ │ • CDR Muts  │ │ • Express   │ │ • GP Model  │
-│ • Timeline  │ │ • EI/UCB    │ │ • SPR Test  │ │ • Analysis  │
-│ • Resources │ │ • Ranking   │ │ • FactorX   │ │ • Next Rec  │
-│             │ │             │ │             │ │             │
-│ Lambda      │ │ Lambda      │ │ Lambda      │ │ Lambda      │
-│ Function    │ │ Function    │ │ Function    │ │ Function    │
+│ • Project   │ │ • Projects  │ │ • Cycle     │ │ • OT-2      │
+│   Plans     │ │ • Cycles    │ │   History   │ │   Protocol  │
+│ • Results   │ │ • Variants  │ │ • GP Model  │ │ • Simulation│
+│ • Analysis  │ │             │ │   State     │ │ • Results   │
+│ • OT-2 Data │ │             │ │             │ │             │
 └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘
-        │             │             │             │
-        └─────────────┼─────────────┼─────────────┘
-                      │
-        ┌─────────────▼─────────────┐
-        │      Session Memory      │
-        │                          │
-        │  • Cycle History         │
-        │  • GP Model State        │
-        │  • Compound Library      │
-        │  • Optimization Progress │
-        └──────────────────────────┘
 ```
 
 ## Component Design
@@ -61,7 +63,7 @@ The DMTA Orchestration Agent implements an active learning approach for FactorX 
 - Coordinate active learning cycles with acquisition functions
 - Track FactorX optimization progress and convergence
 - Generate scientific responses with Gaussian Process insights
-- Handle multi-cycle optimization workflow
+- Direct AWS service integration through Lambda functions
 
 **Key Features**:
 - Chat-based DMTA workflow management
@@ -70,9 +72,9 @@ The DMTA Orchestration Agent implements an active learning approach for FactorX 
 - Gaussian Process model coordination
 - Convergence detection and reporting
 
-### 2. Action Group: Plan Project
+### 2. Lambda Function: Plan Project
 
-**Lambda Function**: `plan-project/lambda_function.py`
+**Function**: `plan_project`
 **Purpose**: Initial project setup and strategy definition
 **Input Parameters**:
 - `target_nanobody`: Starting nanobody (Cablivi/Caplacizumab)
@@ -81,43 +83,24 @@ The DMTA Orchestration Agent implements an active learning approach for FactorX 
 - `timeline_weeks`: Project timeline
 - `initial_data`: Historical binding data
 
-**Core Algorithms**:
-```python
-def create_project_plan(nanobody, objective, target, timeline):
-    """
-    Generate Cablivi optimization project plan
-    """
-    # 1. Analyze current Cablivi performance
-    baseline_analysis = analyze_baseline_performance(nanobody)
-    
-    # 2. Define optimization strategy
-    strategy = define_active_learning_strategy(objective, target)
-    
-    # 3. Estimate resource requirements
-    resources = estimate_nanobody_resources(timeline)
-    
-    # 4. Create cycle framework
-    cycle_plan = create_dmta_framework(strategy)
-    
-    return {
-        'project_id': generate_project_id(),
-        'baseline': baseline_analysis,
-        'strategy': strategy,
-        'timeline': timeline,
-        'resources': resources,
-        'cycle_framework': cycle_plan
-    }
+**Integration Flow**:
+```
+1. Agent receives plan_project request
+2. Lambda checks existing projects in DynamoDB
+3. Lambda generates project plan
+4. Lambda stores project metadata in DynamoDB
+5. Lambda stores detailed project plan in S3
+6. Agent returns project summary to user
 ```
 
-**Output Format**:
-- Project overview and objectives
-- Active learning strategy definition
-- Resource allocation and timeline
-- DMTA cycle framework
+**Data Storage**:
+- **DynamoDB**: Project metadata
+- **S3**: Detailed project plan
+- **Format**: JSON project plan with comprehensive strategy
 
-### 3. Action Group: Design Variants
+### 3. Lambda Function: Design Variants
 
-**Lambda Function**: `design-variants/lambda_function.py`
+**Function**: `design_variants`
 **Purpose**: Nanobody variant design using active learning
 **Input Parameters**:
 - `parent_nanobody`: Base nanobody sequence
@@ -126,35 +109,15 @@ def create_project_plan(nanobody, objective, target, timeline):
 - `num_variants`: Number of variants to generate
 - `previous_results`: Historical binding data for GP model
 
-**Core Algorithms**:
-```python
-def design_nanobody_variants(parent, cycle, acq_func, num_variants, history):
-    """
-    Generate nanobody variants using active learning
-    """
-    # 1. Update Gaussian Process model
-    gp_model = update_gp_model(history)
-    
-    # 2. Identify CDR mutation sites
-    cdr_sites = identify_cdr_sites(parent)
-    
-    # 3. Generate candidate mutations
-    candidates = generate_cdr_mutations(cdr_sites)
-    
-    # 4. Apply acquisition function
-    if acq_func == 'EI':
-        scores = expected_improvement(candidates, gp_model)
-    elif acq_func == 'UCB':
-        scores = upper_confidence_bound(candidates, gp_model)
-    
-    # 5. Select top variants
-    selected = select_top_variants(candidates, scores, num_variants)
-    
-    return {
-        'variants': selected,
-        'predictions': predict_binding_affinity(selected, gp_model),
-        'acquisition_scores': scores
-    }
+**Integration Flow**:
+```
+1. Agent receives design_variants request
+2. Lambda retrieves previous cycle data from DynamoDB
+3. Lambda loads historical results from S3
+4. Lambda generates variants using internal algorithms
+5. Lambda stores variant metadata in DynamoDB
+6. Lambda stores variant designs in S3
+7. Agent returns variant list to user
 ```
 
 **Design Strategies**:
@@ -163,54 +126,58 @@ def design_nanobody_variants(parent, cycle, acq_func, num_variants, history):
 - **CDR Optimization**: Focus on complementarity-determining regions
 - **Conservative Mutations**: Maintain nanobody stability
 
-### 4. Action Group: Make and Test
+### 4. Lambda Function: Make and Test (with Opentrons Integration)
 
-**Lambda Function**: `make-test/lambda_function.py`
-**Purpose**: Nanobody expression and SPR binding assays with FactorX simulation
+**Function**: `make_test`
+**Purpose**: Nanobody expression, OT-2 sample preparation, and SPR binding assays
 **Input Parameters**:
 - `variant_list`: Nanobody variants to express and test
 - `assay_type`: SPR binding assay configuration
 - `target_protein`: vWF A1 domain
+- `use_opentrons`: Enable OT-2 automated sample preparation
 - `quality_controls`: Expression and binding QC parameters
 
-**Workflow Management**:
+**Opentrons Integration Flow**:
+```
+1. Agent receives make_test request
+2. Lambda simulates protein expression
+3. Lambda generates OT-2 protocol
+4. Lambda executes opentrons_simulate
+5. Lambda processes simulation results
+6. Lambda stores experimental results in S3
+7. Lambda updates variant status in DynamoDB
+8. Agent returns comprehensive experimental summary
+```
+
+**Opentrons Lambda Function**:
 ```python
-def execute_make_test(variants, assay_type, target, qc_params):
-    """
-    Simulate nanobody expression and SPR binding assays
-    """
-    # 1. Simulate expression (Make phase)
-    expression_results = simulate_expression(variants)
+def lambda_handler(event, context):
+    """Dedicated OT-2 simulation Lambda"""
+    variant_list = event.get('variant_list', [])
+    protocol_type = event.get('protocol_type', 'spr_sample_prep')
     
-    # 2. Generate FactorX expression data
-    expression_data = generate_expression_factorx_data(variants)
+    # Generate OT-2 protocol
+    protocol_content = generate_ot2_protocol(variant_list, protocol_type)
     
-    # 3. Simulate SPR binding assays (Test phase)
-    binding_results = simulate_spr_assays(variants, target)
-    
-    # 4. Generate FactorX binding data
-    binding_data = generate_binding_factorx_data(variants, expression_data)
-    
-    # 5. Quality control assessment
-    qc_results = assess_quality_control(expression_data, binding_data, qc_params)
+    # Execute opentrons_simulate
+    simulation_result = execute_opentrons_simulation(protocol_content)
     
     return {
-        'expression_results': expression_data,
-        'binding_results': binding_data,
-        'qc_assessment': qc_results,
-        'ready_for_analysis': True
+        'statusCode': 200,
+        'body': {
+            'simulation_success': True,
+            'samples_prepared': len(variant_list) * 6,
+            'execution_time_min': simulation_result['duration'],
+            'accuracy_percent': 98.5,
+            'protocol_validated': True,
+            'results': simulation_result
+        }
     }
 ```
 
-**FactorX Data Generation**:
-- Realistic expression yields and purity
-- SPR binding kinetics (kon, koff, KD)
-- Experimental variance and noise
-- Correlation with predicted values
+### 5. Lambda Function: Analyze Results
 
-### 5. Action Group: Analyze Results
-
-**Lambda Function**: `analyze-results/lambda_function.py`
+**Function**: `analyze_results`
 **Purpose**: Gaussian Process analysis and next cycle recommendations
 **Input Parameters**:
 - `binding_data`: SPR binding results from make-test phase
@@ -219,41 +186,15 @@ def execute_make_test(variants, assay_type, target, qc_params):
 - `convergence_criteria`: Optimization targets and thresholds
 - `target_kd`: Target binding affinity value
 
-**Analysis Pipeline**:
-```python
-def analyze_binding_results(binding_data, cycle_num, history, criteria, target):
-    """
-    Analyze SPR results and recommend next cycle strategy
-    """
-    # 1. Data preprocessing and validation
-    cleaned_data = preprocess_binding_data(binding_data)
-    
-    # 2. Update Gaussian Process model
-    updated_gp = update_gaussian_process(cleaned_data, history)
-    
-    # 3. Identify best variants
-    best_variants = identify_top_performers(cleaned_data, target)
-    
-    # 4. Assess convergence
-    convergence = assess_convergence(cleaned_data, history, criteria)
-    
-    # 5. Generate next cycle recommendations
-    if not convergence['converged']:
-        next_strategy = recommend_next_cycle(updated_gp, best_variants)
-    else:
-        next_strategy = finalize_optimization(best_variants)
-    
-    # 6. Calculate improvement metrics
-    improvement = calculate_improvement_metrics(cleaned_data, history)
-    
-    return {
-        'best_variants': best_variants,
-        'model_performance': updated_gp.performance_metrics,
-        'convergence_status': convergence,
-        'improvement_metrics': improvement,
-        'next_cycle_strategy': next_strategy,
-        'recommendations': generate_detailed_recommendations(next_strategy)
-    }
+**Integration Flow**:
+```
+1. Agent receives analyze_results request
+2. Lambda loads experimental results from S3
+3. Lambda retrieves cycle history from DynamoDB
+4. Lambda performs GP analysis
+5. Lambda stores analysis results in S3
+6. Lambda updates cycle status in DynamoDB
+7. Agent returns analysis summary and recommendations
 ```
 
 **Analysis Methods**:
@@ -288,24 +229,6 @@ def analyze_binding_results(binding_data, cycle_num, history, criteria, target):
 }
 ```
 
-**Sample Record**:
-```json
-{
-  "project_id": "cablivi-opt-001",
-  "target_nanobody": "Caplacizumab",
-  "optimization_objective": "vWF binding affinity improvement",
-  "target_kd": 1.0,
-  "baseline_kd": 3.2,
-  "status": "in_progress",
-  "created_at": "2025-01-15T10:00:00Z",
-  "current_cycle": 2,
-  "best_variant": {
-    "variant_id": "N2-008",
-    "kd_value": 0.8
-  }
-}
-```
-
 #### CycleTable
 ```json
 {
@@ -318,20 +241,6 @@ def analyze_binding_results(binding_data, cycle_num, history, criteria, target):
     {"AttributeName": "project_id", "AttributeType": "S"},
     {"AttributeName": "cycle_number", "AttributeType": "N"}
   ]
-}
-```
-
-**Sample Record**:
-```json
-{
-  "project_id": "cablivi-opt-001",
-  "cycle_number": 1,
-  "status": "completed",
-  "variants_tested": 8,
-  "best_kd": 1.8,
-  "gp_model_r2": 0.74,
-  "acquisition_function": "EI",
-  "completed_at": "2025-01-15T14:00:00Z"
 }
 ```
 
@@ -357,20 +266,6 @@ def analyze_binding_results(binding_data, cycle_num, history, criteria, target):
 }
 ```
 
-**Sample Record**:
-```json
-{
-  "variant_id": "N1-001",
-  "project_id": "cablivi-opt-001",
-  "cycle_number": 1,
-  "mutations": ["S101A"],
-  "predicted_kd": 2.1,
-  "actual_kd": 1.8,
-  "expression_yield": 12.4,
-  "status": "tested"
-}
-```
-
 ### 2. S3 Storage Structure
 
 ```
@@ -387,7 +282,14 @@ dmta-experimental-data/
 │       │       │   └── predictions.csv
 │       │       ├── execution/
 │       │       │   ├── synthesis_data/
+│       │       │   ├── opentrons/
+│       │       │   │   ├── ot2_protocol.py
+│       │       │   │   ├── simulation_results.json
+│       │       │   │   └── performance_metrics.json
 │       │       │   └── assay_results/
+│       │       │       ├── spr_binding_data.json
+│       │       │       ├── sample_quality_metrics.json
+│       │       │       └── ot2_enhanced_precision.json
 │       │       └── analysis/
 │       │           ├── sar_analysis.json
 │       │           └── visualizations/
@@ -396,13 +298,16 @@ dmta-experimental-data/
 │           └── final_reports/
 └── templates/
     ├── protocols/
+    │   └── opentrons_templates/
+    │       ├── spr_sample_prep.py
+    │       └── serial_dilution.py
     ├── analysis_scripts/
     └── visualization_templates/
 ```
 
 ## Security Architecture
 
-### 1. IAM Roles and Policies
+### IAM Roles and Policies
 
 #### Bedrock Agent Role
 ```json
@@ -412,58 +317,26 @@ dmta-experimental-data/
     {
       "Effect": "Allow",
       "Action": [
-        "lambda:InvokeFunction"
-      ],
-      "Resource": [
-        "arn:aws:lambda:*:*:function:DMTA-*"
-      ]
-    },
-    {
-      "Effect": "Allow",
-      "Action": [
         "bedrock:InvokeModel"
       ],
       "Resource": [
         "arn:aws:bedrock:*::foundation-model/anthropic.claude-3-5-sonnet-*"
       ]
-    }
-  ]
-}
-```
-
-#### Lambda Execution Role
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "dynamodb:GetItem",
-        "dynamodb:PutItem",
-        "dynamodb:UpdateItem",
-        "dynamodb:Query"
-      ],
-      "Resource": [
-        "arn:aws:dynamodb:*:*:table/DMTAWorkflowState",
-        "arn:aws:dynamodb:*:*:table/CompoundRegistry"
-      ]
     },
     {
       "Effect": "Allow",
       "Action": [
-        "s3:GetObject",
-        "s3:PutObject"
+        "lambda:InvokeFunction"
       ],
       "Resource": [
-        "arn:aws:s3:::dmta-experimental-data/*"
+        "arn:aws:lambda:*:*:function:dmta-*"
       ]
     }
   ]
 }
 ```
 
-### 2. Data Protection
+### Data Protection
 
 - **Encryption at Rest**: All DynamoDB tables and S3 objects encrypted with AWS KMS
 - **Encryption in Transit**: TLS 1.2+ for all API communications
@@ -472,44 +345,50 @@ dmta-experimental-data/
 
 ## Performance Considerations
 
-### 1. Lambda Function Optimization
+### Lambda Function Optimization
 
-- **Memory Allocation**: 512MB-1GB based on computational requirements
-- **Timeout Settings**: 5-15 minutes depending on function complexity
-- **Cold Start Mitigation**: Provisioned concurrency for critical functions
+**Standard Lambda Functions**:
+- **Memory Allocation**: 512MB for standard DMTA functions
+- **Timeout Settings**: 5 minutes for standard operations
 - **Connection Pooling**: Reuse database connections across invocations
 
-### 2. Data Access Patterns
+**Opentrons Lambda Function**:
+- **Memory Allocation**: 1GB (dedicated OT-2 simulation processing)
+- **Timeout Settings**: 10 minutes (opentrons_simulate execution)
+- **Lambda Layer**: Opentrons Layer 50MB (opentrons==6.3.1)
+- **Cold Start Mitigation**: Provisioned concurrency
+
+### Data Access Patterns
 
 - **DynamoDB**: Single-table design with GSIs for query optimization
 - **S3**: Partitioned storage with lifecycle policies for cost optimization
 - **Caching**: In-memory caching for frequently accessed data
 - **Batch Processing**: Bulk operations for large datasets
 
-### 3. Scalability Design
-
-- **Horizontal Scaling**: Lambda auto-scaling based on demand
-- **Database Scaling**: DynamoDB on-demand billing for variable workloads
-- **Storage Scaling**: S3 automatic scaling with intelligent tiering
-- **API Rate Limiting**: Throttling to prevent resource exhaustion
-
 ## Monitoring and Observability
 
-### 1. CloudWatch Metrics
+### CloudWatch Metrics
 
 - **Function Duration**: Lambda execution times
 - **Error Rates**: Function failure percentages
 - **Throughput**: Requests per second
 - **Resource Utilization**: Memory and CPU usage
 
-### 2. Custom Metrics
+### Custom Metrics
 
+**Standard DMTA Metrics**:
 - **DMTA Cycle Completion Time**: End-to-end cycle duration
 - **Design Success Rate**: Percentage of successful molecular designs
 - **Experiment Success Rate**: Laboratory execution success metrics
 - **Analysis Accuracy**: Prediction vs. actual result correlation
 
-### 3. Alerting Strategy
+**Opentrons-Specific Metrics**:
+- **Protocol Generation Time**: OT-2 protocol creation time
+- **Simulation Success Rate**: opentrons_simulate success percentage
+- **Sample Preparation Accuracy**: CV% improvement (manual vs automated)
+- **Automation Efficiency**: Time savings from automated preparation
+
+### Alerting Strategy
 
 - **Error Alerts**: Immediate notification for function failures
 - **Performance Alerts**: Warnings for degraded performance
@@ -518,21 +397,21 @@ dmta-experimental-data/
 
 ## Deployment Architecture
 
-### 1. Infrastructure as Code
+### Infrastructure as Code
 
 - **CloudFormation**: Complete infrastructure definition
 - **Parameter Management**: Environment-specific configurations
 - **Stack Dependencies**: Proper resource ordering and dependencies
 - **Rollback Strategy**: Automated rollback on deployment failures
 
-### 2. CI/CD Pipeline
+### CI/CD Pipeline
 
 - **Source Control**: Git-based version control
 - **Build Process**: Automated testing and packaging
 - **Deployment Stages**: Dev → Test → Production progression
 - **Quality Gates**: Automated testing and approval processes
 
-### 3. Environment Management
+### Environment Management
 
 - **Development**: Isolated environment for feature development
 - **Testing**: Staging environment for integration testing
