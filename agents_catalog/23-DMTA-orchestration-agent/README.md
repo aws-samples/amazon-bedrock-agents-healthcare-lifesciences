@@ -99,13 +99,20 @@ This deployment creates:
 
 ## Architecture
 
+![DMTA Orchestration Agent Architecture](images/dmta_architecture.png)
+
 The solution creates:
 
-- **Bedrock Agent**: Orchestrates the DMTA workflow
+- **Bedrock Agent**: Orchestrates the DMTA workflow using Claude 3.5 Sonnet v2
 - **S3 Bucket**: For storing experimental data
 - **DynamoDB Tables**: For tracking projects, cycles, and variants
 - **Lambda Functions**: For executing DMTA workflow phases
-- **Opentrons Integration**: Dedicated Lambda function for OT-2 automation
+  - plan_project: Project planning and initialization
+  - design_variants: Variant design using active learning [Simulated Data]
+  - make_test: Experimental execution with OT-2 integration
+  - analyze_results: Analysis using Gaussian Process modeling [Mock GP Model]
+  - project_status: Project status and progress tracking
+- **Opentrons Integration**: Dedicated Lambda function for OT-2 simulation using official Opentrons API
 - **IAM Roles**: Appropriate permissions for all components
 
 ### Data Storage Structure
