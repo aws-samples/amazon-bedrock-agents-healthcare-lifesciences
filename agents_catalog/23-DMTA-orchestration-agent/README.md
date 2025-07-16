@@ -7,9 +7,29 @@ Design-Make-Test-Analyze (DMTA) cycle orchestration agent for Cablivi (Caplacizu
 This agent helps orchestrate iterative experimental cycles to improve vWF A1 domain binding affinity through active learning approaches. It provides tools for:
 
 - **Plan Project**: Create initial project setup and active learning strategy
-- **Design Variants**: Generate nanobody variants using acquisition functions (EI/UCB) [Currently a prototype implementation]
-- **Make Test**: Execute expression and SPR binding assays with Opentrons OT-2 automation
-- **Analyze Results**: Analyze results using Gaussian Process modeling and recommend next steps [Currently a prototype implementation]
+- **Design Variants**: Generate nanobody variants using acquisition functions (EI/UCB) [Currently using simulated data]
+- **Make Test**: Execute expression and SPR binding assays with Opentrons OT-2 automation [Currently simulation only]
+- **Analyze Results**: Analyze results using Gaussian Process modeling and recommend next steps [Currently using mock data]
+
+### Implementation Status
+
+For transparency, the following features are currently implemented using simulations or mock data:
+
+1. **Design Phase**:
+   - Variant generation uses simulated sequence data
+   - Acquisition functions operate on synthetic binding affinity predictions
+
+2. **Make-Test Phase**:
+   - Opentrons OT-2 integration is simulation-based (no hardware required)
+   - Expression data is synthetically generated
+   - SPR binding assay results use realistic but simulated data
+
+3. **Analysis Phase**:
+   - Gaussian Process modeling uses mock hyperparameters
+   - Uncertainty estimates are simulated
+   - Convergence metrics use synthetic data
+
+These simulated components allow for demonstration and testing of the DMTA workflow while maintaining realistic behavior patterns. Future versions may integrate with actual laboratory hardware and experimental data.
 
 ## Prerequisites
 

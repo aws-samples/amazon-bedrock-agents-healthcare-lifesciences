@@ -127,9 +127,9 @@
 
 ### C1: Simulation Limitations
 - FactorX dummy data generation for make/test phases
-- Opentrons protocol simulation (no actual OT-2 hardware required)
+- Opentrons protocol simulation using official Opentrons Python API (no physical hardware required)
 - Gaussian Process modeling with synthetic data
-- Realistic liquid handling parameters and timing simulation
+- Realistic liquid handling parameters and timing simulation through Opentrons' validated simulation tools
 
 ### C2: Active Learning Scope
 - Focus on Expected Improvement and UCB acquisition functions

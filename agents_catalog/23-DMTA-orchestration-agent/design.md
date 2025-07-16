@@ -4,6 +4,14 @@
 
 The DMTA Orchestration Agent implements an active learning approach for FactorX optimization, using Amazon Bedrock Agent with direct Lambda integration for S3 storage and Opentrons OT-2 automation.
 
+**Implementation Notes**:
+- Opentrons OT-2 integration uses the official Opentrons Python API's simulation capabilities, allowing protocol testing without physical hardware
+- FactorX optimization currently uses synthetic data for demonstration
+- Gaussian Process modeling uses mock parameters for prototype implementation
+- Active learning implementation uses simulated binding affinity data
+
+The simulation-based approach allows for development and testing of the DMTA workflow while maintaining realistic behavior patterns through Opentrons' validated simulation tools.
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                 Chat Interface                              │
