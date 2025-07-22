@@ -1,0 +1,13 @@
+boto3
+awscli
+botocore
+opensearch-py
+retrying
+termcolor 
+rich
+datasets
+matplotlib
+sagemaker
+strands-agents
+strands-agents-tools
+requests
