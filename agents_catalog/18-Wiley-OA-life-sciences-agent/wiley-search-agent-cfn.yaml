@@ -1,0 +1,177 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Creates Wiley's search agent.
+Parameters:
+  AgentAliasName:
+    Type: String
+    Default: ""
+  BedrockModelId:
+    Type: String
+    Description: The ID of the Foundation Model to use for the Agent
+    Default: us.amazon.nova-pro-v1:0
+  AgentIAMRoleArn:
+    Type: String
+    Description: The arn for the agent IAM role
+
+Conditions:
+  CreateAgentAliasCondition: !Not [!Equals [!Ref AgentAliasName, ""]]
+
+Resources:
+  ########################
+  ##### WileySearch #####
+  ######################
+
+  WileySearchLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.12
+      Handler: index.lambda_handler
+      Role: !GetAtt WileySearchLambdaRole.Arn
+      Timeout: 30
+      MemorySize: 128
+      Code: "action-groups/wiley-search"
+
+  WileySearchLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  WileySearchLambdaAgentPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt WileySearchLambdaFunction.Arn
+      Principal: bedrock.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+      SourceArn: !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent-alias/*
+
+  WileySearchLambdaAgentAliasPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt WileySearchLambdaFunction.Arn
+      Principal: bedrock.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+      SourceArn: !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*
+
+  #####################
+  ##### Agent #####
+  ###################
+
+  WileySearchAgent:
+    Type: AWS::Bedrock::Agent
+    Properties:
+      ActionGroups:
+        - ActionGroupName: "UserInputAction"
+          ParentActionGroupSignature: "AMAZON.UserInput"
+          ActionGroupState: "ENABLED"
+        - ActionGroupName: WileySearch
+          Description: Actions for answering questions with information from an Open Access subset of Wiley Online Library related to Health Sciences
+          ActionGroupExecutor:
+            Lambda: !GetAtt WileySearchLambdaFunction.Arn
+          ActionGroupState: ENABLED
+          FunctionSchema:
+            Functions:
+              - Name: wiley_search
+                Description: Execute a search query using Wiley Search.
+                Parameters:
+                  question:
+                    Description: "The search query to execute with Wiley. Example: 'How to handle uncertain deaths?'"
+                    Type: string
+                    Required: True
+      AgentName:
+        !Join [
+          "-",
+          [
+            "wiley-search-agent",
+            !Select [
+              4,
+              !Split ["-", !Select [2, !Split ["/", !Ref "AWS::StackId"]]],
+            ],
+          ],
+        ]
+      AgentResourceRoleArn: !Ref AgentIAMRoleArn
+      AutoPrepare: True
+      Description: "Answer questions by searching on Wiley Content."
+      FoundationModel: !Ref BedrockModelId
+      GuardrailConfiguration:
+        GuardrailIdentifier: !GetAtt WileySearchGuardrail.GuardrailId
+        GuardrailVersion: !GetAtt WileySearchGuardrail.Version
+      Instruction: |
+        You are a highly knowledgeable and friendly AI assistant designed to assist users with accurate and detailed information. 
+        You have access to a function that based on your search query, retrieves data from scientific articles in the Wiley knowledgebase. 
+        When responding to user queries, follow these guidelines:
+
+        1. **Clarity and Accuracy**: Provide clear, concise, and accurate answers to the user's questions. Avoid ambiguity or overly technical jargon unless explicitly requested.
+
+        2. **Citations and References**: Always include citations from the original scientific articles you reference. Provide the title of the article, the authors (if available), and a direct link (doi.org) to the source.
+
+        3. **Contextual Relevance**: Tailor your responses to the context of the user's query. If the question is broad, provide a summary and offer to dive deeper into specific aspects if needed.
+
+        4. **Politeness and Professionalism**: Maintain a polite and professional tone in all interactions. Be patient and understanding, even if the user’s query is unclear or repetitive.
+
+        5. **Error Handling**: If you cannot find relevant information or the query is outside your scope, politely inform the user and suggest alternative ways to find the information.
+
+        6. **Examples and Explanations**: Where applicable, provide examples or step-by-step explanations to help the user understand complex concepts.
+
+        7. **Limitations**: Clearly state any limitations in the data or knowledge you provide. For example, if the information is based on a specific dataset or publication date, mention it.
+
+        Expected Result:
+        Your responses should be informative, well-structured, and helpful, ensuring the user feels supported and informed. Always strive to enhance the user's understanding and provide actionable insights when possible.
+
+  AgentAliasResource:
+    Type: AWS::Bedrock::AgentAlias
+    Condition: CreateAgentAliasCondition
+    Properties:
+      AgentId: !GetAtt WileySearchAgent.AgentId
+      AgentAliasName: !Ref AgentAliasName
+
+  WileySearchGuardrail:
+    Type: AWS::Bedrock::Guardrail
+    Properties:
+      BlockedInputMessaging: "Sorry, your query violates our usage policies."
+      BlockedOutputsMessaging: "Sorry, I am unable to reply because the output violates our usage policies."
+      ContentPolicyConfig:
+        FiltersConfig:
+          - InputStrength: "HIGH"
+            OutputStrength: "HIGH"
+            Type: "SEXUAL"
+          - InputStrength: "HIGH"
+            OutputStrength: "HIGH"
+            Type: "VIOLENCE"
+          - InputStrength: "HIGH"
+            OutputStrength: "HIGH"
+            Type: "HATE"
+          - InputStrength: "HIGH"
+            OutputStrength: "HIGH"
+            Type: "INSULTS"
+          - InputStrength: "HIGH"
+            OutputStrength: "HIGH"
+            Type: "MISCONDUCT"
+          - InputStrength: "HIGH"
+            OutputStrength: "NONE"
+            Type: "PROMPT_ATTACK"
+      Description: Turn on to block profane words and other harmful content.
+      Name: WileySearchGuardrail
+      WordPolicyConfig:
+        ManagedWordListsConfig:
+          - Type: PROFANITY
+
+Outputs:
+  AgentId: 
+    Description: Agent ID
+    Value: !Ref WileySearchAgent
+  AgentAliasId: 
+    Description: Agent Alias ID
+    Value: !GetAtt  AgentAliasResource.AgentAliasId
+    Condition: CreateAgentAliasCondition
+

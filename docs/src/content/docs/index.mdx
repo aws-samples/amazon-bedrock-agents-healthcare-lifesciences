@@ -5,7 +5,7 @@ template: splash
 hero:
   tagline: Get started quickly building with agents for common workflows across drug research, clinical trials, and commercialization
   image:
-    file: ../../assets/architecture.jpg
+    file: ../../assets/architecture.png
     alt: AI agents working together on cancer biomarker discovery
   actions:
     - text: Develop your own agent
@@ -17,11 +17,9 @@ hero:
       icon: github
 ---
 import { Image } from 'astro:assets';
-import HCLSagents from '../../../src/assets/HCLSagents.jpg';
+import HCLSagents from '../../../src/assets/HCLS-agents-toolkit.png';
 import { Card, CardGrid } from '@astrojs/starlight/components';
 import { Tabs, TabItem } from '@astrojs/starlight/components';
-
-## Accelerate research, clinical trials, commercial workflows with agents on AWS
 
 <div style="text-align: center; margin: 2rem 0;">
   <Image 
@@ -34,11 +32,10 @@ import { Tabs, TabItem } from '@astrojs/starlight/components';
 </div>
 <CardGrid> 
  <Card title="Agents Catalog" icon="puzzle"> Select and customize from a library of specialized agents across the value chain. [Learn more](https://github.com/aws-samples/amazon-bedrock-agents-healthcare-lifesciences/tree/main/agents_catalog) </Card> 
- <Card title="Multi-agent Collaboration" icon="setting"> Framework for agent collaboration and knowledge sharing. Try pre-built examples for cancer biomarker discovery or build your own custom supervisor. [Learn more](https://github.com/aws-samples/amazon-bedrock-agents-healthcare-lifesciences/tree/main/multi_agent_collaboration/cancer_biomarker_discovery) </Card> 
+ <Card title="Multi-agent Collaboration" icon="setting"> Framework for agent collaboration and knowledge sharing. Try pre-built examples for cancer biomarker discovery or build your own custom supervisor. [Learn more](https://github.com/aws-samples/amazon-bedrock-agents-healthcare-lifesciences/tree/main/multi_agent_collaboration) </Card> 
  <Card title="Deployment" icon="laptop"> One-click deployment of infrastructure and Interactive interface for human-agent chat with pre-built agents. [Learn more](https://github.com/aws-samples/amazon-bedrock-agents-healthcare-lifesciences/tree/main?tab=readme-ov-file#deployment) </Card> 
  <Card title="Evaluations" icon="check"> Obervability and evaluation of Agents using Langfuse and custom metrics [Learn more](https://github.com/aws-samples/amazon-bedrock-agents-healthcare-lifesciences/tree/main/evaluations) </Card> 
 </CardGrid>
-**Built with [Amazon Bedrock Agents](https://aws.amazon.com/bedrock/agents/)**
 
 ## See life sciences agents in action 
 <div style="text-align: center; margin: 2rem 0;">
@@ -107,7 +104,7 @@ import { Tabs, TabItem } from '@astrojs/starlight/components';
         <h3 style="margin: 0; color: #232f3e; font-size: 1.2rem;">Blog</h3>
         <p style="margin-top: 0.5rem; color: #666;">
           **Blog**  
-          Read how to accelerate analysis and discovery of cancer biomarkers with Amazon Bedrock Agents
+          Read how to accelerate analysis and discovery of cancer biomarkers with Amazon Bedrock
         </p>
         <a href="https://aws.amazon.com/blogs/machine-learning/accelerate-analysis-and-discovery-of-cancer-biomarkers-with-amazon-bedrock-agents/" 
            style="color: #0073bb; text-decoration: none; font-weight: 500;">
@@ -116,39 +113,8 @@ import { Tabs, TabItem } from '@astrojs/starlight/components';
       </div>
     </div>
   </div>
-
-  <div style={{
-    background: '#f8f9fa',
-    borderRadius: '12px',
-    padding: '2rem',
-    border: '1px solid #e9ecef',
-    transition: 'transform 0.2s, box-shadow 0.2s',
-    ':hover': {
-      transform: 'translateY(-4px)',
-      boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-    }
-  }}>
-    <div style="display: flex; align-items: start; gap: 1rem;">
-      <div style="background: #232f3e; padding: 0.8rem; border-radius: 8px;">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
-          <path d="M20.5 11H19V7C19 5.9 18.1 5 17 5H13V3.5C13 2.12 11.88 1 10.5 1C9.12 1 8 2.12 8 3.5V5H4C2.9 5 2 5.9 2 7V10.8H3.5C5 10.8 6.2 12 6.2 13.5C6.2 15 5 16.2 3.5 16.2H2V20C2 21.1 2.9 22 4 22H7.8V20.5C7.8 19 9 17.8 10.5 17.8C12 17.8 13.2 19 13.2 20.5V22H17C18.1 22 19 21.1 19 20V16H20.5C21.88 16 23 14.88 23 13.5C23 12.12 21.88 11 20.5 11Z"/>
-        </svg>
-      </div>
-      <div>
-        <h3 style="margin: 0; color: #232f3e; font-size: 1.2rem;">Interoperability</h3>
-        <p style="margin-top: 0.5rem; color: #666;">
-          **MCP**  
-          Bedrock Agents now supports MCP tools through our new inline agents API 
-        </p>
-        <a href="https://aws.amazon.com/blogs/machine-learning/harness-the-power-of-mcp-servers-with-amazon-bedrock-agents/" 
-           style="color: #0073bb; text-decoration: none; font-weight: 500;">
-          View blog and examples →
-        </a>
-      </div>
-    </div>
-  </div>
 </div>
 
 
-## Get started now with the sample agents and customize and build agents with your own datasets and tools. 
+## Get started now with the sample agents. Customize and build agents with your own datasets and tools. 
 

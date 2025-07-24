@@ -10,23 +10,25 @@ Metadata:
 Parameters:
   AgentAliasName:
     Type: String
-    Default: ""
+    Default: "Latest"
   BedrockModelId:
     Type: String
     Description: The ID of the Foundation Model to use for the Agent
     Default: us.anthropic.claude-3-5-sonnet-20241022-v2:0
   AgentIAMRoleArn:
     Type: String
-    Description: The arn for the agent IAM role
+    Description: (Optional) Amazon Bedrock service role ARN
+    Default: ""
   TavilyApiKey:
     Type: String
     NoEcho: true
     Description: Provide TavilyApiKey API Key to utilize /web_search path
-    MinLength: 1
+    Default: ""
 
 Conditions:
   HasTavilyApiKeyCondition: !Not [!Equals [!Ref TavilyApiKey, ""]]
   CreateAgentAliasCondition: !Not [!Equals [!Ref AgentAliasName, ""]]
+  AgentIAMRoleCondition: !Not [!Equals [!Ref AgentIAMRoleArn, ""]]
 
 Resources:
   #####################
@@ -52,7 +54,7 @@ Resources:
     Properties:
       FunctionName: TavilyWebSearch
       Description: "Search the web with { 'search_query' } parameter. Optional { 'days' } parameter for days of history to search and { 'topic' } parameter for either 'news' or 'general' content type."
-      Runtime: python3.13
+      Runtime: python3.12
       Handler: index.lambda_handler
       Role: !GetAtt WebSearchLambdaRole.Arn
       Timeout: 30
@@ -149,7 +151,12 @@ Resources:
                     Type: string
                     Required: False
       AgentName: Tavily-Web-Search-Agent
-      AgentResourceRoleArn: !Ref AgentIAMRoleArn
+      # If an IAM role ARN is passed as a paremter, use it. Otherwise look in SSM parameter store
+      AgentResourceRoleArn:
+        "Fn::If":
+          - AgentIAMRoleCondition
+          - !Ref AgentIAMRoleArn
+          - "{{resolve:ssm:/bedrock/agent/role/arn:1}}"
       AutoPrepare: True
       Description: "Answer questions by searching the internet."
       FoundationModel: !Ref BedrockModelId
@@ -233,4 +240,8 @@ Outputs:
   AgentAliasId:
     Description: Agent Alias ID
     Value: !GetAtt AgentAliasResource.AgentAliasId
+    Condition: CreateAgentAliasCondition
+  AgentAliasArn:
+    Description: Agent Alias ARN
+    Value: !GetAtt AgentAliasResource.AgentAliasArn
     Condition: CreateAgentAliasCondition

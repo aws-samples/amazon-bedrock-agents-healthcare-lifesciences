@@ -746,7 +746,7 @@ Resources:
                     'Error': str(e)
                 })
 
-      Runtime: python3.9
+      Runtime: python3.12
       Timeout: 900
       MemorySize: 256
 
@@ -820,7 +820,7 @@ Resources:
       - WorkflowExecutionRole
       - ECRRepository
     Properties:
-      Runtime: python3.9
+      Runtime: python3.12
       Handler: index.handler
       Role: !GetAtt WorkflowTriggerRole.Arn
       Environment:
@@ -913,7 +913,7 @@ Resources:
               parameters = event.get("parameters", [])
               message_version = event.get("messageVersion", "1.0")
               
-              # Extract parameters from Bedrock agent format
+              # Extract parameters from Bedrock format
               params = {}
               for param in parameters:
                   if "name" in param and "value" in param:
@@ -1025,7 +1025,7 @@ Resources:
                       roleArn=role_arn
                   )
                   
-                  # Format response for Bedrock agent
+                  # Format response for Bedrock
                   response_body = {
                       "TEXT": {
                           "body": f"Successfully started protein optimization workflow.\n\nRun ID: {response['id']}\nStatus: {response['status']}\nOutput URI: {output_uri}\n\nOptimization parameters:\n- Seed sequence: {seed_sequence[:20]}... ({len(seed_sequence)} amino acids)\n- Parallel chains: {parallel_chains}\n- Steps per chain: {n_steps}\n- Max mutations: {max_mutations}\n- Output type: {output_type}\n\nYou can check the status later by asking me to 'monitor workflow run {response['id']}'"
@@ -1220,7 +1220,7 @@ Resources:
       - WorkflowMonitorRole
       - WorkflowTriggerFunction
     Properties:
-      Runtime: python3.9
+      Runtime: python3.12
       Handler: index.handler
       Role: !GetAtt WorkflowMonitorRole.Arn
       Environment:

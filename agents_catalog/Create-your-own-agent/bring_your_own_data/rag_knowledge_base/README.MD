@@ -1,14 +1,14 @@
-# Create a RAG Bedrock Agent
+# Create a RAG Agent
 
-Create a sample end-to-end RAG Bedrock Agent solution.
+Create a sample end-to-end RAG Agent solution.
 
 ## Sample Database Overview
 
-This notebook will walk users through setting up a sample RAG Agent with the Hugging Face 'rag-mini-wikipedia' dataset, using the Amazon Bedrock knowledgebase feature.
+This notebook will walk users through setting up a sample RAG Agent with a sample text dataset, using the Amazon Bedrock knowledgebase feature.
 
 ### RAG Flow
 
-1. User asks questions to the Amazon Bedrock Agent.
+1. User asks questions to the agent.
 2. To serve the user's questions, Agent determines the appropriate action to invoke.
 3. It will invoke the knowledge base to perform RAG and retrieve relevant references
 4. The agent will use the retrieved references to generate a natural language answer.
@@ -17,24 +17,9 @@ This notebook will walk users through setting up a sample RAG Agent with the Hug
 
 ### Deployment
 
-Step 1: Go to a SageMaker Notebook instance in your AWS account and clone this repository in a terminal
+Step 1: Navigate to agents_catalog/0-Notebook-environment/ and go to setup_environment.ipynb, use the Python 3 (ipykernel)
 
-```bash
-cd SageMaker/
-git clone https://github.com/aws-samples/amazon-bedrock-agents-cancer-biomarker-discovery.git
-```
-
-Step 2: Navigate to the multi-agent-collaboration branch within the repository
-```bash
-cd amazon-bedrock-agents-cancer-biomarker-discovery
-```
-```bash
-git checkout multi-agent-collaboration
-```
-
-Step 3: Navigate to agents_catalog/0-Notebook-environment/ and go to setup_environment.ipynb, use the Python 3 (ipykernel)
-
-Step 4: Run through the 'sample_rag_agent.ipynb' to create the RAG agent
+Step 2: Run through the 'sample_rag_agent.ipynb' to create the RAG agent
 
 ## How to Test in AWS Console
 

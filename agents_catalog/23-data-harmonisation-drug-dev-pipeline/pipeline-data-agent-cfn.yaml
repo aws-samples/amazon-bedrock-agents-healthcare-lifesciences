@@ -1,0 +1,496 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudFormation template for deploying OpenSearch Serverless, Knowledge Base, and Bedrock Agent for Drug Development Pipeline Data'
+
+Parameters:
+  AgentAliasName:
+    Type: String
+    Description: Optional alias name for the Bedrock Agent
+    Default: "Latest"
+  
+  BedrockModelId:
+    Type: String
+    Description: Optional Bedrock foundation model id
+    Default: "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
+  
+  AgentRole:
+    Type: String
+    Description: The ARN for the agent execution role
+  
+  S3Bucket:
+    Type: String
+    Description: The S3 bucket where the pipeline data is stored
+  
+  S3Key:
+    Type: String
+    Description: The S3 key for the pipeline data JSON file
+    Default: "enriched_pipeline_data.json"
+  
+  VectorStoreName:
+    Type: String
+    Description: The name of the vector store
+    Default: "pipeline-vs"
+  
+  IndexName:
+    Type: String
+    Description: The name of the vector index
+    Default: "pipeline-data-index"
+
+Mappings:
+  RegionMap:
+    us-east-1:
+      PandasLayer: 'arn:aws:lambda:us-east-1:336392948345:layer:AWSSDKPandas-Python312:12'
+    us-east-2:
+      PandasLayer: 'arn:aws:lambda:us-east-2:336392948345:layer:AWSSDKPandas-Python312:12'
+    us-west-1:
+      PandasLayer: 'arn:aws:lambda:us-west-1:336392948345:layer:AWSSDKPandas-Python312:12'
+    us-west-2:
+      PandasLayer: 'arn:aws:lambda:us-west-2:336392948345:layer:AWSSDKPandas-Python312:12'
+
+Resources:
+  # IAM Roles
+  BedrockKBExecutionRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: !Sub 'AmazonBedrockExecutionRoleForKnowledgeBase-${AWS::StackName}'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: 
+                - bedrock.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref 'AWS::AccountId'
+              ArnLike:
+                aws:SourceArn: !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:knowledge-base/*'
+      Policies:
+      - PolicyName: FoundationModelPolicy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - bedrock:InvokeModel
+            Resource: 
+              - !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/amazon.titan-embed-text-v1'
+              - !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/${BedrockModelId}'
+            Sid: BedrockInvokeModelStatement
+      - PolicyName: OSSPolicy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - aoss:APIAccessAll
+            Resource: !Sub 'arn:aws:aoss:${AWS::Region}:${AWS::AccountId}:collection/${Collection}'
+            Sid: OpenSearchServerlessAPIAccessAllStatement
+      - PolicyName: S3Policy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - s3:ListBucket
+            Resource: !Sub 'arn:aws:s3:::${S3Bucket}'
+            Sid: S3ListBucketStatement
+          - Effect: Allow
+            Action:
+            - s3:GetObject
+            Resource: !Sub 'arn:aws:s3:::${S3Bucket}/*'
+            Sid: S3GetObjectStatement
+
+  # OpenSearch Serverless Resources
+  EncryptionPolicy:
+    Type: 'AWS::OpenSearchServerless::SecurityPolicy'
+    Properties:
+      Name: !Sub '${AWS::StackName}-encryption-policy'
+      Type: encryption
+      Description: !Sub 'Encryption policy for ${AWS::StackName} collection'
+      Policy: !Sub |
+        {
+          "Rules": [
+            {
+              "ResourceType": "collection",
+              "Resource": ["collection/pipeline-vs-${AWS::Region}"]
+            }
+          ],
+          "AWSOwnedKey": true
+        }
+
+  NetworkPolicy:
+    Type: 'AWS::OpenSearchServerless::SecurityPolicy'
+    Properties:
+      Name: !Sub '${AWS::StackName}-network-policy'
+      Type: network
+      Description: !Sub 'Network policy for ${AWS::StackName} collection'
+      Policy: !Sub |
+        [
+          {
+            "Rules": [
+              {
+                "ResourceType": "collection",
+                "Resource": ["collection/pipeline-vs-${AWS::Region}"]
+              }
+            ],
+            "AllowFromPublic": true
+          }
+        ]
+
+  Collection:
+    Type: 'AWS::OpenSearchServerless::Collection'
+    Properties:
+      Name: !Sub 'pipeline-vs-${AWS::Region}'
+      Type: VECTORSEARCH
+      Description: !Sub 'Collection to hold vector for ${AWS::StackName}'
+    DependsOn: 
+      - EncryptionPolicy
+      - NetworkPolicy
+
+  OpenSearchIndexLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: LambdaBasicExecution
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Resource: 'arn:aws:logs:*:*:*'
+        - PolicyName: allowAoss
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Effect: Allow
+              Action:
+              - aoss:APIAccessAll
+              - aoss:List*
+              - aoss:Get*
+              - aoss:Create*
+              - aoss:Update*
+              - aoss:Delete*
+              Resource: 'arn:aws:logs:*:*:*'
+
+  OpenSearchIndexLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt OpenSearchIndexLambdaRole.Arn
+      Code:
+        ZipFile: |
+          import boto3
+          import cfnresponse
+          import json
+          import time
+          from opensearchpy import OpenSearch, RequestsHttpConnection, AWSV4SignerAuth
+
+          def create_index_with_retry(client, index_name, index_body, max_retries=5, base_delay=5):
+              for attempt in range(max_retries):
+                  try:
+                      response = client.indices.create(index=index_name, body=json.dumps(index_body))
+                      print(f"Index created: {response}")
+                      return True
+                  except Exception as e:
+                      print(f"Attempt {attempt + 1} failed: {str(e)}")
+                      if attempt < max_retries - 1:
+                          delay = base_delay * (2 ** attempt)  # Exponential backoff
+                          print(f"Retrying in {delay} seconds...")
+                          time.sleep(delay)
+                      else:
+                          print("Max retries reached. Index creation failed.")
+                          return False
+
+          def handler(event, context):
+              if event['RequestType'] in ['Create', 'Update']:
+                  try:
+                      collection_name = event['ResourceProperties']['CollectionName']
+                      index_name = event['ResourceProperties']['IndexName']
+                      collection_id = event["ResourceProperties"]["CollectionId"]
+                      region = event["ResourceProperties"]["Region"]
+                      
+                      print(f"Collection Name: {collection_name}")
+                      print(f"Index Name: {index_name}")
+                      print(f"Collection ID: {collection_id}")
+                      print(f"Region: {region}")
+                      
+                      service = 'aoss'
+                      host = f"{collection_id}.{region}.{service}.amazonaws.com"
+                      credentials = boto3.Session().get_credentials()
+                      awsauth = AWSV4SignerAuth(credentials, region, service)
+                      
+                      client = OpenSearch(
+                          hosts=[{'host': host, 'port': 443}],
+                          http_auth=awsauth,
+                          use_ssl=True,
+                          verify_certs=True,
+                          connection_class=RequestsHttpConnection,
+                          pool_maxsize=20,
+                      )
+                      
+                      # Updated index_body to match Amazon Titan model specifications
+                      index_body = {
+                          "settings": {
+                              "index": {
+                                  "knn": True,
+                                  "knn.algo_param.ef_search": 512
+                              }
+                          },
+                          "mappings": {
+                              "properties": {
+                                  "bedrock-knowledge-base-default-vector": {
+                                      "type": "knn_vector",
+                                      "dimension": 1536,
+                                      "method": {
+                                          "name": "hnsw",
+                                          "engine": "faiss",
+                                          "parameters": {
+                                              "ef_construction": 512,
+                                              "m": 16
+                                          },
+                                          "space_type": "l2",
+                                      },
+                                  },
+                                  "AMAZON_BEDROCK_METADATA": {
+                                      "type": "text",
+                                      "index": "false"
+                                  },
+                                  "AMAZON_BEDROCK_TEXT_CHUNK": {
+                                      "type": "text",
+                                      "index": "true"
+                                  },
+                              }
+                          }
+                      }
+                      
+                      # Initial delay before attempting to create the index
+                      print("Waiting 50 seconds before attempting to create the index...")
+                      time.sleep(50)
+                      
+                      # Attempt to create the index with retry logic
+                      if create_index_with_retry(client, index_name, index_body):
+                          print("Waiting 60 seconds for the index to be fully created...")
+                          time.sleep(60)
+                          cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+                      else:
+                          raise Exception("Failed to create index after multiple attempts")
+                  
+                  except Exception as e:
+                      print(f"Error: {str(e)}")
+                      cfnresponse.send(event, context, cfnresponse.FAILED, {})
+              else:
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+
+      Runtime: python3.12
+      Timeout: 900
+      Layers: 
+        - !FindInMap [RegionMap, !Ref 'AWS::Region', PandasLayer]
+
+  CreateOpenSearchIndex:
+    Type: Custom::CreateOpenSearchIndex
+    Properties:
+      ServiceToken: !GetAtt OpenSearchIndexLambda.Arn
+      CollectionName: !Sub 'pipeline-vs-${AWS::Region}'
+      IndexName: !Ref IndexName
+      CollectionId: !GetAtt Collection.Id
+      Region: !Ref 'AWS::Region'
+    DependsOn:
+      - Collection
+      - BedrockOSSPolicyForKB
+
+  BedrockOSSPolicyForKB:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub ${AWS::StackName}-bedrock-oss-policy
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: OpenSearchServerlessAPIAccessAllStatement
+            Effect: Allow
+            Action:
+              - 'aoss:APIAccessAll'
+            Resource: !GetAtt Collection.Arn
+      Roles:
+        - !Ref BedrockKBExecutionRole
+        - !Ref OpenSearchIndexLambdaRole
+
+  DataAccessPolicy:
+    Type: 'AWS::OpenSearchServerless::AccessPolicy'
+    Properties:
+      Name: !Sub '${AWS::StackName}-access-policy'
+      Type: data
+      Description: !Sub 'Access policy for ${AWS::StackName} collection'
+      Policy: !Sub |
+        [
+          {
+            "Rules": [
+              {
+                "ResourceType": "collection",
+                "Resource": ["collection/pipeline-vs-${AWS::Region}"],
+                "Permission": [
+                  "aoss:CreateCollectionItems",
+                  "aoss:DeleteCollectionItems",
+                  "aoss:UpdateCollectionItems",
+                  "aoss:DescribeCollectionItems"
+                ]
+              },
+              {
+                "ResourceType": "index",
+                "Resource": ["index/pipeline-vs-${AWS::Region}/*"],
+                "Permission": [
+                  "aoss:CreateIndex",
+                  "aoss:DeleteIndex",
+                  "aoss:UpdateIndex",
+                  "aoss:DescribeIndex",
+                  "aoss:ReadDocument",
+                  "aoss:WriteDocument"
+                ]
+              }
+            ],
+            "Principal": [
+              "${BedrockKBExecutionRole.Arn}",
+              "arn:aws:iam::${AWS::AccountId}:role/aws-service-role/bedrock.amazonaws.com/AWSServiceRoleForAmazonBedrock",
+              "${OpenSearchIndexLambdaRole.Arn}"
+            ],
+            "Description": "Data access policy for OpenSearch and Bedrock"
+          }
+        ]
+    DependsOn:
+      - Collection
+      - BedrockKBExecutionRole
+      - OpenSearchIndexLambdaRole
+
+  # Knowledge Base Resources
+  BedrockKnowledgeBase:
+    Type: AWS::Bedrock::KnowledgeBase
+    Properties:
+      Name: !Sub '${AWS::StackName}-PipelineDataKnowledgeBase'
+      Description: "Knowledge base containing drug development pipeline data"
+      KnowledgeBaseConfiguration:
+        Type: VECTOR
+        VectorKnowledgeBaseConfiguration:
+          EmbeddingModelArn: !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/amazon.titan-embed-text-v1'
+      RoleArn: !GetAtt BedrockKBExecutionRole.Arn
+      StorageConfiguration:
+        Type: OPENSEARCH_SERVERLESS
+        OpensearchServerlessConfiguration:
+          CollectionArn: !GetAtt Collection.Arn
+          FieldMapping: 
+              VectorField: "bedrock-knowledge-base-default-vector"
+              TextField: "text"
+              MetadataField: "metadata"
+          VectorIndexName: !Ref IndexName
+    DependsOn: 
+      - DataAccessPolicy
+      - CreateOpenSearchIndex
+
+  KnowledgeBaseDataSource:
+    Type: AWS::Bedrock::DataSource
+    DependsOn:
+      - BedrockKnowledgeBase
+    Properties:
+      DataSourceConfiguration:
+        Type: S3
+        S3Configuration:
+          BucketArn: !Sub 'arn:aws:s3:::${S3Bucket}'
+          InclusionPrefixes:
+            - !Ref S3Key
+      Description: !Sub 'Knowledge base Data Source for ${AWS::StackName} (Pipeline Data)'
+      KnowledgeBaseId: !Ref BedrockKnowledgeBase
+      Name: !Sub '${AWS::StackName}-PipelineDataSource'
+      VectorIngestionConfiguration:
+        ChunkingConfiguration:
+          ChunkingStrategy: FIXED_SIZE
+          FixedSizeChunkingConfiguration:
+            MaxTokens: 300
+            OverlapPercentage: 20
+
+  # Bedrock Agent Resources
+  PipelineDataAgent:
+    Type: AWS::Bedrock::Agent
+    DependsOn:
+      - BedrockKnowledgeBase
+      - KnowledgeBaseDataSource
+    Properties:
+      AgentName: "pipeline-data-agent"
+      AgentResourceRoleArn: !Ref AgentRole
+      AutoPrepare: True
+      FoundationModel: !Ref BedrockModelId
+      Instruction: |
+        You are a pharmaceutical pipeline data assistant specialized in analyzing drug development data. 
+        Your primary task is to interpret user queries about drug development pipelines, clinical trials, 
+        and pharmaceutical research, and provide relevant insights based on the knowledge base.
+        
+        Follow these instructions carefully:
+        
+        1. When responding to queries about drug development pipelines:
+           a. Provide information about drug candidates, their targets, mechanisms of action, and development stages
+           b. Include details about therapeutic areas, indications, and clinical trial phases when available
+           c. Explain the significance of the data in the context of pharmaceutical research and development
+        
+        2. For queries about specific diseases or therapeutic areas:
+           a. Identify relevant drug candidates in the pipeline
+           b. Provide information about the disease mechanisms and how the drugs target them
+           c. Include details about clinical trials and development status
+        
+        3. When providing your response:
+           a. Start with a brief summary of your understanding of the user's query
+           b. Organize information in a clear, structured manner
+           c. Use technical pharmaceutical terminology appropriately
+           d. Cite specific information from the knowledge base
+           e. Conclude with a concise summary of the key insights
+        
+        Remember that you are working with pharmaceutical pipeline data that includes information about 
+        drug candidates, clinical trials, therapeutic areas, and development stages. Your goal is to help 
+        users understand and analyze this data effectively.
+
+      Description: "Agent for analyzing pharmaceutical pipeline data"
+      ActionGroups:
+        - ActionGroupName: 'UserInputAction'
+          ParentActionGroupSignature: 'AMAZON.UserInput'
+          ActionGroupState: 'ENABLED'
+      KnowledgeBases:
+        - KnowledgeBaseId: !Ref BedrockKnowledgeBase
+          Description: "Knowledge base containing drug development pipeline data"
+
+  AgentAlias:
+    Type: AWS::Bedrock::AgentAlias
+    Properties:
+      AgentId: !GetAtt PipelineDataAgent.AgentId
+      AgentAliasName: !Ref AgentAliasName
+
+Outputs:
+  CollectionId:
+    Description: "OpenSearch Serverless Collection ID"
+    Value: !GetAtt Collection.Id
+  
+  CollectionArn:
+    Description: "OpenSearch Serverless Collection ARN"
+    Value: !GetAtt Collection.Arn
+  
+  KnowledgeBaseId:
+    Description: "Bedrock Knowledge Base ID"
+    Value: !Ref BedrockKnowledgeBase
+  
+  AgentId:
+    Description: "Bedrock Agent ID"
+    Value: !GetAtt PipelineDataAgent.AgentId
+  
+  AgentArn:
+    Description: "Bedrock Agent ARN"
+    Value: !GetAtt PipelineDataAgent.AgentArn
+  
+  AgentAliasId:
+    Description: "Bedrock Agent Alias ID"
+    Value: !GetAtt AgentAlias.AgentAliasId

@@ -1,6 +1,6 @@
-# Create a Omics Signatures Enrichment Bedrock Agent
+# Create a Omics Signatures Enrichment Agent
 
-Create an end-to-end Omics metadata mapping solution, integrated with Reactome database to retrieve identifiers from external databases.
+Create an end-to-end Omics metadata mapping solution, integrated with [Reactome](https://reactome.org/) database to retrieve identifiers from external databases.
 
 ## Sample Database Overview
 
@@ -36,7 +36,7 @@ This Text-to-Cypher solution enables researchers to perform:
 
 ### Agentic Text2Cypher Flow
 
-1. User asks questions to the Amazon Bedrock Agent.
+1. User asks questions to the agent.
 2. To serve the user's questions, Agent determines the appropriate action to invoke.
 3. It will invoke the lambda function and execute the /getschema action to retrieve the portion of the schema relevant to the user question.
 4. The agent will use the retrieved schema to generate an OpenCypher query.a
@@ -45,7 +45,8 @@ This Text-to-Cypher solution enables researchers to perform:
 
 ## Getting Started
 
-### Prerequisites
+### Prerequisites 
+**NOTE**: (You can skip if already executed with the Biological pathways analyst agent)
 
 - Deploy the 'text2cypher_infra.yaml' file provided in the folder using your AWS account's CloudFormation service to deploy the Neptune database and the S3 buckets
 - Enable model access to all Bedrock models from the AWS console
@@ -58,41 +59,15 @@ This Text-to-Cypher solution enables researchers to perform:
 
 ### Deployment
 
-Step 1: Go to a SageMaker Notebook instance in your AWS account and clone this repository in a terminal
+Step 1: Navigate to agents_catalog/0-Notebook-environment/ and go to setup_environment.ipynb, use the Python 3 (ipykernel)
 
-```bash
-cd SageMaker/
-git clone https://github.com/aws-samples/amazon-bedrock-agents-cancer-biomarker-discovery.git
-```
-
-Step 2: Navigate to the multi-agent-collaboration branch within the repository
-```bash
-cd amazon-bedrock-agents-cancer-biomarker-discovery
-```
-```bash
-git checkout multi-agent-collaboration
-```
-
-Step 3: Navigate to agents_catalog/0-Notebook-environment/ and go to setup_environment.ipynb, use the Python 3 (ipykernel)
-
-Step 4: Run through the 'sample_text2cypher_agent.ipynb' to create the Text-to-Cypher agent
+Step 2: Run through the 'sample_text2cypher_agent.ipynb' to create the Text-to-Cypher agent
 
 ## How to Test in AWS Console
 
 1. Go to [Amazon Bedrock](https://console.aws.amazon.com/bedrock) and select **Agents.**
 
 2. Select your Text-to-Cypher agent and test by asking questions in **Test** window on your right. 
-
-    Example questions:
-
-    * What are the immediate downstream reactions that are triggered by EGFRvIII in the 'Signaling by EGFRvIII in Cancer (R-HSA-5637812)' pathway in Homo sapiens? 
-    * "What proteins are associated with Signaling by EGFR in Cancer (R-HSA-1643713)?"
-    * Which chemical compounds are involved in Mitochondrial translation termination (R-HSA-5419276)?
-    * 'What are 5 different types of proteins involved with the SARS-CoV-2 Infection (R-HSA-9694516)?'
-    * According to the Reactome database, which molecules participate in Interleukin-4 and Interleukin-13 signaling?
-    * According to the Reactome database, which events are in the Cap-dependent Translation Initiation pathway?
-
-3. Click Show trace and examine each step to understand what tools are used and the agent's rationale for approaching your question.
 
 ## License
 

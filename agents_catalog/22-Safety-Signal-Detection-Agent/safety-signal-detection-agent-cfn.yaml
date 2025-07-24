@@ -1,0 +1,370 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Creates the Safety Signal Detection agent for analyzing adverse events and detecting safety signals using OpenFDA, PubMed, and FDA Label data.
+
+Parameters:
+  AgentAliasName:
+    Type: String
+    Default: "Latest"
+    Description: Name for the agent alias
+  BedrockModelId:
+    Type: String
+    Description: The ID of the Foundation Model to use for the Agent
+    Default: us.anthropic.claude-3-5-sonnet-20241022-v2:0
+  AgentIAMRoleArn:
+    Type: String
+    Description: "Required. The ARN of an IAM role that grants Bedrock permissions to invoke Lambda functions and manage agents"
+    Default: ""
+Conditions:
+  CreateAgentAliasCondition: !Not [!Equals [!Ref AgentAliasName, ""]]
+  AgentIAMRoleCondition: !Not [!Equals [!Ref AgentIAMRoleArn, ""]]
+
+Resources:
+  ################################
+  ##### S3 Bucket #####
+  ################################
+
+  ReportBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+  ################################
+  ##### Adverse Event Analysis #####
+  ################################
+
+  AdverseEventAnalysisLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  AdverseEventAnalysisLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-adverse-event-analysis"
+      RetentionInDays: 14
+
+  AdverseEventAnalysisLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: AdverseEventAnalysis
+      Role: !GetAtt AdverseEventAnalysisLambdaRole.Arn
+      Runtime: python3.12
+      Handler: lambda_function.lambda_handler
+      Timeout: 300
+      MemorySize: 512
+      Environment:
+        Variables:
+          LOG_LEVEL: "INFO"
+      Code: "action-groups/adverse-event-analysis"
+      PackageType: Zip
+
+  AdverseEventAnalysisLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt AdverseEventAnalysisLambdaFunction.Arn
+      Principal: bedrock.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+      SourceArn: !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*
+
+  #############################
+  ##### Evidence Assessment #####
+  #############################
+
+  EvidenceAssessmentLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  EvidenceAssessmentLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-evidence-assessment"
+      RetentionInDays: 14
+
+  EvidenceAssessmentLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: EvidenceAssessment
+      Role: !GetAtt EvidenceAssessmentLambdaRole.Arn
+      Runtime: python3.12
+      Handler: lambda_function.lambda_handler
+      Timeout: 30
+      MemorySize: 256
+      Environment:
+        Variables:
+          LOG_LEVEL: "INFO"
+      Code: "action-groups/evidence-assessment"
+      PackageType: Zip
+
+  EvidenceAssessmentLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt EvidenceAssessmentLambdaFunction.Arn
+      Principal: bedrock.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+      SourceArn: !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*
+
+  ###########################
+  ##### Report Generation #####
+  ###########################
+
+  ReportGenerationLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: S3Access
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource: !GetAtt ReportBucket.Arn
+
+  ReportGenerationLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-report-generation"
+      RetentionInDays: 14
+
+  ReportGenerationLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: ReportGeneration
+      Role: !GetAtt ReportGenerationLambdaRole.Arn
+      Runtime: python3.12
+      Handler: lambda_function.lambda_handler
+      Timeout: 30
+      MemorySize: 256
+      Environment:
+        Variables:
+          LOG_LEVEL: "INFO"
+          REPORT_BUCKET_NAME: !Ref ReportBucket
+      Code: "action-groups/report-generation"
+      PackageType: Zip
+
+  ReportGenerationLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt ReportGenerationLambdaFunction.Arn
+      Principal: bedrock.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+      SourceArn: !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*
+
+  #####################
+  ##### Agent #####
+  #####################
+
+  SafetySignalDetectionAgent:
+    Type: AWS::Bedrock::Agent
+    Properties:
+      ActionGroups:
+        - ActionGroupName: "UserInputAction"
+          ParentActionGroupSignature: "AMAZON.UserInput"
+          ActionGroupState: "ENABLED"
+        - ActionGroupName: AdverseEventAnalysis
+          Description: Analyze adverse events and detect safety signals using OpenFDA data
+          ActionGroupExecutor:
+            Lambda: !GetAtt AdverseEventAnalysisLambdaFunction.Arn
+          ActionGroupState: ENABLED
+          FunctionSchema:
+            Functions:
+              - Name: analyze_adverse_events
+                Description: Analyze adverse events and detect safety signals using OpenFDA data
+                Parameters:
+                  product_name:
+                    Description: "Name of the product to analyze"
+                    Type: string
+                    Required: True
+                  time_period:
+                    Description: "Analysis period in months (default: 6)"
+                    Type: integer
+                    Required: False
+                  signal_threshold:
+                    Description: "PRR threshold for signal detection (default: 2.0)"
+                    Type: number
+                    Required: False
+        - ActionGroupName: EvidenceAssessment
+          Description: Gather and assess evidence for safety signals
+          ActionGroupExecutor:
+            Lambda: !GetAtt EvidenceAssessmentLambdaFunction.Arn
+          ActionGroupState: ENABLED
+          FunctionSchema:
+            Functions:
+              - Name: assess_evidence
+                Description: Gather and assess evidence for safety signals using PubMed and FDA label data
+                Parameters:
+                  product_name:
+                    Description: "Product name"
+                    Type: string
+                    Required: True
+                  adverse_event:
+                    Description: "Adverse event term to assess"
+                    Type: string
+                    Required: True
+                  include_pubmed:
+                    Description: "Include PubMed literature search"
+                    Type: boolean
+                    Required: False
+                  include_label:
+                    Description: "Include FDA label information"
+                    Type: boolean
+                    Required: False
+        - ActionGroupName: ReportGeneration
+          Description: Generate comprehensive safety signal reports with visualizations
+          ActionGroupExecutor:
+            Lambda: !GetAtt ReportGenerationLambdaFunction.Arn
+          ActionGroupState: ENABLED
+          FunctionSchema:
+            Functions:
+              - Name: generate_report
+                Description: Generate safety signal detection report with visualizations
+                Parameters:
+                  analysis_results:
+                    Description: "Results from adverse event analysis"
+                    Type: string
+                    Required: True
+                  evidence_data:
+                    Description: "Evidence assessment data"
+                    Type: string
+                    Required: True
+                  include_graphs:
+                    Description: "Include data visualizations"
+                    Type: boolean
+                    Required: False
+      AgentName: "Safety-Signal-Detection-Agent"
+      AgentResourceRoleArn:
+        "Fn::If":
+          - AgentIAMRoleCondition
+          - !Ref AgentIAMRoleArn
+          - "{{resolve:ssm:/bedrock/agent/role/arn:1}}"
+      AutoPrepare: True
+      Description: "Detect and evaluate safety signals from adverse event reports using OpenFDA, PubMed, and FDA Label data"
+      FoundationModel: !Ref BedrockModelId
+      GuardrailConfiguration:
+        GuardrailIdentifier: !GetAtt SafetySignalDetectionGuardrail.GuardrailId
+        GuardrailVersion: !GetAtt SafetySignalDetectionGuardrail.Version
+      Instruction: |
+        You are an expert pharmacovigilance professional specializing in safety signal detection and evaluation. Help users analyze adverse event data and detect potential safety signals using OpenFDA data and supporting evidence from literature.
+
+        You have access to the following tools:
+
+        - analyze_adverse_events: Analyze adverse events from OpenFDA data, perform trend analysis, and detect safety signals using PRR calculation.
+        - assess_evidence: Gather and assess evidence for detected signals using PubMed literature and FDA label information.
+        - generate_report: Create comprehensive reports with visualizations of the analysis results.
+
+        Analysis Process
+
+        1. Begin by understanding what safety analysis the user is seeking.
+        2. Use analyze_adverse_events to retrieve and analyze adverse event data for the specified product.
+        3. Present initial findings and highlight any detected safety signals.
+        4. Use assess_evidence to gather supporting evidence for significant signals.
+        5. Use generate_report to create a comprehensive report with visualizations.
+        6. Present findings with appropriate pharmacovigilance context.
+
+        Response Guidelines
+
+        - Provide scientifically accurate analysis based on available data
+        - Explain pharmacovigilance concepts in accessible language while maintaining precision
+        - Include relevant visualizations and statistical analysis
+        - Highlight the strength of evidence for detected signals
+        - Make appropriate interpretations considering data limitations
+        - Suggest follow-up actions when warranted
+        - Always include evidence sources and data coverage:
+          * Total number of available reports and number of reports analyzed
+          * Time period covered by the analysis
+          * Literature evidence with article titles, authors, and publication years
+          * FDA label information with specific sections referenced
+          * Strength of evidence assessment with clear rationale
+        - Clearly state any data limitations or gaps:
+          * If only a subset of reports was analyzed, explain why
+          * If literature evidence is limited or conflicting
+          * If FDA label information is incomplete or outdated
+        - Support conclusions with specific data points:
+          * PRR values with confidence intervals
+          * Number of cases for each adverse event
+          * Percentage of serious cases
+          * Temporal trends in reporting
+
+  AgentAliasResource:
+    Type: AWS::Bedrock::AgentAlias
+    Condition: CreateAgentAliasCondition
+    Properties:
+      AgentId: !GetAtt SafetySignalDetectionAgent.AgentId
+      AgentAliasName: !Ref AgentAliasName
+
+  SafetySignalDetectionGuardrail:
+    Type: AWS::Bedrock::Guardrail
+    Properties:
+      BlockedInputMessaging: "Sorry, your query violates our usage policies."
+      BlockedOutputsMessaging: "Sorry, I am unable to reply because the output violates our usage policies."
+      ContentPolicyConfig:
+        FiltersConfig:
+          - InputStrength: "HIGH"
+            OutputStrength: "HIGH"
+            Type: "MISCONDUCT"
+          - InputStrength: "HIGH"
+            OutputStrength: "NONE"
+            Type: "PROMPT_ATTACK"
+      Description: Guardrail for safety signal detection agent to block harmful content.
+      Name: SafetySignalDetectionGuardrail
+      WordPolicyConfig:
+        ManagedWordListsConfig:
+          - Type: PROFANITY
+
+Outputs:
+  AgentId:
+    Description: Agent ID
+    Value: !Ref SafetySignalDetectionAgent
+  AgentAliasId:
+    Description: Agent Alias ID
+    Value: !GetAtt AgentAliasResource.AgentAliasId
+    Condition: CreateAgentAliasCondition
+  AgentAliasArn:
+    Description: Agent Alias ARN
+    Value: !GetAtt AgentAliasResource.AgentAliasArn
+    Condition: CreateAgentAliasCondition

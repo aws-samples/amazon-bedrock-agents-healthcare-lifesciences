@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: Creates an Amazon Bedrock Agent for clinical study research and analysis.
+Description: Creates an agent for clinical study research and analysis.
 
 Parameters:
   AgentAliasName:
@@ -11,32 +11,17 @@ Parameters:
     Default: anthropic.claude-3-5-sonnet-20240620-v1:0
   AgentIAMRoleArn:
     Type: String
-    Description: The ARN for the agent IAM role
+    Description: (Optional) Amazon Bedrock service role ARN
+    Default: ""
   ChartImageBucketName:
     Type: String
     Description: S3 bucket name for storing chart images
-  LayersBucketName:
-    Type: String
-    Description: S3 bucket name for storing Lambda layers
 
 Conditions:
   CreateAgentAliasCondition: !Not [!Equals [!Ref AgentAliasName, ""]]
+  AgentIAMRoleCondition: !Not [!Equals [!Ref AgentIAMRoleArn, ""]]
 
 Resources:
-  ####################
-  ##### Storage #####
-  ####################
-
-  ChartImageBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: !Ref ChartImageBucketName
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: true
-        BlockPublicPolicy: true
-        IgnorePublicAcls: true
-        RestrictPublicBuckets: true
-
   #######################
   ##### Lambda Roles #####
   #######################
@@ -106,11 +91,10 @@ Resources:
       LayerName: matplotliblayer
       Description: Layer containing matplotlib and dependencies
       CompatibleRuntimes:
-        - python3.11
+        - python3.12
       Content:
-        S3Bucket:
-          Ref: LayersBucketName
-        S3Key: lambdalayers/matplotlib.zip 
+        S3Bucket: !Sub "5d1a4b76751b4c8a994ce96bafd91ec9-${AWS::Region}"
+        S3Key: "public_assets_support_materials/hcls_agents_toolkit/matplotlib-3.10.3-py3.12.zip"
 
   #######################
   ##### Lambda Functions #####
@@ -140,7 +124,7 @@ Resources:
       FunctionName: clinical-visualizer
       Handler: index.lambda_handler
       Role: !GetAtt ClinicalVisualizerLambdaRole.Arn
-      Runtime: python3.11
+      Runtime: python3.12
       Timeout: 30
       MemorySize: 2048
       Environment:
@@ -177,7 +161,8 @@ Resources:
   ##### Lambda Permissions #####
   #######################
 
-  ClinicalStudySearchLambdaPermission:
+  # ClinicalStudySearch Lambda Permissions
+  ClinicalStudySearchLambdaAliasPermission:
     Type: AWS::Lambda::Permission
     Properties:
       Action: lambda:InvokeFunction
@@ -186,7 +171,17 @@ Resources:
       SourceAccount: !Ref AWS::AccountId
       SourceArn: !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent-alias/*
 
-  ClinicalVisualizerLambdaPermission:
+  ClinicalStudySearchLambdaAgentPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt ClinicalStudySearchLambda.Arn
+      Principal: bedrock.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+      SourceArn: !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*
+
+  # ClinicalVisualizer Lambda Permissions
+  ClinicalVisualizerLambdaAliasPermission:
     Type: AWS::Lambda::Permission
     Properties:
       Action: lambda:InvokeFunction
@@ -195,7 +190,17 @@ Resources:
       SourceAccount: !Ref AWS::AccountId
       SourceArn: !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent-alias/*
 
-  DrugInformationLambdaPermission:
+  ClinicalVisualizerLambdaAgentPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt ClinicalVisualizerLambda.Arn
+      Principal: bedrock.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+      SourceArn: !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*
+
+  # DrugInformation Lambda Permissions
+  DrugInformationLambdaAliasPermission:
     Type: AWS::Lambda::Permission
     Properties:
       Action: lambda:InvokeFunction
@@ -204,11 +209,20 @@ Resources:
       SourceAccount: !Ref AWS::AccountId
       SourceArn: !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent-alias/*
 
+  DrugInformationLambdaAgentPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt DrugInformationLambda.Arn
+      Principal: bedrock.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+      SourceArn: !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*
+
   ###################
   ##### Guardrail #####
   ###################
 
-  Guardrail:
+  ClinicalStudyResearchGuardrail:
     Type: AWS::Bedrock::Guardrail
     Properties:
       BlockedInputMessaging: "Sorry, your query violates our usage policies."
@@ -331,29 +345,34 @@ Resources:
                     Description: Optional route of administration to narrow the search (e.g., "nasal", "oral", "intravenous").
                     Required: false
       AgentName: clinical-study-research-agent
-      AgentResourceRoleArn: !Ref AgentIAMRoleArn
+      # If an IAM role ARN is passed as a paremter, use it. Otherwise look in SSM parameter store
+      AgentResourceRoleArn:
+        "Fn::If":
+          - AgentIAMRoleCondition
+          - !Ref AgentIAMRoleArn
+          - "{{resolve:ssm:/bedrock/agent/role/arn:1}}"
       AutoPrepare: True
       Description: "Agent that helps users explore, filter, and analyze clinical trial data"
       FoundationModel: !Ref BedrockModelId
       GuardrailConfiguration:
-        GuardrailIdentifier: !GetAtt Guardrail.GuardrailId
-        GuardrailVersion: !GetAtt Guardrail.Version
+        GuardrailIdentifier: !GetAtt ClinicalStudyResearchGuardrail.GuardrailId
+        GuardrailVersion: !GetAtt ClinicalStudyResearchGuardrail.Version
       Instruction: |
         You are a Clinical Study Search Agent that helps users explore, filter, and analyze clinical trial data from public registries like ClinicalTrials.gov. 
         You assist with condition-specific study identification, intervention tracking, sponsor profiling, and outcome analysis using structured search criteria.
 
         You accept both structured inputs (e.g., condition, intervention, outcome) and natural language queries (e.g., "Find double-arm diabetes trials in males under 60") 
         and convert them into valid API queries using the ClinicalTrials.gov v2 syntax.
-        
+
         When analyzing clinical trial data, follow these steps:
-        
+
         1. Understand the user's specific research question or information need
         2. Identify the appropriate search parameters (condition, intervention, outcome, etc.)
         3. Execute the appropriate search function with these parameters
         4. Present results in a clear, organized manner
         5. Offer to create visualizations when appropriate
         6. Suggest related drug information when relevant
-        
+
         Always prioritize accuracy and relevance in your responses, and be prepared to refine searches based on user feedback.
 
   AgentAliasResource:
@@ -371,6 +390,10 @@ Outputs:
     Description: Agent Alias ID
     Value: !GetAtt AgentAliasResource.AgentAliasId
     Condition: CreateAgentAliasCondition
+  AgentAliasArn:
+    Description: Agent Alias ARN
+    Value: !GetAtt AgentAliasResource.AgentAliasArn
+    Condition: CreateAgentAliasCondition
   ClinicalStudySearchLambdaArn:
     Description: ARN of the Clinical Study Search Lambda function
     Value: !GetAtt ClinicalStudySearchLambda.Arn
@@ -382,4 +405,4 @@ Outputs:
     Value: !GetAtt DrugInformationLambda.Arn
   ChartImageBucketName:
     Description: Name of the S3 bucket for chart images
-    Value: !Ref ChartImageBucket
+    Value: !Ref ChartImageBucketName

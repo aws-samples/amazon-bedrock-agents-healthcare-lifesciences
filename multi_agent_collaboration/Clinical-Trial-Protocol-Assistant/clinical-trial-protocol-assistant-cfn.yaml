@@ -3,23 +3,25 @@ Description: Creates the Clinical Trial Protocol Assistant supervisor agent.
 Parameters:
   AgentAliasName:
     Type: String
-    Default: ""
+    Default: "Latest"
   BedrockModelId:
     Type: String
     Description: The ID of the Foundation Model to use for the Agent
     Default: us.anthropic.claude-3-5-sonnet-20240620-v1:0
   AgentIAMRoleArn:
     Type: String
-    Description: The arn for the agent IAM role
+    Description: (Optional) Amazon Bedrock service role ARN
+    Default: ""
   ClinicalStudySearchAgentAliasArn:
+    Description: Alias ARN for the clinical study search sub-agent
     Type: String
-    Description: The arn for the clinical search sub agent
   ClinicalTrialProtocolGeneratorAgentAliasArn:
+    Description: Alias ARN for the clinical trial protocol generation sub-agent
     Type: String
-    Description: The arn for the clinical trial protocol generator sub agent
 
 Conditions:
   CreateAgentAliasCondition: !Not [!Equals [!Ref AgentAliasName, ""]]
+  AgentIAMRoleCondition: !Not [!Equals [!Ref AgentIAMRoleArn, ""]]
 
 Resources:
   #####################
@@ -45,18 +47,13 @@ Resources:
             AliasArn: !Ref ClinicalTrialProtocolGeneratorAgentAliasArn
           CollaborationInstruction: |
             This agent helps you write a complete clinical trial protocol. It knows the structure and required sections, and can either start from scratch or use past studies (from the search agent) as references. It fills in key sections like objectives, study design, and eligibility criteria. You can then edit the document or regenerate specific sections. Perfect for trial managers or medical writers looking to save time.
-      AgentName:
-        !Join [
-          "-",
-          [
-            "clinical-trial-protocol-assistant",
-            !Select [
-              4,
-              !Split ["-", !Select [2, !Split ["/", !Ref "AWS::StackId"]]],
-            ],
-          ],
-        ]
-      AgentResourceRoleArn: !Ref AgentIAMRoleArn
+      AgentName: "clinical-trial-protocol-assistant"
+      # If an IAM role ARN is passed as a paremter, use it. Otherwise look in SSM parameter store
+      AgentResourceRoleArn:
+        "Fn::If":
+          - AgentIAMRoleCondition
+          - !Ref AgentIAMRoleArn
+          - "{{resolve:ssm:/bedrock/agent/role/arn:1}}"
       AutoPrepare: True
       Description: "Clinical Trial Protocol Assistant for developing comprehensive clinical trial protocols"
       FoundationModel: !Ref BedrockModelId
@@ -139,7 +136,7 @@ Resources:
             OutputStrength: "NONE"
             Type: "PROMPT_ATTACK"
       Description: Turn on to block profane words and other harmful content.
-      Name: Guardrail
+      Name: ClinicalTrialProtocolGuardrail
       WordPolicyConfig:
         ManagedWordListsConfig:
           - Type: PROFANITY
@@ -151,4 +148,8 @@ Outputs:
   AgentAliasId:
     Description: Agent Alias ID
     Value: !GetAtt AgentAliasResource.AgentAliasId
+    Condition: CreateAgentAliasCondition
+  AgentAliasArn:
+    Description: Agent Alias ARN
+    Value: !GetAtt AgentAliasResource.AgentAliasArn
     Condition: CreateAgentAliasCondition

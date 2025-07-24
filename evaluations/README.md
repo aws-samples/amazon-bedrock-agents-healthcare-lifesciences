@@ -1,11 +1,11 @@
 # Biomarker Multi-Agent Evaluation
 
-This folder provides resources needed to evaluate the Biomarker Supervisor Agent against the [Open Source Bedrock Agent Evaluation](https://github.com/aws-samples/open-source-bedrock-agent-evaluation/tree/main).
+This folder provides resources needed to evaluate the Biomarker Supervisor Agent against the [Open Source Bedrock Evaluation](https://github.com/aws-samples/open-source-bedrock-agent-evaluation/tree/main).
 
 The framework has the following features: 
-* Evaluate Bedrock Agent on its capabilities (RAG, Text-to-SQL, Custom tool use) and overall Chain-of-Thought
+* Evaluate agent on its capabilities (RAG, Text-to-SQL, Custom tool use) and overall Chain-of-Thought
 * Comprehensive evaluation results and trace data sent to Langfuse with built-in visual dashboards
-* Supports trace parsing and evaluations for various Bedrock Agent configuration options
+* Supports trace parsing and evaluations for various Bedrock configuration options
 
 It addresses the following technical challenges:
 * Unavailability of End-to-End Agent Evaluation

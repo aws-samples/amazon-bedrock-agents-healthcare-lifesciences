@@ -1,6 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Deploy SageMaker JumpStart foundation model with Lambda integration
-  for Bedrock Agents
+Description: Deploy SageMaker JumpStart foundation model with Lambda integration for Bedrock
 
 Parameters:
   ModelData:
@@ -196,7 +195,7 @@ Resources:
                     }
 
       Handler: index.lambda_handler
-      Runtime: python3.9
+      Runtime: python3.12
       Timeout: 30
       MemorySize: 128
       Environment:

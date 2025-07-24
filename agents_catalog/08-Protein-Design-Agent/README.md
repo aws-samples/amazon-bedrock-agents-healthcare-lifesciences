@@ -23,7 +23,7 @@ The workflow uses the EvoProtGrad library for protein directed evolution, runnin
 
 The agent is deployed using AWS CloudFormation. The template `protein_design_stack.yaml` creates all necessary resources including:
 
-• Amazon Bedrock Agent with action groups
+• Agent with action groups
 • Lambda functions for workflow triggering and monitoring
 • ECR repository for the container image
 • HealthOmics workflow definition
@@ -34,7 +34,7 @@ The agent is deployed using AWS CloudFormation. The template `protein_design_sta
 
 • AWS CLI configured with appropriate permissions
 • Amazon Bedrock access
-• IAM role for the Bedrock agent
+• IAM role for Bedrock
 • AWS HealthOmics service access
 
 ## Deployment Steps

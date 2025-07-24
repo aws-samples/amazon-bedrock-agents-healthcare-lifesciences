@@ -1,0 +1,348 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "CloudFormation template to create a Lambda function that downloads a GitHub repository and uploads it to S3"
+
+Parameters:
+  GitHubUrl:
+    Type: String
+    Description: URL of the GitHub repository to download
+  BranchName:
+    Type: String
+    Description: Branch name to download
+    Default: main
+  S3Bucket:
+    Type: String
+    Description: S3 bucket name for upload
+  S3KeyPrefix:
+    Type: String
+    Description: Optional prefix/path in the S3 bucket
+    Default: ""
+
+Resources:
+  CopyGitRepoRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: S3Access
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:DeleteObject
+                Resource: !Sub "arn:aws:s3:::${S3Bucket}/*"
+
+  CopyGitRepoFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.lambda_handler
+      Role: !GetAtt CopyGitRepoRole.Arn
+      Runtime: python3.12
+      EphemeralStorage:
+        Size: 1024
+      Timeout: 300
+      MemorySize: 256
+      Code:
+        ZipFile: |
+          import boto3
+          import cfnresponse
+          import json
+          import logging
+          import os
+          import shutil
+          import tempfile
+          import urllib.request
+          import urllib.error
+          from urllib.parse import urlparse
+          from typing import Dict, Any, Optional
+          import zipfile
+
+          # Configure logging
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+
+
+          def lambda_handler(event: Dict[str, Any], context: Any) -> None:
+              """
+              Lambda function that downloads a GitHub repository as a zip archive
+              and uploads it to an S3 bucket. Handles CloudFormation custom resource events.
+
+              Parameters:
+              - event: CloudFormation custom resource event
+              - context: Lambda context
+              """
+              # Initialize response data
+              response_data = {}
+              physical_resource_id = event.get(
+                  "PhysicalResourceId", context.log_stream_name if context else "unknown"
+              )
+
+              try:
+                  # Check if this is a CloudFormation event
+                  request_type = event.get("RequestType")
+                  resource_properties = event.get("ResourceProperties", {})
+                  
+                  # Handle Delete request - clean up S3 object
+                  if request_type == "Delete":
+                      logger.info("Processing Delete request - cleaning up S3 object")
+                      try:
+                          # Get S3 bucket and key information
+                          s3_bucket = resource_properties.get("S3Bucket")
+                          s3_key_prefix = resource_properties.get("S3KeyPrefix", "")
+                          github_url = resource_properties.get("GitHubUrl", "")
+                          
+                          # If we don't have the required information, we can't delete
+                          if not s3_bucket or not github_url:
+                              logger.warning("Missing S3Bucket or GitHubUrl, skipping cleanup")
+                              cfnresponse.send(
+                                  event, context, cfnresponse.SUCCESS, {}, physical_resource_id
+                              )
+                              return
+                              
+                          # Parse the GitHub URL to extract repo name for the zip filename
+                          parsed_url = urlparse(github_url)
+                          path_parts = parsed_url.path.strip("/").split("/")
+                          
+                          if len(path_parts) < 2:
+                              logger.warning("Invalid GitHub URL format, skipping cleanup")
+                              cfnresponse.send(
+                                  event, context, cfnresponse.SUCCESS, {}, physical_resource_id
+                              )
+                              return
+                              
+                          repo_name = path_parts[1]
+                          if repo_name.endswith(".git"):
+                              repo_name = repo_name[:-4]
+                              
+                          # Construct the S3 key
+                          zip_filename = f"{repo_name}.zip"
+                          s3_key = f"{s3_key_prefix}/{zip_filename}" if s3_key_prefix else zip_filename
+                          s3_key = s3_key.replace("//", "/")  # Avoid double slashes
+                          
+                          # Delete the object from S3
+                          logger.info(f"Deleting object from S3: bucket={s3_bucket}, key={s3_key}")
+                          s3_client = boto3.client("s3")
+                          s3_client.delete_object(Bucket=s3_bucket, Key=s3_key)
+                          logger.info("S3 object deleted successfully")
+                          
+                      except Exception as e:
+                          # Log the error but don't fail the CloudFormation delete operation
+                          logger.error(f"Error during S3 cleanup: {str(e)}")
+                          
+                      # Always return success for Delete operations to avoid stuck stacks
+                      cfnresponse.send(
+                          event, context, cfnresponse.SUCCESS, {}, physical_resource_id
+                      )
+                      return
+
+                  # Extract parameters from the event
+                  resource_properties = event.get("ResourceProperties", {})
+                  github_url = resource_properties.get("GitHubUrl")
+                  branch_name = resource_properties.get("BranchName", "main")
+                  s3_bucket = resource_properties.get("S3Bucket")
+                  s3_key_prefix = resource_properties.get("S3KeyPrefix", "")
+
+                  # Validate required parameters
+                  if not github_url:
+                      logger.error("Missing required parameter: GitHubUrl")
+                      cfnresponse.send(
+                          event,
+                          context,
+                          cfnresponse.FAILED,
+                          {"Error": "Missing required parameter: GitHubUrl"},
+                          physical_resource_id,
+                      )
+                      return
+
+                  if not s3_bucket:
+                      logger.error("Missing required parameter: S3Bucket")
+                      cfnresponse.send(
+                          event,
+                          context,
+                          cfnresponse.FAILED,
+                          {"Error": "Missing required parameter: S3Bucket"},
+                          physical_resource_id,
+                      )
+                      return
+
+                  # Parse the GitHub URL to extract owner and repo name
+                  parsed_url = urlparse(github_url)
+                  path_parts = parsed_url.path.strip("/").split("/")
+
+                  if len(path_parts) < 2:
+                      logger.error("Invalid GitHub URL format")
+                      cfnresponse.send(
+                          event,
+                          context,
+                          cfnresponse.FAILED,
+                          {"Error": "Invalid GitHub URL format"},
+                          physical_resource_id,
+                      )
+                      return
+
+                  owner = path_parts[0]
+                  repo_name = path_parts[1]
+                  if repo_name.endswith(".git"):
+                      repo_name = repo_name[:-4]
+
+                  # Create a temporary directory for our operations
+                  with tempfile.TemporaryDirectory() as temp_dir:
+                      # Construct the GitHub API URL to download the repository as a zip
+                      download_url = f"https://github.com/{owner}/{repo_name}/archive/refs/heads/{branch_name}.zip"
+                      logger.info(f"Downloading repository from: {download_url}")
+
+                      # Download the repository zip file using urllib
+                      zip_filename = f"{repo_name}.zip"
+                      zip_path = os.path.join(temp_dir, zip_filename)
+
+                      try:
+                          # Set up request with a user agent to avoid GitHub API limitations
+                          headers = {"User-Agent": "AWS-Lambda-Repository-Downloader/1.0"}
+                          req = urllib.request.Request(download_url, headers=headers)
+
+                          with urllib.request.urlopen(req) as response:
+                              # Check if the response is successful
+                              if response.status != 200:
+                                  error_msg = (
+                                      f"Failed to download repository: HTTP {response.status}"
+                                  )
+                                  logger.error(error_msg)
+                                  cfnresponse.send(
+                                      event,
+                                      context,
+                                      cfnresponse.FAILED,
+                                      {"Error": error_msg},
+                                      physical_resource_id,
+                                  )
+                                  return
+
+                              # Save the downloaded content to a file
+                              with open(zip_path, "wb") as out_file:
+                                  shutil.copyfileobj(response, out_file)
+
+                          logger.info(f"Repository downloaded to: {zip_path}")
+                          
+                          # Extract the zip file, move contents up a level, and rezip
+                          extract_dir = os.path.join(temp_dir, "extract")
+                          os.makedirs(extract_dir, exist_ok=True)
+                          
+                          # Extract the original zip file
+                          with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                              zip_ref.extractall(extract_dir)
+                          
+                          # Find the top-level directory (usually repo-name-branch)
+                          top_level_dirs = [d for d in os.listdir(extract_dir) if os.path.isdir(os.path.join(extract_dir, d))]
+                          if top_level_dirs:
+                              top_dir = os.path.join(extract_dir, top_level_dirs[0])
+                              
+                              # Create a new zip file with contents moved up a level
+                              repackaged_zip_path = os.path.join(temp_dir, f"repackaged_{zip_filename}")
+                              with zipfile.ZipFile(repackaged_zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                                  for root, _, files in os.walk(top_dir):
+                                      for file in files:
+                                          file_path = os.path.join(root, file)
+                                          # Calculate relative path from top_dir
+                                          rel_path = os.path.relpath(file_path, top_dir)
+                                          zipf.write(file_path, rel_path)
+                              
+                              # Replace the original zip with the repackaged one
+                              shutil.move(repackaged_zip_path, zip_path)
+                              logger.info(f"Repackaged zip file without top-level directory")
+                          else:
+                              logger.warning(f"No top-level directory found in zip, using original zip")
+
+                          # Determine the S3 key (path in the bucket)
+                          s3_key = (
+                              f"{s3_key_prefix}/{zip_filename}" if s3_key_prefix else zip_filename
+                          )
+                          s3_key = s3_key.replace("//", "/")  # Avoid double slashes
+
+                          # Upload the zip file to S3
+                          logger.info(f"Uploading to S3: bucket={s3_bucket}, key={s3_key}")
+                          s3_client = boto3.client("s3")
+                          s3_client.upload_file(zip_path, s3_bucket, s3_key)
+
+                          # Set the response data
+                          s3_path = f"{s3_bucket}/{s3_key}"
+                          response_data = {
+                              "S3Bucket": s3_bucket,
+                              "S3Key": s3_key,
+                              "S3Path": s3_path,
+                              "Repository": github_url,
+                              "Branch": branch_name,
+                          }
+
+                          # Send success response
+                          cfnresponse.send(
+                              event,
+                              context,
+                              cfnresponse.SUCCESS,
+                              response_data,
+                              physical_resource_id,
+                          )
+                          return
+
+                      except urllib.error.HTTPError as e:
+                          error_msg = f"HTTP Error: {e.code} - {e.reason}"
+                          logger.error(error_msg)
+                          cfnresponse.send(
+                              event,
+                              context,
+                              cfnresponse.FAILED,
+                              {"Error": error_msg},
+                              physical_resource_id,
+                          )
+                          return
+
+                      except urllib.error.URLError as e:
+                          error_msg = f"URL Error: {e.reason}"
+                          logger.error(error_msg)
+                          cfnresponse.send(
+                              event,
+                              context,
+                              cfnresponse.FAILED,
+                              {"Error": error_msg},
+                              physical_resource_id,
+                          )
+                          return
+
+              except Exception as e:
+                  error_msg = f"Error processing request: {str(e)}"
+                  logger.error(error_msg)
+                  cfnresponse.send(
+                      event,
+                      context,
+                      cfnresponse.FAILED,
+                      {"Error": error_msg},
+                      physical_resource_id,
+                  )
+                  return
+
+  CopyGitRepo:
+    Type: Custom::CopyGitRepo
+    Properties:
+      ServiceToken: !GetAtt CopyGitRepoFunction.Arn
+      GitHubUrl: !Ref GitHubUrl
+      BranchName: !Ref BranchName
+      S3Bucket: !Ref S3Bucket
+      S3KeyPrefix: !Ref S3KeyPrefix
+
+Outputs:
+  S3Bucket:
+    Description: S3 bucket where the GitHub repository zip was uploaded
+    Value: !GetAtt CopyGitRepo.S3Bucket
+  S3Key:
+    Description: S3 key where the GitHub repository zip was uploaded
+    Value: !GetAtt CopyGitRepo.S3Key
+  S3Path:
+    Description: S3 path where the GitHub repository zip was uploaded in the format <bucket-name>/<object-key>.zip
+    Value: !GetAtt CopyGitRepo.S3Path

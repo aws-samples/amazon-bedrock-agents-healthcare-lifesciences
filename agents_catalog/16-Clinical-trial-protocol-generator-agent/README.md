@@ -21,7 +21,7 @@ The agent consists of two main Lambda functions:
 
 The agent is deployed using AWS CloudFormation. The template creates all necessary resources including:
 
-- Amazon Bedrock Agent with action groups
+- Amazon Bedrock action groups
 - Lambda functions and layers
 - IAM roles and permissions
 - Guardrail for content filtering
@@ -30,7 +30,7 @@ The agent is deployed using AWS CloudFormation. The template creates all necessa
 
 - AWS CLI configured with appropriate permissions
 - Amazon Bedrock access
-- IAM role for the Bedrock agent
+- IAM role for Bedrock
 
 ### Deployment Steps
 

@@ -19,18 +19,15 @@ Before getting started, ensure you have:
 
     - Git and GitHub account (for contributing to the repository)
 
-## Creating Your Own Bedrock Agent
-- Review Bedrock Agent documentation to [build and modify agents](https://docs.aws.amazon.com/bedrock/latest/userguide/agents-build-modify.html)
-- Review Bedrock Agent documentation to [deploy and integrate agents](https://docs.aws.amazon.com/bedrock/latest/userguide/agents-deploy.html)
+## Creating Your Own Agent
 
 <Tabs> <TabItem label="Using CloudFormation" icon="seti:aws" color="orange">
 
 #### One-Click Deployment
 
 1. Use the agent example that most closely matches your use case from our catalog
-2. Alternatively, create your own using the cdk template located [here](https://github.com/aws-samples/amazon-bedrock-samples/tree/main/agents-and-function-calling/bedrock-agents/features-examples/13-create-agent-using-CDK)
-3. Wait for the stack deployment to complete (~5-10 minutes)
-4. Access your agent through the AWS Bedrock console
+2. Wait for the stack deployment to complete (~5-10 minutes)
+3. Access your agent through the AWS Bedrock console
 
 </TabItem> <TabItem label="Using Jupyter Notebooks" icon="seti:jupyter" color="yellow">
 
@@ -64,26 +61,6 @@ cd create-your-own-agent
    - Test and refine your agent's responses
 
 5. Save your configuration for later contribution. Provide agent description and documentation via Readme.md before submission.
-
-</TabItem> <TabItem label="AWS Console" icon="seti:aws-console" color="blue">
-
-#### Manual Configuration
-
-1. Log in to the [AWS Management Console](https://console.aws.amazon.com/)
-2. Navigate to Amazon Bedrock → Agents
-3. Click "Create agent"
-4. Configure the basic agent settings:
-   - Name your agent
-   - Select a foundation model (Claude, Titan, etc.)
-   - Define instructions for your healthcare/life sciences use case
-5. Add Action Groups:
-   - Define API schema for domain-specific actions
-   - Configure authentication and endpoints
-6. Add Knowledge Bases:
-   - Connect medical literature or documents
-   - Configure retrieval settings
-7. Test your agent in the console playground
-8. Deploy when satisfied with performance
 
 </TabItem> </Tabs>
 ### Agent Configuration Best Practices 
@@ -156,7 +133,7 @@ Our team will review your submission and provide feedback before merging.
 </Tabs>
 
 The Bedrock multi-agent collaboration framework allows multiple specialized agents to collaborate on complex queries.
-- Review Bedrock Agent documentation to [use multi-agent collaboration](https://docs.aws.amazon.com/bedrock/latest/userguide/agents-multi-agent-collaboration.html)
+- Review Bedrock documentation to use multi-agent collaboration
 
 <Tabs> <TabItem label="Using Runtime initialization" icon="seti:aws" color="orange">
 
@@ -212,7 +189,7 @@ The Bedrock multi-agent collaboration framework allows multiple specialized agen
 
 Congratulations! You've learned how to:
 
-    - Create a specialized Bedrock agent for healthcare and life sciences
+    - Create a specialized agent for healthcare and life sciences
     - Contribute your agent to the community catalog
     - Configure multiple agents to collaborate on complex queries
 
@@ -220,4 +197,4 @@ By following this guide, you've added valuable capabilities to the Sample agents
 
 ### Next Steps
 
-    Explore advanced agent customization options in the Amazon Bedrock Agents [documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/agents.html) 
+    Explore advanced agent customization options in the Amazon Bedrock [documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html)

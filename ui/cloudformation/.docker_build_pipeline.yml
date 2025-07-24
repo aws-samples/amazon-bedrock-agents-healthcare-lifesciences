@@ -1,0 +1,44 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "CloudFormation template for Docker build pipeline with CodeBuild and ECR"
+
+Parameters:
+  S3Bucket:
+    Description: Name of the S3 bucket to use for deployment and run storage
+    Type: String
+  S3CodeKey:
+    Description: S3 key for the zip file containing CodeBuild code
+    Type: String
+    Default: "repo/amazon-bedrock-agents-healthcare-lifesciences.zip"
+  BuildContextPath:
+    Description: Path to the container build context
+    Type: String
+    Default: "ui/app"
+
+Resources:
+  ReactAppContainer:
+    Type: "AWS::CloudFormation::Stack"
+    Properties:
+      TemplateURL: ../../build/container.yaml
+      Parameters:
+        S3CodeBucket: !Ref S3Bucket
+        S3CodeKey:
+          Ref: S3CodeKey
+        BuildContextPath: !Ref BuildContextPath
+        ContainerName:
+          Ref: ContainerName
+        WaitForCodeBuild: "Y"
+
+Outputs:
+  ECRRepositoryURI:
+    Description: ECR Repository URI
+    Value: !GetAtt ReactAppContainer.Outputs.ContainerURI
+    Export:
+      Name: hcls-agents-ui-ecr-repository-uri
+
+  CodeBuildProjectName:
+    Description: CodeBuild Project Name
+    Value: "toolkit-react-ui"
+
+  ECRRepositoryName:
+    Description: ECR Repository Name
+    Value: !GetAtt ReactAppContainer.Outputs.ECRRepositoryName

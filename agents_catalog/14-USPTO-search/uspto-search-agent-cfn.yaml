@@ -10,23 +10,25 @@ Metadata:
 Parameters:
   AgentAliasName:
     Type: String
-    Default: ""
+    Default: "Latest"
   BedrockModelId:
     Type: String
     Description: The ID of the Foundation Model to use for the Agent
     Default: us.anthropic.claude-3-5-sonnet-20241022-v2:0
   AgentIAMRoleArn:
     Type: String
-    Description: The arn for the agent IAM role
+    Description: (Optional) Amazon Bedrock service role ARN
+    Default: ""
   USPTOApiKey:
     Type: String
     NoEcho: true
     Description: Provide USPTO API Key to utilize /search path
-    MinLength: 1
+    Default: ""
 
 Conditions:
   HasUSPTOApiKeyCondition: !Not [!Equals [!Ref USPTOApiKey, ""]]
   CreateAgentAliasCondition: !Not [!Equals [!Ref AgentAliasName, ""]]
+  AgentIAMRoleCondition: !Not [!Equals [!Ref AgentIAMRoleArn, ""]]
 
 Resources:
   #####################
@@ -52,7 +54,7 @@ Resources:
     Properties:
       FunctionName: SearchUSPTO
       Description: Search for USPTO patent information using { 'search_query' } parameter (e.g. 'Cancer treatment'). Accepts optional { 'days' } parameter, representing the number of days in the past to search (e.g. '100').
-      Runtime: python3.13
+      Runtime: python3.12
       Handler: index.lambda_handler
       Role: !GetAtt USPTOSearchLambdaRole.Arn
       Timeout: 30
@@ -141,7 +143,12 @@ Resources:
                     Type: string
                     Required: False
       AgentName: "USPTO-Search-Agent"
-      AgentResourceRoleArn: !Ref AgentIAMRoleArn
+      # If an IAM role ARN is passed as a paremter, use it. Otherwise look in SSM parameter store
+      AgentResourceRoleArn:
+        "Fn::If":
+          - AgentIAMRoleCondition
+          - !Ref AgentIAMRoleArn
+          - "{{resolve:ssm:/bedrock/agent/role/arn:1}}"
       AutoPrepare: True
       Description: "Get Patent information from the US Patent and Trademark Office"
       FoundationModel: !Ref BedrockModelId
@@ -204,4 +211,8 @@ Outputs:
   AgentAliasId:
     Description: Agent Alias ID
     Value: !GetAtt AgentAliasResource.AgentAliasId
+    Condition: CreateAgentAliasCondition
+  AgentAliasArn:
+    Description: Agent Alias ARN
+    Value: !GetAtt AgentAliasResource.AgentAliasArn
     Condition: CreateAgentAliasCondition

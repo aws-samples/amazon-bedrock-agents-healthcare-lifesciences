@@ -1,10 +1,10 @@
-# Create a Biological Pathways Bedrock Agent
+# Create a Biological Pathways Agent
 
 Create an end-to-end Text-to-Cypher solution, integrated with Neptune database.
 
 ## Sample Database Overview
 
-This example utilizes the reactome database, a biological pathway database commonly used for pharmaceutical research purposes. 
+This example utilizes the [Reactome](https://reactome.org/) database, a biological pathway database commonly used for pharmaceutical research purposes. 
 
 ### Use Case: Pharmaceutical research agent
 
@@ -36,7 +36,7 @@ This Text-to-Cypher solution enables researchers to perform:
 
 ### Agentic Text2Cypher Flow
 
-1. User asks questions to the Amazon Bedrock Agent.
+1. User asks questions to the agent.
 2. To serve the user's questions, Agent determines the appropriate action to invoke.
 3. It will invoke the lambda function and execute the /getschema action to retrieve the portion of the schema relevant to the user question.
 4. The agent will use the retrieved schema to generate an OpenCypher query.a
@@ -57,25 +57,11 @@ This Text-to-Cypher solution enables researchers to perform:
 
 
 ### Deployment
-
-Step 1: Go to a SageMaker Notebook instance in your AWS account and clone this repository in a terminal
-
-```bash
-cd SageMaker/
-git clone https://github.com/aws-samples/amazon-bedrock-agents-cancer-biomarker-discovery.git
 ```
 
-Step 2: Navigate to the multi-agent-collaboration branch within the repository
-```bash
-cd amazon-bedrock-agents-cancer-biomarker-discovery
-```
-```bash
-git checkout multi-agent-collaboration
-```
+Step 1: Navigate to agents_catalog/0-Notebook-environment/ and go to setup_environment.ipynb, use the Python 3 (ipykernel)
 
-Step 3: Navigate to agents_catalog/0-Notebook-environment/ and go to setup_environment.ipynb, use the Python 3 (ipykernel)
-
-Step 4: Run through the 'sample_text2cypher_agent.ipynb' to create the Text-to-Cypher agent
+Step 2: Run through the 'sample_text2cypher_agent.ipynb' to create the Text-to-Cypher agent
 
 ## How to Test in AWS Console
 

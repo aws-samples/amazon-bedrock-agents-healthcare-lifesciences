@@ -125,7 +125,7 @@ def extract_parameters(event):
     search_query = None
     days = None
 
-    # Check if this is a Bedrock Agent ActionGroup format
+    # Check if this is a Bedrock ActionGroup format
     if "parameters" in event and isinstance(event["parameters"], list):
         for param in event["parameters"]:
             if param["name"] == "search_query":
@@ -159,7 +159,7 @@ def format_response(query, results, event):
         }
     }
 
-    # If this is a Bedrock Agent format, wrap the response accordingly
+    # If this is a Bedrock format, wrap the response accordingly
     if "messageVersion" in event:
         action_response = {
             "actionGroup": event.get("actionGroup", ""),
@@ -178,7 +178,7 @@ def format_response(query, results, event):
 
 def lambda_handler(event, context):
     """
-    Lambda handler that processes both Bedrock Agent and MCP formats
+    Lambda handler that processes both Bedrock and MCP formats
 
     Args:
         event: Lambda event object
@@ -196,7 +196,7 @@ def lambda_handler(event, context):
     if not search_query:
         error_body = {"TEXT": {"body": "Missing mandatory parameter: search_query"}}
 
-        # If Bedrock Agent format, wrap the error response
+        # If Bedrock format, wrap the error response
         if "messageVersion" in event:
             return {
                 "response": {
@@ -223,8 +223,8 @@ if __name__ == "__main__":
     search_results = uspto_search(search_query, filing_days_in_past)
     print(f"search results: {search_results}")
 
-    logger.info("Testing with Bedrock Agent format")
-    # Test with Bedrock Agent format
+    logger.info("Testing with Bedrock format")
+    # Test with Bedrock format
     bedrock_event = {
         "messageVersion": "1.0",
         "agent": {

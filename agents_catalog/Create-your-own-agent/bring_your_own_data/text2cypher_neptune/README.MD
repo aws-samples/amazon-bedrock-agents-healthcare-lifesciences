@@ -1,4 +1,4 @@
-# Create a Text2Cypher Bedrock Agent
+# Create a Text2Cypher Agent
 
 Create an end-to-end Text-to-Cypher solution, integrated with Neptune database.
 
@@ -36,7 +36,7 @@ This Text-to-Cypher solution enables researchers to perform:
 
 ### Agentic Text2Cypher Flow
 
-1. User asks questions to the Amazon Bedrock Agent.
+1. User asks questions to the Agent.
 2. To serve the user's questions, Agent determines the appropriate action to invoke.
 3. It will invoke the lambda function and execute the /getschema action to retrieve the portion of the schema relevant to the user question.
 4. The agent will use the retrieved schema to generate an OpenCypher query.a
