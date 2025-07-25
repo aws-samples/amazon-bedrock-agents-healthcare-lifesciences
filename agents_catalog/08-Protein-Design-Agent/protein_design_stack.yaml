@@ -829,7 +829,7 @@ Resources:
           DEFAULT_ROLE_ARN: !GetAtt WorkflowExecutionRole.Arn
           DEFAULT_ECR_URI: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ECRRepository}:latest
           DEFAULT_S3_BUCKET: !Ref S3BucketName
-          DEFAULT_ESM_MODEL_FILES: "s3://hcls-bedrock-agents-byot-aho-20240506-west2/models/esm2_t33_650M_UR50D/"
+          DEFAULT_ESM_MODEL_FILES: !Sub "s3://${S3BucketName}/models/esm2_t33_650M_UR50D/"
           DEFAULT_OUTPUT_TYPE: "all"
           DEFAULT_PARALLEL_CHAINS: "10"
           DEFAULT_N_STEPS: "100"
