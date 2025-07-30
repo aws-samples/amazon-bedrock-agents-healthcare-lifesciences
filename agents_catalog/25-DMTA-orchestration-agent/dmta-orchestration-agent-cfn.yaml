@@ -6,6 +6,11 @@ Parameters:
     Type: String
     Description: ARN of the IAM role for Bedrock Agent
 
+  BedrockModelId:
+    Type: String
+    Description: 'Bedrock Foundation Model ID to use for the agent'
+    Default: 'anthropic.claude-3-5-sonnet-20241022-v2:0'
+
   ProjectName:
     Type: String
     Default: DMTA-Orchestration
@@ -343,7 +348,7 @@ Resources:
     Properties:
       AgentName: !Sub '${AWS::StackName}-Agent'
       Description: 'DMTA Orchestration Agent for Cablivi (Caplacizumab) optimization using active learning'
-      FoundationModel: 'anthropic.claude-3-5-sonnet-20241022-v2:0'
+      FoundationModel: !Ref BedrockModelId
       AgentResourceRoleArn: !Ref BedrockAgentServiceRoleArn
       # KnowledgeBases will be added manually after deployment
       Instruction: |
