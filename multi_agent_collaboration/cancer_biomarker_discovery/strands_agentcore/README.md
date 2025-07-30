@@ -4,7 +4,7 @@ This implementation demonstrates how to replicate the cancer biomarker discovery
 
 ## Architecture Overview
 
-![architecture](../images/MultiAgentBiomarker_agents_Strands_AgentCore.png)
+![architecture](../images/Biomarker_agents_Strands_AgentCore.png)
 
 ## Specialized Agents
 
