@@ -4,6 +4,9 @@ test_payload.json
 packaged-template.yaml
 response.json
 
+# Generated files
+generated-diagrams/
+
 # Deployment artifacts
 .kb-bucket-name
 *.zip
