@@ -7,3 +7,5 @@ node_modules
 .kiro
 .amazonq
 __pycache__
+generated-diagrams/
+test_payload.json
