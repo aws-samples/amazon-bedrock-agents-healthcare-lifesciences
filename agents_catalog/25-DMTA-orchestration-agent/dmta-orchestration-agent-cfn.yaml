@@ -1,0 +1,550 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'DMTA Orchestration Agent for Cablivi (Caplacizumab) optimization'
+
+Parameters:
+  BedrockAgentServiceRoleArn:
+    Type: String
+    Description: ARN of the IAM role for Bedrock Agent
+
+  BedrockModelId:
+    Type: String
+    Description: 'Bedrock Foundation Model ID to use for the agent'
+    Default: 'anthropic.claude-3-5-sonnet-20241022-v2:0'
+
+  ProjectName:
+    Type: String
+    Default: DMTA-Orchestration
+    Description: Project name for resource naming
+
+Resources:
+  # S3 Bucket for experimental data
+  ExperimentalDataBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Delete
+    Properties:
+      BucketName: !Sub '${AWS::StackName}-${AWS::Region}-${AWS::AccountId}'
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      Tags:
+        - Key: Project
+          Value: DMTA-Orchestration
+        - Key: Purpose
+          Value: ExperimentalData
+
+
+  # DynamoDB Tables
+  ProjectTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Delete
+    Properties:
+      TableName: !Sub '${AWS::StackName}-ProjectTable'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: project_id
+          AttributeType: S
+        - AttributeName: status
+          AttributeType: S
+      KeySchema:
+        - AttributeName: project_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: StatusIndex
+          KeySchema:
+            - AttributeName: status
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+
+  CycleTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Delete
+    Properties:
+      TableName: !Sub '${AWS::StackName}-CycleTable'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: project_id
+          AttributeType: S
+        - AttributeName: cycle_number
+          AttributeType: N
+      KeySchema:
+        - AttributeName: project_id
+          KeyType: HASH
+        - AttributeName: cycle_number
+          KeyType: RANGE
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+
+  VariantTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Delete
+    Properties:
+      TableName: !Sub '${AWS::StackName}-VariantTable'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: project_id
+          AttributeType: S
+        - AttributeName: variant_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: project_id
+          KeyType: HASH
+        - AttributeName: variant_id
+          KeyType: RANGE
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+
+  # IAM Role for Lambda Functions
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${AWS::StackName}-Lambda-Role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: DynamoDBAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                Resource:
+                  - !GetAtt ProjectTable.Arn
+                  - !GetAtt CycleTable.Arn
+                  - !GetAtt VariantTable.Arn
+                  - !Sub '${ProjectTable.Arn}/index/*'
+                  - !Sub '${VariantTable.Arn}/index/*'
+        - PolicyName: S3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                Resource: 
+                  - !Sub '${ExperimentalDataBucket.Arn}/*'
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource: 
+                  - !GetAtt ExperimentalDataBucket.Arn
+        - PolicyName: LambdaInvokeAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:dmta-opentrons-simulator'
+
+  # Lambda Functions
+  PlanProjectFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-PlanProject'
+      Runtime: python3.12
+      Handler: lambda_function.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code: action-groups/plan-project
+      PackageType: Zip
+      Environment:
+        Variables:
+          PROJECT_TABLE: !Ref ProjectTable
+          CYCLE_TABLE: !Ref CycleTable
+          VARIANT_TABLE: !Ref VariantTable
+          S3_BUCKET: !Ref ExperimentalDataBucket
+          LOG_LEVEL: INFO
+      Timeout: 300
+      MemorySize: 512
+
+  DesignVariantsFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-DesignVariants'
+      Runtime: python3.12
+      Handler: lambda_function.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code: action-groups/design-variants
+      PackageType: Zip
+      Environment:
+        Variables:
+          PROJECT_TABLE: !Ref ProjectTable
+          CYCLE_TABLE: !Ref CycleTable
+          VARIANT_TABLE: !Ref VariantTable
+          S3_BUCKET: !Ref ExperimentalDataBucket
+          LOG_LEVEL: INFO
+      Timeout: 600
+      MemorySize: 1024
+
+  MakeTestFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-MakeTest'
+      Runtime: python3.12
+      Handler: lambda_function.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code: action-groups/make-test
+      PackageType: Zip
+      Environment:
+        Variables:
+          PROJECT_TABLE: !Ref ProjectTable
+          CYCLE_TABLE: !Ref CycleTable
+          VARIANT_TABLE: !Ref VariantTable
+          S3_BUCKET: !Ref ExperimentalDataBucket
+          LOG_LEVEL: INFO
+      Timeout: 300
+      MemorySize: 512
+
+  AnalyzeResultsFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-AnalyzeResults'
+      Runtime: python3.12
+      Handler: lambda_function.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code: action-groups/analyze-results
+      PackageType: Zip
+      Environment:
+        Variables:
+          PROJECT_TABLE: !Ref ProjectTable
+          CYCLE_TABLE: !Ref CycleTable
+          VARIANT_TABLE: !Ref VariantTable
+          S3_BUCKET: !Ref ExperimentalDataBucket
+          LOG_LEVEL: INFO
+      Timeout: 300
+      MemorySize: 512
+
+  ProjectStatusFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-ProjectStatus'
+      Runtime: python3.12
+      Handler: lambda_function.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code: action-groups/project-status
+      PackageType: Zip
+      Environment:
+        Variables:
+          PROJECT_TABLE: !Ref ProjectTable
+          CYCLE_TABLE: !Ref CycleTable
+          VARIANT_TABLE: !Ref VariantTable
+          LOG_LEVEL: INFO
+      Timeout: 300
+      MemorySize: 512
+
+  # Opentrons OT-2 Simulator Lambda
+  OpentronsLayer:
+    Type: AWS::Lambda::LayerVersion
+    Properties:
+      LayerName: opentrons-layer
+      Description: Layer containing opentrons package
+      Content: lambda_layer/opentrons_layer.zip
+      CompatibleRuntimes:
+        - python3.12
+
+  OpentronsSimulatorFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: dmta-opentrons-simulator
+      Runtime: python3.12
+      Handler: lambda_function.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code: action-groups/opentrons-simulator
+      PackageType: Zip
+      Environment:
+        Variables:
+          S3_BUCKET: !Ref ExperimentalDataBucket
+          LOG_LEVEL: INFO
+      Timeout: 600
+      MemorySize: 1024
+      Layers:
+        - !Ref OpentronsLayer
+      Tags:
+        - Key: Application
+          Value: HCLSAgents
+        - Key: Tool
+          Value: opentrons-simulator
+
+
+
+
+
+  # Lambda Permissions for Bedrock Agent
+  PlanProjectPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref PlanProjectFunction
+      Action: lambda:InvokeFunction
+      Principal: bedrock.amazonaws.com
+      SourceArn: !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*'
+
+  DesignVariantsPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref DesignVariantsFunction
+      Action: lambda:InvokeFunction
+      Principal: bedrock.amazonaws.com
+      SourceArn: !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*'
+
+  MakeTestPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref MakeTestFunction
+      Action: lambda:InvokeFunction
+      Principal: bedrock.amazonaws.com
+      SourceArn: !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*'
+
+  AnalyzeResultsPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref AnalyzeResultsFunction
+      Action: lambda:InvokeFunction
+      Principal: bedrock.amazonaws.com
+      SourceArn: !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*'
+
+  ProjectStatusPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ProjectStatusFunction
+      Action: lambda:InvokeFunction
+      Principal: bedrock.amazonaws.com
+      SourceArn: !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*'
+
+  OpentronsSimulatorPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref OpentronsSimulatorFunction
+      Action: lambda:InvokeFunction
+      Principal: lambda.amazonaws.com
+      SourceArn: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${AWS::StackName}-MakeTest'
+
+  # Bedrock Agent
+  DMTAAgent:
+    Type: AWS::Bedrock::Agent
+    Properties:
+      AgentName: !Sub '${AWS::StackName}-Agent'
+      Description: 'DMTA Orchestration Agent for Cablivi (Caplacizumab) optimization using active learning'
+      FoundationModel: !Ref BedrockModelId
+      AgentResourceRoleArn: !Ref BedrockAgentServiceRoleArn
+      # KnowledgeBases will be added manually after deployment
+      Instruction: |
+        You are an expert nanobody engineer specializing in DMTA cycle orchestration for Cablivi (Caplacizumab) optimization. Help users plan, execute, and analyze iterative experimental cycles to improve vWF A1 domain binding affinity through active learning approaches.
+
+        You have access to the following tools:
+        - plan_project: Create initial project setup and active learning strategy
+        - design_variants: Generate nanobody variants using acquisition functions (EI/UCB)
+        - make_test: Execute expression and SPR binding assays with FactorX simulation
+        - analyze_results: Analyze results using Gaussian Process modeling and recommend next steps
+        - project_status: Get project status, progress information, and current phase
+
+        DMTA Workflow Process:
+        1. Begin by understanding the optimization objectives (improve vWF binding affinity for Cablivi)
+        2. Use plan_project to create initial project setup and active learning strategy
+        3. For each cycle, execute phases sequentially with user confirmation:
+           - Use design_variants to select nanobody variants using acquisition functions
+           - Use make_test to simulate expression and SPR binding assays with FactorX data
+           - Use analyze_results to update Gaussian Process model and assess progress
+        4. Ask user permission before starting each phase: "Design phase completed. Would you like to start the Make phase?"
+        5. Continue cycles until convergence criteria met or optimal nanobody variants found
+        6. Provide final optimization summary with best candidates
+
+        Response Guidelines:
+        - Execute phases sequentially with user confirmation between each phase
+        - Provide clear phase completion messages: "[Phase] completed. Would you like to start the [Next Phase]?"
+        - Generate realistic FactorX dummy data for Make and Test phases
+        - Update Gaussian Process models with new experimental data
+        - Track optimization progress and convergence criteria
+        - Highlight best nanobody variants and binding improvements achieved
+        - Recommend next cycle strategies based on active learning principles
+        - Answer project status questions using project_status tool:
+          * "How many projects are registered?" → use query_type='project_count'
+          * "What is the progress of the first project?" → use query_type='project_progress'
+          * "Show all project statuses" → use query_type='all_projects'
+        - Provide detailed phase information: "Currently at Cycle X Design completed - ready for Make-Test"
+      ActionGroups:
+        - ActionGroupName: PlanProject
+          Description: 'Create initial Cablivi optimization project plan with active learning strategy'
+          ActionGroupExecutor:
+            Lambda: !GetAtt PlanProjectFunction.Arn
+          FunctionSchema:
+            Functions:
+              - Name: plan_project
+                Description: 'Create initial Cablivi optimization project plan with active learning strategy'
+                Parameters:
+                  target_nanobody:
+                    Type: string
+                    Description: 'Starting nanobody (Cablivi/Caplacizumab)'
+                    Required: true
+                  optimization_objective:
+                    Type: string
+                    Description: 'vWF binding affinity improvement objective'
+                    Required: true
+                  target_kd:
+                    Type: number
+                    Description: 'Target KD value in nM (default: 1.0)'
+                    Required: false
+                  timeline_weeks:
+                    Type: integer
+                    Description: 'Project timeline in weeks (default: 8)'
+                    Required: false
+                  knowledge_base_query:
+                    Type: string
+                    Description: 'Query for similar nanobody optimization project plan templates'
+                    Required: false
+        - ActionGroupName: DesignVariants
+          Description: 'Generate nanobody variants using active learning acquisition functions'
+          ActionGroupExecutor:
+            Lambda: !GetAtt DesignVariantsFunction.Arn
+          FunctionSchema:
+            Functions:
+              - Name: design_variants
+                Description: 'Generate nanobody variants using active learning acquisition functions'
+                Parameters:
+                  parent_nanobody:
+                    Type: string
+                    Description: 'Base nanobody sequence'
+                    Required: true
+                  cycle_number:
+                    Type: integer
+                    Description: 'Current DMTA cycle number'
+                    Required: true
+                  acquisition_function:
+                    Type: string
+                    Description: 'Active learning strategy'
+                    Required: false
+                  num_variants:
+                    Type: integer
+                    Description: 'Number of variants to generate (default: 8)'
+                    Required: false
+                  previous_results:
+                    Type: string
+                    Description: 'Historical binding data for GP model'
+                    Required: false
+        - ActionGroupName: MakeTest
+          Description: 'Execute nanobody expression and SPR binding assays with FactorX simulation'
+          ActionGroupExecutor:
+            Lambda: !GetAtt MakeTestFunction.Arn
+          FunctionSchema:
+            Functions:
+              - Name: make_test
+                Description: 'Execute nanobody expression and SPR binding assays with FactorX simulation'
+                Parameters:
+                  variant_list:
+                    Type: array
+                    Description: 'Nanobody variants to express and test'
+                    Required: true
+                  assay_type:
+                    Type: string
+                    Description: 'SPR binding assay configuration'
+                    Required: false
+                  target_protein:
+                    Type: string
+                    Description: 'Target protein (vWF A1 domain)'
+                    Required: false
+                  quality_controls:
+                    Type: string
+                    Description: 'Expression and binding QC parameters (JSON string)'
+                    Required: false
+        - ActionGroupName: AnalyzeResults
+          Description: 'Analyze SPR binding results using Gaussian Process modeling and recommend next cycle strategy'
+          ActionGroupExecutor:
+            Lambda: !GetAtt AnalyzeResultsFunction.Arn
+          FunctionSchema:
+            Functions:
+              - Name: analyze_results
+                Description: 'Analyze SPR binding results using Gaussian Process modeling and recommend next cycle strategy'
+                Parameters:
+                  binding_data:
+                    Type: string
+                    Description: 'SPR binding results from make-test phase'
+                    Required: true
+                  cycle_number:
+                    Type: integer
+                    Description: 'Current cycle number'
+                    Required: true
+                  previous_cycles:
+                    Type: string
+                    Description: 'Historical optimization data'
+                    Required: false
+                  convergence_criteria:
+                    Type: string
+                    Description: 'Optimization targets and thresholds (JSON string)'
+                    Required: false
+                  target_kd:
+                    Type: number
+                    Description: 'Target binding affinity KD value in nM'
+                    Required: false
+        - ActionGroupName: ProjectStatus
+          Description: 'Get project status, progress, and phase information'
+          ActionGroupExecutor:
+            Lambda: !GetAtt ProjectStatusFunction.Arn
+          FunctionSchema:
+            Functions:
+              - Name: project_status
+                Description: 'Get project status, progress, and current phase information'
+                Parameters:
+                  query_type:
+                    Type: string
+                    Description: 'Type of query: project_count, project_progress, or all_projects'
+                    Required: false
+                  project_id:
+                    Type: string
+                    Description: 'Specific project ID (optional, uses first project if not provided)'
+                    Required: false
+
+  # Bedrock Agent Alias
+  DMTAAgentAlias:
+    Type: AWS::Bedrock::AgentAlias
+    Properties:
+      AgentId: !Ref DMTAAgent
+      AgentAliasName: 'LATEST'
+      Description: 'Latest version of DMTA Orchestration Agent'
+
+Outputs:
+  AgentId:
+    Description: 'Bedrock Agent ID'
+    Value: !Ref DMTAAgent
+    Export:
+      Name: !Sub '${AWS::StackName}-AgentId'
+  
+  AgentAliasId:
+    Description: 'Bedrock Agent Alias ID'
+    Value: !Ref DMTAAgentAlias
+    Export:
+      Name: !Sub '${AWS::StackName}-AgentAliasId'
+  
+  S3BucketName:
+    Description: 'S3 Bucket for experimental data'
+    Value: !Ref ExperimentalDataBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-S3Bucket'
+  
+  ProjectTableName:
+    Description: 'DynamoDB Project Table Name'
+    Value: !Ref ProjectTable
+    Export:
+      Name: !Sub '${AWS::StackName}-ProjectTable'
