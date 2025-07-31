@@ -357,19 +357,3 @@ pdf_file = generate_pdf_from_json("data/pvq_john_smith_20240115.json")
 - **User-Friendly**: Natural conversation flow
 - **Professional**: Medical-grade output quality
 
-## Contributing
-
-1. Follow the existing code structure
-2. Add tests for new features
-3. Update documentation
-4. Ensure PDF output quality
-5. Remove unused code and dependencies
-6. Keep the project lean and focused
-
-## Recent Updates
-
-- ✅ Removed unused PDF analyzer functionality
-- ✅ Cleaned up boto3 dependency (no longer needed)
-- ✅ Removed unused demo data files
-- ✅ Fixed test file to use correct agent methods
-- ✅ Optimized project structure and dependencies
