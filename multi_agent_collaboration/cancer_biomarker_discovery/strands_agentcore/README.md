@@ -55,5 +55,5 @@ In these sample notebooks you will explore how agentic workflows powered by Stra
 1. On SageMaker Studio, open the JupyterLab environment.
 2. Clone this repository or manually import all files from this project into your workspace.
 3. To setup the environment, first run notebook [00-setup_environment.ipynb](00-setup_environment.ipynb).
-4. Labs 1 to 5 are typically executed in order, but you can run them independently.
+4. Notebooks 1 to 5 are typically executed in order, but you can also run them independently.
 5. Follow the instructions on each notebook to run the cells. Some of the notebooks will have a Setup section in the beginning with additional installation instructions.

@@ -15,7 +15,7 @@ class SageMakerRolePolicyChecker:
         """Return the list of required managed policies."""
         return [
             'AmazonBedrockFullAccess',
-            'AmazonRedshiftFullAccess', 
+            'AmazonRedshiftQueryEditor', 
             'AmazonS3FullAccess',
             'AmazonSageMakerFullAccess',
             'AWSLambda_FullAccess',
@@ -59,53 +59,32 @@ class SageMakerRolePolicyChecker:
     
     def check_single_role_policies(self, role_name: str):
         """Check if a single role has all required managed policies. Throws exception if missing."""
-        required_policies = self.get_required_policies()
         attached_policies = self.get_attached_managed_policies(role_name)
+
+        # Check if role has AdministratorAccess (which grants all permissions)
+        if 'AdministratorAccess' in attached_policies:
+            return
         
+        required_policies = self.get_required_policies()
         missing_policies = [policy for policy in required_policies if policy not in attached_policies]
         
         if missing_policies:
             raise Exception(f"Role '{role_name}' is missing required policies: {', '.join(missing_policies)}")
     
-    def check_policies(self, role_arn=None, notebook_instance_name: str = None):
+    def check_policies(self, role_arn: str = None):
         """
         Check if role(s) have all required managed policies. Throws exception if any are missing.
         
         Args:
-            role_arn: Direct IAM role ARN (str) or list of role ARNs (List[str]) (optional)
-            notebook_instance_name: SageMaker notebook instance name (optional)
+            role_arn: Direct IAM role ARN (str)
             
         Raises:
-            Exception: If any required policies are missing from any role
+            Exception: If any required policies are missing from the role
         """
-        if not role_arn and not notebook_instance_name:
-            raise ValueError("Either role_arn or notebook_instance_name must be provided")
-        
-        # Handle notebook instance name
-        if notebook_instance_name:
-            role_arn_from_notebook = self.get_notebook_instance_role(notebook_instance_name)
-            role_name = self.extract_role_name_from_arn(role_arn_from_notebook)
-            self.check_single_role_policies(role_name)
-            return
-        
         # Handle single role ARN
         if isinstance(role_arn, str):
             role_name = self.extract_role_name_from_arn(role_arn)
             self.check_single_role_policies(role_name)
             return
-        
-        # Handle list of role ARNs
-        if isinstance(role_arn, list):
-            missing_roles = []
-            for arn in role_arn:
-                try:
-                    role_name = self.extract_role_name_from_arn(arn)
-                    self.check_single_role_policies(role_name)
-                except Exception as e:
-                    missing_roles.append(f"{arn}: {str(e)}")
-            
-            if missing_roles:
-                raise Exception(f"Policy check failed for roles:\n" + "\n".join(missing_roles))
-            return
-        
+                
         raise ValueError("role_arn must be a string or list of strings")
