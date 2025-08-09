@@ -30,7 +30,7 @@ def get_aws_config():
     
     # Method 3: Default region
     if not region:
-        region = 'us-east-1'
+        region = '<YOUR_REGION>'
         print(f"No region configured, using default: {region}")
     
     # Try to get account ID
@@ -40,7 +40,7 @@ def get_aws_config():
         print(f"✅ AWS configuration detected - Region: {region}, Account: {account_id}")
     except Exception as e:
         print(f"⚠️ Warning: Could not get AWS account info: {e}")
-        account_id = os.environ.get('ACCOUNT_ID', 'AWS_ACCOUNT_ID')
+        account_id = os.environ.get('ACCOUNT_ID', '<YOUR_ACCOUNT_ID>')
         print(f"Using default account ID: {account_id}")
     
     return region, account_id

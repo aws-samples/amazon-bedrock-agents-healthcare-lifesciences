@@ -136,12 +136,12 @@ Ensure your AWS account has access to:
 
 2. **KMS Key ARN**: Update in IAM policy
    ```json
-   "Resource": "arn:aws:kms:us-east-1:AWS_ACCOUNT_ID:key/AWS_KMS_KEY_ID"
+   "Resource": "arn:aws:kms:<YOUR_REGION>:<YOUR_ACCOUNT_ID>:key/<YOUR_KMS_KEY_ID>"
    ```
 
 3. **Reference ARN**: Update with your reference genome
    ```python
-   reference_arn = 'arn:aws:omics:us-east-1:AWS_ACCOUNT_ID:referenceStore/YOUR_REF_STORE_ID/reference/YOUR_REFERENCE_ID'
+   reference_arn = 'arn:aws:omics:<YOUR_REGION>:<YOUR_ACCOUNT_ID>:referenceStore/YOUR_REF_STORE_ID/reference/YOUR_REFERENCE_ID'
    ```
 
 4. **AWS Profile**: Update in both notebooks
@@ -193,7 +193,7 @@ aws s3api get-bucket-notification-configuration --bucket YOUR_S3_BUCKET_NAME
 aws athena list-work-groups
 
 # Test Bedrock access
-aws bedrock list-foundation-models --region us-east-1
+aws bedrock list-foundation-models --region <YOUR_REGION>
 ```
 
 ## 🔒 Security Checklist
