@@ -22,3 +22,26 @@ def find_state_machine_arn_by_prefix(name_prefix: str) -> Optional[str]:
             if sm['name'].startswith(name_prefix):
                 return sm['stateMachineArn']
     return None
+
+def get_role_arn(role_name_part):
+    """
+    Retrieve IAM role ARN based on partial role name match.
+    
+    Args:
+        role_name_part: Part of the role name to search for
+        
+    Returns:
+        Role ARN if found, None otherwise
+    """
+    iam = boto3.client('iam')
+    
+    try:
+        response = iam.list_roles()
+        for role in response['Roles']:
+            if role_name_part in role['RoleName']:
+                return role['Arn']
+        print("[ERROR] Role not found!")
+        return None
+    except Exception as e:
+        print(f"Error retrieving role: {e}")
+        return None
