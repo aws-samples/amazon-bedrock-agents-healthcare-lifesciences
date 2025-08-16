@@ -10,7 +10,10 @@
     "format": "prettier --write .",
     "watch": "tsc -w",
     "test": "vitest run",
-    "cdk": "cdk"
+    "cdk": "cdk",
+    "deploy": "npm install && npx cdk bootstrap && npx cdk deploy --require-approval never --outputs-file cdk/outputs.json && npm run update-env",
+    "update-env": "node -e \"const fs=require('fs'); const o=JSON.parse(fs.readFileSync('cdk/outputs.json')); const s=o.MedicalDeviceAppFargateStackV2; const alb=s.ExportMedicalDeviceAppserviceendpoint; const username=s.ExportMedicalDeviceAppauthusername; const password=s.ExportMedicalDeviceAppauthpassword; fs.writeFileSync('.env', 'ENABLE_AUTHENTICATION=true\\nAUTH_TYPE=basic\\nBASIC_AUTH_USERNAME=' + username + '\\nBASIC_AUTH_PASSWORD=' + password + '\\nAWS_DEFAULT_REGION=us-east-1\\n'); console.log('✅ Basic Auth configured - Username: ' + username + ', Password: ' + password + '\\n✅ AWS endpoint: http://' + alb);\"",
+    "local": "streamlit run app.py"
   },
   "devDependencies": {
     "@types/node": "22.15.3",
