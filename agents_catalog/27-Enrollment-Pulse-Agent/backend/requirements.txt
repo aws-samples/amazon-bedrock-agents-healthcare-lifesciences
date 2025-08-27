@@ -1,0 +1,9 @@
+fastapi
+mangum
+pydantic
+requests
+boto3
+strands-agents
+strands-agents-tools
+pandas
+numpy
