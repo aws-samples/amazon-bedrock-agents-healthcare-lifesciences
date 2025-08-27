@@ -1,206 +1,70 @@
-# 🚀 Enrollment Pulse - Backend Deployment
+# Enrollment Pulse Test Suite
 
-This directory contains the complete backend system including source code, data, and AWS deployment files.
+## Setup
 
-## 📁 Directory Structure
-
-```
-backend/
-├── src/                        # Backend source code
-│   ├── agent/                 # Strands Agent integration
-│   ├── analysis/              # Clinical analytics
-│   └── data/                  # Data processing
-├── data/                      # CTMS demo data
-├── backend_api.py             # Main FastAPI application
-├── enrollment_lambda.py       # Lambda handler
-├── template.yaml              # SAM CloudFormation template
-├── build.sh                   # Build script
-├── deploy_only.sh             # Deploy script
-├── cleanup.sh                 # Cleanup script
-├── requirements.txt           # Python dependencies
-└── README.md                  # This guide
-```
-
-## ⚡ Quick Deploy
-
-1. **Build**: `./build.sh`
-2. **Deploy**: `./deploy_only.sh`
-3. **Access**: Use the Lambda Function URL provided
-
-## 📋 Prerequisites
-
-### Required Tools
-- AWS CLI installed and configured
-- SAM CLI installed (`pip install aws-sam-cli`)
-- Python 3.12+ with virtual environment
-- AWS account with appropriate permissions
-
-### Required Permissions
-Your AWS user/role needs:
-- CloudFormation, Lambda permissions
-- IAM role creation and attachment permissions
-- Bedrock model access (Claude 3.7 Sonnet)
-
-### Bedrock Setup
-- Request access to Claude models in AWS Bedrock console
-- Ensure access in us-west-2 region
-
-## 🚀 Step-by-Step Deployment
-
-### 1. Prerequisites
-- AWS CLI configured with credentials
-- SAM CLI installed
-- Docker installed (for container builds)
-
-### 2. Deploy Backend
+### 1. Deploy Backend First
 ```bash
 cd backend
-
-# Build the Lambda package
 ./build.sh
-
-# Deploy to AWS
 ./deploy_only.sh
 ```
+This creates `backend/deployment_info.txt` with API URLs.
 
-### 3. Expected Output
-```
-🚀 Starting Enrollment Pulse AWS Deployment
-============================================
-📋 Deployment Configuration:
-  Stage: dev
-  Region: us-west-2
-  Stack: enrollment-pulse-dev
-
-🔍 Checking prerequisites...
-✅ Prerequisites check passed
-
-🔨 Building SAM application...
-✅ SAM build completed
-
-🚀 Deploying backend infrastructure...
-✅ Backend deployed successfully
-
-🎉 Deployment completed successfully!
-============================================
-📊 Access your application:
-  🔗 Lambda Function URL: https://abc123.lambda-url.us-west-2.on.aws/
-  📚 API Docs: https://abc123.lambda-url.us-west-2.on.aws/docs
-```
-
-### 4. Validate Deployment
+### 2. Install Test Dependencies
 ```bash
-curl https://your-lambda-function-url.lambda-url.us-west-2.on.aws/
+# From project root
+python3 -m venv venv
+source venv/bin/activate
+pip install -r tests/requirements.txt
 ```
 
-## 🏗️ AWS Architecture
+## Test Files
 
-```
-Lambda Function URL → Lambda (FastAPI) → Bedrock (Claude 3.7)
-```
+- `test_data_processing.py` - Local data processing tests
+- `test_api_gateway.py` - **API Gateway endpoints (public)**
+- `test_query_endpoint.py` - Lambda Function URL (IAM auth)
+- `load_deployment_info.py` - Utility to load URLs from deployment
 
-### Resources Created
-- **Lambda Function**: `enrollment-pulse-api-dev`
-- **Lambda Function URL**: Direct HTTPS endpoint
-- **IAM Roles**: Lambda execution with Bedrock permissions
+## Running Tests
 
-## 💰 Cost Estimation
-
-### Lambda Function URL Deployment
-- **Lambda**: ~$10-30/month (10GB memory, high usage)
-- **Bedrock**: ~$20-100/month (Strands Agent usage)
-- **Total**: ~$30-130/month
-
-## ✨ Features
-
-- **Strands Agent**: AI-powered clinical trial analysis
-- **15-minute timeout**: Lambda Function URL support
-- **IAM Security**: Secure access with AWS credentials
-- **Real-time data**: CTMS data processing
-- **Site-specific analysis**: Detailed per-site recommendations
-
-## 🔧 Management Commands
-
+### Local Data Processing
 ```bash
-# Build backend
-./build.sh
-
-# Deploy backend
-./deploy_only.sh
-
-# Clean up resources
-./cleanup.sh
-
-# View logs
-aws logs tail /aws/lambda/enrollment-pulse-api-dev --follow
-
-# Test deployment
-curl https://your-lambda-function-url.lambda-url.us-west-2.on.aws/
+python tests/test_data_processing.py
 ```
 
-## 🔄 Updates and Maintenance
-
-### Deploy Updates
+### API Gateway Tests (Recommended)
 ```bash
-# Make code changes, then redeploy
-./deploy_only.sh
+python tests/test_api_gateway.py
 ```
+Tests public endpoints:
+- `/status/overall`
+- `/sites/performance` 
+- `/sites/underperforming`
+- `/query` (AI agent)
 
-### Monitor System
-- **CloudWatch Logs**: Monitor Lambda function logs
-- **CloudWatch Metrics**: Track Lambda performance
-- **Cost Explorer**: Monitor AWS spending
-
-### Scale for Production
-1. Update template.yaml for production settings
-2. Configure custom domain name (optional)
-3. Set up monitoring and alerting
-4. Implement API authentication if needed
-5. Consider increasing Lambda memory/timeout
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-1. **Bedrock Access Denied**
-   - Request Claude model access in Bedrock console
-   - Verify IAM permissions for Bedrock
-
-2. **SAM Build Fails**
-   - Use: `sam build --use-container`
-   - Check Python dependencies
-
-3. **Lambda Timeout**
-   - Increase timeout in template.yaml
-   - Monitor CloudWatch logs
-
-4. **Function URL Issues**
-   - Check Lambda Function URL configuration
-   - Verify CORS settings in FastAPI
-
-### Debug Commands
+### Lambda Function URL Tests (IAM Auth)
 ```bash
-# Validate SAM template
-sam validate
-
-# Test locally
-sam local start-api
-
-# Check CloudFormation events
-aws cloudformation describe-stack-events --stack-name enrollment-pulse-dev
+# Requires AWS credentials
+export AWS_ACCESS_KEY_ID=your_key
+export AWS_SECRET_ACCESS_KEY=your_secret
+export AWS_DEFAULT_REGION=us-west-2
+python tests/test_query_endpoint.py
 ```
 
-## 🧹 Cleanup
+## Expected Results
 
-### Delete All Resources
-```bash
-./cleanup.sh
-```
+**API Gateway Tests:**
+- ✅ Overall status: 75.8% enrollment (91/120)
+- ✅ Site performance: 5 sites ranked
+- ✅ Underperforming: 2 sites identified
+- ✅ AI query: Detailed analysis response
 
-The cleanup script will:
-- Prompt for confirmation before deletion
-- Delete the CloudFormation stack
-- Wait for complete resource cleanup
-- Confirm successful deletion
+**Local Tests:**
+- ✅ Data processing: 5 sites, 112 subjects loaded
 
-**⚠️ Warning**: This will permanently delete all AWS resources and data.
+## Dynamic URL Loading
+
+Tests automatically load URLs from `backend/deployment_info.txt`:
+- No hardcoded URLs in test files
+- Works with any AWS region/account
+- Updates automatically when backend is redeployed

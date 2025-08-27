@@ -110,7 +110,7 @@ def search_live_clinical_trials(
         }
         
     except Exception as e:
-        logger.error(f"Error searching live clinical trials: {e}")
+        logger.warning(f"Error searching live clinical trials: {e}")
         return {
             'error': str(e),
             'total_found': 0,
@@ -233,7 +233,7 @@ def get_live_trial_details(nct_id: str) -> Dict:
         }
         
     except Exception as e:
-        logger.error(f"Error getting trial details for {nct_id}: {e}")
+        logger.warning(f"Error getting trial details for {nct_id}: {e}")
         return {'error': str(e)}
 
 @tool
@@ -337,7 +337,7 @@ def analyze_live_competitive_landscape(condition: str, max_studies: int = 500) -
         }
         
     except Exception as e:
-        logger.error(f"Error analyzing competitive landscape: {e}")
+        logger.warning(f"Error analyzing competitive landscape: {e}")
         return {'error': str(e)}
 
 @tool
@@ -437,7 +437,7 @@ def find_recruiting_trials_by_location(
         }
         
     except Exception as e:
-        logger.error(f"Error finding recruiting trials by location: {e}")
+        logger.warning(f"Error finding recruiting trials by location: {e}")
         return {'error': str(e)}
 
 @tool
@@ -539,5 +539,5 @@ def track_enrollment_trends(condition: str, months_back: int = 12) -> Dict:
         }
         
     except Exception as e:
-        logger.error(f"Error tracking enrollment trends: {e}")
+        logger.warning(f"Error tracking enrollment trends: {e}")
         return {'error': str(e)}

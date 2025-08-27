@@ -148,7 +148,7 @@ def process_query_sync(job_id: str, question: str):
             "error": None
         }
     except Exception as e:
-        logger.error(f"Error processing query {job_id}: {str(e)}")
+        logger.warning(f"Error processing query {job_id}: {str(e)}")
         job_results[job_id] = {
             "status": "failed",
             "answer": None,
@@ -208,7 +208,7 @@ async def query_agent_endpoint(request: QueryRequest):
         )
     
     except Exception as e:
-        logger.error(f"Error processing query: {str(e)}")
+        logger.warning(f"Error processing query: {str(e)}")
         return QueryResponse(answer="", success=False, error=str(e))
 
 @app.get("/status/overall", response_model=OverallStatusResponse)
@@ -223,7 +223,7 @@ async def get_overall_status():
         return OverallStatusResponse(**status)
     
     except Exception as e:
-        logger.error(f"Error getting overall status: {str(e)}")
+        logger.warning(f"Error getting overall status: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/sites/performance", response_model=List[SitePerformance])
@@ -238,7 +238,7 @@ async def get_site_performance():
         return [SitePerformance(**site) for site in rankings]
     
     except Exception as e:
-        logger.error(f"Error getting site performance: {str(e)}")
+        logger.warning(f"Error getting site performance: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/sites/underperforming", response_model=List[UnderperformingSite])
@@ -253,7 +253,7 @@ async def get_underperforming_sites(threshold: float = 60.0):
         return [UnderperformingSite(**site) for site in underperforming]
     
     except Exception as e:
-        logger.error(f"Error getting underperforming sites: {str(e)}")
+        logger.warning(f"Error getting underperforming sites: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/cra/performance", response_model=CRAPerformance)
@@ -268,7 +268,7 @@ async def get_cra_performance():
         return CRAPerformance(**cra_analysis)
     
     except Exception as e:
-        logger.error(f"Error getting CRA performance: {str(e)}")
+        logger.warning(f"Error getting CRA performance: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/analytics/trends")
@@ -283,7 +283,7 @@ async def get_enrollment_trends():
         return {"trends": trends}
     
     except Exception as e:
-        logger.error(f"Error getting enrollment trends: {str(e)}")
+        logger.warning(f"Error getting enrollment trends: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/analytics/screening-efficiency")
@@ -298,7 +298,7 @@ async def get_screening_efficiency():
         return {"screening_efficiency": efficiency}
     
     except Exception as e:
-        logger.error(f"Error getting screening efficiency: {str(e)}")
+        logger.warning(f"Error getting screening efficiency: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/analytics/projections")
@@ -313,7 +313,7 @@ async def get_enrollment_projections():
         return {"projections": projections}
     
     except Exception as e:
-        logger.error(f"Error getting enrollment projections: {str(e)}")
+        logger.warning(f"Error getting enrollment projections: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/recommendations")
@@ -332,7 +332,7 @@ async def get_recommendations(site_number: Optional[str] = None):
         return {"recommendations": response}
     
     except Exception as e:
-        logger.error(f"Error getting recommendations: {str(e)}")
+        logger.warning(f"Error getting recommendations: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # Data refresh endpoint
@@ -348,7 +348,7 @@ async def get_historical_performance():
         return {"historical_performance": historical_data}
     
     except Exception as e:
-        logger.error(f"Error getting historical performance: {str(e)}")
+        logger.warning(f"Error getting historical performance: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/sites/{site_number}/alternatives")
@@ -363,7 +363,7 @@ async def get_alternative_sites(site_number: str):
         return {"alternative_sites": alternatives}
     
     except Exception as e:
-        logger.error(f"Error getting alternative sites: {str(e)}")
+        logger.warning(f"Error getting alternative sites: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/sites/comprehensive-analysis")
@@ -380,7 +380,7 @@ async def get_comprehensive_site_analysis_endpoint(site_number: Optional[str] = 
         return {"comprehensive_analysis": comprehensive_analysis}
     
     except Exception as e:
-        logger.error(f"Error getting comprehensive site analysis: {str(e)}")
+        logger.warning(f"Error getting comprehensive site analysis: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/sites/underperforming-detailed")
@@ -397,7 +397,7 @@ async def get_underperforming_sites_detailed_endpoint(threshold: float = 60.0):
         return {"underperforming_analysis": detailed_analysis}
     
     except Exception as e:
-        logger.error(f"Error getting detailed underperforming analysis: {str(e)}")
+        logger.warning(f"Error getting detailed underperforming analysis: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/data/refresh")
@@ -416,7 +416,7 @@ async def refresh_data():
         return {"message": "Data refreshed successfully", "success": True}
     
     except Exception as e:
-        logger.error(f"Error refreshing data: {str(e)}")
+        logger.warning(f"Error refreshing data: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # Live Clinical Trials API Endpoints
@@ -449,7 +449,7 @@ async def search_live_trials(
         return result
     
     except Exception as e:
-        logger.error(f"Error searching live clinical trials: {str(e)}")
+        logger.warning(f"Error searching live clinical trials: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/clinical-trials/competitive-landscape/{condition}")
@@ -465,7 +465,7 @@ async def get_competitive_landscape_endpoint(condition: str, max_studies: int = 
         return result
     
     except Exception as e:
-        logger.error(f"Error analyzing competitive landscape: {str(e)}")
+        logger.warning(f"Error analyzing competitive landscape: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/clinical-trials/recruiting-by-location")
@@ -491,7 +491,7 @@ async def find_recruiting_trials_endpoint(
         return result
     
     except Exception as e:
-        logger.error(f"Error finding recruiting trials: {str(e)}")
+        logger.warning(f"Error finding recruiting trials: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/clinical-trials/enrollment-trends/{condition}")
@@ -507,7 +507,7 @@ async def track_enrollment_trends_endpoint(condition: str, months_back: int = 12
         return result
     
     except Exception as e:
-        logger.error(f"Error tracking enrollment trends: {str(e)}")
+        logger.warning(f"Error tracking enrollment trends: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/clinical-trials/{nct_id}")
@@ -523,7 +523,7 @@ async def get_live_trial_details_endpoint(nct_id: str):
         return result
     
     except Exception as e:
-        logger.error(f"Error getting trial details: {str(e)}")
+        logger.warning(f"Error getting trial details: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":

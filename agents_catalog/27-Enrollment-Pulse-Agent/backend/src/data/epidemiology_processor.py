@@ -24,7 +24,7 @@ class EpidemiologyProcessor:
             logger.info(f"Loaded epidemiology data: {len(self.data)} records")
             return self.data
         except Exception as e:
-            logger.error(f"Error loading epidemiology data: {e}")
+            logger.warning(f"Error loading epidemiology data: {e}")
             raise
     
     def process_data(self) -> Dict:

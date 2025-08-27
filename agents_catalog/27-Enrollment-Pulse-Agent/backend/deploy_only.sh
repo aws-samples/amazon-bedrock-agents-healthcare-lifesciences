@@ -45,7 +45,7 @@ echo "🌍 Using AWS region: $AWS_DEFAULT_REGION"
 # Deploy to AWS
 sam deploy --stack-name enrollment-pulse-backend \
            --capabilities CAPABILITY_IAM \
-           --region us-west-2 \
+           --region "$AWS_DEFAULT_REGION" \
            --resolve-s3 \
            --no-confirm-changeset
 
@@ -57,14 +57,14 @@ if [ $? -eq 0 ]; then
     # Get API Gateway URL from CloudFormation outputs
     API_URL=$(aws cloudformation describe-stacks \
         --stack-name enrollment-pulse-backend \
-        --region us-west-2 \
+        --region "$AWS_DEFAULT_REGION" \
         --query 'Stacks[0].Outputs[?OutputKey==`ApiUrl`].OutputValue' \
         --output text 2>/dev/null)
     
     # Get Lambda Function URL
     FUNCTION_URL=$(aws lambda get-function-url-config \
         --function-name enrollment-pulse-backend \
-        --region us-west-2 \
+        --region "$AWS_DEFAULT_REGION" \
         --query 'FunctionUrl' \
         --output text 2>/dev/null)
     

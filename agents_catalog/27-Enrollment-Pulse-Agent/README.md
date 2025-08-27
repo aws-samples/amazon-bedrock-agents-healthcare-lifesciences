@@ -152,4 +152,3 @@ python tests/test_query_endpoint.py
 
 - **`backend/README.md`** - Complete AWS deployment guide
 - **`tests/README.md`** - Test suite documentation
-- **`.kiro/steering/`** - Project steering documents

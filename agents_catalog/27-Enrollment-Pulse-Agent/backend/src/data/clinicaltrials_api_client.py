@@ -91,7 +91,7 @@ class ClinicalTrialsAPIClient:
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
-            logger.error(f"Error searching studies: {e}")
+            logger.warning(f"Error searching studies: {e}")
             raise
     
     def get_study_details(self, nct_id: str) -> Dict:
@@ -111,7 +111,7 @@ class ClinicalTrialsAPIClient:
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
-            logger.error(f"Error getting study details for {nct_id}: {e}")
+            logger.warning(f"Error getting study details for {nct_id}: {e}")
             raise
     
     def get_multiple_studies(self, nct_ids: List[str]) -> Dict:
@@ -135,7 +135,7 @@ class ClinicalTrialsAPIClient:
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
-            logger.error(f"Error getting multiple studies: {e}")
+            logger.warning(f"Error getting multiple studies: {e}")
             raise
     
     def search_all_pages(self, **search_params) -> List[Dict]:
@@ -166,10 +166,10 @@ class ClinicalTrialsAPIClient:
                     break
                     
                 page_count += 1
-                time.sleep(0.1)  # Be respectful to the API
+                # Rate limiting handled by API server
                 
             except Exception as e:
-                logger.error(f"Error on page {page_count}: {e}")
+                logger.warning(f"Error on page {page_count}: {e}")
                 break
         
         logger.info(f"Retrieved {len(all_studies)} studies across {page_count + 1} pages")

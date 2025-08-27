@@ -7,12 +7,17 @@ import requests
 from botocore.auth import SigV4Auth
 from botocore.awsrequest import AWSRequest
 import json
+from load_deployment_info import get_lambda_function_url
 
 def test_query_endpoint():
     """Test the /query endpoint with signed request"""
     
-    # Lambda Function URL
-    url = "https://5nxc7s3ooqz26dvjejnz5jmloy0aipeb.lambda-url.us-west-2.on.aws/query"
+    # Get Lambda Function URL from deployment info
+    base_url = get_lambda_function_url()
+    if not base_url:
+        raise ValueError("Lambda Function URL not found in deployment_info.txt")
+    
+    url = f"{base_url}/query"
     
     # Create AWS session with default profile
     session = boto3.Session(profile_name='default')

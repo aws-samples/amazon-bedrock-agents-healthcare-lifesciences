@@ -26,7 +26,7 @@ class ClinicalTrialsProcessor:
             logger.info(f"Loaded clinical trials data: {len(self.data)} records")
             return self.data
         except Exception as e:
-            logger.error(f"Error loading clinical trials data: {e}")
+            logger.warning(f"Error loading clinical trials data: {e}")
             raise
     
     def process_data(self) -> Dict:

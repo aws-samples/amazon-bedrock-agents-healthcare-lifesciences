@@ -5,24 +5,12 @@ set -e
 echo "🔨 Building Enrollment Pulse Backend..."
 echo "======================================"
 
-# Create virtual environment if it doesn't exist
-if [ ! -d "../venv" ]; then
-    echo "📦 Creating virtual environment..."
-    cd ..
-    python3 -m venv venv
-    cd backend
-fi
+# Clean previous build
+echo "🧹 Cleaning previous build..."
+rm -rf .aws-sam
 
-# Activate virtual environment
-echo "🔄 Activating virtual environment..."
-source ../venv/bin/activate
-
-# Install/update requirements
-echo "📥 Installing requirements..."
-pip install -r requirements.txt
-
-# Build with container to avoid dependency conflicts
-echo "🏗️ Building SAM application..."
+# Build with container (no local venv needed)
+echo "🏗️ Building SAM application with container..."
 sam build --use-container
 
 echo "✅ Build complete!"
