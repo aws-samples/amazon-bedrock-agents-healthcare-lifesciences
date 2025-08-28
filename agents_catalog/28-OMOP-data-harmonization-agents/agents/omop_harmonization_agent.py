@@ -12,6 +12,7 @@ from omop_structure_agent import create_omop_structure_agent, create_mcp_client
 sys.path.append('omop-ontology')
 from OMOP_ontology import OMOPOntology
 
+global neptune_graph_id
 
 # Set root logger to INFO
 logging.basicConfig(
@@ -38,13 +39,11 @@ def find_embedding_based_similar_matching_fields(source, ontology):
 
 @tool
 def omop_structure_agent(query):
-    mcp_client = create_mcp_client()
+    mcp_client = create_mcp_client(neptune_graph_id)
     
     with mcp_client:
         tools = mcp_client.list_tools_sync()
-        
         omop_structure_agent = create_omop_structure_agent(tools)
-
         response = omop_structure_agent(query)
 
         return response
@@ -143,6 +142,7 @@ if __name__ == "__main__":
     parser.add_argument('--neptune-endpoint', required=True, help='Neptune graph endpoint ID')
     parser.add_argument('--region', default='us-east-1', help='AWS region (default: us-east-1)')
     args = parser.parse_args()
-    
+
+    neptune_graph_id = args.neptune_endpoint
     main(args.input_source, args.neptune_endpoint, args.region)
 
