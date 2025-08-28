@@ -1,4 +1,4 @@
-# OMOP Harmonization Project
+# OMOP Structure and Harmonization Agent(s)
 
 This project provides AI-powered harmonization of healthcare data to the OMOP Common Data Model using semantic similarity and embeddings.
 
@@ -10,22 +10,95 @@ This project provides AI-powered harmonization of healthcare data to the OMOP Co
 - uv (Python package manager)
 - AWS CLI configured with appropriate credentials
 - Node.js and npm (for CDK)
+- AWS CDK CLI
+
+### Install Prerequisites
+
+#### 1. Install uv (Python package manager)
+```bash
+# macOS/Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+```
+
+#### 2. Install Node.js and npm
+```bash
+
+brew install node
+
+```
+
+#### 3. Install AWS CLI
+```bash
+
+brew install awscli
+
+```
+
+#### 4. Install AWS CDK CLI
+
+**Option 1: Install via npm (Recommended)**
+```bash
+# Install globally via npm
+npm install -g aws-cdk
+
+# Verify installation
+cdk --version
+```
+
+**Option 2: Install via pip (Python)**
+```bash
+# Install via pip
+pip install aws-cdk-lib
+
+# For CDK v1 (legacy)
+pip install aws-cdk
+```
+
+**Verify CDK Installation**
+```bash
+# Check CDK version
+cdk --version
+
+# Should output something like: 2.x.x (build xxxxxxx)
+
+# Check CDK help
+cdk --help
+```
+
+**CDK Prerequisites Check**
+```bash
+# Ensure Node.js version is compatible (14.x or later)
+node --version
+
+# Ensure npm is available
+npm --version
+
+# Check AWS CLI is configured
+aws sts get-caller-identity
+```
+
+#### 5. Configure AWS CLI
+```bash
+# Configure your AWS credentials
+aws configure
+
+# Or set environment variables
+export AWS_ACCESS_KEY_ID=your_access_key
+export AWS_SECRET_ACCESS_KEY=your_secret_key
+export AWS_DEFAULT_REGION=us-east-1
+```
 
 ### 1. UV Project Setup
 
 ```bash
-# Install uv if not already installed
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
 # Clone the repository
 git clone <repository-url>
-cd omop-harmonization
+cd agents_catalog/28-OMOP-data-harmonization-agents
 
 # Install dependencies using uv
 uv sync
 
-# Activate the virtual environment
-source .venv/bin/activate
 ```
 
 ### 2. CDK Infrastructure Setup
@@ -34,27 +107,13 @@ source .venv/bin/activate
 # Navigate to infrastructure directory
 cd infra
 
-# Install CDK dependencies
-npm install
-
 # Bootstrap CDK (first time only)
-cdk bootstrap
+uv run cdk bootstrap
 
 # Deploy the OMOP ontology stack
-cdk deploy omop-ontology-stack
+uv run cdk deploy 
 
 # Note the Neptune Graph ID from the output
-```
-
-### 3. Environment Configuration
-
-Set up your AWS credentials and environment variables:
-
-```bash
-export AWS_ACCESS_KEY_ID=your_access_key
-export AWS_SECRET_ACCESS_KEY=your_secret_key
-export AWS_SESSION_TOKEN=your_session_token  # if using temporary credentials
-export AWS_REGION=us-east-1
 ```
 
 ## Running the Agents
