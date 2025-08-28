@@ -1,4 +1,5 @@
 import os
+import argparse
 from strands.models import BedrockModel
 from mcp.client.streamable_http import streamablehttp_client 
 from strands.tools.mcp.mcp_client import MCPClient
@@ -9,16 +10,16 @@ import logging
 
 logging.getLogger("strands").setLevel(logging.DEBUG)
 
-def create_mcp_client():
-    """Create the MCP client."""
+def create_mcp_client(neptune_endpoint):
+    """Create the MCP client with provided Neptune endpoint and region."""
     return MCPClient(
         lambda: stdio_client(StdioServerParameters(
             command="uvx", 
             args=["awslabs.amazon-neptune-mcp-server@latest"],
             env={
-                "NEPTUNE_ENDPOINT": "neptune-graph://g-5u74xg2ma0",
-                "AWS_REGION": "us-east-1",
-                "AWS_DEFAULT_REGION": "us-east-1",
+                "NEPTUNE_ENDPOINT": f"neptune-graph://{neptune_endpoint}",
+                "AWS_REGION": os.getenv("AWS_DEFAULT_REGION"),
+                "AWS_DEFAULT_REGION": os.getenv("AWS_DEFAULT_REGION"),
                 "AWS_ACCESS_KEY_ID": os.getenv("AWS_ACCESS_KEY_ID"),
                 "AWS_SECRET_ACCESS_KEY": os.getenv("AWS_SECRET_ACCESS_KEY"),
                 "AWS_SESSION_TOKEN": os.getenv("AWS_SESSION_TOKEN")
@@ -61,8 +62,18 @@ def create_initial_messages():
 
 def main():
     """Main function to run the OMOP structure analysis tool."""
-    # Create MCP client
-    mcp_client = create_mcp_client()
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description="OMOP CDM Structure Analysis Tool")
+    parser.add_argument(
+        "--neptune-endpoint", 
+        required=True, 
+        help="Neptune endpoint (e.g., g-5u74xg2ma0)"
+    )
+    
+    args = parser.parse_args()
+    
+    # Create MCP client with provided parameters
+    mcp_client = create_mcp_client(args.neptune_endpoint)
     
     # Use proper context manager - this is the Pythonic way!
     with mcp_client:

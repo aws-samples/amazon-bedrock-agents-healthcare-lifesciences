@@ -123,7 +123,9 @@ uv run cdk deploy
 Query the OMOP CDM structure and relationships:
 
 ```bash
-uv run python agents/omop_structure_agent.py
+
+uv run python agents/omop_structure_agent.py --neptune-endpoint <endpoint> 
+
 ```
 
 Example queries:

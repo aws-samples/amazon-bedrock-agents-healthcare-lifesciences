@@ -23,14 +23,15 @@ logging.basicConfig(
 # Set strands logger to DEBUG
 logging.getLogger("strands").setLevel(logging.DEBUG)
 
-ontology = OMOPOntology(graph_id='g-5u74xg2ma0', region_name='us-east-1')
+# ontology will be initialized in main() with argparse parameters
 
-def find_embedding_based_similar_matching_fields(source):
+def find_embedding_based_similar_matching_fields(source, ontology):
     """
     Find similar fields based on embedding similarity.
 
     Args:
         source (str): The source field name.
+        ontology: OMOPOntology instance
     """
     similar_nodes = ontology.find_similar_fields(source, top_k=3)
     return similar_nodes
@@ -85,11 +86,15 @@ def create_initial_messages():
     """Create initial messages for the conversation."""
     return []
 
-def main(file_path):
+def main(file_path, neptune_endpoint, region):
     """Main function to run the OMOP harmonization tool with file input."""
     import json
     
     logging.info(f"Starting OMOP harmonization with input source: {file_path}")
+    logging.info(f"Neptune endpoint: {neptune_endpoint}, Region: {region}")
+    
+    # Initialize ontology with provided parameters
+    ontology = OMOPOntology(graph_id=neptune_endpoint, region_name=region)
     
     df = pd.read_csv(file_path)
     logging.info(f"Loaded CSV with {len(df)} rows and {len(df.columns)} columns")
@@ -106,7 +111,7 @@ def main(file_path):
         
         logging.info(f"******************Processing row {index + 1}: Label='{label}', Table Description='{table_description}'")
         source = f"{label}:{table_description}"
-        embedding_based_matching_nodes = find_embedding_based_similar_matching_fields(source)
+        embedding_based_matching_nodes = find_embedding_based_similar_matching_fields(source, ontology)
         print(embedding_based_matching_nodes)
         
         
@@ -133,10 +138,11 @@ def main(file_path):
         
 
 if __name__ == "__main__":
-  
     parser = argparse.ArgumentParser(description='OMOP Harmonization Agent')
     parser.add_argument('--input-source', required=True, help='Input source file path')
+    parser.add_argument('--neptune-endpoint', required=True, help='Neptune graph endpoint ID')
+    parser.add_argument('--region', default='us-east-1', help='AWS region (default: us-east-1)')
     args = parser.parse_args()
     
-    main(args.input_source)
+    main(args.input_source, args.neptune_endpoint, args.region)
 
