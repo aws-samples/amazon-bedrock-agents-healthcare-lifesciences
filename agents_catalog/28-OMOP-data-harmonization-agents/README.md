@@ -114,11 +114,12 @@ uv run cdk bootstrap
 uv run cdk deploy 
 
 # Note the Neptune Graph ID from the output
-
-# Populate Neptune database with OMOP ontology data
-cd ..
-uv run python omop-ontology/load_omop.py --graph-id <your-neptune-graph-id> --table-file ./data/OMOP_CDMv5.4_Table_Level.csv --field-file ./data/OMOP_CDMv5.4_Field_Level.csv --region us-east-1
 ```
+
+### 3. Populate Neptune database with OMOP ontology data
+```
+cd ..
+uv run python omop-ontology/load_omop.py --graph-id <your-neptune-graph-id> --table-file ./data/OMOP_CDMv5.4_Table_Level.csv --field-file ./data/OMOP_CDMv5.4_Field_Level.csv --region <your-region>
 
 **Important**: After CDK deployment, you must run `load_omop.py` to populate the Neptune database with OMOP ontology data before using the agents.
 
