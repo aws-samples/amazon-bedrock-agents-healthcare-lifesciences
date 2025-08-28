@@ -1,0 +1,6 @@
+﻿id,name,study,first_name,last_name,role,role_type,email,phone,status,start_date,end_date
+a0K5f000000WqJ1EAK,ONCO-2025-117-TM001,a0B5f000000XmGrEAK,Michael,Bradford,Study Manager,Clinical Operations,michael.bradford@pharmatech.example.com,555-123-4567,Active,9/1/2024,
+a0K5f000000WqJ2EAK,ONCO-2025-117-TM002,a0B5f000000XmGrEAK,Jessica,Reynolds,CRA Lead,Clinical Research,jessica.reynolds@pharmatech.example.com,555-123-4568,Active,9/1/2024,
+a0K5f000000WqJ3EAK,ONCO-2025-117-TM003,a0B5f000000XmGrEAK,Thomas,Nguyen,CRA,Clinical Research,thomas.nguyen@pharmatech.example.com,555-123-4569,Active,9/5/2024,
+a0K5f000000WqJ4EAK,ONCO-2025-117-TM004,a0B5f000000XmGrEAK,Amanda,Garcia,CRA,Clinical Research,amanda.garcia@pharmatech.example.com,555-123-4570,Active,9/5/2024,
+a0K5f000000WqJ5EAK,ONCO-2025-117-TM005,a0B5f000000XmGrEAK,James,Washington,Enrollment Specialist,Clinical Operations,james.washington@pharmatech.example.com,555-123-4571,Active,9/10/2024,

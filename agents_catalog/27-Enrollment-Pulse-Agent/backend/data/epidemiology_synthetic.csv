@@ -1,0 +1,16 @@
+year,geo_level,cbsa_code,metro,state,population_female_40plus,mtnbc_incidence_rate_per_100k_female,mtnbc_prevalence_1y_per_100k_female,est_mtnbc_incidence_count,est_mtnbc_prevalence_1y_count,mtnbc_patient_density_index,pd_l1_positive_pct,brca_mutation_pct,trial_eligibility_rate_pct,est_biomarker_positive_pool,est_trial_eligible_count
+2024,metro,41860,"San Francisco–Oakland–Berkeley, CA",CA,1250000,7.4,20.0,92,250,1.042,38.0,12.0,45.0,125,56
+2024,metro,31180,"Los Angeles–Long Beach–Anaheim, CA",CA,3250000,6.9,18.5,224,601,0.972,37.0,11.0,44.0,288,127
+2024,metro,35620,"New York–Newark–Jersey City, NY–NJ–PA",NY/NJ/PA,5200000,7.2,19.2,374,998,1.014,36.0,11.5,43.0,474,204
+2024,metro,16980,"Chicago–Naperville–Elgin, IL–IN–WI",IL/IN/WI,2100000,7.0,18.8,147,395,0.986,36.5,11.0,43.5,188,82
+2024,metro,26420,"Houston–The Woodlands–Sugar Land, TX",TX,1450000,7.3,19.5,106,283,1.028,37.5,11.0,44.0,137,60
+2024,metro,33100,"Miami–Fort Lauderdale–Pompano Beach, FL",FL,1100000,7.5,20.3,82,223,1.056,38.0,12.5,45.0,113,51
+2024,metro,42660,"Seattle–Tacoma–Bellevue, WA",WA,850000,7.1,19.0,60,162,1.0,36.5,12.0,44.0,79,35
+2024,metro,14460,"Boston–Cambridge–Newton, MA–NH",MA/NH,1200000,7.6,20.8,91,250,1.07,38.5,12.0,45.0,126,57
+2024,metro,19100,"Dallas–Fort Worth–Arlington, TX",TX,1300000,6.8,18.2,88,237,0.958,36.0,10.5,42.0,110,46
+2024,metro,12060,"Atlanta–Sandy Springs–Alpharetta, GA",GA,900000,7.2,19.3,65,174,1.014,37.0,11.5,43.0,84,36
+2024,metro,38060,"Phoenix–Mesa–Chandler, AZ",AZ,880000,6.7,17.8,59,157,0.944,35.0,10.0,41.5,71,29
+2024,metro,37980,"Philadelphia–Camden–Wilmington, PA–NJ–DE–MD",PA/NJ/DE/MD,1300000,7.0,18.7,91,243,0.986,36.5,11.0,43.0,115,49
+2024,metro,19740,"Denver–Aurora–Lakewood, CO",CO,620000,6.9,18.4,43,114,0.972,36.0,10.5,42.5,53,23
+2024,metro,33460,"Minneapolis–St. Paul–Bloomington, MN–WI",MN/WI,700000,6.8,18.1,48,127,0.958,35.5,10.0,42.0,58,24
+2024,metro,41180,"St. Louis, MO–IL",MO/IL,560000,7.1,19.1,40,107,1.0,36.5,10.5,43.0,50,22

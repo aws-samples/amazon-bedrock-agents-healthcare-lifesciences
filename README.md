@@ -1,5 +1,7 @@
 # Sample Healthcare and Life Sciences Agents on AWS
 
+> **⚠️ Important Update (July 28, 2025):** The new recommended way to deploy agents is using the [Strands](https://strandsagents.com/) framework and [Amazon Bedrock AgentCore](https://aws.amazon.com/bedrock/agentcore/). This codebase will be updated shortly to reflect these new best practices. The current deployment methods below are still functional but will be superseded by the new framework.
+
 ## Project Components
 
 ### Agents catalog

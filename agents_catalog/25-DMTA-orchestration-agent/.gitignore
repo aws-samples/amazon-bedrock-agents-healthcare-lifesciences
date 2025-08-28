@@ -1,0 +1,52 @@
+# Test files and temporary resources
+test_*.py
+test_payload.json
+packaged-template.yaml
+response.json
+
+# Generated files
+generated-diagrams/
+
+# Deployment artifacts
+.kb-bucket-name
+*.zip
+lambda_layer/
+
+# AWS CloudFormation generated files
+packaged-*.yaml
+
+# Temporary files
+*.tmp
+*.temp
+.DS_Store
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Logs
+*.log
+
+# Environment files
+.env
+.env.local
+
+# AWS credentials (should never be committed)
+credentials
+config
+
+# Backup files
+*.bak
+*.backup
+
+# Development notes (excluded from git)
+tasks.md
+plan-project-enhancement.md
+workflow-story.md

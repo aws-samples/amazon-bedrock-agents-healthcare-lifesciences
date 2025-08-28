@@ -22,7 +22,16 @@ Parameters:
   ArtifactsBucket:
     Type: String
     Description: Name of the S3 bucket to store artifacts
-    Default: pathology-agents-048051882663
+    Default: artifacts-bucket
+
+Mappings:
+  RegionMap:
+    us-east-1:
+      AMI: ami-0cb6ce2f41f19bb98  # Amazon Linux 2 AMI with NVIDIA TESLA Driver
+    us-west-2:
+      AMI: ami-0cffc42268a645fed  # Amazon Linux 2 AMI with NVIDIA TESLA Driver
+    eu-west-1:
+      AMI: ami-054ff70cbbfd8fff0  # Amazon Linux 2 AMI with NVIDIA TESLA Driver
 
 Resources:
   CodeBuildServiceRole:
@@ -140,16 +149,19 @@ Resources:
 
   ECRRepositoryFeatureExtraction:
     Type: AWS::ECR::Repository
+    DeletionPolicy: Delete
     Properties:
       RepositoryName: !Ref FeatureExtractionImageRepo
 
   ECRRepositoryMSIClassifier:
     Type: AWS::ECR::Repository
+    DeletionPolicy: Delete
     Properties:
       RepositoryName: !Ref MSIClassificationImageRepo
 
   WSIViewerECRRepository:
     Type: AWS::ECR::Repository
+    DeletionPolicy: Delete
     Properties:
       RepositoryName: !Ref WSIViewerRepo
 
@@ -350,7 +362,7 @@ Resources:
         BidPercentage: 80
         Ec2Configuration:
           - ImageType: ECS_AL2_NVIDIA
-            ImageIdOverride: ami-051dabd05e29a4aca
+            ImageIdOverride: !FindInMap [RegionMap, !Ref 'AWS::Region', AMI]
   
   # Batch Job Queue
   BatchJobQueue:

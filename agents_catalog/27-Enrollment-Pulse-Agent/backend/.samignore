@@ -1,0 +1,13 @@
+venv/
+frontend/
+.git/
+.aws-sam/
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+.DS_Store
+tests/
+*.md
+app.py
+run_streamlit.sh

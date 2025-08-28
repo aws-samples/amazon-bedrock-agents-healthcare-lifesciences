@@ -1,0 +1,63 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: "Enrollment Pulse - Backend API Only"
+
+Globals:
+  Function:
+    Timeout: 300
+    MemorySize: 1024
+    Runtime: python3.12
+    Architectures:
+      - x86_64
+
+Resources:
+  EnrollmentPulseApi:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: enrollment-pulse-backend
+      CodeUri: .
+      Handler: enrollment_lambda.lambda_handler
+      MemorySize: 10240
+      Timeout: 900
+      Environment:
+        Variables:
+          LAMBDA_TIMEOUT: 900
+      FunctionUrlConfig:
+        AuthType: AWS_IAM
+        Cors:
+          AllowOrigins:
+            - "*"
+          AllowMethods:
+            - GET
+            - POST
+          AllowHeaders:
+            - "*"
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+                - bedrock:InvokeModelWithResponseStream
+              Resource: "*"
+
+      Events:
+        ApiGateway:
+          Type: Api
+          Properties:
+            Path: /{proxy+}
+            Method: ANY
+            TimeoutInMillis: 29000
+        RootApi:
+          Type: Api
+          Properties:
+            Path: /
+            Method: ANY
+            TimeoutInMillis: 29000
+
+Outputs:
+  ApiUrl:
+    Description: "Backend API URL"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod"
+  FunctionUrl:
+    Description: "Lambda Function URL (15-minute timeout)"
+    Value: !GetAtt EnrollmentPulseApiUrl.FunctionUrl
