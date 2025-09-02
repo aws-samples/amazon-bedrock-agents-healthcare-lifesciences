@@ -80,7 +80,7 @@ aws sts get-caller-identity
 
 #### 5. Configure AWS CLI
 ```bash
-# Configure your AWS credentials
+# Configure your AWS credentials if you are running this in local or enviroment where no aws role is attached
 aws configure
 
 # Or set environment variables
@@ -119,7 +119,7 @@ uv run cdk deploy
 ### 3. Populate Neptune database with OMOP ontology data
 ```
 cd ..
-uv run python omop-ontology/load_omop.py --graph-id <your-neptune-graph-id> --table-file ./data/OMOP_CDMv5.4_Table_Level.csv --field-file ./data/OMOP_CDMv5.4_Field_Level.csv --region <your-region>
+uv run python omop-ontology/load_omop.py --graph-id <your-neptune-graph-id> --table-file omop-ontology/data/OMOP_CDMv5.4_Table_Level.csv --field-file omop-ontology/data/OMOP_CDMv5.4_Field_Level.csv --region <your-region>
 ```
 
 **Important**: After CDK deployment, you must run `load_omop.py` to populate the Neptune database with OMOP ontology data before using the agents.
@@ -144,7 +144,7 @@ Example queries:
 Harmonize data terms to OMOP fields using semantic similarity:
 
 ```bash
-uv run python agents/omop_harmonization_agent.py --input-source test-data/CMS_PDE_Data_Dictionary.csv --neptune-endpoint <your-neptune-graph-id> 
+uv run python agents/omop_harmonization_agent.py --input-source test-data/CMS_PDE_Data_Dictionary.csv --neptune-endpoint <your-neptune-graph-id> --region <your-region>
 ```
 
 This will:

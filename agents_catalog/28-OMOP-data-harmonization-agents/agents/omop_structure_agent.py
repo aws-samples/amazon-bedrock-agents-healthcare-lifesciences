@@ -10,22 +10,32 @@ import logging
 
 logging.getLogger("strands").setLevel(logging.DEBUG)
 
-def create_mcp_client(neptune_endpoint):
-    """Create the MCP client with provided Neptune endpoint and region."""
-    return MCPClient(
-        lambda: stdio_client(StdioServerParameters(
-            command="uvx", 
+AWS_VARS = [
+    "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN",
+    "AWS_PROFILE", "AWS_SDK_LOAD_CONFIG",
+    "AWS_WEB_IDENTITY_TOKEN_FILE", "AWS_ROLE_ARN", "AWS_ROLE_SESSION_NAME",
+    "AWS_CONTAINER_CREDENTIALS_RELATIVE_URI", "AWS_CONTAINER_CREDENTIALS_FULL_URI",
+    "AWS_CONTAINER_AUTHORIZATION_TOKEN", "AWS_EC2_METADATA_DISABLED",
+    "AWS_STS_REGIONAL_ENDPOINTS",
+]
+
+def create_mcp_client(neptune_endpoint: str, region) -> MCPClient:
+    env = {
+        "NEPTUNE_ENDPOINT": f"neptune-graph://{neptune_endpoint}",
+        "AWS_DEFAULT_REGION" : region,
+        "AWS_REGION" : region
+    }
+    for k in AWS_VARS:
+        v = os.getenv(k)
+        if v:
+            env[k] = v
+    return MCPClient(lambda: stdio_client(
+        StdioServerParameters(
+            command="uvx",
             args=["awslabs.amazon-neptune-mcp-server@latest"],
-            env={
-                "NEPTUNE_ENDPOINT": f"neptune-graph://{neptune_endpoint}",
-                "AWS_REGION": os.getenv("AWS_DEFAULT_REGION"),
-                "AWS_DEFAULT_REGION": os.getenv("AWS_DEFAULT_REGION"),
-                "AWS_ACCESS_KEY_ID": os.getenv("AWS_ACCESS_KEY_ID"),
-                "AWS_SECRET_ACCESS_KEY": os.getenv("AWS_SECRET_ACCESS_KEY"),
-                "AWS_SESSION_TOKEN": os.getenv("AWS_SESSION_TOKEN")
-            }
-        ))
-    )
+            env=env,
+        )
+    ))
 
 def create_omop_structure_agent(tools):
     """Create and initialize the OMOP structure agent with tools."""
@@ -69,11 +79,17 @@ def main():
         required=True, 
         help="Neptune endpoint (e.g., g-5u74xg2ma0)"
     )
+
+    parser.add_argument(
+        "--region", 
+        required=True, 
+        help="AWS region (e.g., us-east-1)"
+    )
     
     args = parser.parse_args()
     
     # Create MCP client with provided parameters
-    mcp_client = create_mcp_client(args.neptune_endpoint)
+    mcp_client = create_mcp_client(args.neptune_endpoint, args.region)
     
     # Use proper context manager - this is the Pythonic way!
     with mcp_client:
@@ -124,5 +140,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-    
