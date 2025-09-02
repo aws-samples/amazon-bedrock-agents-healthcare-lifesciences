@@ -89,6 +89,46 @@ export AWS_SECRET_ACCESS_KEY=your_secret_key
 export AWS_DEFAULT_REGION=us-east-1
 ```
 
+#### 6. Enable Amazon Bedrock Model Access
+
+**Important**: Before running the agents, you must enable access to the required AI models in Amazon Bedrock.
+
+**Required Models:**
+- **Amazon Titan Text Embeddings v2** (`amazon.titan-embed-text-v2:0`) - For semantic similarity
+- **Anthropic Claude 3.5 Sonnet** (`us.anthropic.claude-3-5-sonnet-20240620-v1:0`) - For harmonization analysis
+
+**Enable Model Access:**
+
+1. **Via AWS Console:**
+   ```bash
+   # Open Bedrock console
+   https://console.aws.amazon.com/bedrock/
+   ```
+   - Navigate to "Model access" in the left sidebar
+   - Click "Request model access"
+   - Select the following models:
+     - ✅ **Amazon Titan Text Embeddings v2**
+     - ✅ **Anthropic Claude 3.5 Sonnet**
+   - Click "Request model access" and wait for approval (usually instant)
+
+2. **Via AWS CLI:**
+   ```bash
+   # Check current model access
+   aws bedrock list-foundation-models --region us-east-1
+   
+   # Request access to Titan Embeddings
+   aws bedrock put-model-invocation-logging-configuration \
+     --region us-east-1 \
+     --logging-config '{
+       "cloudWatchConfig": {
+         "logGroupName": "/aws/bedrock/modelinvocations",
+         "roleArn": "arn:aws:iam::YOUR_ACCOUNT:role/service-role/AmazonBedrockExecutionRoleForCloudWatchLogs"
+       }
+     }'
+   ```
+
+**Note**: Model access is region-specific. Ensure you enable access in the same region where you'll run the agents (default: `us-east-1`).
+
 ### 1. UV Project Setup
 
 ```bash
