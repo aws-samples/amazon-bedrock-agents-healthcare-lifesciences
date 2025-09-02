@@ -8,11 +8,13 @@ import logging
 import argparse
 import pandas as pd
 from omop_structure_agent import create_omop_structure_agent, create_mcp_client
+import json
 
 sys.path.append('omop-ontology')
 from OMOP_ontology import OMOPOntology
 
 global neptune_graph_id
+global region 
 
 # Set root logger to INFO
 logging.basicConfig(
@@ -22,7 +24,7 @@ logging.basicConfig(
 )
 
 # Set strands logger to DEBUG
-logging.getLogger("strands").setLevel(logging.DEBUG)
+logging.getLogger("strands").setLevel(logging.INFO)
 
 # ontology will be initialized in main() with argparse parameters
 
@@ -39,7 +41,7 @@ def find_embedding_based_similar_matching_fields(source, ontology):
 
 @tool
 def omop_structure_agent(query):
-    mcp_client = create_mcp_client(neptune_graph_id)
+    mcp_client = create_mcp_client(neptune_graph_id, region)
     
     with mcp_client:
         tools = mcp_client.list_tools_sync()
@@ -58,11 +60,11 @@ def create_harmonization_synthesizer_agent():
     
     system_prompt = """You are an expert in OMOP Common Data Model harmonization and field mapping. Your role is to help users map their data terms to appropriate OMOP fields using semantic similarity and embeddings.
 
-    You are given the matching target OMOP fields based on embedding similarity. Your task is to analyze these potential matches and provide the best harmonization recommendations, including identifying foreign key relationships.
+    You are given the potential matching target OMOP fields based on embedding similarity. Your task is to analyze these potential matches and provide the best target recommendations, including identifying foreign key relationships.
 
     HARMONIZATION WORKFLOW:
     1. You will receive potential target OMOP fields that have been identified through embedding similarity
-    2. Analyze these candidates considering semantic similarity scores
+    2. Analyze these candidates considering semantic similarity scores and enriched text
     3. Consider the data source context when evaluating matches
     4. Identify foreign key relationships between fields and tables
     5. Provide ranked recommendations with explanations
@@ -87,7 +89,6 @@ def create_initial_messages():
 
 def main(file_path, neptune_endpoint, region):
     """Main function to run the OMOP harmonization tool with file input."""
-    import json
     
     logging.info(f"Starting OMOP harmonization with input source: {file_path}")
     logging.info(f"Neptune endpoint: {neptune_endpoint}, Region: {region}")
@@ -111,11 +112,16 @@ def main(file_path, neptune_endpoint, region):
         logging.info(f"******************Processing row {index + 1}: Label='{label}', Table Description='{table_description}'")
         source = f"{label}:{table_description}"
         embedding_based_matching_nodes = find_embedding_based_similar_matching_fields(source, ontology)
-        print(embedding_based_matching_nodes)
+        # print("------------------------------------------")
+        # print(embedding_based_matching_nodes)
+        # print("------------------------------------------")
         
         
         matching_response = harmonization_agent(f"Embeddings based matchings for {source} : {embedding_based_matching_nodes}")
-        break
+        print("------------------------------------------")
+        print(matching_response)
+        print("------------------------------------------")
+        #break
         # Write result to file
         result_entry = {
             'row_index': index + 1,
@@ -144,5 +150,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     neptune_graph_id = args.neptune_endpoint
+    region = args.region
     main(args.input_source, args.neptune_endpoint, args.region)
 
