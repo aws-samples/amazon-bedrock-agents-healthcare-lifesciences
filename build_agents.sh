@@ -65,4 +65,16 @@ if [ -d "streamlitapp" ] && [ -f "streamlitapp/streamlit_build.yaml" ]; then
   cd ..
 fi
 
+
+#berils add
+
+if [ -d "streamlitapp-agentcore" ] && [ -f "streamlitapp-agentcore/streamlit_build_agentcore.yaml" ]; then
+  echo "Processing streamlit agentcore app..."
+  cd streamlitapp-agentcore || exit
+  aws cloudformation package --template-file streamlit_build_agentcore.yaml --s3-bucket "${S3_BUCKET}" --output-template-file "../packaged_streamlit_build_agentcore.yaml"
+  aws s3 cp "../packaged_streamlit_build_agentcore.yaml" "s3://${S3_BUCKET}/packaged_streamlit_build_agentcore.yaml"
+  cd ..
+fi
+
+
 echo "All templates packaged and uploaded to S3"

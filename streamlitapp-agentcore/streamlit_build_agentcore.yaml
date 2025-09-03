@@ -1,21 +1,21 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'CloudFormation template for Streamlit app deployment on ECS Fargate with CodeBuild integration and extended permissions'
+Description: 'CloudFormation template for AgentCore Streamlit app deployment on ECS Fargate with CodeBuild integration'
 
 Parameters:
   Vpccidr:
     Description: Please enter the IP range (CIDR notation) for the VPC
     Type: String
-    Default: 10.0.0.0/16
+    Default: 10.1.0.0/16
 
   PublicSubnetAcidr:
     Description: Please enter the IP range (CIDR notation) for the public subnet in the first Availability Zone
     Type: String
-    Default: 10.0.0.0/24
+    Default: 10.1.0.0/24
 
   PublicSubnetBcidr:
     Description: Please enter the IP range (CIDR notation) for the public subnet in the second Availability Zone
     Type: String
-    Default: 10.0.1.0/24
+    Default: 10.1.1.0/24
 
   GitRepoURL:
     Type: String
@@ -54,11 +54,11 @@ Mappings:
 
 Resources:
 # VPC
-  LogsPolicy:
+  LogsPolicyAgentCore:
     Type: "AWS::IAM::ManagedPolicy"
     Properties:
       Path: /
-      ManagedPolicyName: !Sub "LogsPolicy${EnvironmentName}${AWS::Region}"
+      ManagedPolicyName: !Sub "LogsPolicyAgentCore${EnvironmentName}${AWS::Region}"
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -67,15 +67,15 @@ Resources:
               - 'logs:CreateLogStream'
               - 'logs:PutLogEvents'
             Resource: 
-              - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:${VPCLogGroup}:*'
-              - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:${VPCLogGroup}'
+              - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:${VPCLogGroupAgentCore}:*'
+              - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:${VPCLogGroupAgentCore}'
           - Effect: 'Allow'
             Action:
               - 'logs:CreateLogGroup'
               - 'logs:PutRetentionPolicy'
             Resource: 
-              - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:${VPCLogGroup}'
-  VPC:
+              - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:${VPCLogGroupAgentCore}'
+  VPCAgentCore:
     Type: AWS::EC2::VPC
     Properties:
       CidrBlock: !Ref Vpccidr
@@ -83,15 +83,15 @@ Resources:
       EnableDnsHostnames: true
       Tags:
         - Key: Name
-          Value: 'VPC'
+          Value: 'VPCAgentCore'
   
-  VPCLogGroup:
+  VPCLogGroupAgentCore:
     DeletionPolicy: Retain
     Type: 'AWS::Logs::LogGroup'
     Properties:
       RetentionInDays: 7
       
-  VPCLogRole:
+  VPCLogRoleAgentCore:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -102,140 +102,140 @@ Resources:
               Service: vpc-flow-logs.amazonaws.com
             Action: sts:AssumeRole
       ManagedPolicyArns:
-        - !GetAtt LogsPolicy.PolicyArn
+        - !GetAtt LogsPolicyAgentCore.PolicyArn
   
-  VPCFlowLog:
+  VPCFlowLogAgentCore:
     Type: "AWS::EC2::FlowLog"
     Properties:
-      ResourceId: !Ref VPC
+      ResourceId: !Ref VPCAgentCore
       ResourceType: VPC
       TrafficType: ALL
-      LogGroupName: !Ref VPCLogGroup
-      DeliverLogsPermissionArn: !GetAtt VPCLogRole.Arn
+      LogGroupName: !Ref VPCLogGroupAgentCore
+      DeliverLogsPermissionArn: !GetAtt VPCLogRoleAgentCore.Arn
   
   # Internet Gateway
-  InternetGateway:
+  InternetGatewayAgentCore:
     Type: AWS::EC2::InternetGateway
     Properties:
       Tags:
         - Key: Name
-          Value: InternetGateway
+          Value: InternetGatewayAgentCore
 
-  InternetGatewayAttachment:
+  InternetGatewayAttachmentAgentCore:
     Type: AWS::EC2::VPCGatewayAttachment
     Properties:
-      InternetGatewayId: !Ref InternetGateway
-      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGatewayAgentCore
+      VpcId: !Ref VPCAgentCore
 
   # Create a Subnet
-  PublicSubnetA:  
+  PublicSubnetAAgentCore:  
     Type: AWS::EC2::Subnet
     Properties:
       CidrBlock: !Ref PublicSubnetAcidr
-      VpcId: !Ref VPC
+      VpcId: !Ref VPCAgentCore
       AvailabilityZone: !Select 
                           - 0
                           - Fn::GetAZs: !Ref 'AWS::Region'
       Tags:
         - Key: Name
-          Value: PublicSubnetA
+          Value: PublicSubnetAAgentCore
 
-  PublicSubnetB:
+  PublicSubnetBAgentCore:
     Type: AWS::EC2::Subnet
     Properties:
       CidrBlock: !Ref PublicSubnetBcidr
-      VpcId: !Ref VPC
+      VpcId: !Ref VPCAgentCore
       AvailabilityZone: !Select 
                           - 1
                           - Fn::GetAZs: !Ref 'AWS::Region'
       Tags:
         - Key: Name
-          Value: PublicSubnetB
+          Value: PublicSubnetBAgentCore
 
   # NAT Gateway
-  NatGatewayAEIP:
+  NatGatewayAEIPAgentCore:
     Type: AWS::EC2::EIP
-    DependsOn: InternetGatewayAttachment
+    DependsOn: InternetGatewayAttachmentAgentCore
     Properties:
       Domain: vpc
 
-  NatGatewayBEIP:
+  NatGatewayBEIPAgentCore:
     Type: AWS::EC2::EIP
-    DependsOn: InternetGatewayAttachment
+    DependsOn: InternetGatewayAttachmentAgentCore
     Properties:
       Domain: vpc
 
-  NatGatewayA:
+  NatGatewayAAgentCore:
     Type: AWS::EC2::NatGateway
     Properties:
-      AllocationId: !GetAtt NatGatewayAEIP.AllocationId
-      SubnetId: !Ref PublicSubnetA
+      AllocationId: !GetAtt NatGatewayAEIPAgentCore.AllocationId
+      SubnetId: !Ref PublicSubnetAAgentCore
 
-  NatGatewayB:
+  NatGatewayBAgentCore:
     Type: AWS::EC2::NatGateway
     Properties:
-      AllocationId: !GetAtt NatGatewayBEIP.AllocationId
-      SubnetId: !Ref PublicSubnetB
+      AllocationId: !GetAtt NatGatewayBEIPAgentCore.AllocationId
+      SubnetId: !Ref PublicSubnetBAgentCore
   
   # Public Route Table 
-  PublicRouteTable:
+  PublicRouteTableAgentCore:
     Type: AWS::EC2::RouteTable
     Properties:
-      VpcId: !Ref VPC
+      VpcId: !Ref VPCAgentCore
       Tags:
         - Key: Name
-          Value: PublicRouteTable
+          Value: PublicRouteTableAgentCore
   
-  DefaultPublicRoute:
+  DefaultPublicRouteAgentCore:
     Type: AWS::EC2::Route
-    DependsOn: InternetGatewayAttachment
+    DependsOn: InternetGatewayAttachmentAgentCore
     Properties:
-      RouteTableId: !Ref PublicRouteTable
+      RouteTableId: !Ref PublicRouteTableAgentCore
       DestinationCidrBlock: 0.0.0.0/0
-      GatewayId: !Ref InternetGateway
+      GatewayId: !Ref InternetGatewayAgentCore
 
-  PublicSubnetARouteTableAssociation:
+  PublicSubnetARouteTableAssociationAgentCore:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
-      RouteTableId: !Ref PublicRouteTable
-      SubnetId: !Ref PublicSubnetA
+      RouteTableId: !Ref PublicRouteTableAgentCore
+      SubnetId: !Ref PublicSubnetAAgentCore
 
-  PublicSubnetBRouteTableAssociation:
+  PublicSubnetBRouteTableAssociationAgentCore:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
-      RouteTableId: !Ref PublicRouteTable
-      SubnetId: !Ref PublicSubnetB
+      RouteTableId: !Ref PublicRouteTableAgentCore
+      SubnetId: !Ref PublicSubnetBAgentCore
 
   # ECS Cluster and related resources
-  ECSCluster:
+  ECSClusterAgentCore:
     Type: AWS::ECS::Cluster
     Properties:
-      ClusterName: StreamlitCluster
+      ClusterName: StreamlitClusterAgentCore
 
-  TaskDefinition:
+  TaskDefinitionAgentCore:
     Type: AWS::ECS::TaskDefinition
     Properties:
-      Family: streamlit-task
+      Family: streamlit-agentcore-task
       Cpu: '256'
       Memory: '512'
       NetworkMode: awsvpc
       RequiresCompatibilities:
         - FARGATE
-      ExecutionRoleArn: !Ref ExecutionRole
-      TaskRoleArn: !Ref TaskRole
+      ExecutionRoleArn: !Ref ExecutionRoleAgentCore
+      TaskRoleArn: !Ref TaskRoleAgentCore
       ContainerDefinitions:
-        - Name: streamlit-container
-          Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${StreamlitImageRepo}:${ImageTag}
+        - Name: streamlit-agentcore-container
+          Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${StreamlitImageRepoAgentCore}:${ImageTag}
           PortMappings:
             - ContainerPort: 80
           LogConfiguration:
             LogDriver: awslogs
             Options:
-              awslogs-group: !Ref CloudWatchLogsGroup
+              awslogs-group: !Ref CloudWatchLogsGroupAgentCore
               awslogs-region: !Ref AWS::Region
-              awslogs-stream-prefix: streamlit
+              awslogs-stream-prefix: streamlit-agentcore
 
-  ExecutionRole:
+  ExecutionRoleAgentCore:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -248,30 +248,6 @@ Resources:
       ManagedPolicyArns:
         - 'arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy'
       Policies:
-        - PolicyName: SSMParameterAccess
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - 'ssm:GetParameter'
-                  - 'ssm:GetParameters'
-                Resource: 
-                  - !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/streamlitapp/${EnvironmentName}/*'
-                  - !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/streamlitapp/${EnvironmentName}'
-        - PolicyName: S3Access
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - 's3:GetObject'
-                  - 's3:ListBucket'
-                Resource: 
-                  - !Sub 'arn:aws:s3:::${LoggingBucket}'
-                  - !Sub 'arn:aws:s3:::${LoggingBucket}/*'
-                  - !Sub 'arn:aws:s3:::${EnvironmentName}-${AWS::AccountId}-${AWS::Region}-agent-build-bucket'
-                  - !Sub 'arn:aws:s3:::${EnvironmentName}-${AWS::AccountId}-${AWS::Region}-agent-build-bucket/*'
         - PolicyName: BedrockAccess
           PolicyDocument:
             Version: '2012-10-17'
@@ -282,21 +258,8 @@ Resources:
                   - 'bedrock:InvokeModelWithResponseStream'
                 Resource: 
                   - !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/*'
-              - Effect: Allow
-                Action:
-                  - 'bedrock:ListAgentVersions'
-                  - 'bedrock:ListAgents'
-                  - 'bedrock:InvokeAgent'
-                  - 'bedrock:GetAgent'
-                Resource: 
-                  - !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*'
-              - Effect: Allow
-                Action:
-                  - 'bedrock:ListAgentActionGroups'
-                  - 'bedrock:ListAgentAliases'
-                Resource: '*'
 
-  TaskRole:
+  TaskRoleAgentCore:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -307,34 +270,6 @@ Resources:
               Service: ecs-tasks.amazonaws.com
             Action: 'sts:AssumeRole'
       Policies:
-        - PolicyName: SSMParameterAccess
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - 'ssm:GetParameter'
-                  - 'ssm:GetParameters'
-                Resource: 
-                  - !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/streamlitapp/${EnvironmentName}/*'
-                  - !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/streamlitapp/${EnvironmentName}'
-        - PolicyName: S3Access
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - 's3:GetObject'
-                  - 's3:ListBucket'
-                  - 's3:GetBucketLocation'
-                  - 's3:ListBucketVersions'
-                Resource:
-                  # Agent build bucket permissions
-                  - !Sub 'arn:aws:s3:::${EnvironmentName}-${AWS::AccountId}-${AWS::Region}-agent-build-bucket'
-                  - !Sub 'arn:aws:s3:::${EnvironmentName}-${AWS::AccountId}-${AWS::Region}-agent-build-bucket/*'
-                  # Logging bucket permissions
-                  - !Sub 'arn:aws:s3:::${LoggingBucket}'
-                  - !Sub 'arn:aws:s3:::${LoggingBucket}/*'
         - PolicyName: BedrockAccess
           PolicyDocument:
             Version: '2012-10-17'
@@ -345,67 +280,50 @@ Resources:
                   - 'bedrock:InvokeModelWithResponseStream'
                 Resource: 
                   - !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/*'
-              - Effect: Allow
-                Action:
-                  - 'bedrock:ListAgentVersions'
-                  - 'bedrock:ListAgents'
-                  - 'bedrock:InvokeAgent'
-                  - 'bedrock:GetAgent'
-                Resource: 
-                  - !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*'
-                  - !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent-alias/*'
 
-              - Effect: Allow
-                Action:
-                  - 'bedrock:ListAgentActionGroups'
-                  - 'bedrock:ListAgentAliases'
-                Resource: '*'
-
-  CloudWatchLogsGroup:
+  CloudWatchLogsGroupAgentCore:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub /ecs/streamlit-app-${AWS::StackName}
+      LogGroupName: !Sub /ecs/streamlit-agentcore-app-${AWS::StackName}
       RetentionInDays: 14
 
-  ECSService:
+  ECSServiceAgentCore:
     Type: AWS::ECS::Service
-    DependsOn: StreamlitHTTPListener
+    DependsOn: StreamlitHTTPListenerAgentCore
     Properties:
-      ServiceName: streamlit-service
-      Cluster: !Ref ECSCluster
-      TaskDefinition: !Ref TaskDefinition
+      ServiceName: streamlit-agentcore-service
+      Cluster: !Ref ECSClusterAgentCore
+      TaskDefinition: !Ref TaskDefinitionAgentCore
       DesiredCount: 1
       LaunchType: FARGATE
       NetworkConfiguration:
         AwsvpcConfiguration:
           AssignPublicIp: ENABLED
           Subnets: 
-            - !Ref PublicSubnetA
-            - !Ref PublicSubnetB
+            - !Ref PublicSubnetAAgentCore
+            - !Ref PublicSubnetBAgentCore
           SecurityGroups:
-            - !Ref ContainerSecurityGroup
+            - !Ref ContainerSecurityGroupAgentCore
       LoadBalancers:
-        - ContainerName: streamlit-container
+        - ContainerName: streamlit-agentcore-container
           ContainerPort: 80
-          TargetGroupArn: !Ref StreamlitContainerTargetGroup
+          TargetGroupArn: !Ref StreamlitContainerTargetGroupAgentCore
 
-  ContainerSecurityGroup:
+  ContainerSecurityGroupAgentCore:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Security group for Streamlit container
-      VpcId: !Ref VPC
+      GroupDescription: Security group for AgentCore Streamlit container
+      VpcId: !Ref VPCAgentCore
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 80
           ToPort: 80
-          SourceSecurityGroupId: !Ref StreamlitALBSecurityGroup
+          SourceSecurityGroupId: !Ref StreamlitALBSecurityGroupAgentCore
 
-
-  
-  StreamlitHTTPListener:
+  StreamlitHTTPListenerAgentCore:
     Type: "AWS::ElasticLoadBalancingV2::Listener"
     Properties:
-      LoadBalancerArn: !Ref StreamlitApplicationLoadBalancer
+      LoadBalancerArn: !Ref StreamlitApplicationLoadBalancerAgentCore
       Port: 80
       Protocol: HTTP
       DefaultActions: 
@@ -414,40 +332,39 @@ Resources:
             MessageBody: Access denied
             StatusCode: 403
           Type: fixed-response
-  StreamlitContainerTargetGroup:
+  StreamlitContainerTargetGroupAgentCore:
     Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
     Properties:
       Port: 80
       Protocol: "HTTP"
       TargetType: ip
-      VpcId: !Ref VPC
-      Name: !Join ['-', ['StreamlitContainerTG', !Ref EnvironmentName]]
+      VpcId: !Ref VPCAgentCore
+      Name: !Join ['-', ['StreamlitContainerTGAgentCore', !Ref EnvironmentName]]
   
-  StreamlitALBListenerRule:
+  StreamlitALBListenerRuleAgentCore:
     Type: AWS::ElasticLoadBalancingV2::ListenerRule
     Properties: 
       Actions: 
         - Type: forward
-          TargetGroupArn: !Ref StreamlitContainerTargetGroup
+          TargetGroupArn: !Ref StreamlitContainerTargetGroupAgentCore
       Conditions: 
         - Field: http-header
           HttpHeaderConfig:
             HttpHeaderName: X-Custom-Header
             Values: 
               - !Join ['-', [!Sub "${AWS::StackName}", !Sub "${AWS::AccountId}"]]
-      ListenerArn: !Ref StreamlitHTTPListener
+      ListenerArn: !Ref StreamlitHTTPListenerAgentCore
       Priority: 1
 
-  
-  StreamlitApplicationLoadBalancer:
+  StreamlitApplicationLoadBalancerAgentCore:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
-      Name: !Join ['-', ['StreamlitALB', !Ref EnvironmentName]]
+      Name: !Join ['-', ['StreamlitALBAgentCore', !Ref EnvironmentName]]
       LoadBalancerAttributes:
         - Key: access_logs.s3.enabled
           Value: true
         - Key: access_logs.s3.bucket
-          Value: !Ref LoggingBucket
+          Value: !Ref LoggingBucketAgentCore
         - Key: access_logs.s3.prefix
           Value: alb/logs
         - Key: load_balancing.cross_zone.enabled
@@ -455,95 +372,58 @@ Resources:
       Scheme: internet-facing
       Type: application
       Subnets: 
-        - !Ref PublicSubnetA
-        - !Ref PublicSubnetB
+        - !Ref PublicSubnetAAgentCore
+        - !Ref PublicSubnetBAgentCore
       SecurityGroups: 
-        - !Ref StreamlitALBSecurityGroup
+        - !Ref StreamlitALBSecurityGroupAgentCore
       IpAddressType: ipv4
 
-  StreamlitALBSecurityGroup:
+  StreamlitALBSecurityGroupAgentCore:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Allow http to the internet
-      VpcId: !Ref VPC
+      GroupDescription: Allow http to the internet for AgentCore
+      VpcId: !Ref VPCAgentCore
       Tags:
         - Key: Name
-          Value: !Join ['-', ['StreamlitALBSecurityGroup', !Ref EnvironmentName]]
+          Value: !Join ['-', ['StreamlitALBSecurityGroupAgentCore', !Ref EnvironmentName]]
   
-  ALBSGDefaultOutBoundRule:
+  ALBSGDefaultOutBoundRuleAgentCore:
     Type: AWS::EC2::SecurityGroupEgress
     Properties:
-      GroupId: !GetAtt StreamlitALBSecurityGroup.GroupId
+      GroupId: !GetAtt StreamlitALBSecurityGroupAgentCore.GroupId
       IpProtocol: "-1"
       CidrIp: 0.0.0.0/0
       Description: Deny all outbound traffic by default
 
-  ALBSGOutBoundRule:
+  ALBSGOutBoundRuleAgentCore:
     Type: AWS::EC2::SecurityGroupEgress
     Properties:
-      GroupId: !GetAtt StreamlitALBSecurityGroup.GroupId
+      GroupId: !GetAtt StreamlitALBSecurityGroupAgentCore.GroupId
       IpProtocol: tcp
       FromPort: 80
       ToPort: 80
       CidrIp: 0.0.0.0/0
       Description: Allow container port outbound
   
-  ALBSGInBoundRule:
+  ALBSGInBoundRuleAgentCore:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
-      GroupId: !GetAtt StreamlitALBSecurityGroup.GroupId
+      GroupId: !GetAtt StreamlitALBSecurityGroupAgentCore.GroupId
       IpProtocol: tcp
       FromPort: 80
       ToPort: 80
       SourcePrefixListId: !FindInMap ['CFRegionMap', !Ref 'AWS::Region', 'PrefixListCloudFront']
       Description: Allow container port from CloudFront 
-  
-  StreamlitContainerSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Allow container traffic from ALB
-      VpcId: !Ref VPC
-      Tags:
-        - Key: Name
-          Value: !Join ['-', ['StreamlitContainerSecurityGroup', !Ref EnvironmentName]]
 
-  ContainerSGDefaultOutBoundRule:
-    Type: AWS::EC2::SecurityGroupEgress
-    Properties:
-      GroupId: !GetAtt StreamlitContainerSecurityGroup.GroupId
-      IpProtocol: "-1"
-      CidrIp: 0.0.0.0/0
-      Description: Deny all outbound traffic by default
-
-  ContainerSGOutBoundRule:
-    Type: AWS::EC2::SecurityGroupEgress
-    Properties:
-      GroupId: !GetAtt StreamlitContainerSecurityGroup.GroupId
-      IpProtocol: tcp
-      FromPort: 80 
-      ToPort: 80
-      CidrIp: 0.0.0.0/0
-      Description: Allow container port outbound
-  
-  ContainerSGInBoundRule:
-    Type: AWS::EC2::SecurityGroupIngress
-    Properties:
-      GroupId: !GetAtt StreamlitContainerSecurityGroup.GroupId
-      IpProtocol: tcp
-      FromPort: 80
-      ToPort: 80
-      SourceSecurityGroupId: !Ref StreamlitALBSecurityGroup
-      Description: Allow Container port from ALB SG
-
-  Distribution:
+  DistributionAgentCore:
     Type: "AWS::CloudFront::Distribution"
     Properties:
       DistributionConfig: 
         Origins: 
           - ConnectionAttempts: 3
             ConnectionTimeout: 10
-            DomainName: !GetAtt StreamlitApplicationLoadBalancer.DNSName
-            Id: !Ref StreamlitApplicationLoadBalancer
+            DomainName: !GetAtt StreamlitApplicationLoadBalancerAgentCore.DNSName
+            Id: !Ref StreamlitApplicationLoadBalancerAgentCore
             OriginCustomHeaders:
                - HeaderName: X-Custom-Header
                  HeaderValue: !Join ['-', [!Sub "${AWS::StackName}", !Sub "${AWS::AccountId}"]]
@@ -572,23 +452,23 @@ Resources:
             - "GET"
           CachePolicyId: "658327ea-f89d-4fab-a63d-7e88639e58f6"
           OriginRequestPolicyId: "216adef6-5c7f-47e4-b989-5492eafa07d3"
-          TargetOriginId: !Ref StreamlitApplicationLoadBalancer
+          TargetOriginId: !Ref StreamlitApplicationLoadBalancerAgentCore
         PriceClass: "PriceClass_All"
         Enabled: true                  
         HttpVersion: "http2"
         IPV6Enabled: true
         Logging: 
-          Bucket: !Sub '${LoggingBucket}.s3.amazonaws.com'
+          Bucket: !Sub '${LoggingBucketAgentCore}.s3.amazonaws.com'
           IncludeCookies: true
-          Prefix: !Sub distribution-${EnvironmentName}-logs/
+          Prefix: !Sub distribution-agentcore-${EnvironmentName}-logs/
         ViewerCertificate:
           CloudFrontDefaultCertificate: true
           MinimumProtocolVersion: TLSv1.2_2018
       Tags:
-        - Key: CloudfrontStreamlitApp
-          Value: !Sub ${AWS::StackName}-Cloudfront
+        - Key: CloudfrontStreamlitAppAgentCore
+          Value: !Sub ${AWS::StackName}-CloudfrontAgentCore
 
-  LoggingBucket: 
+  LoggingBucketAgentCore: 
     Type: "AWS::S3::Bucket"
     DeletionPolicy: Retain
     Properties:
@@ -603,10 +483,10 @@ Resources:
       VersioningConfiguration:
         Status: Enabled
 
-  LoggingBucketPolicy:
+  LoggingBucketPolicyAgentCore:
     Type: 'AWS::S3::BucketPolicy'
     Properties:
-      Bucket: !Ref LoggingBucket
+      Bucket: !Ref LoggingBucketAgentCore
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -616,7 +496,7 @@ Resources:
             Principal:
               Service: logging.s3.amazonaws.com
             Resource: 
-              - !Sub arn:aws:s3:::${LoggingBucket}/*
+              - !Sub arn:aws:s3:::${LoggingBucketAgentCore}/*
           - Action:
               - 's3:PutObject'
             Effect: Allow
@@ -625,40 +505,38 @@ Resources:
                     - arn:aws:iam::${ElbAccount}:root
                     - {ElbAccount: !FindInMap [ELBRegionMap, !Ref 'AWS::Region', ELBAccountId]}
             Resource: 
-              - !Sub arn:aws:s3:::${LoggingBucket}/alb/logs/AWSLogs/${AWS::AccountId}/*
+              - !Sub arn:aws:s3:::${LoggingBucketAgentCore}/alb/logs/AWSLogs/${AWS::AccountId}/*
           - Action:
               - 's3:*'
             Effect: Deny
             Resource: 
-              - !Sub arn:aws:s3:::${LoggingBucket}/*
-              - !Sub arn:aws:s3:::${LoggingBucket}
+              - !Sub arn:aws:s3:::${LoggingBucketAgentCore}/*
+              - !Sub arn:aws:s3:::${LoggingBucketAgentCore}
             Principal: "*"
             Condition:
               Bool:
                 'aws:SecureTransport': 'false'
-  
-
 
   # CodeBuild Project and related resources
-  StreamlitAppLogic:
+  StreamlitAppLogicAgentCore:
     Type: AWS::CodeBuild::Project
     Properties:
-      Name: StreamlitFrontendProject
-      ServiceRole: !GetAtt StreamlitCodeBuildRole.Arn
+      Name: StreamlitAgentCoreFrontendProject
+      ServiceRole: !GetAtt StreamlitCodeBuildRoleAgentCore.Arn
       Artifacts:
         Type: NO_ARTIFACTS
       LogsConfig:
         CloudWatchLogs:
           Status: ENABLED
-          GroupName: !Ref CodeBuildLogGroup
+          GroupName: !Ref CodeBuildLogGroupAgentCore
       Environment:
         Type: LINUX_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
         Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
         PrivilegedMode: true
         EnvironmentVariables:
-          - Name: StreamlitImageRepo
-            Value: !Ref StreamlitImageRepo
+          - Name: StreamlitImageRepoAgentCore
+            Value: !Ref StreamlitImageRepoAgentCore
       Source:
         Type: GITHUB
         Location: !Ref GitRepoURL
@@ -677,7 +555,7 @@ Resources:
                 - echo "Starting build phase"
                 - echo "Cloning Git repository..."
                 - GIT_LFS_SKIP_SMUDGE=1 git clone -b ${GitBranch} --single-branch ${GitRepoURL} repo
-                - cd repo/streamlitapp
+                - cd repo/streamlitapp-agentcore
                 - echo Build started on `date`
                 - echo "Renaming Dockerfile.txt to Dockerfile"
                 - mv Dockerfile.txt Dockerfile
@@ -686,25 +564,25 @@ Resources:
                 - echo "Contents of Dockerfile:"
                 - cat Dockerfile
                 - echo "Building Docker image..."
-                - docker build -t ${StreamlitImageRepo} .
+                - docker build -t ${StreamlitImageRepoAgentCore} .
                 - echo "Tagging Docker image..."
-                - docker tag ${StreamlitImageRepo}:latest ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${StreamlitImageRepo}:${ImageTag}
+                - docker tag ${StreamlitImageRepoAgentCore}:latest ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${StreamlitImageRepoAgentCore}:${ImageTag}
                 - echo "Docker image tagged"
             post_build:
               commands:
                 - echo "Starting post_build phase"
                 - echo "Pushing Docker image to ECR..."
-                - docker push ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${StreamlitImageRepo}:${ImageTag}
+                - docker push ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${StreamlitImageRepoAgentCore}:${ImageTag}
                 - echo "Docker image pushed to ECR"
       TimeoutInMinutes: 10
 
-  CodeBuildLogGroup:
+  CodeBuildLogGroupAgentCore:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub '/aws/codebuild/${AWS::StackName}-StreamlitAppLogic'
+      LogGroupName: !Sub '/aws/codebuild/${AWS::StackName}-StreamlitAppLogicAgentCore'
       RetentionInDays: 14
 
-  StreamlitCodeBuildRole:
+  StreamlitCodeBuildRoleAgentCore:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -715,27 +593,18 @@ Resources:
               Service: codebuild.amazonaws.com
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: StreamlitCodeBuildBasePolicy
+        - PolicyName: StreamlitCodeBuildBasePolicyAgentCore
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
               - Effect: Allow
                 Resource: 
-                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:${CodeBuildLogGroup}'
-                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:${CodeBuildLogGroup}:*'
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:${CodeBuildLogGroupAgentCore}'
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:${CodeBuildLogGroupAgentCore}:*'
                 Action:
                   - 'logs:CreateLogStream'
                   - 'logs:PutLogEvents'
-              - Effect: Allow
-                Resource: 
-                  - !Sub 'arn:aws:s3:::${AWS::AccountId}-codepipeline-${AWS::Region}'
-                  - !Sub 'arn:aws:s3:::${AWS::AccountId}-codepipeline-${AWS::Region}/*'
-                Action:
-                  - 's3:GetObject'
-                  - 's3:GetObjectVersion'
-                  - 's3:GetBucketVersioning'
-                  - 's3:PutObject'
-        - PolicyName: StreamlitECRAccess
+        - PolicyName: StreamlitECRAccessAgentCore
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
@@ -756,35 +625,25 @@ Resources:
                   - ecr:UploadLayerPart
                   - ecr:CompleteLayerUpload
                   - ecr:PutImage
-                Resource: !Sub 'arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/${StreamlitImageRepo}'
-        - PolicyName: StreamlitBedrockAccess
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - 'bedrock:InvokeModel'
-                  - 'bedrock:InvokeModelWithResponseStream'
-                Resource: 
-                  - !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/*'
+                Resource: !Sub 'arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/${StreamlitImageRepoAgentCore}'
 
-  StreamlitImageRepo:
+  StreamlitImageRepoAgentCore:
     Type: AWS::ECR::Repository
     Properties:
       EmptyOnDelete: true
-  EnsureECRImagePushed:
-    Type: Custom::EnsureECRImagePushed
+  EnsureECRImagePushedAgentCore:
+    Type: Custom::EnsureECRImagePushedAgentCore
     DependsOn: 
-      - TriggerBuildCustomResource
+      - TriggerBuildCustomResourceAgentCore
     Properties:
-      ServiceToken: !GetAtt TriggerBuildLambda.Arn
-      ECRRepository: !Ref StreamlitImageRepo
+      ServiceToken: !GetAtt TriggerBuildLambdaAgentCore.Arn
+      ECRRepository: !Ref StreamlitImageRepoAgentCore
       ImageTag: !Ref ImageTag
-  TriggerBuildLambda:
+  TriggerBuildLambdaAgentCore:
     Type: AWS::Lambda::Function
     Properties:
       Handler: index.handler
-      Role: !GetAtt TriggerBuildLambdaRole.Arn
+      Role: !GetAtt TriggerBuildLambdaRoleAgentCore.Arn
       Code:
         ZipFile: |
           import boto3
@@ -847,7 +706,7 @@ Resources:
       Runtime: python3.8
       Timeout: 900
 
-  TriggerBuildLambdaRole:
+  TriggerBuildLambdaRoleAgentCore:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -858,7 +717,7 @@ Resources:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: CodeBuildStartBuildPolicy
+        - PolicyName: CodeBuildStartBuildPolicyAgentCore
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
@@ -867,8 +726,8 @@ Resources:
                   - codebuild:StartBuild
                   - codebuild:BatchGetBuilds
                 Resource: 
-                  - !GetAtt StreamlitAppLogic.Arn
-        - PolicyName: CloudWatchLogsPolicy
+                  - !GetAtt StreamlitAppLogicAgentCore.Arn
+        - PolicyName: CloudWatchLogsPolicyAgentCore
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
@@ -877,42 +736,42 @@ Resources:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Resource: 
-                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${AWS::StackName}-TriggerBuildLambda:*'
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${AWS::StackName}-TriggerBuildLambdaAgentCore:*'
               - Effect: Allow
                 Action:
                   - logs:CreateLogGroup
                 Resource: 
-                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${AWS::StackName}-TriggerBuildLambda'
-        - PolicyName: ECRDescribeImagesPolicy
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${AWS::StackName}-TriggerBuildLambdaAgentCore'
+        - PolicyName: ECRDescribeImagesPolicyAgentCore
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
               - Effect: Allow
                 Action: ecr:DescribeImages
-                Resource: !Sub 'arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/${StreamlitImageRepo}'
-        - PolicyName: PassRoleToCodeBuild
+                Resource: !Sub 'arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/${StreamlitImageRepoAgentCore}'
+        - PolicyName: PassRoleToCodeBuildAgentCore
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
               - Effect: Allow
                 Action:
                   - iam:PassRole
-                Resource: !GetAtt StreamlitCodeBuildRole.Arn
+                Resource: !GetAtt StreamlitCodeBuildRoleAgentCore.Arn
   
-  TriggerBuildCustomResource:
-    Type: Custom::TriggerBuild
-    DependsOn: StreamlitAppLogic
+  TriggerBuildCustomResourceAgentCore:
+    Type: Custom::TriggerBuildAgentCore
+    DependsOn: StreamlitAppLogicAgentCore
     Properties:
-      ServiceToken: !GetAtt TriggerBuildLambda.Arn
-      ProjectName: !Ref StreamlitAppLogic
+      ServiceToken: !GetAtt TriggerBuildLambdaAgentCore.Arn
+      ProjectName: !Ref StreamlitAppLogicAgentCore
 
 Outputs:
-  CloudfrontURL:
-    Description: "CloudFront URL"
-    Value: !GetAtt Distribution.DomainName
-  CodeBuildProjectName:
-    Description: Name of the CodeBuild project
-    Value: !Ref StreamlitAppLogic
-  ECRRepositoryURI:
-    Description: URI of the ECR repository
-    Value: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${StreamlitImageRepo}
+  CloudfrontURLAgentCore:
+    Description: "AgentCore CloudFront URL"
+    Value: !GetAtt DistributionAgentCore.DomainName
+  CodeBuildProjectNameAgentCore:
+    Description: Name of the AgentCore CodeBuild project
+    Value: !Ref StreamlitAppLogicAgentCore
+  ECRRepositoryURIAgentCore:
+    Description: URI of the AgentCore ECR repository
+    Value: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${StreamlitImageRepoAgentCore}

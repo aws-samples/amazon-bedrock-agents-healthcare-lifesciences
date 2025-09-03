@@ -28,7 +28,7 @@ Parameters:
   GithubLink:
    Type: String
    Description: 'The link to the agent build cloudformation stack'
-   Default: 'https://github.com/aws-samples/amazon-bedrock-agents-cancer-biomarker-discovery.git'
+   Default: 'https://github.com/berilunay/amazon-bedrock-agents-cancer-biomarker-discovery.git'
   ImageTag:
     Type: String
     Default: latest
@@ -42,7 +42,7 @@ Parameters:
   GitBranch:
     Type: String
     Description: The github branch to clone 
-    Default: hcls-agents-workshop
+    Default: strands-streamlit-ui
     AllowedValues:
       - hcls-agents-workshop
       
