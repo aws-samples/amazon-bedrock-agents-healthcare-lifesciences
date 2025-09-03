@@ -1287,7 +1287,7 @@ Resources:
                 for obj in response.get('Contents', []):
                   if obj['Key'].startswith('packaged_') and obj['Key'].endswith('.yaml') and obj['Key'] != "packaged_agent_build.yaml":
                     agent_name = obj['Key'].replace('packaged_', '').replace('.yaml', '')
-                    if agent_name not in ['supervisor_agent', 'streamlit_build']:
+                    if agent_name not in ['supervisor_agent', 'streamlit_build','streamlit_build_agentcore']:
                       agents.append(agent_name)
                 
                 cfnresponse.send(event, context, cfnresponse.SUCCESS, {
