@@ -907,6 +907,15 @@ Resources:
       ProjectName: !Ref StreamlitAppLogic
 
 Outputs:
+  VPCId:
+    Description: VPC ID for sharing with AgentCore
+    Value: !Ref VPC
+  InternetGatewayId:
+    Description: Internet Gateway ID for sharing with AgentCore
+    Value: !Ref InternetGateway
+  PublicRouteTableId:
+    Description: Public Route Table ID for sharing with AgentCore
+    Value: !Ref PublicRouteTable
   CloudfrontURL:
     Description: "CloudFront URL"
     Value: !GetAtt Distribution.DomainName

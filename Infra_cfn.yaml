@@ -1180,7 +1180,7 @@ Resources:
   StreamlitBuildNestedStackAgentCore:
     Type: AWS::CloudFormation::Stack
     DependsOn: 
-      - AgentBuildNestedStack
+      - StreamlitBuildNestedStack  # Wait for original Streamlit to create VPC
     Properties:
       TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/packaged_streamlit_build_agentcore.yaml
       Parameters:
@@ -1188,6 +1188,10 @@ Resources:
         GitRepoURL: !Ref GithubLink
         ImageTag: !Ref ImageTag
         GitBranch: !Ref GitBranch
+        # Pass shared VPC parameters
+        SharedVPCId: !GetAtt StreamlitBuildNestedStack.Outputs.VPCId
+        SharedInternetGatewayId: !GetAtt StreamlitBuildNestedStack.Outputs.InternetGatewayId
+        SharedPublicRouteTableId: !GetAtt StreamlitBuildNestedStack.Outputs.PublicRouteTableId
       TimeoutInMinutes: 35
 
 Outputs:

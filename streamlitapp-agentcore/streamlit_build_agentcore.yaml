@@ -1,21 +1,17 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'CloudFormation template for AgentCore Streamlit app deployment on ECS Fargate'
+Description: 'CloudFormation template for AgentCore Streamlit app deployment on ECS Fargate - Shared VPC'
 
 Parameters:
-  Vpccidr:
-    Description: Please enter the IP range (CIDR notation) for the VPC
+  # Shared VPC Parameters - use same CIDR as original but different subnets
+  PublicSubnetCcidr:
+    Description: Please enter the IP range (CIDR notation) for the AgentCore public subnet in the first Availability Zone
     Type: String
-    Default: 10.1.0.0/16
+    Default: 10.0.4.0/24
 
-  PublicSubnetAcidr:
-    Description: Please enter the IP range (CIDR notation) for the public subnet in the first Availability Zone
+  PublicSubnetDcidr:
+    Description: Please enter the IP range (CIDR notation) for the AgentCore public subnet in the second Availability Zone
     Type: String
-    Default: 10.1.0.0/24
-
-  PublicSubnetBcidr:
-    Description: Please enter the IP range (CIDR notation) for the public subnet in the second Availability Zone
-    Type: String
-    Default: 10.1.1.0/24
+    Default: 10.0.5.0/24
 
   GitRepoURL:
     Type: String
@@ -39,6 +35,17 @@ Parameters:
     Description: 'The github branch to clone, change only for dev testing'
     Default: 'strands-streamlit-ui'
 
+  # Import shared VPC resources
+  SharedVPCId:
+    Type: String
+    Description: VPC ID from the original Streamlit stack
+  SharedInternetGatewayId:
+    Type: String
+    Description: Internet Gateway ID from the original Streamlit stack
+  SharedPublicRouteTableId:
+    Type: String
+    Description: Public Route Table ID from the original Streamlit stack
+
 Mappings:
   ELBRegionMap:
     'us-east-1':
@@ -52,155 +59,45 @@ Mappings:
       PrefixListCloudFront: 'pl-82a045eb'
 
 Resources:
-  LogsPolicyAgentCore:
-    Type: "AWS::IAM::ManagedPolicy"
-    Properties:
-      Path: /
-      ManagedPolicyName: !Sub "LogsPolicyAgentCore${EnvironmentName}${AWS::Region}"
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: 'Allow'
-            Action:
-              - 'logs:CreateLogStream'
-              - 'logs:PutLogEvents'
-            Resource: 
-              - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:${VPCLogGroupAgentCore}:*'
-              - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:${VPCLogGroupAgentCore}'
-          - Effect: 'Allow'
-            Action:
-              - 'logs:CreateLogGroup'
-              - 'logs:PutRetentionPolicy'
-            Resource: 
-              - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:${VPCLogGroupAgentCore}'
-
-  VPCAgentCore:
-    Type: AWS::EC2::VPC
-    Properties:
-      CidrBlock: !Ref Vpccidr
-      EnableDnsSupport: true
-      EnableDnsHostnames: true
-      Tags:
-        - Key: Name
-          Value: 'VPCAgentCore'
-  
-  VPCLogGroupAgentCore:
-    DeletionPolicy: Retain
-    Type: 'AWS::Logs::LogGroup'
-    Properties:
-      RetentionInDays: 7
-      
-  VPCLogRoleAgentCore:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: vpc-flow-logs.amazonaws.com
-            Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - !GetAtt LogsPolicyAgentCore.PolicyArn
-  
-  VPCFlowLogAgentCore:
-    Type: "AWS::EC2::FlowLog"
-    Properties:
-      ResourceId: !Ref VPCAgentCore
-      ResourceType: VPC
-      TrafficType: ALL
-      LogGroupName: !Ref VPCLogGroupAgentCore
-      DeliverLogsPermissionArn: !GetAtt VPCLogRoleAgentCore.Arn
-  
-  InternetGatewayAgentCore:
-    Type: AWS::EC2::InternetGateway
-    Properties:
-      Tags:
-        - Key: Name
-          Value: InternetGatewayAgentCore
-
-  InternetGatewayAttachmentAgentCore:
-    Type: AWS::EC2::VPCGatewayAttachment
-    Properties:
-      InternetGatewayId: !Ref InternetGatewayAgentCore
-      VpcId: !Ref VPCAgentCore
-
-  PublicSubnetAAgentCore:  
+  # New subnets in shared VPC
+  PublicSubnetCAgentCore:  
     Type: AWS::EC2::Subnet
     Properties:
-      CidrBlock: !Ref PublicSubnetAcidr
-      VpcId: !Ref VPCAgentCore
+      CidrBlock: !Ref PublicSubnetCcidr
+      VpcId: !Ref SharedVPCId
       AvailabilityZone: !Select 
         - 0
         - Fn::GetAZs: !Ref 'AWS::Region'
       Tags:
         - Key: Name
-          Value: PublicSubnetAAgentCore
+          Value: PublicSubnetCAgentCore
 
-  PublicSubnetBAgentCore:
+  PublicSubnetDAgentCore:
     Type: AWS::EC2::Subnet
     Properties:
-      CidrBlock: !Ref PublicSubnetBcidr
-      VpcId: !Ref VPCAgentCore
+      CidrBlock: !Ref PublicSubnetDcidr
+      VpcId: !Ref SharedVPCId
       AvailabilityZone: !Select 
         - 1
         - Fn::GetAZs: !Ref 'AWS::Region'
       Tags:
         - Key: Name
-          Value: PublicSubnetBAgentCore
+          Value: PublicSubnetDAgentCore
 
-  NatGatewayAEIPAgentCore:
-    Type: AWS::EC2::EIP
-    DependsOn: InternetGatewayAttachmentAgentCore
-    Properties:
-      Domain: vpc
-
-  NatGatewayBEIPAgentCore:
-    Type: AWS::EC2::EIP
-    DependsOn: InternetGatewayAttachmentAgentCore
-    Properties:
-      Domain: vpc
-
-  NatGatewayAAgentCore:
-    Type: AWS::EC2::NatGateway
-    Properties:
-      AllocationId: !GetAtt NatGatewayAEIPAgentCore.AllocationId
-      SubnetId: !Ref PublicSubnetAAgentCore
-
-  NatGatewayBAgentCore:
-    Type: AWS::EC2::NatGateway
-    Properties:
-      AllocationId: !GetAtt NatGatewayBEIPAgentCore.AllocationId
-      SubnetId: !Ref PublicSubnetBAgentCore
-  
-  PublicRouteTableAgentCore:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId: !Ref VPCAgentCore
-      Tags:
-        - Key: Name
-          Value: PublicRouteTableAgentCore
-  
-  DefaultPublicRouteAgentCore:
-    Type: AWS::EC2::Route
-    DependsOn: InternetGatewayAttachmentAgentCore
-    Properties:
-      RouteTableId: !Ref PublicRouteTableAgentCore
-      DestinationCidrBlock: 0.0.0.0/0
-      GatewayId: !Ref InternetGatewayAgentCore
-
-  PublicSubnetARouteTableAssociationAgentCore:
+  # Associate new subnets with shared route table
+  PublicSubnetCRouteTableAssociationAgentCore:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
-      RouteTableId: !Ref PublicRouteTableAgentCore
-      SubnetId: !Ref PublicSubnetAAgentCore
+      RouteTableId: !Ref SharedPublicRouteTableId
+      SubnetId: !Ref PublicSubnetCAgentCore
 
-  PublicSubnetBRouteTableAssociationAgentCore:
+  PublicSubnetDRouteTableAssociationAgentCore:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
-      RouteTableId: !Ref PublicRouteTableAgentCore
-      SubnetId: !Ref PublicSubnetBAgentCore
+      RouteTableId: !Ref SharedPublicRouteTableId
+      SubnetId: !Ref PublicSubnetDAgentCore
 
+  # ECS Cluster and related resources
   ECSClusterAgentCore:
     Type: AWS::ECS::Cluster
     Properties:
@@ -294,8 +191,8 @@ Resources:
         AwsvpcConfiguration:
           AssignPublicIp: ENABLED
           Subnets: 
-            - !Ref PublicSubnetAAgentCore
-            - !Ref PublicSubnetBAgentCore
+            - !Ref PublicSubnetCAgentCore
+            - !Ref PublicSubnetDAgentCore
           SecurityGroups:
             - !Ref ContainerSecurityGroupAgentCore
       LoadBalancers:
@@ -307,7 +204,7 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Security group for AgentCore Streamlit container
-      VpcId: !Ref VPCAgentCore
+      VpcId: !Ref SharedVPCId
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 80
@@ -333,7 +230,7 @@ Resources:
       Port: 80
       Protocol: "HTTP"
       TargetType: ip
-      VpcId: !Ref VPCAgentCore
+      VpcId: !Ref SharedVPCId
       Name: !Join ['-', ['StreamlitTGAgentCore', !Ref EnvironmentName]]
   
   StreamlitALBListenerRuleAgentCore:
@@ -367,8 +264,8 @@ Resources:
       Scheme: internet-facing
       Type: application
       Subnets: 
-        - !Ref PublicSubnetAAgentCore
-        - !Ref PublicSubnetBAgentCore
+        - !Ref PublicSubnetCAgentCore
+        - !Ref PublicSubnetDAgentCore
       SecurityGroups: 
         - !Ref StreamlitALBSecurityGroupAgentCore
       IpAddressType: ipv4
@@ -377,7 +274,7 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Allow http to the internet for AgentCore
-      VpcId: !Ref VPCAgentCore
+      VpcId: !Ref SharedVPCId
       Tags:
         - Key: Name
           Value: !Join ['-', ['StreamlitALBSecurityGroupAgentCore', !Ref EnvironmentName]]
@@ -512,15 +409,263 @@ Resources:
               Bool:
                 'aws:SecureTransport': 'false'
 
+  # CodeBuild Project and related resources
+  StreamlitAppLogicAgentCore:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: StreamlitAgentCoreFrontendProject
+      ServiceRole: !GetAtt StreamlitCodeBuildRoleAgentCore.Arn
+      Artifacts:
+        Type: NO_ARTIFACTS
+      LogsConfig:
+        CloudWatchLogs:
+          Status: ENABLED
+          GroupName: !Ref CodeBuildLogGroupAgentCore
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
+        PrivilegedMode: true
+        EnvironmentVariables:
+          - Name: StreamlitImageRepoAgentCore
+            Value: !Ref StreamlitImageRepoAgentCore
+      Source:
+        Type: GITHUB
+        Location: !Ref GitRepoURL
+        BuildSpec: !Sub |
+          version: 0.2
+          phases:
+            pre_build:
+              commands:
+                - echo "Starting pre_build phase"
+                - echo "Logging into Amazon ECR..."
+                - pip3 install awscli 
+                - aws ecr get-login-password --region ${AWS::Region} | docker login --username AWS --password-stdin ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com
+                - echo "ECR login complete"
+            build:
+              commands:
+                - echo "Starting build phase"
+                - echo "Cloning Git repository..."
+                - GIT_LFS_SKIP_SMUDGE=1 git clone -b ${GitBranch} --single-branch ${GitRepoURL} repo
+                - cd repo/streamlitapp-agentcore
+                - echo Build started on `date`
+                - echo "Renaming Dockerfile.txt to Dockerfile"
+                - mv Dockerfile.txt Dockerfile
+                - echo "Adding ENTRYPOINT to Dockerfile"
+                - printf 'ENTRYPOINT ["streamlit", "run", "app.py", "--server.port=80", "--", "--env", "${EnvironmentName}"]' >> Dockerfile
+                - echo "Contents of Dockerfile:"
+                - cat Dockerfile
+                - echo "Building Docker image..."
+                - docker build -t ${StreamlitImageRepoAgentCore} .
+                - echo "Tagging Docker image..."
+                - docker tag ${StreamlitImageRepoAgentCore}:latest ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${StreamlitImageRepoAgentCore}:${ImageTag}
+                - echo "Docker image tagged"
+            post_build:
+              commands:
+                - echo "Starting post_build phase"
+                - echo "Pushing Docker image to ECR..."
+                - docker push ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${StreamlitImageRepoAgentCore}:${ImageTag}
+                - echo "Docker image pushed to ECR"
+      TimeoutInMinutes: 10
+
+  CodeBuildLogGroupAgentCore:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/codebuild/${AWS::StackName}-StreamlitAppLogicAgentCore'
+      RetentionInDays: 14
+
+  StreamlitCodeBuildRoleAgentCore:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StreamlitCodeBuildBasePolicyAgentCore
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Resource: 
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:${CodeBuildLogGroupAgentCore}'
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:${CodeBuildLogGroupAgentCore}:*'
+                Action:
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+        - PolicyName: StreamlitECRAccessAgentCore
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:GetRepositoryPolicy
+                  - ecr:DescribeRepositories
+                  - ecr:ListImages
+                  - ecr:DescribeImages
+                  - ecr:BatchGetImage
+                  - ecr:InitiateLayerUpload
+                  - ecr:UploadLayerPart
+                  - ecr:CompleteLayerUpload
+                  - ecr:PutImage
+                Resource: !Sub 'arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/${StreamlitImageRepoAgentCore}'
+
   StreamlitImageRepoAgentCore:
     Type: AWS::ECR::Repository
     Properties:
       EmptyOnDelete: true
 
+  EnsureECRImagePushedAgentCore:
+    Type: Custom::EnsureECRImagePushedAgentCore
+    DependsOn: 
+      - TriggerBuildCustomResourceAgentCore
+    Properties:
+      ServiceToken: !GetAtt TriggerBuildLambdaAgentCore.Arn
+      ECRRepository: !Ref StreamlitImageRepoAgentCore
+      ImageTag: !Ref ImageTag
+
+  TriggerBuildLambdaAgentCore:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt TriggerBuildLambdaRoleAgentCore.Arn
+      Code:
+        ZipFile: |
+          import boto3
+          import cfnresponse
+          import time
+
+          def handler(event, context):
+              if event['RequestType'] in ['Create', 'Update']:
+                  try:
+                      codebuild = boto3.client('codebuild')
+                      ecr = boto3.client('ecr')
+                      
+                      if 'ProjectName' in event['ResourceProperties']:
+                          # This is for TriggerBuildCustomResource
+                          project_name = event['ResourceProperties']['ProjectName']
+                          response = codebuild.start_build(projectName=project_name)
+                          build_id = response['build']['id']
+                          print(f"Build started: {build_id}")
+                          
+                          # Wait for build to complete
+                          while True:
+                              build_status = codebuild.batch_get_builds(ids=[build_id])['builds'][0]['buildStatus']
+                              if build_status == 'SUCCEEDED':
+                                  print("Build completed successfully")
+                                  break
+                              elif build_status in ['FAILED', 'STOPPED', 'TIMED_OUT']:
+                                  print(f"Build failed with status: {build_status}")
+                                  cfnresponse.send(event, context, cfnresponse.FAILED, {"Error": f"Build failed with status: {build_status}"})
+                                  return
+                              time.sleep(10)  # Wait for 10 seconds before checking again
+                          
+                          cfnresponse.send(event, context, cfnresponse.SUCCESS, {"BuildId": build_id})
+                          
+                      elif 'ECRRepository' in event['ResourceProperties']:
+                          # This is for EnsureECRImagePushed
+                          repository_name = event['ResourceProperties']['ECRRepository']
+                          image_tag = event['ResourceProperties']['ImageTag']
+                          
+                          # Wait for image to be available in ECR
+                          max_attempts = 30  # Maximum number of attempts
+                          for attempt in range(max_attempts):
+                              try:
+                                  ecr.describe_images(repositoryName=repository_name, imageIds=[{'imageTag': image_tag}])
+                                  print(f"Image {repository_name}:{image_tag} exists in ECR")
+                                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+                                  return
+                              except ecr.exceptions.ImageNotFoundException:
+                                  if attempt == max_attempts - 1:
+                                      print(f"Image {repository_name}:{image_tag} not found in ECR after {max_attempts} attempts")
+                                      cfnresponse.send(event, context, cfnresponse.FAILED, {"Error": "Image not found in ECR after maximum attempts"})
+                                      return
+                                  time.sleep(10)  # Wait for 10 seconds before trying again
+                      else:
+                          cfnresponse.send(event, context, cfnresponse.FAILED, {"Error": "Invalid ResourceProperties"})
+                  except Exception as e:
+                      print(f"Error: {str(e)}")
+                      cfnresponse.send(event, context, cfnresponse.FAILED, {"Error": str(e)})
+              else:
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+      Runtime: python3.8
+      Timeout: 900
+
+  TriggerBuildLambdaRoleAgentCore:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CodeBuildStartBuildPolicyAgentCore
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: 
+                  - codebuild:StartBuild
+                  - codebuild:BatchGetBuilds
+                Resource: 
+                  - !GetAtt StreamlitAppLogicAgentCore.Arn
+        - PolicyName: CloudWatchLogsPolicyAgentCore
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: 
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${AWS::StackName}-TriggerBuildLambdaAgentCore:*'
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                Resource: 
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${AWS::StackName}-TriggerBuildLambdaAgentCore'
+        - PolicyName: ECRDescribeImagesPolicyAgentCore
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: ecr:DescribeImages
+                Resource: !Sub 'arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/${StreamlitImageRepoAgentCore}'
+        - PolicyName: PassRoleToCodeBuildAgentCore
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - iam:PassRole
+                Resource: !GetAtt StreamlitCodeBuildRoleAgentCore.Arn
+  
+  TriggerBuildCustomResourceAgentCore:
+    Type: Custom::TriggerBuildAgentCore
+    DependsOn: StreamlitAppLogicAgentCore
+    Properties:
+      ServiceToken: !GetAtt TriggerBuildLambdaAgentCore.Arn
+      ProjectName: !Ref StreamlitAppLogicAgentCore
+
 Outputs:
   CloudfrontURLAgentCore:
     Description: "AgentCore CloudFront URL"
     Value: !GetAtt DistributionAgentCore.DomainName
+  CodeBuildProjectNameAgentCore:
+    Description: Name of the AgentCore CodeBuild project
+    Value: !Ref StreamlitAppLogicAgentCore
   ECRRepositoryURIAgentCore:
     Description: URI of the AgentCore ECR repository
     Value: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${StreamlitImageRepoAgentCore}
