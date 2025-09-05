@@ -518,6 +518,19 @@ Resources:
                   - ecr:CompleteLayerUpload
                   - ecr:PutImage
                 Resource: !Sub 'arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/${StreamlitImageRepoAgentCore}'
+        - PolicyName: StreamlitS3AccessAgentCore
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Resource: 
+                  - !Sub 'arn:aws:s3:::${AWS::AccountId}-codepipeline-${AWS::Region}'
+                  - !Sub 'arn:aws:s3:::${AWS::AccountId}-codepipeline-${AWS::Region}/*'
+                Action:
+                  - 's3:GetObject'
+                  - 's3:GetObjectVersion'
+                  - 's3:GetBucketVersioning'
+                  - 's3:PutObject'
 
   StreamlitImageRepoAgentCore:
     Type: AWS::ECR::Repository
