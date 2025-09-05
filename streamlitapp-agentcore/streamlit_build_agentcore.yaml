@@ -334,7 +334,7 @@ Resources:
       Protocol: "HTTP"
       TargetType: ip
       VpcId: !Ref VPCAgentCore
-      Name: !Join ['-', ['StreamlitContainerTGAgentCore', !Ref EnvironmentName]]
+      Name: !Join ['-', ['StreamlitTGAgentCore', !Ref EnvironmentName]]
   
   StreamlitALBListenerRuleAgentCore:
     Type: AWS::ElasticLoadBalancingV2::ListenerRule
