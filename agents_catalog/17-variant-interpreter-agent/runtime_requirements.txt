@@ -1,0 +1,11 @@
+boto3
+sagemaker
+termcolor
+xmltodict
+matplotlib
+strands-agents
+strands-agents-tools
+uv
+bedrock-agentcore
+bedrock-agentcore-starter-toolkit
+aws-opentelemetry-distro==0.10.0
