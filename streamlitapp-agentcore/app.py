@@ -26,8 +26,6 @@ def get_environment():
     except (ValueError, IndexError):
         raise ValueError("Environment parameter not found. Please provide --env parameter.")
 
-
-
 environmentName = get_environment()
 
 ssm_client = boto3.client('ssm')
@@ -167,34 +165,29 @@ def response_generator():
     for m in st.session_state.messages:
         messagesStr = messagesStr + "role:" + m["role"] + " " + "content:" + m["content"] + "\n\n"
     
-    # AWS credentials
+    # Get AWS region
     session = boto3.Session()
-    credentials = session.get_credentials()
     region = session.region_name
     
-    # AgentCore Runtime URL
-    escaped_arn = urllib.parse.quote(agent_arn, safe="")
-    url = f"https://bedrock-agentcore.{region}.amazonaws.com/runtimes/{escaped_arn}/invocations"
-    
-    # Request payload
+    # Retrieve agentcore client
+    client = boto3.client('bedrock-agentcore', region_name=region)
     payload = {"prompt": messagesStr}
-    headers = {
-        "Content-Type": "application/json",
-        "X-Amzn-Bedrock-AgentCore-Runtime-Session-Id": session_id,
-    }
-    
-    # Sign with AWS SDK
-    request = AWSRequest(method='POST', url=url, data=json.dumps(payload), headers=headers)
-    SigV4Auth(credentials, "bedrock-agentcore", region).add_auth(request)
-    
+
     try:
-        response = requests.post(url, headers=dict(request.headers), data=request.body, timeout=100, stream=True)
-        
-        for line in response.iter_lines(chunk_size=1):
+        response = client.invoke_agent_runtime(
+            agentRuntimeArn=agent_arn,
+            runtimeSessionId=session_id,
+            qualifier="DEFAULT",
+            payload=json.dumps(payload)
+        )
+
+        # Handle streaming response
+        for line in response["response"].iter_lines(chunk_size=1):
             if line:
                 line = line.decode("utf-8")
+                line = line.encode().decode('unicode_escape')
                 if line.startswith("data: "):
-                    yield line[6:].replace('"', "")
+                    yield line[6:].replace('"', '')
                     
     except Exception as e:
         print(f"AgentCore error: {e}")
