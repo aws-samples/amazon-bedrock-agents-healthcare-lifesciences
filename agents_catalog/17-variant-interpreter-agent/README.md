@@ -32,6 +32,10 @@ This system enables researchers and clinicians to:
 
 ![Genomics VEP Pipeline Architecture](VCF_agent_fin.drawio.png)
 
+## 🔬 Agent view
+
+![Genomics Agent View](Genomics_agent.png)
+
 The system follows this workflow:
 1. **Data Preparation**: VCF files and VEP cache files are uploaded to S3 buckets
 2. **Container Setup**: VEP Docker image is pushed to ECR for workflow execution
