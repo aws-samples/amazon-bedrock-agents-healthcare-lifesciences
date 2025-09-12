@@ -161,6 +161,34 @@ Resources:
               Service: ecs-tasks.amazonaws.com
             Action: 'sts:AssumeRole'
       Policies:
+        - PolicyName: SSMParameterAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'ssm:GetParameter'
+                  - 'ssm:GetParameters'
+                Resource:
+                  - !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/streamlitapp/${EnvironmentName}/*'
+                  - !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/streamlitapp/${EnvironmentName}'
+        - PolicyName: S3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 's3:GetObject'
+                  - 's3:ListBucket'
+                  - 's3:GetBucketLocation'
+                  - 's3:ListBucketVersions'
+                Resource:
+                  # Agent build bucket permissions
+                  - !Sub 'arn:aws:s3:::${EnvironmentName}-${AWS::AccountId}-${AWS::Region}-agent-build-bucket'
+                  - !Sub 'arn:aws:s3:::${EnvironmentName}-${AWS::AccountId}-${AWS::Region}-agent-build-bucket/*'
+                  # Logging bucket permissions
+                  - !Sub 'arn:aws:s3:::${LoggingBucket}'
+                  - !Sub 'arn:aws:s3:::${LoggingBucket}/*'
         - PolicyName: BedrockAccess
           PolicyDocument:
             Version: '2012-10-17'
@@ -171,6 +199,10 @@ Resources:
                   - 'bedrock:InvokeModelWithResponseStream'
                 Resource: 
                   - !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/*'
+              - Effect: Allow
+                Action:
+                  - 'bedrock-agentcore:InvokeAgentRuntime'
+                Resource: '*'
 
   CloudWatchLogsGroupAgentCore:
     Type: AWS::Logs::LogGroup
