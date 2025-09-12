@@ -1,4 +1,4 @@
-FROM public.ecr.aws/docker/library/python:3.9-slim-bookworm
+FROM public.ecr.aws/docker/library/python:3.12-slim-bookworm
 
 WORKDIR /frontend
 
@@ -16,3 +16,6 @@ RUN pip install ipython
 RUN pip3 install -r requirements.txt
 
 EXPOSE 80
+
+
+
