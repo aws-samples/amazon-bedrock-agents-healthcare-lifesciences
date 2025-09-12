@@ -187,8 +187,8 @@ Resources:
                   - !Sub 'arn:aws:s3:::${EnvironmentName}-${AWS::AccountId}-${AWS::Region}-agent-build-bucket'
                   - !Sub 'arn:aws:s3:::${EnvironmentName}-${AWS::AccountId}-${AWS::Region}-agent-build-bucket/*'
                   # Logging bucket permissions
-                  - !Sub 'arn:aws:s3:::${LoggingBucket}'
-                  - !Sub 'arn:aws:s3:::${LoggingBucket}/*'
+                  - !Sub 'arn:aws:s3:::${LoggingBucketAgentCore}'
+                  - !Sub 'arn:aws:s3:::${LoggingBucketAgentCore}/*'
         - PolicyName: BedrockAccess
           PolicyDocument:
             Version: '2012-10-17'
