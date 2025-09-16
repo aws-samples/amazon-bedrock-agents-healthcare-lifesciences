@@ -46,6 +46,12 @@ Mappings:
       PandasLayer: 'arn:aws:lambda:us-west-1:336392948345:layer:AWSSDKPandas-Python312:12'
     us-west-2:
       PandasLayer: 'arn:aws:lambda:us-west-2:336392948345:layer:AWSSDKPandas-Python312:12'
+    eu-central-1:
+      PandasLayer: 'arn:aws:lambda:eu-central-1:336392948345:layer:AWSSDKPandas-Python39:20'
+    eu-west-1:
+      PandasLayer: 'arn:aws:lambda:eu-west-1:336392948345:layer:AWSSDKPandas-Python39:20'
+    eu-west-3:
+      PandasLayer: 'arn:aws:lambda:eu-west-3:336392948345:layer:AWSSDKPandas-Python39:22'
 Conditions:
   CreateAgentResources: !Equals [!Ref DevMode, "false"]
 
