@@ -1,11 +1,15 @@
-
 import boto3
 import json
 import uuid
 import requests
+import io
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 from typing import Dict, Any, List
 from strands import Agent, tool
 from strands.models import BedrockModel
+from utils.boto3_helper import *
 
 # Get AWS account information
 sts_client = boto3.client('sts')
@@ -13,20 +17,23 @@ account_id = sts_client.get_caller_identity()['Account']
 region = boto3.Session().region_name
 
 # Lambda function configurations (reusing existing infrastructure)
-bar_chart_lambda_function_name = "MatPlotBarChartLambda"  # Change if different in your account
 scientific_plot_lambda_function_name = "ScientificPlotLambda"  # Change if different in your account
 
-bar_chart_lambda_function_arn = f"arn:aws:lambda:{region}:{account_id}:function:{bar_chart_lambda_function_name}"
 scientific_plot_lambda_function_arn = f"arn:aws:lambda:{region}:{account_id}:function:{scientific_plot_lambda_function_name}"
 
 # Initialize AWS clients
 lambda_client = boto3.client('lambda', region_name=region)
 bedrock_client = boto3.client('bedrock-runtime', region_name=region)
 
-print(f"Bar Chart Lambda ARN: {bar_chart_lambda_function_arn}")
+# Retrieve bucket information
+s3_bucket = find_s3_bucket_name_by_suffix('-agent-build-bucket')
+if not s3_bucket:
+    print("Error: S3 bucket with suffix '-agent-build-bucket' not found!")
+
 print(f"Scientific Plot Lambda ARN: {scientific_plot_lambda_function_arn}")
 print(f"Region: {region}")
 print(f"Account ID: {account_id}")
+print(f"S3 bucket: {s3_bucket}")
 
 statistician_agent_name = 'Statistician-strands'
 statistician_agent_description = "scientific analysis for survival analysis using Strands framework"
@@ -207,9 +214,29 @@ def create_bar_chart(title: str, x_label: str, x_values: List[str], y_label: str
     }
     
     print(f"\nBar Chart Input: {json.dumps(payload, indent=2)}\n")
-    result = invoke_lambda_function(bar_chart_lambda_function_arn, 'bar_chart', payload)
-    print(f"\nBar Chart Output: {json.dumps(result, indent=2)}\n")
-    return json.dumps(result, indent=2)
+    
+    print('bar chart')
+    print(x_values)
+    print(y_values)
+    fig, ax = plt.subplots(figsize=(10, 6))  
+    ax.bar(x_values, y_values, color='blue')
+    ax.set_title(title)
+    ax.set_xlabel(x_label)
+    ax.set_ylabel(y_label)
+    
+    output_name=f"{title}.png"
+    
+    img_data = io.BytesIO()
+    fig.savefig(img_data, format='png')
+    img_data.seek(0)
+    s3 = boto3.resource('s3')
+    bucket = s3.Bucket(s3_bucket)
+    filepath = 'graphs/' + str(output_name)
+    bucket.put_object(Body=img_data, ContentType='image/png', Key=filepath)
+    
+    result = f"Your bar chart named '{title}' is saved to your s3 bucket as '{filepath}'"
+    print(f"\nBar Chart Output: {result}\n")
+    return result
 
 @tool
 def plot_kaplan_meier(biomarker_name: str, duration_baseline: List[float], duration_condition: List[float], 
