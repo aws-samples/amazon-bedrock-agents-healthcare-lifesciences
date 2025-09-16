@@ -46,11 +46,23 @@ Mappings:
       ELBAccountId: '127311923021'
     'us-west-2':
       ELBAccountId: '797873946194'
+    'eu-central-1':
+      ELBAccountId: '054676820928'
+    'eu-west-1':
+      ELBAccountId: '156460612806'
+    'eu-west-2':
+      ELBAccountId: '652711504416'
   CFRegionMap:
     'us-east-1':
       PrefixListCloudFront: 'pl-3b927c52'
     'us-west-2':
       PrefixListCloudFront: 'pl-82a045eb'
+    'eu-central-1':
+      PrefixListCloudFront: 'pl-a3a144ca'
+    'eu-west-1':
+      PrefixListCloudFront: 'pl-4fa04526'
+    'eu-west-2':
+      PrefixListCloudFront: 'pl-9bf6e4f2'
 
 Resources:
 # VPC
