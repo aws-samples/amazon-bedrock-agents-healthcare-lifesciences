@@ -56,7 +56,6 @@ Mappings:
       PandasLayer: 'arn:aws:lambda:us-west-1:336392948345:layer:AWSSDKPandas-Python312:12'
     us-west-2:
       PandasLayer: 'arn:aws:lambda:us-west-2:336392948345:layer:AWSSDKPandas-Python312:12'
-
 Conditions:
   AutoCreateAgents: !Equals [!Ref MultiAgentDevMode, "false"]
 
