@@ -329,11 +329,7 @@ The `test-data/` directory contains real-world examples:
 - **🛠️ Tool Integration**: Can be embedded in ETL pipelines and data mapping workflows
 - **📝 Documentation**: Provides authoritative OMOP guidance with source references
 
-![OMOP Harmonization Architecture](images/architecture.png)
-
-The architecture demonstrates a **dual-agent system** where the Structure Agent provides interactive OMOP knowledge through natural language queries, while the Harmonization Agent performs automated field mapping using semantic embeddings and AI analysis. Both agents leverage the same Neptune Analytics graph database containing the complete OMOP CDM structure, ensuring consistent and authoritative responses across all harmonization and query operations.
-
-## 🏗️ **Architecture & Technology Stack**
+## 🏗️ **Technology Stack**
 
 ### **🧠 AI & Machine Learning**
 - **Amazon Bedrock Titan Embeddings v2**: State-of-the-art text embeddings for semantic similarity
