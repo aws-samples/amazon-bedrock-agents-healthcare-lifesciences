@@ -2,7 +2,10 @@
 
 This project provides **AI-powered harmonization of healthcare data to the OMOP Common Data Model** using advanced semantic similarity and embeddings technology. The solution consists of two specialized agents that work together to understand OMOP CDM structure and intelligently map source healthcare data fields to appropriate OMOP targets.
 
-## 🎯 **Agent Overview**
+## 🎯 **Overview**
+
+![OMOP Harmonization Architecture](images/architecture.png)
+
 
 ### **OMOP Structure Agent**
 An intelligent query agent that provides **real-time access to OMOP CDM knowledge** through natural language interactions. This agent serves as your OMOP expert, capable of answering complex questions about the Common Data Model structure, relationships, and field specifications.
@@ -325,6 +328,10 @@ The `test-data/` directory contains real-world examples:
 - **⚡ Fast Responses**: Optimized graph queries with sub-second response times
 - **🛠️ Tool Integration**: Can be embedded in ETL pipelines and data mapping workflows
 - **📝 Documentation**: Provides authoritative OMOP guidance with source references
+
+![OMOP Harmonization Architecture](images/architecture.png)
+
+The architecture demonstrates a **dual-agent system** where the Structure Agent provides interactive OMOP knowledge through natural language queries, while the Harmonization Agent performs automated field mapping using semantic embeddings and AI analysis. Both agents leverage the same Neptune Analytics graph database containing the complete OMOP CDM structure, ensuring consistent and authoritative responses across all harmonization and query operations.
 
 ## 🏗️ **Architecture & Technology Stack**
 

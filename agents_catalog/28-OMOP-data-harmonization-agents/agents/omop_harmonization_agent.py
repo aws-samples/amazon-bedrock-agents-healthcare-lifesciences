@@ -9,6 +9,7 @@ import argparse
 import pandas as pd
 from omop_structure_agent import create_omop_structure_agent, create_mcp_client
 import json
+from pydantic import BaseModel, Field
 
 sys.path.append('omop-ontology')
 from OMOP_ontology import OMOPOntology
@@ -31,6 +32,17 @@ logging.getLogger("strands").setLevel(logging.INFO)
 # Shared resources to avoid reinitialization
 shared_mcp_client = None
 shared_structure_agent = None
+
+class OMOPMapping(BaseModel):
+    source: str = Field(description="Source field name")
+    target: str = Field(description="Target field name")
+    explanation: str = Field(description="Explanation for the mapping")
+    foreign_key: str = Field(description="Foreign key relationship if applicable", default="")
+    foreign_key_table: str = Field(description="Foreign key table if applicable", default="")
+    foreign_key_field: str = Field(description="Foreign key field if applicable", default="")
+
+# class OMOPMappingList(BaseModel):
+#     mappings: list[OMOPMapping] = Field(description="List of OMOP field mappings")
 
 def find_embedding_based_similar_matching_fields(source, ontology):
     """
@@ -94,52 +106,31 @@ def create_harmonization_synthesizer_agent():
 
     # Use the given potential targets based on embeddings to provide your harmonization recommendations. If necessary, use the graph ontology provided to further refine your analysis and identify foreign key relationships."""
 
-    system_prompt = """
+    system_prompt = """You are an expert in OMOP Common Data Model harmonization and field mapping. 
 
-    # OMOP Common Data Model Harmonization Expert
+Your task is to analyze potential OMOP field matches (identified through embedding similarity) and provide optimal target recommendations for data mapping.
 
-## Task Overview
-You are an expert in OMOP Common Data Model harmonization and field mapping. Your task is to analyze potential OMOP field matches (identified through embedding similarity) and provide optimal target recommendations for data mapping, including foreign key relationships based on the OMOP schema.
+## Process:
+1. Review the provided embedding-based matches for the source field
+2. Analyze semantic similarity scores and field descriptions
+3. Consider the source data context for better mapping accuracy
+4. Identify foreign key relationships where applicable
+5. Provide the best mapping recommendation
 
-## Input Information
-<input>
-- Source data term(s) requiring mapping
-- Potential target OMOP fields with embedding similarity scores
-</input>
+## Output Requirements:
+- Provide exactly ONE best mapping recommendation per source field
+- Use the structured format with all required fields
+- Include foreign key information when the target field has relationships
+- Provide clear reasoning for your mapping choice
+- Focus on the highest similarity score and best semantic match
 
-## Harmonization Process
-Follow this structured approach:
-
-1. **Review Potential Matches**: Carefully examine the provided potential OMOP field matches that were identified through embedding similarity.
-
-2. **Analyze Semantic Similarity**: 
-   - Evaluate the semantic relationship between source terms and potential OMOP targets
-   - Consider both similarity scores and enriched text descriptions
-   - Assess conceptual alignment beyond just lexical similarity
-
-3. **Consider Context**: Factor in the data source context to determine the most appropriate mapping.
-
-## Output Format
-For each source term, provide your recommendations in this json format:
-
-<jsonoutput>
-
-{
-    Recommendation : {
-        SourceField : [field_name],
-        OMOPField : [field_name],
-        OMOPTable: [table_name],
-        SimilarityScore: [score],
-        ForeignKeyRelationships: [relationships if any],
-        Reasoning: [brief explanation]
-    }
-}
-</jsonoutput>
-
-Provide your harmonization recommendation json based solely on the embedding similarity results and available ontology information. Focus on identifying the most semantically and structurally appropriate OMOP fields for the given source terms.
-Return only the structured json without additional explanations or commentary.
-
-    """
+You will return a structured OMOPMapping object with:
+- source: The original source field name
+- target: The recommended OMOP field name (format: table.field)
+- explanation: Clear reasoning for why this is the best mapping
+- foreign_key: Description of foreign key relationship if applicable
+- foreign_key_table: The table that this field references (if FK)
+- foreign_key_field: The field that this field references (if FK)"""
 
     agent = Agent(
         model=bedrockmodel,
@@ -151,6 +142,77 @@ Return only the structured json without additional explanations or commentary.
     )
     
     return agent
+
+# def harmonize_fields_to_omop(field_data: list, neptune_endpoint: str, region: str) -> list[OMOPMapping]:
+#     """
+#     Harmonize multiple fields to OMOP CDM and return array of OMOPMapping objects.
+    
+#     Args:
+#         field_data: List of dicts with 'label' and 'table_description' keys
+#         neptune_endpoint: Neptune graph endpoint
+#         region: AWS region
+        
+#     Returns:
+#         List of OMOPMapping objects
+#     """
+#     global neptune_graph_id
+#     neptune_graph_id = neptune_endpoint
+    
+#     mappings = []
+    
+#     try:
+#         # Initialize ontology
+#         ontology = OMOPOntology(graph_id=neptune_endpoint, region_name=region)
+        
+#         # Create harmonization agent
+#         harmonization_agent = create_harmonization_synthesizer_agent()
+        
+#         for field_info in field_data:
+#             label = field_info['label']
+#             table_description = field_info.get('table_description', '')
+            
+#             logging.info(f"Processing field: {label}")
+            
+#             # Find embedding matches
+#             source = f"{label}:{table_description}" if table_description else label
+#             embedding_matches = find_embedding_based_similar_matching_fields(source, ontology)
+            
+#             # Create harmonization request
+#             harmonization_request = f"""
+#             Source Field: {label}
+#             Source Context: {table_description}
+            
+#             Embedding-based OMOP matches found:
+#             {json.dumps(embedding_matches, indent=2)}
+            
+#             Please provide the best OMOP mapping for this source field.
+#             """
+            
+#             try:
+#                 # Get structured mapping
+#                 mapping = harmonization_agent.structured_output(
+#                     OMOPMapping, 
+#                     harmonization_request
+#                 )
+#                 mappings.append(mapping)
+                
+#             except Exception as e:
+#                 logging.error(f"Error processing field {label}: {e}")
+#                 # Add error mapping
+#                 error_mapping = OMOPMapping(
+#                     source=label,
+#                     target="unknown",
+#                     explanation=f"Error processing: {str(e)}",
+#                     foreign_key="",
+#                     foreign_key_table="",
+#                     foreign_key_field=""
+#                 )
+#                 mappings.append(error_mapping)
+    
+#     finally:
+#         cleanup_shared_resources()
+    
+#     return mappings
 
 def create_initial_messages():
     """Create initial messages for the conversation."""
@@ -204,34 +266,47 @@ def main(file_path, neptune_endpoint, region):
             # print(embedding_based_matching_nodes)
             # print("------------------------------------------")
             
+            # Create harmonization request
+            harmonization_request = f"""
+            Source Field: {label}
+            Source Context: {table_description}
             
-            matching_response = harmonization_agent(f"Omop target embeddings based matchings for source column in {label} in source table {table_description} are is below json format {json.dumps(embedding_based_matching_nodes)}")
+            Embedding-based OMOP matches found:
+            {json.dumps(embedding_based_matching_nodes, indent=2)}
             
-            # Extract text content if it's an AgentResult object
-            if hasattr(matching_response, 'content'):
-                harmonization_text = matching_response.content
-            elif hasattr(matching_response, 'text'):
-                harmonization_text = matching_response.text
-            else:
-                harmonization_text = str(matching_response)
+            Please provide the best OMOP mapping for this source field.
+            """
             
-            print("------------------------------------------")
-            print(f"Raw response: {harmonization_text}")
-            print("------------------------------------------")
-            
-            # Parse JSON response with error handling
             try:
-                if harmonization_text and harmonization_text.strip():
-                    # Try to parse as JSON
-                    harmonization_json = json.loads(harmonization_text)
-                else:
-                    logging.warning(f"Empty response for row {index + 1}, using raw text")
-                    harmonization_json = {"error": "Empty response", "raw_text": harmonization_text}
-            except json.JSONDecodeError as e:
-                logging.warning(f"JSON decode error for row {index + 1}: {e}")
-                logging.warning(f"Raw text: {harmonization_text}")
-                # Store as raw text if JSON parsing fails
-                harmonization_json = {"error": "JSON decode failed", "raw_text": harmonization_text}
+                # Use structured output to get OMOPMapping object
+                mapping_response = harmonization_agent.structured_output(
+                    OMOPMapping, 
+                    harmonization_request
+                )
+                
+                print("------------------------------------------")
+                print(f"Structured mapping for '{label}':")
+                print(f"Source: {mapping_response.source}")
+                print(f"Target: {mapping_response.target}")
+                print(f"Explanation: {mapping_response.explanation}")
+                if mapping_response.foreign_key:
+                    print(f"Foreign Key: {mapping_response.foreign_key}")
+                print("------------------------------------------")
+                
+                # Convert to dict for JSON serialization
+                harmonization_json = mapping_response.model_dump()
+                
+            except Exception as e:
+                logging.error(f"Error getting structured output for row {index + 1}: {e}")
+                # Fallback to create a basic mapping
+                harmonization_json = {
+                    "source": label,
+                    "target": "unknown",
+                    "explanation": f"Error processing: {str(e)}",
+                    "foreign_key": "",
+                    "foreign_key_table": "",
+                    "foreign_key_field": ""
+                }
             
             #break
             # Write result to file

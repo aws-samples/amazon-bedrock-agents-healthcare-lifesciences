@@ -1,1 +1,742 @@
-[]
+[
+  {
+    "row_index": 1,
+    "input_label": "Beneficiary Code",
+    "input_table_description": "CMS Inpatient Claims DE-SynPUF",
+    "source": "Beneficiary Code:CMS Inpatient Claims DE-SynPUF",
+    "embedding_matches": [
+      {
+        "id": "868dac5f-318a-46df-a020-4640c89c04c90",
+        "fieldName": "payer_concept_id",
+        "tableName": "payer_plan_period",
+        "enrichedText": "Field: payer_concept_id\n    Table: payer_plan_period\n    Field Description: This field represents the organization who reimburses the provider which administers care to the Person.\n    Table Description: The PAYER_PLAN_PERIOD table captures details of the period of time that a Person is continuously enrolled under a specific health Plan benefit structure from a given Payer. Each Person receiving healthcare is typically covered by a health benefit plan, which pays for (fully or partially), or directly provides, the care. These benefit plans are provided by payers, such as health insurances or state or government agencies. In each plan the details of the health benefits are defined for the Person or her family, and the health benefit Plan might change over time typically with increasing utilization (reaching certain cost thresholds such as deductibles), plan availability and purchasing choices of the Person. The unique combinations of Payer organizations, health benefit Plans and time periods in which they are valid for a Person are recorded in this table.\n    ETL Conventions: Map the Payer directly to a standard CONCEPT_ID. If one does not exists please contact the vocabulary team. There is no global controlled vocabulary available for this information. The point is to stratify on this information and identify if Persons have the same payer, though the name of the Payer is not necessary. If not available, set to 0. [Accepted Concepts](http://athena.ohdsi.org/search-terms/terms?domain=Payer&standardConcept=Standard&page=1&pageSize=15&query=).\n    Data Type: integer",
+        "score": 1.426956
+      },
+      {
+        "id": "d3c29667-5196-4d25-957e-c0b2776ceda80",
+        "fieldName": "discharge_to_concept_id",
+        "tableName": "visit_occurrence",
+        "enrichedText": "Field: discharge_to_concept_id\n    Table: visit_occurrence\n    Field Description: Use this field to determine where the patient was discharged to after a visit. This concept is part of the visit domain and can indicate if a patient was discharged to home or sent to a long-term care facility, for example.\n    Table Description: This table contains Events where Persons engage with the healthcare system for a duration of time. They are often also called \"Encounters\". Visits are defined by a configuration of circumstances under which they occur, such as (i) whether the patient comes to a healthcare institution, the other way around, or the interaction is remote, (ii) whether and what kind of trained medical staff is delivering the service during the Visit, and (iii) whether the Visit is transient or for a longer period involving a stay in bed.\n    ETL Conventions: If available, map the discharge_to_source_value to a standard concept in the visit domain. If not available set to 0.\n    Data Type: integer",
+        "score": 1.403365
+      },
+      {
+        "id": "b25d2c61-d2aa-4f25-9cf2-77559be868790",
+        "fieldName": "discharge_to_concept_id",
+        "tableName": "visit_detail",
+        "enrichedText": "Field: discharge_to_concept_id\n    Table: visit_detail\n    Field Description: Use this field to determine where the patient was discharged to after a visit detail record. This concept is part of the visit domain and can indicate if a patient was discharged to home or sent to a long-term care facility, for example.\n    Table Description: The VISIT_DETAIL table is an optional table used to represents details of each record in the parent VISIT_OCCURRENCE table. A good example of this would be the movement between units in a hospital during an inpatient stay or claim lines associated with a one insurance claim. For every record in the VISIT_OCCURRENCE table there may be 0 or more records in the VISIT_DETAIL table with a 1:n relationship where n may be 0. The VISIT_DETAIL table is structurally very similar to VISIT_OCCURRENCE table and belongs to the visit domain.\n    ETL Conventions: If available, map the DISCHARGE_TO_SOURCE_VALUE to a Standard Concept in the Visit domain. If not available, set to 0. [Accepted Concepts](https://athena.ohdsi.org/search-terms/terms?domain=Visit&standardConcept=Standard&page=1&pageSize=15&query=).\n    Data Type: integer",
+        "score": 1.398848
+      }
+    ],
+    "harmonization_response": {
+      "source": "Beneficiary Code",
+      "target": "payer_plan_period.payer_concept_id",
+      "explanation": "This is the optimal mapping because:\n1. The source field 'Beneficiary Code' from CMS claims data represents insurance beneficiary status/type\n2. The target field payer_concept_id is specifically designed to capture standardized concepts for payer/insurance information\n3. The payer_plan_period table is the dedicated location for insurance coverage details in OMOP\n4. This mapping allows for standardized representation of CMS beneficiary types through the concept_id system",
+      "foreign_key": "Links to standardized payer concepts",
+      "foreign_key_table": "concept",
+      "foreign_key_field": "concept_id"
+    }
+  },
+  {
+    "row_index": 2,
+    "input_label": "Claim ID",
+    "input_table_description": "CMS Inpatient Claims DE-SynPUF",
+    "source": "Claim ID:CMS Inpatient Claims DE-SynPUF",
+    "embedding_matches": [
+      {
+        "id": "bb67a84e-d971-403f-825a-f97ecd6ee93b0",
+        "fieldName": "admitted_from_concept_id",
+        "tableName": "visit_occurrence",
+        "enrichedText": "Field: admitted_from_concept_id\n    Table: visit_occurrence\n    Field Description: Use this field to determine where the patient was admitted from. This concept is part of the visit domain and can indicate if a patient was admitted to the hospital from a long-term care facility, for example.\n    Table Description: This table contains Events where Persons engage with the healthcare system for a duration of time. They are often also called \"Encounters\". Visits are defined by a configuration of circumstances under which they occur, such as (i) whether the patient comes to a healthcare institution, the other way around, or the interaction is remote, (ii) whether and what kind of trained medical staff is delivering the service during the Visit, and (iii) whether the Visit is transient or for a longer period involving a stay in bed.\n    ETL Conventions: If available, map the admitted_from_source_value to a standard concept in the visit domain. If not available set to 0.\n    Data Type: integer",
+        "score": 1.439046
+      },
+      {
+        "id": "d3c29667-5196-4d25-957e-c0b2776ceda80",
+        "fieldName": "discharge_to_concept_id",
+        "tableName": "visit_occurrence",
+        "enrichedText": "Field: discharge_to_concept_id\n    Table: visit_occurrence\n    Field Description: Use this field to determine where the patient was discharged to after a visit. This concept is part of the visit domain and can indicate if a patient was discharged to home or sent to a long-term care facility, for example.\n    Table Description: This table contains Events where Persons engage with the healthcare system for a duration of time. They are often also called \"Encounters\". Visits are defined by a configuration of circumstances under which they occur, such as (i) whether the patient comes to a healthcare institution, the other way around, or the interaction is remote, (ii) whether and what kind of trained medical staff is delivering the service during the Visit, and (iii) whether the Visit is transient or for a longer period involving a stay in bed.\n    ETL Conventions: If available, map the discharge_to_source_value to a standard concept in the visit domain. If not available set to 0.\n    Data Type: integer",
+        "score": 1.415292
+      },
+      {
+        "id": "b25d2c61-d2aa-4f25-9cf2-77559be868790",
+        "fieldName": "discharge_to_concept_id",
+        "tableName": "visit_detail",
+        "enrichedText": "Field: discharge_to_concept_id\n    Table: visit_detail\n    Field Description: Use this field to determine where the patient was discharged to after a visit detail record. This concept is part of the visit domain and can indicate if a patient was discharged to home or sent to a long-term care facility, for example.\n    Table Description: The VISIT_DETAIL table is an optional table used to represents details of each record in the parent VISIT_OCCURRENCE table. A good example of this would be the movement between units in a hospital during an inpatient stay or claim lines associated with a one insurance claim. For every record in the VISIT_OCCURRENCE table there may be 0 or more records in the VISIT_DETAIL table with a 1:n relationship where n may be 0. The VISIT_DETAIL table is structurally very similar to VISIT_OCCURRENCE table and belongs to the visit domain.\n    ETL Conventions: If available, map the DISCHARGE_TO_SOURCE_VALUE to a Standard Concept in the Visit domain. If not available, set to 0. [Accepted Concepts](https://athena.ohdsi.org/search-terms/terms?domain=Visit&standardConcept=Standard&page=1&pageSize=15&query=).\n    Data Type: integer",
+        "score": 1.414382
+      }
+    ],
+    "harmonization_response": {
+      "source": "Claim ID",
+      "target": "visit_occurrence.visit_occurrence_id",
+      "explanation": "The Claim ID from CMS Inpatient Claims represents a unique hospital stay/encounter, which directly corresponds to visit_occurrence_id in OMOP CDM. Each inpatient claim should map to a unique visit occurrence, as both represent a distinct healthcare encounter. This is the primary key of the visit_occurrence table and is the most appropriate target for a claim identifier in the context of inpatient stays.",
+      "foreign_key": "",
+      "foreign_key_table": "",
+      "foreign_key_field": ""
+    }
+  },
+  {
+    "row_index": 3,
+    "input_label": "Claim Line Segment",
+    "input_table_description": "CMS Inpatient Claims DE-SynPUF",
+    "source": "Claim Line Segment:CMS Inpatient Claims DE-SynPUF",
+    "embedding_matches": [
+      {
+        "id": "a4ab1159-5291-4085-8f13-b40d158faff00",
+        "fieldName": "admitted_from_concept_id",
+        "tableName": "visit_detail",
+        "enrichedText": "Field: admitted_from_concept_id\n    Table: visit_detail\n    Field Description: Use this field to determine where the patient was admitted from. This concept is part of the visit domain and can indicate if a patient was admitted to the hospital from a long-term care facility, for example.\n    Table Description: The VISIT_DETAIL table is an optional table used to represents details of each record in the parent VISIT_OCCURRENCE table. A good example of this would be the movement between units in a hospital during an inpatient stay or claim lines associated with a one insurance claim. For every record in the VISIT_OCCURRENCE table there may be 0 or more records in the VISIT_DETAIL table with a 1:n relationship where n may be 0. The VISIT_DETAIL table is structurally very similar to VISIT_OCCURRENCE table and belongs to the visit domain.\n    ETL Conventions: If available, map the admitted_from_source_value to a standard concept in the visit domain. If not available, map to 0. [Accepted Concepts](https://athena.ohdsi.org/search-terms/terms?domain=Visit&standardConcept=Standard&page=1&pageSize=15&query=).\n    Data Type: integer",
+        "score": 1.48781
+      },
+      {
+        "id": "d3c29667-5196-4d25-957e-c0b2776ceda80",
+        "fieldName": "discharge_to_concept_id",
+        "tableName": "visit_occurrence",
+        "enrichedText": "Field: discharge_to_concept_id\n    Table: visit_occurrence\n    Field Description: Use this field to determine where the patient was discharged to after a visit. This concept is part of the visit domain and can indicate if a patient was discharged to home or sent to a long-term care facility, for example.\n    Table Description: This table contains Events where Persons engage with the healthcare system for a duration of time. They are often also called \"Encounters\". Visits are defined by a configuration of circumstances under which they occur, such as (i) whether the patient comes to a healthcare institution, the other way around, or the interaction is remote, (ii) whether and what kind of trained medical staff is delivering the service during the Visit, and (iii) whether the Visit is transient or for a longer period involving a stay in bed.\n    ETL Conventions: If available, map the discharge_to_source_value to a standard concept in the visit domain. If not available set to 0.\n    Data Type: integer",
+        "score": 1.457654
+      },
+      {
+        "id": "b25d2c61-d2aa-4f25-9cf2-77559be868790",
+        "fieldName": "discharge_to_concept_id",
+        "tableName": "visit_detail",
+        "enrichedText": "Field: discharge_to_concept_id\n    Table: visit_detail\n    Field Description: Use this field to determine where the patient was discharged to after a visit detail record. This concept is part of the visit domain and can indicate if a patient was discharged to home or sent to a long-term care facility, for example.\n    Table Description: The VISIT_DETAIL table is an optional table used to represents details of each record in the parent VISIT_OCCURRENCE table. A good example of this would be the movement between units in a hospital during an inpatient stay or claim lines associated with a one insurance claim. For every record in the VISIT_OCCURRENCE table there may be 0 or more records in the VISIT_DETAIL table with a 1:n relationship where n may be 0. The VISIT_DETAIL table is structurally very similar to VISIT_OCCURRENCE table and belongs to the visit domain.\n    ETL Conventions: If available, map the DISCHARGE_TO_SOURCE_VALUE to a Standard Concept in the Visit domain. If not available, set to 0. [Accepted Concepts](https://athena.ohdsi.org/search-terms/terms?domain=Visit&standardConcept=Standard&page=1&pageSize=15&query=).\n    Data Type: integer",
+        "score": 1.446023
+      }
+    ],
+    "harmonization_response": {
+      "source": "Claim Line Segment",
+      "target": "visit_detail.visit_detail_id",
+      "explanation": "The source field 'Claim Line Segment' represents individual claim line items from CMS Inpatient Claims, which directly corresponds to the VISIT_DETAIL table's purpose. The VISIT_DETAIL table is specifically designed to handle claim lines associated with one insurance claim, maintaining a 1:n relationship with the parent VISIT_OCCURRENCE record. Each claim line segment should be mapped to a unique visit_detail record, with visit_detail_id as the primary identifier for that segment. This mapping aligns with OMOP's approach to representing detailed healthcare encounters and claim-level information.",
+      "foreign_key": "Each visit_detail record links to its parent visit_occurrence record",
+      "foreign_key_table": "visit_occurrence",
+      "foreign_key_field": "visit_occurrence_id"
+    }
+  },
+  {
+    "row_index": 4,
+    "input_label": "Claims start date",
+    "input_table_description": "CMS Inpatient Claims DE-SynPUF",
+    "source": "Claims start date:CMS Inpatient Claims DE-SynPUF",
+    "embedding_matches": [
+      {
+        "id": "aaa5b27b-3cd6-41aa-b81d-b08e42a115600",
+        "fieldName": "condition_start_date",
+        "tableName": "condition_occurrence",
+        "enrichedText": "Field: condition_start_date\n    Table: condition_occurrence\n    Field Description: Use this date to determine the start date of the condition\n    Table Description: This table contains records of Events of a Person suggesting the presence of a disease or medical condition stated as a diagnosis, a sign, or a symptom, which is either observed by a Provider or reported by the patient.\n    ETL Conventions: Most often data sources do not have the idea of a start date for a condition. Rather, if a source only has one date associated with a condition record it is acceptable to use that date for both the CONDITION_START_DATE and the CONDITION_END_DATE.\n    Data Type: date",
+        "score": 1.472142
+      },
+      {
+        "id": "1e5d1d18-b456-4fc1-9ee4-a3d7405b5c960",
+        "fieldName": "payer_plan_period_start_date",
+        "tableName": "payer_plan_period",
+        "enrichedText": "Field: payer_plan_period_start_date\n    Table: payer_plan_period\n    Field Description: Start date of Plan coverage.\n    Table Description: The PAYER_PLAN_PERIOD table captures details of the period of time that a Person is continuously enrolled under a specific health Plan benefit structure from a given Payer. Each Person receiving healthcare is typically covered by a health benefit plan, which pays for (fully or partially), or directly provides, the care. These benefit plans are provided by payers, such as health insurances or state or government agencies. In each plan the details of the health benefits are defined for the Person or her family, and the health benefit Plan might change over time typically with increasing utilization (reaching certain cost thresholds such as deductibles), plan availability and purchasing choices of the Person. The unique combinations of Payer organizations, health benefit Plans and time periods in which they are valid for a Person are recorded in this table.\n    ETL Conventions: nan\n    Data Type: date",
+        "score": 1.391811
+      },
+      {
+        "id": "41c450b5-854f-4e38-a0f2-5881b65927920",
+        "fieldName": "observation_period_start_date",
+        "tableName": "observation_period",
+        "enrichedText": "Field: observation_period_start_date\n    Table: observation_period\n    Field Description: Use this date to determine the start date of the Observation Period\n    Table Description: This table contains records which define spans of time during which two conditions are expected to hold: (i) Clinical Events that happened to the Person are recorded in the Event tables, and (ii) absence of records indicate such Events did not occur during this span of time.\n    ETL Conventions: It is often the case that the idea of Observation Periods does not exist in source data. In those cases, the observation_period_start_date can be inferred as the earliest Event date available for the Person. In insurance claim data, the Observation Period can be considered as the time period the Person is enrolled with a payer. If a Person switches plans but stays with the same payer, and therefore capturing of data continues, that change would be captured in [PAYER_PLAN_PERIOD](https://ohdsi.github.io/CommonDataModel/cdm60.html#payer_plan_period).\n    Data Type: date",
+        "score": 1.388963
+      }
+    ],
+    "harmonization_response": {
+      "source": "Claims start date",
+      "target": "visit_occurrence.visit_start_date",
+      "explanation": "This field represents the start date of an inpatient claim, which in OMOP CDM directly corresponds to visit_start_date in the visit_occurrence table. Since the source is from CMS Inpatient Claims, this date represents when the inpatient visit began. This is the most appropriate mapping as it maintains the temporal aspect of the healthcare encounter and preserves the original meaning of when the inpatient service was initiated.",
+      "foreign_key": "",
+      "foreign_key_table": "",
+      "foreign_key_field": ""
+    }
+  },
+  {
+    "row_index": 5,
+    "input_label": "Claims end date",
+    "input_table_description": "CMS Inpatient Claims DE-SynPUF",
+    "source": "Claims end date:CMS Inpatient Claims DE-SynPUF",
+    "embedding_matches": [
+      {
+        "id": "4d6e98ea-d25e-4779-a4d4-72694e7a30450",
+        "fieldName": "visit_end_date",
+        "tableName": "visit_occurrence",
+        "enrichedText": "Field: visit_end_date\n    Table: visit_occurrence\n    Field Description: For inpatient visits the end date is typically the discharge date.\n    Table Description: This table contains Events where Persons engage with the healthcare system for a duration of time. They are often also called \"Encounters\". Visits are defined by a configuration of circumstances under which they occur, such as (i) whether the patient comes to a healthcare institution, the other way around, or the interaction is remote, (ii) whether and what kind of trained medical staff is delivering the service during the Visit, and (iii) whether the Visit is transient or for a longer period involving a stay in bed.\n    ETL Conventions: Visit end dates are mandatory. If end dates are not provided in the source there are three ways in which to derive them:\r\nOutpatient Visit: visit_end_datetime = visit_start_datetime\r\nEmergency Room Visit: visit_end_datetime = visit_start_datetime\r\nInpatient Visit: Usually there is information about discharge. If not, you should be able to derive the end date from the sudden decline of activity or from the absence of inpatient procedures/drugs.\r\nNon-hospital institution Visits: Particularly for claims data, if end dates are not provided assume the visit is for the duration of month that it occurs.\r\nFor Inpatient Visits ongoing at the date of ETL, put date of processing the data into visit_end_datetime and visit_type_concept_id with 32220 \"Still patient\" to identify the visit as incomplete.\r\nAll other Visits: visit_end_datetime = visit_start_datetime. If this is a one-day visit the end date should match the start date.\n    Data Type: date",
+        "score": 1.363738
+      },
+      {
+        "id": "a965c8d7-e1f2-432a-b097-04c035f964b80",
+        "fieldName": "observation_period_end_date",
+        "tableName": "observation_period",
+        "enrichedText": "Field: observation_period_end_date\n    Table: observation_period\n    Field Description: Use this date to determine the end date of the period for which we can assume that all events for a Person are recorded.\n    Table Description: This table contains records which define spans of time during which two conditions are expected to hold: (i) Clinical Events that happened to the Person are recorded in the Event tables, and (ii) absence of records indicate such Events did not occur during this span of time.\n    ETL Conventions: It is often the case that the idea of Observation Periods does not exist in source data. In those cases, the observation_period_end_date can be inferred as the last Event date available for the Person. In insurance claim data, the Observation Period can be considered as the time period the Person is enrolled with a payer.\n    Data Type: date",
+        "score": 1.347638
+      },
+      {
+        "id": "c89e8fae-3cd5-4865-90e0-32b0124ae6e70",
+        "fieldName": "payer_plan_period_end_date",
+        "tableName": "payer_plan_period",
+        "enrichedText": "Field: payer_plan_period_end_date\n    Table: payer_plan_period\n    Field Description: End date of Plan coverage.\n    Table Description: The PAYER_PLAN_PERIOD table captures details of the period of time that a Person is continuously enrolled under a specific health Plan benefit structure from a given Payer. Each Person receiving healthcare is typically covered by a health benefit plan, which pays for (fully or partially), or directly provides, the care. These benefit plans are provided by payers, such as health insurances or state or government agencies. In each plan the details of the health benefits are defined for the Person or her family, and the health benefit Plan might change over time typically with increasing utilization (reaching certain cost thresholds such as deductibles), plan availability and purchasing choices of the Person. The unique combinations of Payer organizations, health benefit Plans and time periods in which they are valid for a Person are recorded in this table.\n    ETL Conventions: nan\n    Data Type: date",
+        "score": 1.325387
+      }
+    ],
+    "harmonization_response": {
+      "source": "Claims end date",
+      "target": "visit_occurrence.visit_end_date",
+      "explanation": "This is the optimal mapping because: 1) The source field represents the end date of an inpatient claim which directly corresponds to a visit end date in OMOP, 2) The visit_occurrence table explicitly handles inpatient encounters and their discharge dates, 3) The context of CMS Inpatient Claims aligns with the visit_occurrence table's purpose of tracking healthcare encounters, and 4) The field has the highest semantic similarity score among the candidates.",
+      "foreign_key": "",
+      "foreign_key_table": "",
+      "foreign_key_field": ""
+    }
+  },
+  {
+    "row_index": 6,
+    "input_label": "Provider Institution",
+    "input_table_description": "CMS Inpatient Claims DE-SynPUF",
+    "source": "Provider Institution:CMS Inpatient Claims DE-SynPUF",
+    "embedding_matches": [
+      {
+        "id": "bb67a84e-d971-403f-825a-f97ecd6ee93b0",
+        "fieldName": "admitted_from_concept_id",
+        "tableName": "visit_occurrence",
+        "enrichedText": "Field: admitted_from_concept_id\n    Table: visit_occurrence\n    Field Description: Use this field to determine where the patient was admitted from. This concept is part of the visit domain and can indicate if a patient was admitted to the hospital from a long-term care facility, for example.\n    Table Description: This table contains Events where Persons engage with the healthcare system for a duration of time. They are often also called \"Encounters\". Visits are defined by a configuration of circumstances under which they occur, such as (i) whether the patient comes to a healthcare institution, the other way around, or the interaction is remote, (ii) whether and what kind of trained medical staff is delivering the service during the Visit, and (iii) whether the Visit is transient or for a longer period involving a stay in bed.\n    ETL Conventions: If available, map the admitted_from_source_value to a standard concept in the visit domain. If not available set to 0.\n    Data Type: integer",
+        "score": 1.463771
+      },
+      {
+        "id": "d3c29667-5196-4d25-957e-c0b2776ceda80",
+        "fieldName": "discharge_to_concept_id",
+        "tableName": "visit_occurrence",
+        "enrichedText": "Field: discharge_to_concept_id\n    Table: visit_occurrence\n    Field Description: Use this field to determine where the patient was discharged to after a visit. This concept is part of the visit domain and can indicate if a patient was discharged to home or sent to a long-term care facility, for example.\n    Table Description: This table contains Events where Persons engage with the healthcare system for a duration of time. They are often also called \"Encounters\". Visits are defined by a configuration of circumstances under which they occur, such as (i) whether the patient comes to a healthcare institution, the other way around, or the interaction is remote, (ii) whether and what kind of trained medical staff is delivering the service during the Visit, and (iii) whether the Visit is transient or for a longer period involving a stay in bed.\n    ETL Conventions: If available, map the discharge_to_source_value to a standard concept in the visit domain. If not available set to 0.\n    Data Type: integer",
+        "score": 1.458768
+      },
+      {
+        "id": "868dac5f-318a-46df-a020-4640c89c04c90",
+        "fieldName": "payer_concept_id",
+        "tableName": "payer_plan_period",
+        "enrichedText": "Field: payer_concept_id\n    Table: payer_plan_period\n    Field Description: This field represents the organization who reimburses the provider which administers care to the Person.\n    Table Description: The PAYER_PLAN_PERIOD table captures details of the period of time that a Person is continuously enrolled under a specific health Plan benefit structure from a given Payer. Each Person receiving healthcare is typically covered by a health benefit plan, which pays for (fully or partially), or directly provides, the care. These benefit plans are provided by payers, such as health insurances or state or government agencies. In each plan the details of the health benefits are defined for the Person or her family, and the health benefit Plan might change over time typically with increasing utilization (reaching certain cost thresholds such as deductibles), plan availability and purchasing choices of the Person. The unique combinations of Payer organizations, health benefit Plans and time periods in which they are valid for a Person are recorded in this table.\n    ETL Conventions: Map the Payer directly to a standard CONCEPT_ID. If one does not exists please contact the vocabulary team. There is no global controlled vocabulary available for this information. The point is to stratify on this information and identify if Persons have the same payer, though the name of the Payer is not necessary. If not available, set to 0. [Accepted Concepts](http://athena.ohdsi.org/search-terms/terms?domain=Payer&standardConcept=Standard&page=1&pageSize=15&query=).\n    Data Type: integer",
+        "score": 1.412302
+      }
+    ],
+    "harmonization_response": {
+      "source": "Provider Institution",
+      "target": "care_site.care_site_id",
+      "explanation": "The Provider Institution from CMS claims represents the healthcare facility providing services, which directly maps to CARE_SITE table in OMOP. This table is specifically designed to store information about healthcare facilities and organizations where healthcare services are provided. While not shown in the embedding matches, this is the correct semantic mapping for a healthcare facility identifier.",
+      "foreign_key": "The care_site_id is referenced as a foreign key in various tables like VISIT_OCCURRENCE and PROCEDURE_OCCURRENCE to link healthcare events to their location of service",
+      "foreign_key_table": "visit_occurrence, procedure_occurrence",
+      "foreign_key_field": "care_site_id"
+    }
+  },
+  {
+    "row_index": 7,
+    "input_label": "Claim Payment Amount",
+    "input_table_description": "CMS Inpatient Claims DE-SynPUF",
+    "source": "Claim Payment Amount:CMS Inpatient Claims DE-SynPUF",
+    "embedding_matches": [
+      {
+        "id": "d3c29667-5196-4d25-957e-c0b2776ceda80",
+        "fieldName": "discharge_to_concept_id",
+        "tableName": "visit_occurrence",
+        "enrichedText": "Field: discharge_to_concept_id\n    Table: visit_occurrence\n    Field Description: Use this field to determine where the patient was discharged to after a visit. This concept is part of the visit domain and can indicate if a patient was discharged to home or sent to a long-term care facility, for example.\n    Table Description: This table contains Events where Persons engage with the healthcare system for a duration of time. They are often also called \"Encounters\". Visits are defined by a configuration of circumstances under which they occur, such as (i) whether the patient comes to a healthcare institution, the other way around, or the interaction is remote, (ii) whether and what kind of trained medical staff is delivering the service during the Visit, and (iii) whether the Visit is transient or for a longer period involving a stay in bed.\n    ETL Conventions: If available, map the discharge_to_source_value to a standard concept in the visit domain. If not available set to 0.\n    Data Type: integer",
+        "score": 1.65081
+      },
+      {
+        "id": "9aa97389-7910-470d-8a86-ca3f168e65970",
+        "fieldName": "payer_source_value",
+        "tableName": "payer_plan_period",
+        "enrichedText": "Field: payer_source_value\n    Table: payer_plan_period\n    Field Description: This is the Payer as it appears in the source data.\n    Table Description: The PAYER_PLAN_PERIOD table captures details of the period of time that a Person is continuously enrolled under a specific health Plan benefit structure from a given Payer. Each Person receiving healthcare is typically covered by a health benefit plan, which pays for (fully or partially), or directly provides, the care. These benefit plans are provided by payers, such as health insurances or state or government agencies. In each plan the details of the health benefits are defined for the Person or her family, and the health benefit Plan might change over time typically with increasing utilization (reaching certain cost thresholds such as deductibles), plan availability and purchasing choices of the Person. The unique combinations of Payer organizations, health benefit Plans and time periods in which they are valid for a Person are recorded in this table.\n    ETL Conventions: nan\n    Data Type: varchar(50)",
+        "score": 1.641589
+      },
+      {
+        "id": "868dac5f-318a-46df-a020-4640c89c04c90",
+        "fieldName": "payer_concept_id",
+        "tableName": "payer_plan_period",
+        "enrichedText": "Field: payer_concept_id\n    Table: payer_plan_period\n    Field Description: This field represents the organization who reimburses the provider which administers care to the Person.\n    Table Description: The PAYER_PLAN_PERIOD table captures details of the period of time that a Person is continuously enrolled under a specific health Plan benefit structure from a given Payer. Each Person receiving healthcare is typically covered by a health benefit plan, which pays for (fully or partially), or directly provides, the care. These benefit plans are provided by payers, such as health insurances or state or government agencies. In each plan the details of the health benefits are defined for the Person or her family, and the health benefit Plan might change over time typically with increasing utilization (reaching certain cost thresholds such as deductibles), plan availability and purchasing choices of the Person. The unique combinations of Payer organizations, health benefit Plans and time periods in which they are valid for a Person are recorded in this table.\n    ETL Conventions: Map the Payer directly to a standard CONCEPT_ID. If one does not exists please contact the vocabulary team. There is no global controlled vocabulary available for this information. The point is to stratify on this information and identify if Persons have the same payer, though the name of the Payer is not necessary. If not available, set to 0. [Accepted Concepts](http://athena.ohdsi.org/search-terms/terms?domain=Payer&standardConcept=Standard&page=1&pageSize=15&query=).\n    Data Type: integer",
+        "score": 1.600286
+      }
+    ],
+    "harmonization_response": {
+      "source": "Claim Payment Amount",
+      "target": "cost.paid_amount",
+      "explanation": "This field represents the actual payment amount from a CMS inpatient claim, which directly maps to the paid_amount field in the COST table. The COST table is specifically designed to store all cost-related information including payments, and paid_amount represents the amount paid by the payer for healthcare services. This is an exact semantic match for capturing claim payment amounts from the source data.",
+      "foreign_key": "",
+      "foreign_key_table": "",
+      "foreign_key_field": ""
+    }
+  },
+  {
+    "row_index": 8,
+    "input_label": "NCH Primary Payer Claim Paid Amount",
+    "input_table_description": "CMS Inpatient Claims DE-SynPUF",
+    "source": "NCH Primary Payer Claim Paid Amount:CMS Inpatient Claims DE-SynPUF",
+    "embedding_matches": [
+      {
+        "id": "92b4cdab-9fe1-429b-b373-91ec8598de110",
+        "fieldName": "payer_source_concept_id",
+        "tableName": "payer_plan_period",
+        "enrichedText": "Field: payer_source_concept_id\n    Table: payer_plan_period\n    Field Description: nan\n    Table Description: The PAYER_PLAN_PERIOD table captures details of the period of time that a Person is continuously enrolled under a specific health Plan benefit structure from a given Payer. Each Person receiving healthcare is typically covered by a health benefit plan, which pays for (fully or partially), or directly provides, the care. These benefit plans are provided by payers, such as health insurances or state or government agencies. In each plan the details of the health benefits are defined for the Person or her family, and the health benefit Plan might change over time typically with increasing utilization (reaching certain cost thresholds such as deductibles), plan availability and purchasing choices of the Person. The unique combinations of Payer organizations, health benefit Plans and time periods in which they are valid for a Person are recorded in this table.\n    ETL Conventions: If the source data codes the Payer in an OMOP supported vocabulary store the concept_id here. If not available, set to 0.\n    Data Type: integer",
+        "score": 1.534787
+      },
+      {
+        "id": "9aa97389-7910-470d-8a86-ca3f168e65970",
+        "fieldName": "payer_source_value",
+        "tableName": "payer_plan_period",
+        "enrichedText": "Field: payer_source_value\n    Table: payer_plan_period\n    Field Description: This is the Payer as it appears in the source data.\n    Table Description: The PAYER_PLAN_PERIOD table captures details of the period of time that a Person is continuously enrolled under a specific health Plan benefit structure from a given Payer. Each Person receiving healthcare is typically covered by a health benefit plan, which pays for (fully or partially), or directly provides, the care. These benefit plans are provided by payers, such as health insurances or state or government agencies. In each plan the details of the health benefits are defined for the Person or her family, and the health benefit Plan might change over time typically with increasing utilization (reaching certain cost thresholds such as deductibles), plan availability and purchasing choices of the Person. The unique combinations of Payer organizations, health benefit Plans and time periods in which they are valid for a Person are recorded in this table.\n    ETL Conventions: nan\n    Data Type: varchar(50)",
+        "score": 1.485328
+      },
+      {
+        "id": "868dac5f-318a-46df-a020-4640c89c04c90",
+        "fieldName": "payer_concept_id",
+        "tableName": "payer_plan_period",
+        "enrichedText": "Field: payer_concept_id\n    Table: payer_plan_period\n    Field Description: This field represents the organization who reimburses the provider which administers care to the Person.\n    Table Description: The PAYER_PLAN_PERIOD table captures details of the period of time that a Person is continuously enrolled under a specific health Plan benefit structure from a given Payer. Each Person receiving healthcare is typically covered by a health benefit plan, which pays for (fully or partially), or directly provides, the care. These benefit plans are provided by payers, such as health insurances or state or government agencies. In each plan the details of the health benefits are defined for the Person or her family, and the health benefit Plan might change over time typically with increasing utilization (reaching certain cost thresholds such as deductibles), plan availability and purchasing choices of the Person. The unique combinations of Payer organizations, health benefit Plans and time periods in which they are valid for a Person are recorded in this table.\n    ETL Conventions: Map the Payer directly to a standard CONCEPT_ID. If one does not exists please contact the vocabulary team. There is no global controlled vocabulary available for this information. The point is to stratify on this information and identify if Persons have the same payer, though the name of the Payer is not necessary. If not available, set to 0. [Accepted Concepts](http://athena.ohdsi.org/search-terms/terms?domain=Payer&standardConcept=Standard&page=1&pageSize=15&query=).\n    Data Type: integer",
+        "score": 1.456552
+      }
+    ],
+    "harmonization_response": {
+      "source": "NCH Primary Payer Claim Paid Amount",
+      "target": "cost.paid_by_payer",
+      "explanation": "This field should map to the paid_by_payer field in the cost table because:\n1. It represents the monetary amount paid by the primary payer for a claim\n2. The COST table is specifically designed to capture all cost-related information for healthcare services\n3. paid_by_payer is the specific field that tracks the amount reimbursed by the insurance company/payer\n4. The source context (CMS Inpatient Claims) aligns with this being a payment amount field",
+      "foreign_key": "",
+      "foreign_key_table": "",
+      "foreign_key_field": ""
+    }
+  },
+  {
+    "row_index": 9,
+    "input_label": "Attending Physician NPI",
+    "input_table_description": "CMS Inpatient Claims DE-SynPUF",
+    "source": "Attending Physician NPI:CMS Inpatient Claims DE-SynPUF",
+    "embedding_matches": [
+      {
+        "id": "bb67a84e-d971-403f-825a-f97ecd6ee93b0",
+        "fieldName": "admitted_from_concept_id",
+        "tableName": "visit_occurrence",
+        "enrichedText": "Field: admitted_from_concept_id\n    Table: visit_occurrence\n    Field Description: Use this field to determine where the patient was admitted from. This concept is part of the visit domain and can indicate if a patient was admitted to the hospital from a long-term care facility, for example.\n    Table Description: This table contains Events where Persons engage with the healthcare system for a duration of time. They are often also called \"Encounters\". Visits are defined by a configuration of circumstances under which they occur, such as (i) whether the patient comes to a healthcare institution, the other way around, or the interaction is remote, (ii) whether and what kind of trained medical staff is delivering the service during the Visit, and (iii) whether the Visit is transient or for a longer period involving a stay in bed.\n    ETL Conventions: If available, map the admitted_from_source_value to a standard concept in the visit domain. If not available set to 0.\n    Data Type: integer",
+        "score": 1.533253
+      },
+      {
+        "id": "e0d1a2c6-fd7e-44ad-b528-6945a5c5556f0",
+        "fieldName": "admitted_from_source_value",
+        "tableName": "visit_occurrence",
+        "enrichedText": "Field: admitted_from_source_value\n    Table: visit_occurrence\n    Field Description: nan\n    Table Description: This table contains Events where Persons engage with the healthcare system for a duration of time. They are often also called \"Encounters\". Visits are defined by a configuration of circumstances under which they occur, such as (i) whether the patient comes to a healthcare institution, the other way around, or the interaction is remote, (ii) whether and what kind of trained medical staff is delivering the service during the Visit, and (iii) whether the Visit is transient or for a longer period involving a stay in bed.\n    ETL Conventions: This information may be called something different in the source data but the field is meant to contain a value indicating where a person was admitted from. Typically this applies only to visits that have a length of stay, like inpatient visits or long-term care visits.\n    Data Type: varchar(50)",
+        "score": 1.489187
+      },
+      {
+        "id": "065209d9-0eb5-4442-a366-ae3ab41174d20",
+        "fieldName": "npi",
+        "tableName": "provider",
+        "enrichedText": "Field: npi\n    Table: provider\n    Field Description: This is the National Provider Number issued to health care providers in the US by the Centers for Medicare and Medicaid Services (CMS).\n    Table Description: The PROVIDER table contains a list of uniquely identified healthcare providers. These are individuals providing hands-on healthcare to patients, such as physicians, nurses, midwives, physical therapists etc.\n    ETL Conventions: nan\n    Data Type: varchar(20)",
+        "score": 1.264456
+      }
+    ],
+    "harmonization_response": {
+      "source": "Attending Physician NPI",
+      "target": "provider.npi",
+      "explanation": "This is an exact semantic match for storing National Provider Identifiers (NPIs). The provider.npi field is specifically designed to store CMS-issued NPIs for healthcare providers. The context of inpatient claims data aligns with tracking attending physician identifiers.",
+      "foreign_key": "Links to the provider table to reference the full provider record",
+      "foreign_key_table": "provider",
+      "foreign_key_field": "npi"
+    }
+  },
+  {
+    "row_index": 10,
+    "input_label": "Operating Physician NPI",
+    "input_table_description": "CMS Inpatient Claims DE-SynPUF",
+    "source": "Operating Physician NPI:CMS Inpatient Claims DE-SynPUF",
+    "embedding_matches": [
+      {
+        "id": "868dac5f-318a-46df-a020-4640c89c04c90",
+        "fieldName": "payer_concept_id",
+        "tableName": "payer_plan_period",
+        "enrichedText": "Field: payer_concept_id\n    Table: payer_plan_period\n    Field Description: This field represents the organization who reimburses the provider which administers care to the Person.\n    Table Description: The PAYER_PLAN_PERIOD table captures details of the period of time that a Person is continuously enrolled under a specific health Plan benefit structure from a given Payer. Each Person receiving healthcare is typically covered by a health benefit plan, which pays for (fully or partially), or directly provides, the care. These benefit plans are provided by payers, such as health insurances or state or government agencies. In each plan the details of the health benefits are defined for the Person or her family, and the health benefit Plan might change over time typically with increasing utilization (reaching certain cost thresholds such as deductibles), plan availability and purchasing choices of the Person. The unique combinations of Payer organizations, health benefit Plans and time periods in which they are valid for a Person are recorded in this table.\n    ETL Conventions: Map the Payer directly to a standard CONCEPT_ID. If one does not exists please contact the vocabulary team. There is no global controlled vocabulary available for this information. The point is to stratify on this information and identify if Persons have the same payer, though the name of the Payer is not necessary. If not available, set to 0. [Accepted Concepts](http://athena.ohdsi.org/search-terms/terms?domain=Payer&standardConcept=Standard&page=1&pageSize=15&query=).\n    Data Type: integer",
+        "score": 1.599006
+      },
+      {
+        "id": "bc935d72-4803-4484-a5eb-4bcf8b787bff0",
+        "fieldName": "procedure_occurrence_id",
+        "tableName": "procedure_occurrence",
+        "enrichedText": "Field: procedure_occurrence_id\n    Table: procedure_occurrence\n    Field Description: The unique key given to a procedure record for a person. Refer to the ETL for how duplicate procedures during the same visit were handled.\n    Table Description: This table contains records of activities or processes ordered by, or carried out by, a healthcare provider on the patient with a diagnostic or therapeutic purpose.\n    ETL Conventions: Each instance of a procedure occurrence in the source data should be assigned this unique key. In some cases, a person can have multiple records of the same procedure within the same visit. It is valid to keep these duplicates and assign them individual, unique, PROCEDURE_OCCURRENCE_IDs, though it is up to the ETL how they should be handled.\n    Data Type: bigint",
+        "score": 1.576257
+      },
+      {
+        "id": "065209d9-0eb5-4442-a366-ae3ab41174d20",
+        "fieldName": "npi",
+        "tableName": "provider",
+        "enrichedText": "Field: npi\n    Table: provider\n    Field Description: This is the National Provider Number issued to health care providers in the US by the Centers for Medicare and Medicaid Services (CMS).\n    Table Description: The PROVIDER table contains a list of uniquely identified healthcare providers. These are individuals providing hands-on healthcare to patients, such as physicians, nurses, midwives, physical therapists etc.\n    ETL Conventions: nan\n    Data Type: varchar(20)",
+        "score": 1.361515
+      }
+    ],
+    "harmonization_response": {
+      "source": "Operating Physician NPI",
+      "target": "provider.npi",
+      "explanation": "This is a direct match for physician NPIs. The OMOP provider.npi field is specifically designed to store the CMS National Provider Identifiers, which exactly matches the source field's purpose of identifying operating physicians. The provider table is the correct location for healthcare provider identification information, and NPI is the standard identifier used in US healthcare claims data.",
+      "foreign_key": "Links to the provider table to identify the operating physician",
+      "foreign_key_table": "provider",
+      "foreign_key_field": "npi"
+    }
+  },
+  {
+    "row_index": 11,
+    "input_label": "Other Physician NPI",
+    "input_table_description": "CMS Inpatient Claims DE-SynPUF",
+    "source": "Other Physician NPI:CMS Inpatient Claims DE-SynPUF",
+    "embedding_matches": [
+      {
+        "id": "d3c29667-5196-4d25-957e-c0b2776ceda80",
+        "fieldName": "discharge_to_concept_id",
+        "tableName": "visit_occurrence",
+        "enrichedText": "Field: discharge_to_concept_id\n    Table: visit_occurrence\n    Field Description: Use this field to determine where the patient was discharged to after a visit. This concept is part of the visit domain and can indicate if a patient was discharged to home or sent to a long-term care facility, for example.\n    Table Description: This table contains Events where Persons engage with the healthcare system for a duration of time. They are often also called \"Encounters\". Visits are defined by a configuration of circumstances under which they occur, such as (i) whether the patient comes to a healthcare institution, the other way around, or the interaction is remote, (ii) whether and what kind of trained medical staff is delivering the service during the Visit, and (iii) whether the Visit is transient or for a longer period involving a stay in bed.\n    ETL Conventions: If available, map the discharge_to_source_value to a standard concept in the visit domain. If not available set to 0.\n    Data Type: integer",
+        "score": 1.568428
+      },
+      {
+        "id": "868dac5f-318a-46df-a020-4640c89c04c90",
+        "fieldName": "payer_concept_id",
+        "tableName": "payer_plan_period",
+        "enrichedText": "Field: payer_concept_id\n    Table: payer_plan_period\n    Field Description: This field represents the organization who reimburses the provider which administers care to the Person.\n    Table Description: The PAYER_PLAN_PERIOD table captures details of the period of time that a Person is continuously enrolled under a specific health Plan benefit structure from a given Payer. Each Person receiving healthcare is typically covered by a health benefit plan, which pays for (fully or partially), or directly provides, the care. These benefit plans are provided by payers, such as health insurances or state or government agencies. In each plan the details of the health benefits are defined for the Person or her family, and the health benefit Plan might change over time typically with increasing utilization (reaching certain cost thresholds such as deductibles), plan availability and purchasing choices of the Person. The unique combinations of Payer organizations, health benefit Plans and time periods in which they are valid for a Person are recorded in this table.\n    ETL Conventions: Map the Payer directly to a standard CONCEPT_ID. If one does not exists please contact the vocabulary team. There is no global controlled vocabulary available for this information. The point is to stratify on this information and identify if Persons have the same payer, though the name of the Payer is not necessary. If not available, set to 0. [Accepted Concepts](http://athena.ohdsi.org/search-terms/terms?domain=Payer&standardConcept=Standard&page=1&pageSize=15&query=).\n    Data Type: integer",
+        "score": 1.52994
+      },
+      {
+        "id": "065209d9-0eb5-4442-a366-ae3ab41174d20",
+        "fieldName": "npi",
+        "tableName": "provider",
+        "enrichedText": "Field: npi\n    Table: provider\n    Field Description: This is the National Provider Number issued to health care providers in the US by the Centers for Medicare and Medicaid Services (CMS).\n    Table Description: The PROVIDER table contains a list of uniquely identified healthcare providers. These are individuals providing hands-on healthcare to patients, such as physicians, nurses, midwives, physical therapists etc.\n    ETL Conventions: nan\n    Data Type: varchar(20)",
+        "score": 1.322165
+      }
+    ],
+    "harmonization_response": {
+      "source": "Other Physician NPI",
+      "target": "provider.npi",
+      "explanation": "This is a direct mapping to store the National Provider Identifier (NPI) in the OMOP provider table. The provider.npi field is specifically designed to store the CMS-issued National Provider Numbers for healthcare providers in the US, which exactly matches the source field's purpose. The source context of CMS Inpatient Claims confirms this is the appropriate mapping as NPIs are standard identifiers in CMS data.",
+      "foreign_key": "This field creates a link to the provider table to identify the specific healthcare provider",
+      "foreign_key_table": "provider",
+      "foreign_key_field": "provider_id"
+    }
+  },
+  {
+    "row_index": 12,
+    "input_label": "Inpatient admission date",
+    "input_table_description": "CMS Inpatient Claims DE-SynPUF",
+    "source": "Inpatient admission date:CMS Inpatient Claims DE-SynPUF",
+    "embedding_matches": [
+      {
+        "id": "4d6e98ea-d25e-4779-a4d4-72694e7a30450",
+        "fieldName": "visit_end_date",
+        "tableName": "visit_occurrence",
+        "enrichedText": "Field: visit_end_date\n    Table: visit_occurrence\n    Field Description: For inpatient visits the end date is typically the discharge date.\n    Table Description: This table contains Events where Persons engage with the healthcare system for a duration of time. They are often also called \"Encounters\". Visits are defined by a configuration of circumstances under which they occur, such as (i) whether the patient comes to a healthcare institution, the other way around, or the interaction is remote, (ii) whether and what kind of trained medical staff is delivering the service during the Visit, and (iii) whether the Visit is transient or for a longer period involving a stay in bed.\n    ETL Conventions: Visit end dates are mandatory. If end dates are not provided in the source there are three ways in which to derive them:\r\nOutpatient Visit: visit_end_datetime = visit_start_datetime\r\nEmergency Room Visit: visit_end_datetime = visit_start_datetime\r\nInpatient Visit: Usually there is information about discharge. If not, you should be able to derive the end date from the sudden decline of activity or from the absence of inpatient procedures/drugs.\r\nNon-hospital institution Visits: Particularly for claims data, if end dates are not provided assume the visit is for the duration of month that it occurs.\r\nFor Inpatient Visits ongoing at the date of ETL, put date of processing the data into visit_end_datetime and visit_type_concept_id with 32220 \"Still patient\" to identify the visit as incomplete.\r\nAll other Visits: visit_end_datetime = visit_start_datetime. If this is a one-day visit the end date should match the start date.\n    Data Type: date",
+        "score": 1.444453
+      },
+      {
+        "id": "c7b7d130-fd73-4b17-b579-65c72e5b49160",
+        "fieldName": "visit_start_date",
+        "tableName": "visit_occurrence",
+        "enrichedText": "Field: visit_start_date\n    Table: visit_occurrence\n    Field Description: For inpatient visits, the start date is typically the admission date. For outpatient visits the start date and end date will be the same.\n    Table Description: This table contains Events where Persons engage with the healthcare system for a duration of time. They are often also called \"Encounters\". Visits are defined by a configuration of circumstances under which they occur, such as (i) whether the patient comes to a healthcare institution, the other way around, or the interaction is remote, (ii) whether and what kind of trained medical staff is delivering the service during the Visit, and (iii) whether the Visit is transient or for a longer period involving a stay in bed.\n    ETL Conventions: When populating visit_start_date, you should think about the patient experience to make decisions on how to define visits. In the case of an inpatient visit this should be the date the patient was admitted to the hospital or institution. In all other cases this should be the date of the patient-provider interaction.\n    Data Type: date",
+        "score": 1.419492
+      },
+      {
+        "id": "438671d6-dddb-4753-aea9-d3621488a7590",
+        "fieldName": "incurred_date",
+        "tableName": "cost",
+        "enrichedText": "Field: incurred_date\n    Table: cost\n    Field Description: The first date of service of the clinical event corresponding to the cost as in table capturing the information (e.g. date of visit, date of procedure, date of condition, date of drug etc).\n    Table Description: The COST table captures records containing the cost of any medical event recorded in one of the OMOP clinical event tables such as DRUG_EXPOSURE, PROCEDURE_OCCURRENCE, VISIT_OCCURRENCE, VISIT_DETAIL, DEVICE_OCCURRENCE, OBSERVATION or MEASUREMENT.\n\nEach record in the cost table account for the amount of money transacted for the clinical event. So, the COST table may be used to represent both receivables (charges) and payments (paid), each transaction type represented by its COST_CONCEPT_ID. The COST_TYPE_CONCEPT_ID field will use concepts in the Standardized Vocabularies to designate the source (provenance) of the cost data. A reference to the health plan information in the PAYER_PLAN_PERIOD table is stored in the record for information used for the adjudication system to determine the persons benefit for the clinical event.\n    ETL Conventions: nan\n    Data Type: date",
+        "score": 1.406205
+      }
+    ],
+    "harmonization_response": {
+      "source": "Inpatient admission date",
+      "target": "visit_occurrence.visit_start_date",
+      "explanation": "This is the optimal mapping because the visit_start_date field is explicitly designed to capture admission dates for inpatient encounters. The field description directly states \"For inpatient visits, the start date is typically the admission date.\" This matches perfectly with the source field's purpose of recording inpatient admission dates in CMS claims data. The ETL conventions also confirm this is the appropriate field for hospital admission dates.",
+      "foreign_key": "",
+      "foreign_key_table": "",
+      "foreign_key_field": ""
+    }
+  },
+  {
+    "row_index": 13,
+    "input_label": "Admitting Diagnosis Code",
+    "input_table_description": "CMS Inpatient Claims DE-SynPUF",
+    "source": "Admitting Diagnosis Code:CMS Inpatient Claims DE-SynPUF",
+    "embedding_matches": [
+      {
+        "id": "e0d1a2c6-fd7e-44ad-b528-6945a5c5556f0",
+        "fieldName": "admitted_from_source_value",
+        "tableName": "visit_occurrence",
+        "enrichedText": "Field: admitted_from_source_value\n    Table: visit_occurrence\n    Field Description: nan\n    Table Description: This table contains Events where Persons engage with the healthcare system for a duration of time. They are often also called \"Encounters\". Visits are defined by a configuration of circumstances under which they occur, such as (i) whether the patient comes to a healthcare institution, the other way around, or the interaction is remote, (ii) whether and what kind of trained medical staff is delivering the service during the Visit, and (iii) whether the Visit is transient or for a longer period involving a stay in bed.\n    ETL Conventions: This information may be called something different in the source data but the field is meant to contain a value indicating where a person was admitted from. Typically this applies only to visits that have a length of stay, like inpatient visits or long-term care visits.\n    Data Type: varchar(50)",
+        "score": 1.403493
+      },
+      {
+        "id": "bb67a84e-d971-403f-825a-f97ecd6ee93b0",
+        "fieldName": "admitted_from_concept_id",
+        "tableName": "visit_occurrence",
+        "enrichedText": "Field: admitted_from_concept_id\n    Table: visit_occurrence\n    Field Description: Use this field to determine where the patient was admitted from. This concept is part of the visit domain and can indicate if a patient was admitted to the hospital from a long-term care facility, for example.\n    Table Description: This table contains Events where Persons engage with the healthcare system for a duration of time. They are often also called \"Encounters\". Visits are defined by a configuration of circumstances under which they occur, such as (i) whether the patient comes to a healthcare institution, the other way around, or the interaction is remote, (ii) whether and what kind of trained medical staff is delivering the service during the Visit, and (iii) whether the Visit is transient or for a longer period involving a stay in bed.\n    ETL Conventions: If available, map the admitted_from_source_value to a standard concept in the visit domain. If not available set to 0.\n    Data Type: integer",
+        "score": 1.345547
+      },
+      {
+        "id": "a4ab1159-5291-4085-8f13-b40d158faff00",
+        "fieldName": "admitted_from_concept_id",
+        "tableName": "visit_detail",
+        "enrichedText": "Field: admitted_from_concept_id\n    Table: visit_detail\n    Field Description: Use this field to determine where the patient was admitted from. This concept is part of the visit domain and can indicate if a patient was admitted to the hospital from a long-term care facility, for example.\n    Table Description: The VISIT_DETAIL table is an optional table used to represents details of each record in the parent VISIT_OCCURRENCE table. A good example of this would be the movement between units in a hospital during an inpatient stay or claim lines associated with a one insurance claim. For every record in the VISIT_OCCURRENCE table there may be 0 or more records in the VISIT_DETAIL table with a 1:n relationship where n may be 0. The VISIT_DETAIL table is structurally very similar to VISIT_OCCURRENCE table and belongs to the visit domain.\n    ETL Conventions: If available, map the admitted_from_source_value to a standard concept in the visit domain. If not available, map to 0. [Accepted Concepts](https://athena.ohdsi.org/search-terms/terms?domain=Visit&standardConcept=Standard&page=1&pageSize=15&query=).\n    Data Type: integer",
+        "score": 1.341198
+      }
+    ],
+    "harmonization_response": {
+      "source": "Admitting Diagnosis Code",
+      "target": "condition_occurrence.condition_source_value",
+      "explanation": "This field represents the diagnosis code recorded at admission, which should be mapped to condition_source_value in the condition_occurrence table. The admitting diagnosis is a key piece of clinical information that represents the initial diagnosis at the time of admission. The condition_source_value field is specifically designed to store the raw/source diagnosis codes before standardization. This should be linked to the corresponding visit_occurrence record since it's associated with an admission.",
+      "foreign_key": "Links to visit_occurrence for the associated admission",
+      "foreign_key_table": "visit_occurrence",
+      "foreign_key_field": "visit_occurrence_id"
+    }
+  },
+  {
+    "row_index": 14,
+    "input_label": "Claim Pass Thru Per Diem Amount",
+    "input_table_description": "CMS Inpatient Claims DE-SynPUF",
+    "source": "Claim Pass Thru Per Diem Amount:CMS Inpatient Claims DE-SynPUF",
+    "embedding_matches": [
+      {
+        "id": "bb67a84e-d971-403f-825a-f97ecd6ee93b0",
+        "fieldName": "admitted_from_concept_id",
+        "tableName": "visit_occurrence",
+        "enrichedText": "Field: admitted_from_concept_id\n    Table: visit_occurrence\n    Field Description: Use this field to determine where the patient was admitted from. This concept is part of the visit domain and can indicate if a patient was admitted to the hospital from a long-term care facility, for example.\n    Table Description: This table contains Events where Persons engage with the healthcare system for a duration of time. They are often also called \"Encounters\". Visits are defined by a configuration of circumstances under which they occur, such as (i) whether the patient comes to a healthcare institution, the other way around, or the interaction is remote, (ii) whether and what kind of trained medical staff is delivering the service during the Visit, and (iii) whether the Visit is transient or for a longer period involving a stay in bed.\n    ETL Conventions: If available, map the admitted_from_source_value to a standard concept in the visit domain. If not available set to 0.\n    Data Type: integer",
+        "score": 1.675959
+      },
+      {
+        "id": "d3c29667-5196-4d25-957e-c0b2776ceda80",
+        "fieldName": "discharge_to_concept_id",
+        "tableName": "visit_occurrence",
+        "enrichedText": "Field: discharge_to_concept_id\n    Table: visit_occurrence\n    Field Description: Use this field to determine where the patient was discharged to after a visit. This concept is part of the visit domain and can indicate if a patient was discharged to home or sent to a long-term care facility, for example.\n    Table Description: This table contains Events where Persons engage with the healthcare system for a duration of time. They are often also called \"Encounters\". Visits are defined by a configuration of circumstances under which they occur, such as (i) whether the patient comes to a healthcare institution, the other way around, or the interaction is remote, (ii) whether and what kind of trained medical staff is delivering the service during the Visit, and (iii) whether the Visit is transient or for a longer period involving a stay in bed.\n    ETL Conventions: If available, map the discharge_to_source_value to a standard concept in the visit domain. If not available set to 0.\n    Data Type: integer",
+        "score": 1.648283
+      },
+      {
+        "id": "b25d2c61-d2aa-4f25-9cf2-77559be868790",
+        "fieldName": "discharge_to_concept_id",
+        "tableName": "visit_detail",
+        "enrichedText": "Field: discharge_to_concept_id\n    Table: visit_detail\n    Field Description: Use this field to determine where the patient was discharged to after a visit detail record. This concept is part of the visit domain and can indicate if a patient was discharged to home or sent to a long-term care facility, for example.\n    Table Description: The VISIT_DETAIL table is an optional table used to represents details of each record in the parent VISIT_OCCURRENCE table. A good example of this would be the movement between units in a hospital during an inpatient stay or claim lines associated with a one insurance claim. For every record in the VISIT_OCCURRENCE table there may be 0 or more records in the VISIT_DETAIL table with a 1:n relationship where n may be 0. The VISIT_DETAIL table is structurally very similar to VISIT_OCCURRENCE table and belongs to the visit domain.\n    ETL Conventions: If available, map the DISCHARGE_TO_SOURCE_VALUE to a Standard Concept in the Visit domain. If not available, set to 0. [Accepted Concepts](https://athena.ohdsi.org/search-terms/terms?domain=Visit&standardConcept=Standard&page=1&pageSize=15&query=).\n    Data Type: integer",
+        "score": 1.642812
+      }
+    ],
+    "harmonization_response": {
+      "source": "Claim Pass Thru Per Diem Amount",
+      "target": "cost.paid_patient_coinsurance",
+      "explanation": "This field represents a per diem payment amount from CMS inpatient claims, which should be mapped to the cost table. While the embedding matches suggested visit-related fields, the semantic meaning of a per diem payment amount is better captured in the cost table. The paid_patient_coinsurance field is appropriate for capturing standardized payment amounts related to healthcare services. The cost table is specifically designed to store financial transaction details related to healthcare services.",
+      "foreign_key": "The cost table links to visit_occurrence to associate costs with specific visits",
+      "foreign_key_table": "visit_occurrence",
+      "foreign_key_field": "visit_occurrence_id"
+    }
+  },
+  {
+    "row_index": 15,
+    "input_label": "Inpatient Deductible Amount",
+    "input_table_description": "CMS Inpatient Claims DE-SynPUF",
+    "source": "Inpatient Deductible Amount:CMS Inpatient Claims DE-SynPUF",
+    "embedding_matches": [
+      {
+        "id": "bb67a84e-d971-403f-825a-f97ecd6ee93b0",
+        "fieldName": "admitted_from_concept_id",
+        "tableName": "visit_occurrence",
+        "enrichedText": "Field: admitted_from_concept_id\n    Table: visit_occurrence\n    Field Description: Use this field to determine where the patient was admitted from. This concept is part of the visit domain and can indicate if a patient was admitted to the hospital from a long-term care facility, for example.\n    Table Description: This table contains Events where Persons engage with the healthcare system for a duration of time. They are often also called \"Encounters\". Visits are defined by a configuration of circumstances under which they occur, such as (i) whether the patient comes to a healthcare institution, the other way around, or the interaction is remote, (ii) whether and what kind of trained medical staff is delivering the service during the Visit, and (iii) whether the Visit is transient or for a longer period involving a stay in bed.\n    ETL Conventions: If available, map the admitted_from_source_value to a standard concept in the visit domain. If not available set to 0.\n    Data Type: integer",
+        "score": 1.524784
+      },
+      {
+        "id": "d3c29667-5196-4d25-957e-c0b2776ceda80",
+        "fieldName": "discharge_to_concept_id",
+        "tableName": "visit_occurrence",
+        "enrichedText": "Field: discharge_to_concept_id\n    Table: visit_occurrence\n    Field Description: Use this field to determine where the patient was discharged to after a visit. This concept is part of the visit domain and can indicate if a patient was discharged to home or sent to a long-term care facility, for example.\n    Table Description: This table contains Events where Persons engage with the healthcare system for a duration of time. They are often also called \"Encounters\". Visits are defined by a configuration of circumstances under which they occur, such as (i) whether the patient comes to a healthcare institution, the other way around, or the interaction is remote, (ii) whether and what kind of trained medical staff is delivering the service during the Visit, and (iii) whether the Visit is transient or for a longer period involving a stay in bed.\n    ETL Conventions: If available, map the discharge_to_source_value to a standard concept in the visit domain. If not available set to 0.\n    Data Type: integer",
+        "score": 1.518345
+      },
+      {
+        "id": "b25d2c61-d2aa-4f25-9cf2-77559be868790",
+        "fieldName": "discharge_to_concept_id",
+        "tableName": "visit_detail",
+        "enrichedText": "Field: discharge_to_concept_id\n    Table: visit_detail\n    Field Description: Use this field to determine where the patient was discharged to after a visit detail record. This concept is part of the visit domain and can indicate if a patient was discharged to home or sent to a long-term care facility, for example.\n    Table Description: The VISIT_DETAIL table is an optional table used to represents details of each record in the parent VISIT_OCCURRENCE table. A good example of this would be the movement between units in a hospital during an inpatient stay or claim lines associated with a one insurance claim. For every record in the VISIT_OCCURRENCE table there may be 0 or more records in the VISIT_DETAIL table with a 1:n relationship where n may be 0. The VISIT_DETAIL table is structurally very similar to VISIT_OCCURRENCE table and belongs to the visit domain.\n    ETL Conventions: If available, map the DISCHARGE_TO_SOURCE_VALUE to a Standard Concept in the Visit domain. If not available, set to 0. [Accepted Concepts](https://athena.ohdsi.org/search-terms/terms?domain=Visit&standardConcept=Standard&page=1&pageSize=15&query=).\n    Data Type: integer",
+        "score": 1.515758
+      }
+    ],
+    "harmonization_response": {
+      "source": "Inpatient Deductible Amount",
+      "target": "cost.deductible_amount",
+      "explanation": "This field represents the deductible amount for inpatient services, which directly maps to the deductible_amount field in the COST table. The COST table is specifically designed to store financial information related to healthcare services, including various payment components like deductibles. This is an exact semantic match for capturing patient cost-sharing amounts in the form of deductibles for inpatient visits.",
+      "foreign_key": "The cost table links to the visit_occurrence table for inpatient visits",
+      "foreign_key_table": "visit_occurrence",
+      "foreign_key_field": "visit_occurrence_id"
+    }
+  },
+  {
+    "row_index": 16,
+    "input_label": "Part A Coinsurance Liability",
+    "input_table_description": "CMS Inpatient Claims DE-SynPUF",
+    "source": "Part A Coinsurance Liability:CMS Inpatient Claims DE-SynPUF",
+    "embedding_matches": [
+      {
+        "id": "b25d2c61-d2aa-4f25-9cf2-77559be868790",
+        "fieldName": "discharge_to_concept_id",
+        "tableName": "visit_detail",
+        "enrichedText": "Field: discharge_to_concept_id\n    Table: visit_detail\n    Field Description: Use this field to determine where the patient was discharged to after a visit detail record. This concept is part of the visit domain and can indicate if a patient was discharged to home or sent to a long-term care facility, for example.\n    Table Description: The VISIT_DETAIL table is an optional table used to represents details of each record in the parent VISIT_OCCURRENCE table. A good example of this would be the movement between units in a hospital during an inpatient stay or claim lines associated with a one insurance claim. For every record in the VISIT_OCCURRENCE table there may be 0 or more records in the VISIT_DETAIL table with a 1:n relationship where n may be 0. The VISIT_DETAIL table is structurally very similar to VISIT_OCCURRENCE table and belongs to the visit domain.\n    ETL Conventions: If available, map the DISCHARGE_TO_SOURCE_VALUE to a Standard Concept in the Visit domain. If not available, set to 0. [Accepted Concepts](https://athena.ohdsi.org/search-terms/terms?domain=Visit&standardConcept=Standard&page=1&pageSize=15&query=).\n    Data Type: integer",
+        "score": 1.604956
+      },
+      {
+        "id": "a4ab1159-5291-4085-8f13-b40d158faff00",
+        "fieldName": "admitted_from_concept_id",
+        "tableName": "visit_detail",
+        "enrichedText": "Field: admitted_from_concept_id\n    Table: visit_detail\n    Field Description: Use this field to determine where the patient was admitted from. This concept is part of the visit domain and can indicate if a patient was admitted to the hospital from a long-term care facility, for example.\n    Table Description: The VISIT_DETAIL table is an optional table used to represents details of each record in the parent VISIT_OCCURRENCE table. A good example of this would be the movement between units in a hospital during an inpatient stay or claim lines associated with a one insurance claim. For every record in the VISIT_OCCURRENCE table there may be 0 or more records in the VISIT_DETAIL table with a 1:n relationship where n may be 0. The VISIT_DETAIL table is structurally very similar to VISIT_OCCURRENCE table and belongs to the visit domain.\n    ETL Conventions: If available, map the admitted_from_source_value to a standard concept in the visit domain. If not available, map to 0. [Accepted Concepts](https://athena.ohdsi.org/search-terms/terms?domain=Visit&standardConcept=Standard&page=1&pageSize=15&query=).\n    Data Type: integer",
+        "score": 1.572902
+      },
+      {
+        "id": "bb67a84e-d971-403f-825a-f97ecd6ee93b0",
+        "fieldName": "admitted_from_concept_id",
+        "tableName": "visit_occurrence",
+        "enrichedText": "Field: admitted_from_concept_id\n    Table: visit_occurrence\n    Field Description: Use this field to determine where the patient was admitted from. This concept is part of the visit domain and can indicate if a patient was admitted to the hospital from a long-term care facility, for example.\n    Table Description: This table contains Events where Persons engage with the healthcare system for a duration of time. They are often also called \"Encounters\". Visits are defined by a configuration of circumstances under which they occur, such as (i) whether the patient comes to a healthcare institution, the other way around, or the interaction is remote, (ii) whether and what kind of trained medical staff is delivering the service during the Visit, and (iii) whether the Visit is transient or for a longer period involving a stay in bed.\n    ETL Conventions: If available, map the admitted_from_source_value to a standard concept in the visit domain. If not available set to 0.\n    Data Type: integer",
+        "score": 1.566629
+      }
+    ],
+    "harmonization_response": {
+      "source": "Part A Coinsurance Liability",
+      "target": "cost.coinsurance_paid",
+      "explanation": "This field represents the Medicare Part A coinsurance amount that the patient is liable to pay. In the OMOP CDM, patient coinsurance amounts are stored in the cost.coinsurance_paid field, which is specifically designed to capture the coinsurance portion of healthcare costs. This is the most appropriate mapping as it maintains the financial meaning of the source data and properly represents the patient's cost-sharing obligation in the form of coinsurance.",
+      "foreign_key": "",
+      "foreign_key_table": "",
+      "foreign_key_field": ""
+    }
+  },
+  {
+    "row_index": 17,
+    "input_label": "Blood Deductible Liability",
+    "input_table_description": "CMS Inpatient Claims DE-SynPUF",
+    "source": "Blood Deductible Liability:CMS Inpatient Claims DE-SynPUF",
+    "embedding_matches": [
+      {
+        "id": "452eabf2-9405-41b5-9a10-1063c923dc210",
+        "fieldName": "discharge_to_source_value",
+        "tableName": "visit_occurrence",
+        "enrichedText": "Field: discharge_to_source_value\n    Table: visit_occurrence\n    Field Description: nan\n    Table Description: This table contains Events where Persons engage with the healthcare system for a duration of time. They are often also called \"Encounters\". Visits are defined by a configuration of circumstances under which they occur, such as (i) whether the patient comes to a healthcare institution, the other way around, or the interaction is remote, (ii) whether and what kind of trained medical staff is delivering the service during the Visit, and (iii) whether the Visit is transient or for a longer period involving a stay in bed.\n    ETL Conventions: This information may be called something different in the source data but the field is meant to contain a value indicating where a person was discharged to after a visit, as in they went home or were moved to long-term care. Typically this applies only to visits that have a length of stay of a day or more.\n    Data Type: varchar(50)",
+        "score": 1.537088
+      },
+      {
+        "id": "b25d2c61-d2aa-4f25-9cf2-77559be868790",
+        "fieldName": "discharge_to_concept_id",
+        "tableName": "visit_detail",
+        "enrichedText": "Field: discharge_to_concept_id\n    Table: visit_detail\n    Field Description: Use this field to determine where the patient was discharged to after a visit detail record. This concept is part of the visit domain and can indicate if a patient was discharged to home or sent to a long-term care facility, for example.\n    Table Description: The VISIT_DETAIL table is an optional table used to represents details of each record in the parent VISIT_OCCURRENCE table. A good example of this would be the movement between units in a hospital during an inpatient stay or claim lines associated with a one insurance claim. For every record in the VISIT_OCCURRENCE table there may be 0 or more records in the VISIT_DETAIL table with a 1:n relationship where n may be 0. The VISIT_DETAIL table is structurally very similar to VISIT_OCCURRENCE table and belongs to the visit domain.\n    ETL Conventions: If available, map the DISCHARGE_TO_SOURCE_VALUE to a Standard Concept in the Visit domain. If not available, set to 0. [Accepted Concepts](https://athena.ohdsi.org/search-terms/terms?domain=Visit&standardConcept=Standard&page=1&pageSize=15&query=).\n    Data Type: integer",
+        "score": 1.502151
+      },
+      {
+        "id": "d3c29667-5196-4d25-957e-c0b2776ceda80",
+        "fieldName": "discharge_to_concept_id",
+        "tableName": "visit_occurrence",
+        "enrichedText": "Field: discharge_to_concept_id\n    Table: visit_occurrence\n    Field Description: Use this field to determine where the patient was discharged to after a visit. This concept is part of the visit domain and can indicate if a patient was discharged to home or sent to a long-term care facility, for example.\n    Table Description: This table contains Events where Persons engage with the healthcare system for a duration of time. They are often also called \"Encounters\". Visits are defined by a configuration of circumstances under which they occur, such as (i) whether the patient comes to a healthcare institution, the other way around, or the interaction is remote, (ii) whether and what kind of trained medical staff is delivering the service during the Visit, and (iii) whether the Visit is transient or for a longer period involving a stay in bed.\n    ETL Conventions: If available, map the discharge_to_source_value to a standard concept in the visit domain. If not available set to 0.\n    Data Type: integer",
+        "score": 1.500875
+      }
+    ],
+    "harmonization_response": {
+      "source": "Blood Deductible Liability",
+      "target": "cost.deductible",
+      "explanation": "This field represents the deductible amount that the beneficiary is liable for in a blood-related service claim from CMS inpatient data. The OMOP cost.deductible field is specifically designed to capture deductible amounts as part of healthcare costs. While the embedding matches suggested discharge-related fields, the semantic meaning of the source field clearly indicates a financial deductible concept, making cost.deductible the appropriate target field.",
+      "foreign_key": "The cost table links to the relevant clinical event",
+      "foreign_key_table": "cost",
+      "foreign_key_field": "cost_event_id"
+    }
+  },
+  {
+    "row_index": 18,
+    "input_label": "Claim Utilization Day Count",
+    "input_table_description": "CMS Inpatient Claims DE-SynPUF",
+    "source": "Claim Utilization Day Count:CMS Inpatient Claims DE-SynPUF",
+    "embedding_matches": [
+      {
+        "id": "b25d2c61-d2aa-4f25-9cf2-77559be868790",
+        "fieldName": "discharge_to_concept_id",
+        "tableName": "visit_detail",
+        "enrichedText": "Field: discharge_to_concept_id\n    Table: visit_detail\n    Field Description: Use this field to determine where the patient was discharged to after a visit detail record. This concept is part of the visit domain and can indicate if a patient was discharged to home or sent to a long-term care facility, for example.\n    Table Description: The VISIT_DETAIL table is an optional table used to represents details of each record in the parent VISIT_OCCURRENCE table. A good example of this would be the movement between units in a hospital during an inpatient stay or claim lines associated with a one insurance claim. For every record in the VISIT_OCCURRENCE table there may be 0 or more records in the VISIT_DETAIL table with a 1:n relationship where n may be 0. The VISIT_DETAIL table is structurally very similar to VISIT_OCCURRENCE table and belongs to the visit domain.\n    ETL Conventions: If available, map the DISCHARGE_TO_SOURCE_VALUE to a Standard Concept in the Visit domain. If not available, set to 0. [Accepted Concepts](https://athena.ohdsi.org/search-terms/terms?domain=Visit&standardConcept=Standard&page=1&pageSize=15&query=).\n    Data Type: integer",
+        "score": 1.516079
+      },
+      {
+        "id": "d3c29667-5196-4d25-957e-c0b2776ceda80",
+        "fieldName": "discharge_to_concept_id",
+        "tableName": "visit_occurrence",
+        "enrichedText": "Field: discharge_to_concept_id\n    Table: visit_occurrence\n    Field Description: Use this field to determine where the patient was discharged to after a visit. This concept is part of the visit domain and can indicate if a patient was discharged to home or sent to a long-term care facility, for example.\n    Table Description: This table contains Events where Persons engage with the healthcare system for a duration of time. They are often also called \"Encounters\". Visits are defined by a configuration of circumstances under which they occur, such as (i) whether the patient comes to a healthcare institution, the other way around, or the interaction is remote, (ii) whether and what kind of trained medical staff is delivering the service during the Visit, and (iii) whether the Visit is transient or for a longer period involving a stay in bed.\n    ETL Conventions: If available, map the discharge_to_source_value to a standard concept in the visit domain. If not available set to 0.\n    Data Type: integer",
+        "score": 1.503672
+      },
+      {
+        "id": "d726737f-9267-4dae-85a2-cd0dfdb87e3b0",
+        "fieldName": "days_supply",
+        "tableName": "drug_exposure",
+        "enrichedText": "Field: days_supply\n    Table: drug_exposure\n    Field Description: The number of days of supply of the medication as recorded in the original prescription or dispensing record. Days supply can differ from actual drug duration (i.e. prescribed days supply vs actual exposure).\n    Table Description: This table captures records about the exposure to a Drug ingested or otherwise introduced into the body. A Drug is a biochemical substance formulated in such a way that when administered to a Person it will exert a certain biochemical effect on the metabolism. Drugs include prescription and over-the-counter medicines, vaccines, and large-molecule biologic therapies. Radiological devices ingested or applied locally do not count as Drugs.\n    ETL Conventions: The field should be left empty if the source data does not contain a verbatim days_supply, and should not be calculated from other fields.\u000b\u000bNegative values are not allowed. Several actions are possible: 1) record is not trustworthy and we remove the record entirely. 2) we trust the record and leave days_supply empty or 3) record needs to be combined with other record (e.g. reversal of prescription). High values (>365 days) should be investigated. If considered an error in the source data (e.g. typo), the value needs to be excluded to prevent creation of unrealistic long eras.\n    Data Type: integer",
+        "score": 1.4471
+      }
+    ],
+    "harmonization_response": {
+      "source": "Claim Utilization Day Count",
+      "target": "visit_occurrence.visit_length",
+      "explanation": "The source field represents the number of days associated with an inpatient claim, which directly corresponds to the length of a visit in OMOP. While not in the top embedding matches, visit_length is the standard field for capturing duration of healthcare encounters in the OMOP CDM. This mapping is particularly appropriate for inpatient claims data where the utilization days represent the length of stay.",
+      "foreign_key": "",
+      "foreign_key_table": "",
+      "foreign_key_field": ""
+    }
+  },
+  {
+    "row_index": 19,
+    "input_label": "Discharge Date",
+    "input_table_description": "CMS Inpatient Claims DE-SynPUF",
+    "source": "Discharge Date:CMS Inpatient Claims DE-SynPUF",
+    "embedding_matches": [
+      {
+        "id": "452eabf2-9405-41b5-9a10-1063c923dc210",
+        "fieldName": "discharge_to_source_value",
+        "tableName": "visit_occurrence",
+        "enrichedText": "Field: discharge_to_source_value\n    Table: visit_occurrence\n    Field Description: nan\n    Table Description: This table contains Events where Persons engage with the healthcare system for a duration of time. They are often also called \"Encounters\". Visits are defined by a configuration of circumstances under which they occur, such as (i) whether the patient comes to a healthcare institution, the other way around, or the interaction is remote, (ii) whether and what kind of trained medical staff is delivering the service during the Visit, and (iii) whether the Visit is transient or for a longer period involving a stay in bed.\n    ETL Conventions: This information may be called something different in the source data but the field is meant to contain a value indicating where a person was discharged to after a visit, as in they went home or were moved to long-term care. Typically this applies only to visits that have a length of stay of a day or more.\n    Data Type: varchar(50)",
+        "score": 1.362376
+      },
+      {
+        "id": "d3c29667-5196-4d25-957e-c0b2776ceda80",
+        "fieldName": "discharge_to_concept_id",
+        "tableName": "visit_occurrence",
+        "enrichedText": "Field: discharge_to_concept_id\n    Table: visit_occurrence\n    Field Description: Use this field to determine where the patient was discharged to after a visit. This concept is part of the visit domain and can indicate if a patient was discharged to home or sent to a long-term care facility, for example.\n    Table Description: This table contains Events where Persons engage with the healthcare system for a duration of time. They are often also called \"Encounters\". Visits are defined by a configuration of circumstances under which they occur, such as (i) whether the patient comes to a healthcare institution, the other way around, or the interaction is remote, (ii) whether and what kind of trained medical staff is delivering the service during the Visit, and (iii) whether the Visit is transient or for a longer period involving a stay in bed.\n    ETL Conventions: If available, map the discharge_to_source_value to a standard concept in the visit domain. If not available set to 0.\n    Data Type: integer",
+        "score": 1.314359
+      },
+      {
+        "id": "b25d2c61-d2aa-4f25-9cf2-77559be868790",
+        "fieldName": "discharge_to_concept_id",
+        "tableName": "visit_detail",
+        "enrichedText": "Field: discharge_to_concept_id\n    Table: visit_detail\n    Field Description: Use this field to determine where the patient was discharged to after a visit detail record. This concept is part of the visit domain and can indicate if a patient was discharged to home or sent to a long-term care facility, for example.\n    Table Description: The VISIT_DETAIL table is an optional table used to represents details of each record in the parent VISIT_OCCURRENCE table. A good example of this would be the movement between units in a hospital during an inpatient stay or claim lines associated with a one insurance claim. For every record in the VISIT_OCCURRENCE table there may be 0 or more records in the VISIT_DETAIL table with a 1:n relationship where n may be 0. The VISIT_DETAIL table is structurally very similar to VISIT_OCCURRENCE table and belongs to the visit domain.\n    ETL Conventions: If available, map the DISCHARGE_TO_SOURCE_VALUE to a Standard Concept in the Visit domain. If not available, set to 0. [Accepted Concepts](https://athena.ohdsi.org/search-terms/terms?domain=Visit&standardConcept=Standard&page=1&pageSize=15&query=).\n    Data Type: integer",
+        "score": 1.307462
+      }
+    ],
+    "harmonization_response": {
+      "source": "Discharge Date",
+      "target": "visit_occurrence.visit_end_date",
+      "explanation": "For inpatient claims, the discharge date should be mapped to visit_end_date in the visit_occurrence table. This represents when the healthcare encounter/visit ended, which for inpatient stays is the discharge date. The visit_occurrence table is the appropriate location for this information as it stores key temporal boundaries of healthcare encounters. This is a standard mapping pattern for inpatient discharge dates in OMOP CDM.",
+      "foreign_key": "",
+      "foreign_key_table": "",
+      "foreign_key_field": ""
+    }
+  },
+  {
+    "row_index": 20,
+    "input_label": "Diagnosis Related Group Code",
+    "input_table_description": "CMS Inpatient Claims DE-SynPUF",
+    "source": "Diagnosis Related Group Code:CMS Inpatient Claims DE-SynPUF",
+    "embedding_matches": [
+      {
+        "id": "f09d9447-086d-4486-9ef7-0e2ccd3e8ef00",
+        "fieldName": "disease_status_concept_id",
+        "tableName": "specimen",
+        "enrichedText": "Field: disease_status_concept_id\n    Table: specimen\n    Field Description: nan\n    Table Description: The specimen domain contains the records identifying biological samples from a person.\n    ETL Conventions: nan\n    Data Type: integer",
+        "score": 1.469368
+      },
+      {
+        "id": "b25d2c61-d2aa-4f25-9cf2-77559be868790",
+        "fieldName": "discharge_to_concept_id",
+        "tableName": "visit_detail",
+        "enrichedText": "Field: discharge_to_concept_id\n    Table: visit_detail\n    Field Description: Use this field to determine where the patient was discharged to after a visit detail record. This concept is part of the visit domain and can indicate if a patient was discharged to home or sent to a long-term care facility, for example.\n    Table Description: The VISIT_DETAIL table is an optional table used to represents details of each record in the parent VISIT_OCCURRENCE table. A good example of this would be the movement between units in a hospital during an inpatient stay or claim lines associated with a one insurance claim. For every record in the VISIT_OCCURRENCE table there may be 0 or more records in the VISIT_DETAIL table with a 1:n relationship where n may be 0. The VISIT_DETAIL table is structurally very similar to VISIT_OCCURRENCE table and belongs to the visit domain.\n    ETL Conventions: If available, map the DISCHARGE_TO_SOURCE_VALUE to a Standard Concept in the Visit domain. If not available, set to 0. [Accepted Concepts](https://athena.ohdsi.org/search-terms/terms?domain=Visit&standardConcept=Standard&page=1&pageSize=15&query=).\n    Data Type: integer",
+        "score": 1.435345
+      },
+      {
+        "id": "d3c29667-5196-4d25-957e-c0b2776ceda80",
+        "fieldName": "discharge_to_concept_id",
+        "tableName": "visit_occurrence",
+        "enrichedText": "Field: discharge_to_concept_id\n    Table: visit_occurrence\n    Field Description: Use this field to determine where the patient was discharged to after a visit. This concept is part of the visit domain and can indicate if a patient was discharged to home or sent to a long-term care facility, for example.\n    Table Description: This table contains Events where Persons engage with the healthcare system for a duration of time. They are often also called \"Encounters\". Visits are defined by a configuration of circumstances under which they occur, such as (i) whether the patient comes to a healthcare institution, the other way around, or the interaction is remote, (ii) whether and what kind of trained medical staff is delivering the service during the Visit, and (iii) whether the Visit is transient or for a longer period involving a stay in bed.\n    ETL Conventions: If available, map the discharge_to_source_value to a standard concept in the visit domain. If not available set to 0.\n    Data Type: integer",
+        "score": 1.42731
+      }
+    ],
+    "harmonization_response": {
+      "source": "Diagnosis Related Group Code",
+      "target": "visit_occurrence.drg_concept_id",
+      "explanation": "The DRG (Diagnosis Related Group) code should be mapped to visit_occurrence.drg_concept_id, which is specifically designed to store DRG codes for inpatient hospital stays. This is the standard field in OMOP CDM for capturing DRG information. DRGs are payment classification systems used primarily for Medicare inpatient claims, which matches perfectly with the source context of CMS Inpatient Claims data. The concept_id should be mapped to a standard concept from the DRG vocabulary in OMOP.",
+      "foreign_key": "The field references the concept table for standardized DRG codes",
+      "foreign_key_table": "concept",
+      "foreign_key_field": "concept_id"
+    }
+  }
+]
