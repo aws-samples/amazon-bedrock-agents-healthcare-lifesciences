@@ -1,0 +1,16 @@
+strands-agents
+strands-agents-tools
+requests
+PyYAML
+fastmcp
+pydantic
+bedrock-agentcore
+bedrock-agentcore-starter-toolkit
+botocore
+uv
+boto3
+streamlit
+streamlit-cookies-controller
+PyJWT
+mcp
+aws-opentelemetry-distro

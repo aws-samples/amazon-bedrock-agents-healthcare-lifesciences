@@ -8,7 +8,7 @@
 End to end template that includes deployment of all Bedrock AgentCore components- Runtime, Gateway, Identity, Memory and Observability. Streamlit UI available with Oauth/IAM authentication options. [agentcore-template](agentcore_template/)
 
 ### Biomarker discovery agents
-Multiple agents as Strands tools that includes deployment with AgentCore Runtime and a local Streamlit UI. 
+Multiple agents as Strands tools with AgentCore Runtime deployment and a local Streamlit UI. [agentcore-biomarker-discovery](multi_agent_collaboration/cancer_biomarker_discovery/strands_agentcore/)
 
 ### Upcoming examples
 Research agent with multiple tools, Variant interpreter agent with HealthOmics and more. 

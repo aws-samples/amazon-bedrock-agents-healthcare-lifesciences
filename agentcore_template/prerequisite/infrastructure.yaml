@@ -1,0 +1,239 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "CloudFormation template for Template MyApp System with SSM parameters and lambda function"
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Lambda Code Configuration
+        Parameters:
+          - LambdaS3Bucket
+          - LambdaS3Key
+
+Parameters:
+  LambdaS3Bucket:
+    Description: The name of S3 bucket which contains lambda code
+    Type: String
+    MinLength: 1
+
+  LambdaS3Key:
+    Description: The S3 object key which contains my app template assistant code in zip format
+    Type: String
+    MinLength: 1
+
+Resources:
+  RuntimeAgentCoreRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - bedrock-agentcore.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: BedrockAgentPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: ECRImageAccess
+                Effect: Allow
+                Action:
+                  - ecr:BatchGetImage
+                  - ecr:GetDownloadUrlForLayer
+                Resource:
+                  - !Sub arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/bedrock-agentcore-myapp*
+              - Effect: Allow
+                Action:
+                  - logs:DescribeLogStreams
+                  - logs:CreateLogGroup
+                Resource:
+                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/bedrock-agentcore/runtimes/*
+              - Effect: Allow
+                Action:
+                  - logs:DescribeLogGroups
+                Resource:
+                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:*
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/bedrock-agentcore/runtimes/*:log-stream:*
+              - Sid: ECRTokenAccess
+                Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                  - xray:GetSamplingRules
+                  - xray:GetSamplingTargets
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricData
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    cloudwatch:namespace: bedrock-agentcore
+              - Sid: GetAgentAccessToken
+                Effect: Allow
+                Action:
+                  - bedrock-agentcore:GetWorkloadAccessToken
+                  - bedrock-agentcore:GetWorkloadAccessTokenForJWT
+                  - bedrock-agentcore:GetWorkloadAccessTokenForUserId
+                Resource:
+                  - !Sub arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:workload-identity-directory/default
+                  - !Sub arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:workload-identity-directory/default/workload-identity/myapp*
+              - Sid: ProvisionedThroughputModelInvocation
+                Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                Resource:
+                  - "arn:aws:bedrock:*::foundation-model/*"
+                  - !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:*
+              - Sid: SSMGetparam
+                Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                Resource:
+                  - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/app/myapp/*
+              - Sid: Identity
+                Effect: Allow
+                Action:
+                  - bedrock-agentcore:GetResourceOauth2Token
+                Resource:
+                  - !Sub arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:token-vault/default/oauth2credentialprovider/myapp*
+                  - !Sub arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:workload-identity-directory/default/workload-identity/myapp*
+                  - !Sub arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:workload-identity-directory/default
+                  - !Sub arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:token-vault/default
+              - Sid: SecretManager
+                Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  - !Sub arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:bedrock-agentcore-identity!default/oauth2/myapp*
+              - Sid: AgentCoreMemory
+                Effect: Allow
+                Action:
+                  - bedrock-agentcore:ListMemories
+                  - bedrock-agentcore:ListMemoryRecords
+                  - bedrock-agentcore:RetrieveMemoryRecords
+                  - bedrock-agentcore:GetMemory
+                  - bedrock-agentcore:GetMemoryRecord
+                  - bedrock-agentcore:CreateEvent
+                  - bedrock-agentcore:GetEvent
+                  - bedrock-agentcore:ListEvents
+                Resource:
+                  - !Sub arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:memory/myapp*
+              - Sid: BedrockKnowledgeBase
+                Effect: Allow
+                Action:
+                  - bedrock:GetKnowledgeBase
+                  - bedrock:GetKnowledgeBaseDocuments
+                  - bedrock:ListKnowledgeBases
+                  - bedrock:RetrieveAndGenerate
+                  - bedrock:Retrieve
+                Resource:
+                  - !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:knowledge-base/*
+              - Sid: CognitoIDP
+                Effect: Allow
+                Action:
+                  - cognito-idp:ListResourceServers
+                  - cognito-idp:DescribeResourceServer
+                  - cognito-idp:ListIdentityProviders
+                  - cognito-idp:ListUserPools
+                Resource:
+                  - !Sub arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/*
+
+  GatewayAgentCoreRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - bedrock-agentcore.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: BedrockAgentPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: InvokeFunction
+                Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - !GetAtt MyAppLambda.Arn
+
+
+  # Lambda target
+  MyAppLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: /service-role/
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+      
+
+  MyAppLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: "Lambda function for Template MyApp Assistant"
+      Handler: lambda_function.lambda_handler
+      Code:
+        S3Bucket: !Ref LambdaS3Bucket
+        S3Key: !Ref LambdaS3Key
+      Role: !GetAtt MyAppLambdaRole.Arn
+      Runtime: python3.12
+      PackageType: Zip
+      Architectures:
+        - x86_64
+
+  
+  GatewayAgentcoreIAMRoleParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /app/myapp/agentcore/gateway_iam_role
+      Type: String
+      Value: !GetAtt GatewayAgentCoreRole.Arn
+      Description: agentcore IAM role to assume
+      Tags:
+        Application: MyApp
+
+  RuntimeAgentcoreIAMRoleParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /app/myapp/agentcore/runtime_iam_role
+      Type: String
+      Value: !GetAtt RuntimeAgentCoreRole.Arn
+      Description: agentcore IAM role to assume
+      Tags:
+        Application: MyApp
+
+  LambdaArnParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /app/myapp/agentcore/lambda_arn
+      Type: String
+      Value: !GetAtt MyAppLambda.Arn
+      Description: ARN of the lambda that integrates with agentcore
+      Tags:
+        Application: MyApp
