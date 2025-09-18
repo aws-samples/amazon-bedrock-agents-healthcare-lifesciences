@@ -1,6 +1,17 @@
 # Sample Healthcare and Life Sciences Agents on AWS
 
-> **⚠️ Important Update (July 28, 2025):** The new recommended way to deploy agents is using the [Strands](https://strandsagents.com/) framework and [Amazon Bedrock AgentCore](https://aws.amazon.com/bedrock/agentcore/). This codebase will be updated shortly to reflect these new best practices. The current deployment methods below are still functional but will be superseded by the new framework.
+> **⚠️ Important Update (September 17, 2025):** The new recommended way to deploy agents is using the [Strands](https://strandsagents.com/) framework and [Amazon Bedrock AgentCore](https://aws.amazon.com/bedrock/agentcore/). This codebase is iteratively being updated shortly to reflect these new best practices. The existing deployment methods for individual agents and the entire stack are still functional, we also provide the following examples with the new framework.
+
+## Bedrock AgentCore and Strands Agents
+
+### Agent template
+End to end template that includes deployment of all Bedrock AgentCore components- Runtime, Gateway, Identity, Memory and Observability. Streamlit UI available with Oauth/IAM authentication options. [agentcore-template](agentcore_template/)
+
+### Biomarker discovery agents
+Multiple agents as Strands tools with AgentCore Runtime deployment and a local Streamlit UI. [agentcore-biomarker-discovery](multi_agent_collaboration/cancer_biomarker_discovery/strands_agentcore/)
+
+### Upcoming examples
+Research agent with multiple tools, Variant interpreter agent with HealthOmics and more. 
 
 ## Project Components
 
