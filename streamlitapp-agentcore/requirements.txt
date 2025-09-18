@@ -1,0 +1,11 @@
+streamlit
+pandas
+numpy
+boto3
+Pillow
+matplotlib
+strands-agents
+strands-agents-tools
+uv
+bedrock-agentcore
+bedrock-agentcore-starter-toolkit
