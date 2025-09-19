@@ -204,19 +204,18 @@ def invoke_agent_streaming(
                         if show_tool:
                             container = st.container(border=True)
                             container.markdown(f"🔧 **{data["current_tool_use"]["name"]}**")
-                            container.markdown(f"Tool input: {data["current_tool_use"]["input"]}")
+                            
+                            tool_input = data["current_tool_use"]["input"]
+                            try:
+                                tool_input_json = json.loads(tool_input)
+                                container.markdown(f"Tool input: {tool_input_json["query"]}")
+                            except Exception as e:
+                                # if not a valid json, return the input as is
+                                container.markdown(f"Tool input: {tool_input}")
                             # yield f"\n\n🔧 Using tool: {data["current_tool_use"]["name"]}"
                             # yield f"\n\n🔧 Tool input: {data["current_tool_use"]["input"]}\n\n"
                     elif "event" in data:
-                        if "metadata" in data["event"]:
-                            print(f"METRICS: input tokens: {data["event"]["metadata"]["usage"]["inputTokens"]}")
-                            input_tokens = input_tokens + data["event"]["metadata"]["usage"]["inputTokens"]
-                            print(f"METRICS: output tokens: {data["event"]["metadata"]["usage"]["outputTokens"]}")
-                            output_tokens = output_tokens + data["event"]["metadata"]["usage"]["outputTokens"]
-                            print(f"METRICS: latency: {data["event"]["metadata"]["metrics"]["latencyMs"]}")
-                            latency = latency + data["event"]["metadata"]["metrics"]["latencyMs"]
-                        else:
-                            print(f"EVENT: {data.get('event')}")
+                        print(f"EVENT: {data.get('event')}")
                     elif "message" in data:
                         if "content" in data["message"]:
                             for obj in data["message"]["content"]:
@@ -229,6 +228,10 @@ def invoke_agent_streaming(
                                         # yield f"\n\n🔧 Tool result: {tool_result}\n\n"
                         print(f"MESSAGE: {data.get('message')}")
                     elif "result" in data:
+                        message = data["result"]["message"]
+                        input_tokens = data["result"]["metrics"]["accumulated_usage"]["inputTokens"]
+                        output_tokens = data["result"]["metrics"]["accumulated_usage"]["outputTokens"]
+                        latency = data["result"]["metrics"]["accumulated_metrics"]["latencyMs"]
                         print(f"RESULT: {data.get('result')}")
                 else:
                     logger.debug(f"Line doesn't start with 'data: ', skipping: {line}")
