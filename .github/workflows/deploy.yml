@@ -20,14 +20,14 @@ jobs:
   deploy:
     name: Deploy to S3
     runs-on: ubuntu-latest
-    
-    # Only run on merged PRs or direct pushes to main, but not for fork PRs
-    if: (github.event_name == 'push' || (github.event.pull_request.merged == true)) && github.event.pull_request.head.repo.full_name == github.repository
-    
+
+    # Only run on direct pushes to main or merged PRs from the same repo (not forks)
+    if: github.event_name == 'push' || (github.event.pull_request.merged == true && github.event.pull_request.head.repo.full_name == github.repository)
+
     strategy:
       matrix:
         region: [us-east-1, us-west-2]
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
