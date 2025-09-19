@@ -37,7 +37,7 @@ def get_role_arn(role_name_part):
     
     try:
         response = iam.list_roles()
-        for role in response['Roles']:
+        for role in [role for page in iam.get_paginator('list_roles').paginate() for role in page['Roles']]:
             if role_name_part in role['RoleName']:
                 return role['Arn']
         print("[ERROR] Role not found!")
