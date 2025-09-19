@@ -21,8 +21,8 @@ jobs:
     name: Deploy to S3
     runs-on: ubuntu-latest
     
-    # Only run on merged PRs or direct pushes to main
-    if: github.event_name == 'push' || (github.event.pull_request.merged == true)
+    # Only run on merged PRs or direct pushes to main, but not for fork PRs
+    if: (github.event_name == 'push' || (github.event.pull_request.merged == true)) && github.event.pull_request.head.repo.full_name == github.repository
     
     strategy:
       matrix:
