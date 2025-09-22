@@ -10,8 +10,11 @@ End to end template that includes deployment of all Bedrock AgentCore components
 ### Biomarker discovery agents
 Multiple agents as Strands tools with AgentCore Runtime deployment and a local Streamlit UI. [agentcore-biomarker-discovery](multi_agent_collaboration/cancer_biomarker_discovery/strands_agentcore/)
 
+### Research agent with Biomni database tools
+Research agent based on the end to end template with all Bedrock AgentCore components and 30+ database tools from [Biomni](https://github.com/snap-stanford/Biomni/tree/main) made available via a AgentCore Gateway [research-agent-biomni-tools](agents_catalog/28-Research-agent-biomni-gateway-tools/)
+
 ### Upcoming examples
-Research agent with multiple tools, Variant interpreter agent with HealthOmics and more. 
+Variant interpreter agent with HealthOmics and more. 
 
 ## Project Components
 
