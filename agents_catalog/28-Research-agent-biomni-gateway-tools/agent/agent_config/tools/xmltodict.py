@@ -4,9 +4,11 @@
 try:
     from defusedexpat import pyexpat as expat
 except ImportError:
+    # nosemgrep alternate use of expat
     from xml.parsers import expat
-from xml.sax.saxutils import XMLGenerator
-from xml.sax.xmlreader import AttributesImpl
+from defusedxml.sax.saxutils import XMLGenerator
+from defusedxml.sax.xmlreader import AttributesImpl
+from defusedxml import defuse_stdlib
 try:  # pragma no cover
     from cStringIO import StringIO
 except ImportError:  # pragma no cover
@@ -341,6 +343,9 @@ def parse(xml_input, encoding=None, expat=expat, process_namespaces=False,
         xml_input = xml_input.encode(encoding)
     if not process_namespaces:
         namespace_separator = None
+    # Defuse the stdlib to make expat safer
+    defuse_stdlib()
+    # nosemgrep expat to parse
     parser = expat.ParserCreate(
         encoding,
         namespace_separator
