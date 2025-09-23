@@ -1,20 +1,20 @@
 import streamlit as st
-import random
 import time
 import boto3
 import uuid
-import math
 from botocore.exceptions import EventStreamError
 import json
 import os
 import tempfile
 import sys
-import argparse
-import requests
-import urllib.parse
-from botocore.auth import SigV4Auth
-from botocore.awsrequest import AWSRequest
+import traceback
+from typing import Iterator
+from streamlit.logger import get_logger
+
 temp_dir = tempfile.mkdtemp()
+
+logger = get_logger(__name__)
+logger.setLevel("INFO")
 
 def get_environment():
     try:
@@ -27,6 +27,15 @@ def get_environment():
         raise ValueError("Environment parameter not found. Please provide --env parameter.")
 
 environmentName = get_environment()
+
+# Get AWS region
+session = boto3.Session()
+region = session.region_name
+
+# Define variables for agent usage metrics
+input_tokens = 0
+output_tokens = 0
+latency = 0
 
 ssm_client = boto3.client('ssm')
 
@@ -43,6 +52,7 @@ def list_png_files():
         except Exception as e:
             st.error(f"Error listing image: {str(e)}")
             return None
+
 def list_graph_files():
     try:
         s3_client = boto3.client('s3')
@@ -76,6 +86,7 @@ def get_image_from_s3(file_key):
     except Exception as e:
         st.error(f"Error fetching image from S3: {str(e)}")
         return None
+
 def get_s3_image(isKMplot: bool = False, invocation_id: str = None):
     
     if isKMplot and invocation_id:
@@ -129,7 +140,6 @@ def get_s3_image(isKMplot: bool = False, invocation_id: str = None):
         except Exception as e:
             return {"error": f"Error fetching graph from S3: {str(e)}"}
 
-
 def process_files(files_event):
     files_list = files_event['files']
     processed_files = []
@@ -151,44 +161,61 @@ def process_files(files_event):
 
     return processed_files
 
-
 def new_session():
     st.session_state["SESSION_ID"] = str(uuid.uuid1())
 
-# Streamed response emulator
-def response_generator():
-    
-    session_id = st.session_state["SESSION_ID"]
-    
-    # Build message string (keep your existing logic)
-    messagesStr = ""
-    for m in st.session_state.messages:
-        messagesStr = messagesStr + "role:" + m["role"] + " " + "content:" + m["content"] + "\n\n"
-    
-    # Get AWS region
-    session = boto3.Session()
-    region = session.region_name
+def invoke_agent_streaming(
+    prompt: str,
+    agent_arn: str,
+    session_id: str,
+    region: str
+) -> Iterator[str]:   
     
     # Retrieve agentcore client
     client = boto3.client('bedrock-agentcore', region_name=region)
-    payload = {"prompt": messagesStr}
 
     try:
         response = client.invoke_agent_runtime(
             agentRuntimeArn=agent_arn,
             runtimeSessionId=session_id,
             qualifier="DEFAULT",
-            payload=json.dumps(payload)
+            payload=json.dumps({"prompt": prompt})
         )
 
         # Handle streaming response
         for line in response["response"].iter_lines(chunk_size=1):
             if line:
                 line = line.decode("utf-8")
-                line = line.encode().decode('unicode_escape')
+                logger.debug(f"Raw line: {line}")
+
                 if line.startswith("data: "):
-                    yield line[6:].replace('"', '')
-                    
+                    line = line[6:]
+                    data = json.loads(line)
+                    data = json.loads(data)
+
+                    # Parse each chunk and display only what is relevant
+                    if "data" in data:
+                        yield { 'text': data.get("data") }
+                    elif "current_tool_use" in data:
+                        print(f"TOOL NAME: {data["current_tool_use"]["name"]}")
+                        print(f"TOOL INPUT: {data["current_tool_use"]["input"]}")
+                        yield { 'tool': data["current_tool_use"] }
+                    elif "event" in data:
+                        print(f"EVENT: {data.get('event')}")
+                    elif "message" in data:
+                        if "content" in data["message"]:
+                            for obj in data["message"]["content"]:
+                                if "toolResult" in obj:
+                                    tool_result = obj["toolResult"]["content"][0]["text"]
+                                    yield { 'tool': obj }
+                                    print(f"TOOL RESULT: {tool_result}")
+                        print(f"MESSAGE: {data.get('message')}")
+                    elif "result" in data:
+                        print(f"RESULT: {data.get('result')}")
+                        yield { 'metric': data }
+                else:
+                    logger.debug(f"Line doesn't start with 'data: ', skipping: {line}")
+                
     except Exception as e:
         print(f"AgentCore error: {e}")
         raise e
@@ -277,6 +304,15 @@ st.markdown("""
         overflow-y: auto;
         padding-right: 10px;
     }
+    /* Blinking cursor animation */
+    @keyframes blink {
+        0%, 50% { opacity: 1; }
+        51%, 100% { opacity: 0; }
+    }
+    .blinking-cursor::after {
+        content: '▌';
+        animation: blink 1s infinite;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -292,7 +328,19 @@ with st.sidebar:
     invocation_id = 1
     fetch_image = st.button("Fetch Chart")
     fetch_graph = st.button("Fetch Graphs")
-    
+
+    # Response formatting options
+    st.subheader("Display Options")
+    show_tools = st.checkbox(
+        "Show tools",
+        value=True,
+        help="Display tools used",
+    )
+    show_metrics = st.checkbox(
+        "Show metrics",
+        value=True,
+        help="Display metrics used",
+    )
 
 # Main content
 st.title("Biomarker Research Agent with Amazon Bedrock AgentCore")
@@ -325,7 +373,6 @@ st.markdown(f"""
         </div>
     </details>
 """, unsafe_allow_html=True)
-                    
 
 # Initialize chat history
 if "messages" not in st.session_state:
@@ -334,30 +381,113 @@ if "messages" not in st.session_state:
 if "SESSION_ID" not in st.session_state:
     new_session()
 
+session_id = st.session_state["SESSION_ID"]
+
 # Display chat messages from history on app rerun
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+        if "user" in message["role"]:
+            st.markdown(message["content"])
+        else:
+            content = message["content"]
+            try:
+                for chunk in content:
+                    if "tool" in chunk and show_tools:
+                        if "toolResult" in chunk["tool"]:
+                            with st.container(border=True):
+                                tool_result = chunk["tool"]["toolResult"]["content"][0]["text"]
+                                st.markdown(f"🔧 Tool result: {tool_result}")
+                        else:
+                            with st.container(border=True):
+                                st.markdown(f"🔧 **{chunk["tool"]["name"]}**")
+                                tool_input = chunk["tool"]["input"]
+                                try:
+                                    tool_input_json = json.loads(tool_input)
+                                    st.markdown(f"Tool input: {tool_input_json["query"]}")
+                                except Exception as e:
+                                    # if not a valid json, return the input as is
+                                    st.markdown(f"Tool input: {tool_input}")
+                    elif "metric" in chunk and show_metrics:
+                        input_tokens = chunk["metric"]["result"]["metrics"]["accumulated_usage"]["inputTokens"]
+                        output_tokens = chunk["metric"]["result"]["metrics"]["accumulated_usage"]["outputTokens"]
+                        latency = chunk["metric"]["result"]["metrics"]["accumulated_metrics"]["latencyMs"]
+                        with st.container(border=True):
+                            st.markdown("📊 Metrics")
+                            st.markdown("Total Input Tokens: " + str(input_tokens))
+                            st.markdown("Total Output Tokens: " + str(output_tokens))
+                            st.markdown("Total Latency: " + str(latency) + "ms")
+                    elif "text" in chunk:
+                        st.markdown(chunk["text"])
+            except Exception:
+                print(f"RR: EXCEPTION")
+                traceback.print_exc()
+                st.markdown(message["content"])
+
 
 # Accept user input
-if prompt := st.chat_input("How can I help ?"):
+if prompt := st.chat_input("How can I help?"):
     # Add user message to chat history
-    st.session_state.messages.append({"role": "user", "content": prompt})
+    st.session_state.messages.append(
+        {"role": "user", "content": prompt}
+    )
+
     # Display user message in chat message container
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # Display assistant response in chat message container
-    
-    response = ""
+    # Generate assistant response
     with st.chat_message("assistant"):
-        #print(st.session_state.messages)
+        message_placeholder = st.empty()
+        chunk_buffer = []
+
         try:
-            response = st.write_stream(response_generator())
+            # Stream the response
+            for chunk in invoke_agent_streaming(prompt, agent_arn, session_id, region):
+                logger.debug(f"received chunk ({type(chunk)}): {chunk}")
+
+                # Add chunk to buffer
+                chunk_buffer.append(chunk)
+
+                if "text" in chunk:
+                    st.markdown(chunk["text"])
+                elif "tool" in chunk and show_tools:
+                    if "toolResult" in chunk["tool"]:
+                        with st.container(border=True):
+                            tool_result = chunk["tool"]["toolResult"]["content"][0]["text"]
+                            st.markdown(f"🔧 Tool result: {tool_result}")
+                    else:
+                        with st.container(border=True):
+                            st.markdown(f"🔧 **{chunk["tool"]["name"]}**")
+                            tool_input = chunk["tool"]["input"]
+                            try:
+                                tool_input_json = json.loads(tool_input)
+                                st.markdown(f"Tool input: {tool_input_json["query"]}")
+                            except Exception as e:
+                                # if not a valid json, return the input as is
+                                st.markdown(f"Tool input: {tool_input}")
+                elif "metric" in chunk and show_metrics:
+                    input_tokens = chunk["metric"]["result"]["metrics"]["accumulated_usage"]["inputTokens"]
+                    output_tokens = chunk["metric"]["result"]["metrics"]["accumulated_usage"]["outputTokens"]
+                    latency = chunk["metric"]["result"]["metrics"]["accumulated_metrics"]["latencyMs"]
+                    with st.container(border=True):
+                        st.markdown("📊 Metrics")
+                        st.markdown("Total Input Tokens: " + str(input_tokens))
+                        st.markdown("Total Output Tokens: " + str(output_tokens))
+                        st.markdown("Total Latency: " + str(latency) + "ms")
+
+                time.sleep(0.01)  # Reduced delay since we're batching updates
+
+            # Add assistant response to chat history
+            st.session_state.messages.append({"role": "assistant", "content": chunk_buffer})
+
         except Exception as e:
+            error_response = "Sorry, I encountered an error. Please try again."
+            message_placeholder.markdown(error_response)
+            st.session_state.messages.append({"role": "assistant", "content": error_response})
             print("Exception")
-            print(e)
+            traceback.print_exc()
             pass
+
 if 'selected_actions' in st.session_state:
     st.write("Currently selected actions:", ', '.join(st.session_state.selected_actions))
 
@@ -370,7 +500,6 @@ if selected_file and load_image:
         image_placeholder.image(image, caption=selected_file, use_column_width=True)
     except Exception as e:
         st.error(f"Unable loading image: {str(e)}")
-
 elif fetch_image:
     s3_image = get_s3_image(isKMplot=True, invocation_id=invocation_id) 
     if s3_image and 'error' not in s3_image:  
@@ -381,7 +510,6 @@ elif fetch_image:
     else:
         error_msg = s3_image.get('error', "Failed to fetch image from S3.") if s3_image else "Failed to fetch image from S3."
         image_placeholder.error(error_msg)
-
 elif fetch_graph:
     s3_image = get_s3_image(isKMplot=False)  
     if s3_image and 'error' not in s3_image: 
@@ -392,6 +520,3 @@ elif fetch_graph:
     else:
         error_msg = s3_image.get('error', "Failed to fetch image from S3.") if s3_image else "Failed to fetch image from S3."
         image_placeholder.error(error_msg)
-        
-    # Add assistant response to chat history
-    #st.session_state.messages.append({"role": "assistant", "content": response})
