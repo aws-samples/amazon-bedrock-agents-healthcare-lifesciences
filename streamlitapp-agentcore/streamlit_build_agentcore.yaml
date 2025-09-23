@@ -159,8 +159,8 @@ Resources:
                   - 's3:GetObject'
                   - 's3:ListBucket'
                 Resource: 
-                  - !Sub 'arn:aws:s3:::${LoggingBucket}'
-                  - !Sub 'arn:aws:s3:::${LoggingBucket}/*'
+                  - !Sub 'arn:aws:s3:::${LoggingBucketAgentCore}'
+                  - !Sub 'arn:aws:s3:::${LoggingBucketAgentCore}/*'
                   - !Sub 'arn:aws:s3:::${EnvironmentName}-${AWS::AccountId}-${AWS::Region}-agent-build-bucket'
                   - !Sub 'arn:aws:s3:::${EnvironmentName}-${AWS::AccountId}-${AWS::Region}-agent-build-bucket/*'
         - PolicyName: BedrockAccess
