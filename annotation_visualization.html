@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClinVar & VEP Annotation Fields Comparison</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 20px; background: #f5f7fa; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .annotation-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px; }
+        .annotation-panel { background: white; border-radius: 12px; padding: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .clinvar { border-left: 5px solid #e74c3c; }
+        .vep { border-left: 5px solid #3498db; }
+        .field-card { background: #f8f9fa; border-radius: 8px; padding: 15px; margin: 10px 0; border-left: 3px solid #ddd; }
+        .field-name { font-weight: bold; color: #2c3e50; font-size: 1.1em; margin-bottom: 8px; }
+        .field-desc { color: #5d6d7e; margin-bottom: 10px; font-size: 0.95em; }
+        .field-values { background: white; padding: 10px; border-radius: 5px; font-family: 'Courier New', monospace; font-size: 0.85em; }
+        .importance { background: #fff3cd; padding: 5px 10px; border-radius: 15px; font-size: 0.8em; color: #856404; display: inline-block; margin-top: 5px; }
+        .comparison-table { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .comparison-table th, .comparison-table td { padding: 15px; text-align: left; border-bottom: 1px solid #eee; }
+        .comparison-table th { background: #34495e; color: white; }
+        .clinvar-col { background: #fdf2f2; }
+        .vep-col { background: #f2f8fd; }
+        .tag { display: inline-block; background: #ecf0f1; padding: 3px 8px; margin: 2px; border-radius: 12px; font-size: 0.8em; }
+        .critical { background: #e74c3c; color: white; }
+        .high { background: #f39c12; color: white; }
+        .moderate { background: #f1c40f; }
+        .low { background: #2ecc71; color: white; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧬 Genomic Variant Annotation Fields Analysis</h1>
+            <p>Comprehensive comparison of ClinVar and VEP annotation systems for clinical genomics</p>
+        </div>
+
+        <div class="annotation-grid">
+            <div class="annotation-panel clinvar">
+                <h2>🏥 ClinVar Annotations</h2>
+                <p><strong>Source:</strong> annotation.csv → attributes field</p>
+                <p><strong>Focus:</strong> Clinical significance and disease association</p>
+                
+                <div class="field-card">
+                    <div class="field-name">CLNSIG - Clinical Significance</div>
+                    <div class="field-desc">Determines clinical actionability of variants</div>
+                    <div class="field-values">
+                        <span class="tag critical">Pathogenic</span>
+                        <span class="tag high">Likely_pathogenic</span>
+                        <span class="tag moderate">Uncertain_significance</span>
+                        <span class="tag low">Likely_benign</span>
+                        <span class="tag low">Benign</span>
+                    </div>
+                    <div class="importance">🎯 Critical for clinical decision-making</div>
+                </div>
+
+                <div class="field-card">
+                    <div class="field-name">CLNVC - Variant Class</div>
+                    <div class="field-desc">Structural classification of genetic variants</div>
+                    <div class="field-values">
+                        <span class="tag">single_nucleotide_variant</span>
+                        <span class="tag">Deletion</span>
+                        <span class="tag">Insertion</span>
+                        <span class="tag">Indel</span>
+                        <span class="tag">Microsatellite</span>
+                    </div>
+                    <div class="importance">📊 Defines variant architecture</div>
+                </div>
+
+                <div class="field-card">
+                    <div class="field-name">CLNDN - Disease Name</div>
+                    <div class="field-desc">Associated disease or phenotype</div>
+                    <div class="field-values">
+                        <span class="tag">Retinitis_pigmentosa</span>
+                        <span class="tag">SAMD11-related_disorder</span>
+                        <span class="tag">not_specified</span>
+                    </div>
+                    <div class="importance">🔗 Links variants to clinical conditions</div>
+                </div>
+            </div>
+
+            <div class="annotation-panel vep">
+                <h2>🔬 VEP Annotations</h2>
+                <p><strong>Source:</strong> variant.csv → annotations.vep array</p>
+                <p><strong>Focus:</strong> Molecular consequences and functional impact</p>
+                
+                <div class="field-card">
+                    <div class="field-name">consequence - Functional Impact</div>
+                    <div class="field-desc">Molecular consequence on gene transcripts</div>
+                    <div class="field-values">
+                        <span class="tag">downstream_gene_variant</span>
+                        <span class="tag">upstream_gene_variant</span>
+                        <span class="tag">intron_variant</span>
+                        <span class="tag">3_prime_UTR_variant</span>
+                        <span class="tag">splice_polypyrimidine_tract_variant</span>
+                    </div>
+                    <div class="importance">⚙️ Primary functional classification</div>
+                </div>
+
+                <div class="field-card">
+                    <div class="field-name">impact - Severity Rating</div>
+                    <div class="field-desc">Predicted functional severity</div>
+                    <div class="field-values">
+                        <span class="tag critical">HIGH</span>
+                        <span class="tag high">MODERATE</span>
+                        <span class="tag moderate">LOW</span>
+                        <span class="tag low">MODIFIER</span>
+                    </div>
+                    <div class="importance">🎯 Prioritizes variants by predicted effect</div>
+                </div>
+
+                <div class="field-card">
+                    <div class="field-name">biotype - Transcript Type</div>
+                    <div class="field-desc">Classification of affected RNA transcript</div>
+                    <div class="field-values">
+                        <span class="tag">protein_coding</span>
+                        <span class="tag">lncRNA</span>
+                        <span class="tag">nonsense_mediated_decay</span>
+                        <span class="tag">TR_C_gene</span>
+                    </div>
+                    <div class="importance">🧬 Indicates transcript functionality</div>
+                </div>
+            </div>
+        </div>
+
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Aspect</th>
+                    <th class="clinvar-col">ClinVar</th>
+                    <th class="vep-col">VEP</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Primary Purpose</strong></td>
+                    <td class="clinvar-col">Clinical interpretation & disease association</td>
+                    <td class="vep-col">Molecular consequence prediction</td>
+                </tr>
+                <tr>
+                    <td><strong>Key Strength</strong></td>
+                    <td class="clinvar-col">Evidence-based clinical significance</td>
+                    <td class="vep-col">Comprehensive functional annotation</td>
+                </tr>
+                <tr>
+                    <td><strong>Data Source</strong></td>
+                    <td class="clinvar-col">Curated clinical submissions</td>
+                    <td class="vep-col">Computational prediction algorithms</td>
+                </tr>
+                <tr>
+                    <td><strong>Update Frequency</strong></td>
+                    <td class="clinvar-col">Manual curation cycles</td>
+                    <td class="vep-col">Algorithm-driven, frequent updates</td>
+                </tr>
+                <tr>
+                    <td><strong>Clinical Utility</strong></td>
+                    <td class="clinvar-col">Direct clinical decision support</td>
+                    <td class="vep-col">Research and variant prioritization</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div style="margin-top: 30px; padding: 20px; background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <h3>💡 Integration Strategy for Clinical Genomics</h3>
+            <p><strong>Complementary Use:</strong> ClinVar provides the clinical context ("Is this variant clinically significant?") while VEP provides the mechanistic insights ("How does this variant affect gene function?").</p>
+            <p><strong>Workflow Integration:</strong> Use VEP for initial variant filtering and consequence prediction, then leverage ClinVar for clinical interpretation and reporting.</p>
+        </div>
+    </div>
+</body>
+</html>
