@@ -19,7 +19,7 @@ Parameters:
 
   GitRepoURL:
     Type: String
-    Default: 'https://github.com/aws-samples/amazon-bedrock-agents-cancer-biomarker-discovery.git'
+    Default: 'https://github.com/berilunay/amazon-bedrock-agents-cancer-biomarker-discovery.git'
     Description: Git repository URL where the code files are stored
 
   EnvironmentName:
@@ -37,7 +37,7 @@ Parameters:
   GitBranch:
     Type: String
     Description: 'The github branch to clone, change only for dev testing'
-    Default: 'hcls-agents-workshop'
+    Default: 'streamliterrorfix'
 
 Mappings:
   # Cloudfront Mappings

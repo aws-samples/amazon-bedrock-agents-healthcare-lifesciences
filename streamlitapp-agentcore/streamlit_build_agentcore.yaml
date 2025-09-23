@@ -15,7 +15,7 @@ Parameters:
 
   GitRepoURL:
     Type: String
-    Default: 'https://github.com/aws-samples/amazon-bedrock-agents-cancer-biomarker-discovery.git'
+    Default: 'https://github.com/berilunay/amazon-bedrock-agents-cancer-biomarker-discovery.git'
     Description: Git repository URL where the code files are stored
 
   EnvironmentName:
@@ -33,7 +33,7 @@ Parameters:
   GitBranch:
     Type: String
     Description: 'The github branch to clone, change only for dev testing'
-    Default: 'hcls-agents-workshop'
+    Default: 'streamliterrorfix'
 
   # Import shared VPC resources
   SharedVPCId:
@@ -139,6 +139,30 @@ Resources:
       ManagedPolicyArns:
         - 'arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy'
       Policies:
+        - PolicyName: SSMParameterAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'ssm:GetParameter'
+                  - 'ssm:GetParameters'
+                Resource: 
+                  - !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/streamlitapp/${EnvironmentName}/*'
+                  - !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/streamlitapp/${EnvironmentName}'
+        - PolicyName: S3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 's3:GetObject'
+                  - 's3:ListBucket'
+                Resource: 
+                  - !Sub 'arn:aws:s3:::${LoggingBucket}'
+                  - !Sub 'arn:aws:s3:::${LoggingBucket}/*'
+                  - !Sub 'arn:aws:s3:::${EnvironmentName}-${AWS::AccountId}-${AWS::Region}-agent-build-bucket'
+                  - !Sub 'arn:aws:s3:::${EnvironmentName}-${AWS::AccountId}-${AWS::Region}-agent-build-bucket/*'
         - PolicyName: BedrockAccess
           PolicyDocument:
             Version: '2012-10-17'
@@ -149,6 +173,21 @@ Resources:
                   - 'bedrock:InvokeModelWithResponseStream'
                 Resource: 
                   - !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/*'
+              - Effect: Allow
+                Action:
+                  - 'bedrock:ListAgentVersions'
+                  - 'bedrock:ListAgents'
+                  - 'bedrock:InvokeAgent'
+                  - 'bedrock:GetAgent'
+                Resource: 
+                  - !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*'
+              - Effect: Allow
+                Action:
+                  - 'bedrock:ListAgentActionGroups'
+                  - 'bedrock:ListAgentAliases'
+                Resource: '*'
+         
+
 
   TaskRoleAgentCore:
     Type: AWS::IAM::Role
