@@ -109,10 +109,11 @@ def query_variants_by_gene(gene_symbols: str, sample_ids: str = "", include_freq
                 'variant_store': VARIANT_STORE_NAME,
                 'annotation_store': ANNOTATION_STORE_NAME,
                 'database': LAKE_FORMATION_DATABASE,
-                'analysis_type': 'gene_analysis'
+                'analysis_type': 'gene_analysis',
+                'tool_used': '🧬 Gene Variant Analysis Tool'
             }
         
-        return json.dumps(result, indent=2, default=str)
+        return f"{json.dumps(result, indent=2, default=str)}"
             
     except Exception as e:
         return f"Error in gene variant analysis: {str(e)}"
@@ -144,7 +145,7 @@ def query_variants_by_chromosome(chromosome: str, sample_ids: str = "", position
                 'analysis_type': 'chromosome_analysis'
             }
         
-        return json.dumps(result, indent=2, default=str)
+        return f"{json.dumps(result, indent=2, default=str)}"
         
     except Exception as e:
         return f"Error in chromosome variant analysis: {str(e)}"
@@ -174,7 +175,7 @@ def analyze_allele_frequencies(sample_ids: str = "", frequency_threshold: float 
                 'analysis_type': 'frequency_analysis'
             }
         
-        return json.dumps(result, indent=2, default=str)
+        return f"{json.dumps(result, indent=2, default=str)}"
         
     except Exception as e:
         return f"Error in allele frequency analysis: {str(e)}"
@@ -203,7 +204,7 @@ def compare_sample_variants(sample_ids: str) -> str:
                 'analysis_type': 'sample_comparison'
             }
         
-        return json.dumps(result, indent=2, default=str)
+        return f"{json.dumps(result, indent=2, default=str)}"
         
     except Exception as e:
         return f"Error in sample comparison: {str(e)}"
@@ -231,7 +232,7 @@ def execute_dynamic_genomics_query(user_question: str, sample_ids: str = "") -> 
         # Format the results for better readability
         formatted_result = format_dynamic_query_results(result)
         
-        return formatted_result
+        return f"{formatted_result}"
         
     except Exception as e:
         return f"Error executing dynamic genomics query: {str(e)}"

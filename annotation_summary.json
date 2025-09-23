@@ -1,0 +1,90 @@
+{
+  "clinvar_annotations": {
+    "description": "ClinVar database annotations providing clinical significance and variant classification",
+    "source_file": "annotation.csv",
+    "field_location": "attributes column",
+    "key_fields": {
+      "CLNSIG": {
+        "description": "Clinical significance of the variant",
+        "values": ["Benign", "Likely_benign", "Uncertain_significance", "Conflicting_classifications_of_pathogenicity"],
+        "importance": "Critical for clinical interpretation"
+      },
+      "CLNVC": {
+        "description": "Type of variant",
+        "values": ["single_nucleotide_variant", "Deletion", "Insertion", "Indel", "Microsatellite"],
+        "importance": "Defines the structural nature of the variant"
+      },
+      "CLNDN": {
+        "description": "Disease name associated with the variant",
+        "values": ["Retinitis_pigmentosa", "SAMD11-related_disorder", "not_specified", "not_provided"],
+        "importance": "Links variant to specific diseases"
+      },
+      "GENEINFO": {
+        "description": "Gene symbol and Entrez Gene ID",
+        "values": ["OR4F5:79501", "SAMD11:148398", "LINC01409:105378580"],
+        "importance": "Identifies the affected gene"
+      },
+      "MC": {
+        "description": "Molecular consequence using Sequence Ontology terms",
+        "values": ["SO:0001583|missense_variant", "SO:0001627|intron_variant", "SO:0001819|synonymous_variant"],
+        "importance": "Describes functional impact on gene/protein"
+      },
+      "CLNREVSTAT": {
+        "description": "Review status of the clinical assertion",
+        "values": ["criteria_provided", "no_assertion_criteria_provided"],
+        "importance": "Indicates reliability of clinical interpretation"
+      },
+      "ALLELEID": {
+        "description": "ClinVar allele identifier",
+        "values": ["Numeric IDs like 1003021, 1023510, etc."],
+        "importance": "Unique identifier for tracking variants"
+      }
+    }
+  },
+  "vep_annotations": {
+    "description": "Variant Effect Predictor annotations providing detailed functional consequences",
+    "source_file": "variant.csv", 
+    "field_location": "annotations column -> vep array",
+    "key_fields": {
+      "consequence": {
+        "description": "Functional consequence of the variant on transcripts",
+        "values": [
+          "downstream_gene_variant", "upstream_gene_variant", "intron_variant",
+          "3_prime_UTR_variant", "non_coding_transcript_variant", 
+          "splice_polypyrimidine_tract_variant", "NMD_transcript_variant"
+        ],
+        "importance": "Primary classification of variant effect"
+      },
+      "impact": {
+        "description": "Severity rating of the variant consequence",
+        "values": ["MODIFIER", "LOW", "MODERATE", "HIGH"],
+        "importance": "Prioritizes variants by predicted functional impact"
+      },
+      "biotype": {
+        "description": "Biotype of the affected transcript",
+        "values": [
+          "protein_coding", "lncRNA", "nonsense_mediated_decay",
+          "TR_C_gene", "protein_coding_CDS_not_defined"
+        ],
+        "importance": "Indicates the type of RNA transcript affected"
+      },
+      "symbol": {
+        "description": "Gene symbol",
+        "importance": "Human-readable gene identifier"
+      },
+      "gene": {
+        "description": "Ensembl gene identifier",
+        "importance": "Stable gene identifier across databases"
+      },
+      "feature": {
+        "description": "Ensembl transcript identifier",
+        "importance": "Specific transcript affected by variant"
+      }
+    }
+  },
+  "comparison": {
+    "clinvar_focus": "Clinical interpretation and disease association",
+    "vep_focus": "Molecular and functional consequences",
+    "complementary_use": "ClinVar provides clinical context while VEP provides mechanistic insights"
+  }
+}
