@@ -8,7 +8,7 @@ from strands import Agent, tool
 from strands.models import BedrockModel
 
 # Import main analysis functions from separate module
-from genomics_store_functions import (
+from .genomics_store_functions import (
     execute_dynamic_query,
     format_dynamic_query_results,
     query_variants_by_gene_function,

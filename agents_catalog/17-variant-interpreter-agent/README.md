@@ -4,13 +4,13 @@ This implementation demonstrates how to create an intelligent genomic variant an
 
 ## Architecture Overview
 
-![VCF Processing Pipeline](advanced-strands-agentcore/VCF_agent_fin.drawio.png)
+![VCF Processing Pipeline](advanced-strands-agentcore/static/VCF_agent_fin.drawio.png)
 
 The system processes VCF files through AWS HealthOmics with VEP annotation, stores the results in variant and annotation stores, and provides an AI-powered agent interface for natural language queries about genomic data.
 
 ## Agent Capabilities
 
-![Genomics Agent Interface](advanced-strands-agentcore/Clinvar_VEP.png)
+![Genomics Agent Interface](advanced-strands-agentcore/static/Clinvar_VEP.png)
 
 The **Genomics Variant Interpreter Agent** provides specialized genomic analysis capabilities:
 
@@ -43,7 +43,7 @@ Deploy the VEP processing pipeline and genomic data stores:
 ```bash
 # Deploy the genomics infrastructure
 aws cloudformation deploy \
-  --template-file advanced-strands-agentcore/genomics-vep-pipeline-infrastructure.yaml \
+  --template-file advanced-strands-agentcore/prerequisite/infrastructure.yaml \
   --stack-name genomics-vep-pipeline \
   --capabilities CAPABILITY_IAM
 ```
@@ -90,7 +90,7 @@ Install and run the Streamlit interface:
 ```bash
 # Install dependencies
 pip install -r advanced-strands-agentcore/requirements.txt
-pip install -r advanced-strands-agentcore/streamlit_requirements.txt
+pip install -r advanced-strands-agentcore/agent/streamlit_requirements.txt
 
 # Run Streamlit app
 streamlit run advanced-strands-agentcore/app.py --server.port 8501
@@ -125,7 +125,7 @@ streamlit run advanced-strands-agentcore/app.py --server.port 8501
 
 For detailed implementation instructions, troubleshooting, and advanced configuration, see:
 - **[Detailed Documentation](advanced-strands-agentcore/README_detailed.md)** - Complete setup guide and troubleshooting
-- **[Agent Notebook](advanced-strands-agentcore/genomics-store-agent-supervisor-agentcore.ipynb)** - Agent creation and deployment
+- **[Agent Notebook](advanced-strands-agentcore/agent/genomics-store-agent-supervisor-agentcore.ipynb)** - Agent creation and deployment
 - **[Infrastructure Notebook](advanced-strands-agentcore/genomics-vep-pipeline-deployment-complete.ipynb)** - AWS infrastructure setup
 
 ## Architecture Components

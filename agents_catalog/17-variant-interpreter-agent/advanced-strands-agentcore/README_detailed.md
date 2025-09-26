@@ -30,11 +30,11 @@ This system enables researchers and clinicians to:
 
 ## 🏗️ Architecture
 
-![Genomics VEP Pipeline Architecture](VCF_agent_fin.drawio.png)
+![Genomics VEP Pipeline Architecture](static/VCF_agent_fin.drawio.png)
 
 ## 🔬 Agent view
 
-![Genomics Agent View](Genomics_agent.png)
+![Genomics Agent View](streamlit_screenshot.png)
 
 The system follows this workflow:
 1. **Data Preparation**: VCF files and VEP cache files are uploaded to S3 buckets
@@ -155,7 +155,7 @@ aws s3 cp s3://1000genomes-dragen/data/dragen-3.5.7b/hg38_altaware_nohla-cnv-anc
    ```bash
    aws cloudformation create-stack \
      --stack-name genomics-vep-pipeline \
-     --template-body file://genomics-vep-pipeline-infrastructure.yaml \
+     --template-body file://prerequisite/infrastructure.yaml \
      --parameters ParameterKey=VcfInputBucketName,ParameterValue=your-vcf-input-bucket \
                   ParameterKey=VepOutputBucketName,ParameterValue=your-vep-output-bucket \
      --capabilities CAPABILITY_IAM
@@ -170,7 +170,7 @@ aws s3 cp s3://1000genomes-dragen/data/dragen-3.5.7b/hg38_altaware_nohla-cnv-anc
 
 1. **Open the Infrastructure Notebook**:
    ```bash
-   jupyter notebook genomics-vep-pipeline-deployment-complete.ipynb
+   jupyter notebook prerequisite/genomics-vep-pipeline-deployment-complete.ipynb
    ```
 
 2. **Configure AWS Profile** (First cell in notebook):
@@ -226,12 +226,12 @@ aws s3 cp s3://1000genomes-dragen/data/dragen-3.5.7b/hg38_altaware_nohla-cnv-anc
 1. **Install Dependencies**:
    ```bash
    pip install -r requirements.txt
-   pip install -r streamlit_requirements.txt
+   pip install -r agent/streamlit_requirements.txt
    ```
 
 2. **Open the Agent Notebook**:
    ```bash
-   jupyter notebook genomics-store-agent-supervisor-agentcore.ipynb
+   jupyter notebook agent/genomics-store-agent-supervisor-agentcore.ipynb
    ```
 
 3. **Configure Agent Settings**:
@@ -242,7 +242,7 @@ aws s3 cp s3://1000genomes-dragen/data/dragen-3.5.7b/hg38_altaware_nohla-cnv-anc
 
 4. **Create IAM Role for Agent** (if needed):
    ```bash
-   python create_agent_role.py
+   python scripts/create_agent_role.py
    ```
 
 5. **Initialize the Agent**:
@@ -252,7 +252,7 @@ aws s3 cp s3://1000genomes-dragen/data/dragen-3.5.7b/hg38_altaware_nohla-cnv-anc
 
 1. **Start Streamlit App**:
    ```bash
-   streamlit run genomics_streamlit_enhanced.py
+   streamlit run app.py
    ```
 
 2. **Access Web Interface**:
@@ -357,7 +357,7 @@ aws s3 cp s3://1000genomes-dragen/data/dragen-3.5.7b/hg38_altaware_nohla-cnv-anc
 - Enables complex genomic analysis workflows
 - Integrates with Streamlit for web-based interaction
 
-### 3. genomics-vep-pipeline-infrastructure.yaml
+### 3. infrastructure.yaml
 **Purpose**: CloudFormation template for automated infrastructure deployment
 
 **Key Functions**:
@@ -368,7 +368,7 @@ aws s3 cp s3://1000genomes-dragen/data/dragen-3.5.7b/hg38_altaware_nohla-cnv-anc
 - Creates Lake Formation database
 - Establishes proper resource dependencies
 
-### 4. genomics_store_functions.py
+### 4. app_modules/genomics_store_functions.py
 **Purpose**: Core genomic analysis functions and utilities
 
 **Key Functions**:
@@ -379,7 +379,7 @@ aws s3 cp s3://1000genomes-dragen/data/dragen-3.5.7b/hg38_altaware_nohla-cnv-anc
 - Athena query execution
 - Clinical interpretation logic
 
-### 5. genomics_store_interpreters.py
+### 5. app_modules/genomics_store_interpreters.py
 **Purpose**: Strands agent tools and genomic analysis functions
 
 **Key Functions**:
@@ -389,7 +389,7 @@ aws s3 cp s3://1000genomes-dragen/data/dragen-3.5.7b/hg38_altaware_nohla-cnv-anc
 - Natural language processing for genomic queries
 - VEP annotation data handling
 
-### 6. genomics_streamlit_enhanced.py
+### 6. app.py
 **Purpose**: Streamlit web interface for the genomic analysis agent
 
 **Key Functions**:
@@ -399,7 +399,7 @@ aws s3 cp s3://1000genomes-dragen/data/dragen-3.5.7b/hg38_altaware_nohla-cnv-anc
 - Query history and session management
 - Responsive UI for genomic data exploration
 
-### 7. create_agent_role.py
+### 7. scripts/create_agent_role.py
 **Purpose**: Creates IAM roles for the Strands agent
 
 **Key Functions**:
