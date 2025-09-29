@@ -1,0 +1,162 @@
+{
+  "patient_encounter": {
+    "patient_demographics": {
+      "patient_id": "FP2025001",
+      "first_name": "Sarah",
+      "last_name": "Johnson",
+      "date_of_birth": "2001-03-15",
+      "age": 24,
+      "gender": "Female",
+      "address": {
+        "street": "123 Main Street",
+        "city": "Seattle",
+        "state": "WA",
+        "zip_code": "98101"
+      },
+      "phone": "(206) 555-0123",
+      "ssn": "123-45-6789",
+      "washington_resident": true
+    },
+    "eligibility_criteria": {
+      "family_planning_only_program": {
+        "valid_ssn": true,
+        "washington_resident": true,
+        "income_level": "180% of federal poverty level",
+        "income_amount": "$27,180 annually",
+        "meets_income_requirement": true,
+        "needs_family_planning_services": true,
+        "apple_health_denial_date": "2024-12-15",
+        "denial_within_30_days": true,
+        "age_26_or_younger": true,
+        "seeking_confidential_services": true,
+        "not_pregnant": true,
+        "not_sterilized": true,
+        "no_other_apple_health_coverage": true,
+        "no_creditable_coverage": true,
+        "eligible": true
+      }
+    },
+    "encounter_details": {
+      "date_of_service": "2025-01-15",
+      "provider_npi": "1234567890",
+      "provider_name": "Seattle Family Planning Clinic",
+      "provider_type": "Family Planning Clinic",
+      "place_of_service": "11",
+      "encounter_type": "Comprehensive Preventive Family Planning Visit"
+    },
+    "clinical_information": {
+      "chief_complaint": "Seeking contraceptive counseling and services",
+      "history_of_present_illness": "24-year-old female presenting for comprehensive family planning visit. Patient desires reliable contraception and education about available options. No current contraceptive use. Last menstrual period 2 weeks ago, regular cycles.",
+      "medical_history": "No significant past medical history",
+      "medications": "None",
+      "allergies": "NKDA",
+      "social_history": {
+        "sexually_active": true,
+        "number_of_partners": 1,
+        "tobacco_use": false,
+        "alcohol_use": "Social",
+        "drug_use": false
+      },
+      "family_history": "No significant family history of reproductive cancers"
+    },
+    "services_provided": {
+      "comprehensive_family_planning_visit": {
+        "cpt_code": "99401",
+        "description": "Preventive medicine counseling - individual, 15 minutes",
+        "primary_diagnosis": "Z30.09 - Encounter for initial prescription of contraceptives",
+        "services_included": [
+          "Contraceptive counseling",
+          "Risk reduction education",
+          "Assessment of contraceptive needs",
+          "Discussion of available methods"
+        ]
+      },
+      "contraceptive_services": {
+        "method_selected": "Combined oral contraceptive pills",
+        "cpt_code": "99213",
+        "description": "Office visit for contraceptive management",
+        "prescription": {
+          "medication": "Ethinyl estradiol/norgestimate 0.035mg/0.25mg",
+          "quantity": "3 month supply",
+          "refills": 3
+        }
+      },
+      "laboratory_services": [
+        {
+          "test": "Pregnancy test",
+          "cpt_code": "81025",
+          "result": "Negative"
+        },
+        {
+          "test": "Chlamydia/Gonorrhea screening",
+          "cpt_code": "87591",
+          "indication": "Routine STI screening per CDC guidelines"
+        }
+      ],
+      "preventive_screenings": [
+        {
+          "service": "Cervical cancer screening counseling",
+          "cpt_code": "99401",
+          "recommendation": "Pap smear due in 1 year (age-appropriate)"
+        }
+      ]
+    },
+    "billing_information": {
+      "insurance": "Family Planning Only Program",
+      "member_id": "FPO2025001",
+      "coverage_period": "2025-01-01 to 2025-12-31",
+      "prior_authorization_required": false,
+      "fee_schedule": "HCA Family Planning Fee Schedule",
+      "billing_codes": [
+        {
+          "cpt_code": "99401",
+          "units": 1,
+          "fee": "$45.00"
+        },
+        {
+          "cpt_code": "99213",
+          "units": 1,
+          "fee": "$85.00"
+        },
+        {
+          "cpt_code": "81025",
+          "units": 1,
+          "fee": "$15.00"
+        },
+        {
+          "cpt_code": "87591",
+          "units": 1,
+          "fee": "$65.00"
+        }
+      ],
+      "total_charges": "$210.00"
+    },
+    "approval_justification": {
+      "meets_eligibility_criteria": true,
+      "covered_services": true,
+      "appropriate_provider": true,
+      "within_scope_of_program": true,
+      "follows_clinical_guidelines": true,
+      "reasons_for_approval": [
+        "Patient meets all Family Planning Only program eligibility criteria",
+        "Age 24 (under 26) seeking confidential services",
+        "Washington state resident with valid SSN",
+        "Income at 180% FPL (under 260% threshold)",
+        "Denied Apple Health coverage within 30 days",
+        "Services provided are covered under Family Planning Only program",
+        "Comprehensive family planning visit is covered (one per 365 days)",
+        "Contraceptive counseling and prescription are covered services",
+        "Laboratory services are covered when medically necessary",
+        "Provider follows nationally recognized clinical guidelines",
+        "Services billed using appropriate CPT codes and fee schedule"
+      ]
+    },
+    "documentation_requirements": {
+      "informed_consent": "Obtained and documented",
+      "confidentiality_notice": "Provided per HIPAA requirements",
+      "clinical_notes": "Complete documentation of services provided",
+      "eligibility_verification": "Verified through ProviderOne system",
+      "provider_qualifications": "Licensed provider within scope of practice"
+    }
+  }
+}
