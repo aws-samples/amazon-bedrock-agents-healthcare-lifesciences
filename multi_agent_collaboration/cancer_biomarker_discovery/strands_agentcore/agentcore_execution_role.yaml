@@ -23,11 +23,9 @@ Resources:
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
-              - Sid: BedrockPermissions
-                Effect: Allow
+              - Effect: Allow
                 Action:
-                  - bedrock:InvokeModel
-                  - bedrock:InvokeModelWithResponseStream
+                  - states:*
                 Resource: "*"
               - Effect: Allow
                 Action:
