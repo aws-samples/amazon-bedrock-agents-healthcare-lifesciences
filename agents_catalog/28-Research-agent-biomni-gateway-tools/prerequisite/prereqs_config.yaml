@@ -1,0 +1,4 @@
+app_prefix: 'researchapp'
+knowledge_base_name: 'researchapp'
+knowledge_base_description: 'bedrock-allow'
+kb_files_path: 'docs-rag'
