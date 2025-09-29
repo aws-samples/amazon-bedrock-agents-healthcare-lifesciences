@@ -1,0 +1,12 @@
+.venv/
+venv/
+.scratch
+agenteval_*
+.DS_Store
+node_modules
+.next
+.kiro
+.amazonq
+__pycache__
+*-packaged.yaml
+tasks.md

@@ -1,0 +1,3 @@
+# Minimal dependencies - no LangChain conflicts
+requests>=2.31.0
+# boto3 is already available in Lambda runtime
