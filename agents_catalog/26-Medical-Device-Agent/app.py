@@ -1,7 +1,12 @@
 import streamlit as st
+import os
+from dotenv import load_dotenv
+import base64
 
-
+# Load environment variables from .env file for local development
+load_dotenv()
 from agents.medical_coordinator import MedicalCoordinator
+from config_file import ENABLE_AUTHENTICATION, AWS_DEFAULT_REGION
 import tools.device_status
 import tools.pubmed_search
 import tools.clinical_trials
@@ -11,26 +16,75 @@ from strands_tools import calculator, current_time
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Authentication disabled for this deployment
-if False:
-    # Initialise CognitoAuthenticator
-    authenticator = Auth.get_authenticator(secrets_manager_id, region)
-
-    # Authenticate user, and stop here if not logged in
-    is_logged_in = authenticator.login()
-    if not is_logged_in:
+# Basic Authentication check
+def check_authentication():
+    if not ENABLE_AUTHENTICATION:
+        return True
+    
+    # Get Basic Auth configuration from environment variables
+    auth_type = os.getenv('AUTH_TYPE', 'basic')
+    username = os.getenv('BASIC_AUTH_USERNAME')
+    password = os.getenv('BASIC_AUTH_PASSWORD')
+    
+    if not username or not password:
+        st.error("⚠️ Authentication credentials not configured. Please set BASIC_AUTH_USERNAME and BASIC_AUTH_PASSWORD environment variables.")
         st.stop()
+    
+    if auth_type != 'basic':
+        return True  # Skip auth if not basic auth
+    
+    # Check if already authenticated
+    if 'authenticated' in st.session_state and st.session_state.authenticated:
+        # Add logout functionality in sidebar
+        with st.sidebar:
+            # Sanitize username display to prevent XSS
+            safe_username = st.session_state.username.replace('<', '&lt;').replace('>', '&gt;')
+            st.success(f"🔐 Logged in as: {safe_username}")
+            if st.button("🚪 Logout", key="logout_btn"):
+                # Clear session state
+                for key in list(st.session_state.keys()):
+                    del st.session_state[key]
+                st.rerun()
+        return True
+    
+    # Show login form
+    st.title("🔐 Login Required")
+    st.write("Please enter your credentials to access the Medical Device Management System.")
+    
+    with st.form("login_form"):
+        input_username = st.text_input("Username")
+        input_password = st.text_input("Password", type="password")
+        submit_button = st.form_submit_button("Login")
+        
+        if submit_button:
+            # Sanitize inputs to prevent XSS
+            clean_username = input_username.replace('<', '&lt;').replace('>', '&gt;') if input_username else ''
+            if clean_username == username and input_password == password:
+                st.session_state.authenticated = True
+                st.session_state.username = clean_username
+                st.success("✅ Login successful!")
+                st.rerun()
+            else:
+                st.error("❌ Invalid username or password")
+                st.stop()
+    
+    st.stop()
+    return False
 
-    def logout():
-        authenticator.logout()
-
-    with st.sidebar:
-        st.text(f"Welcome,\n{authenticator.get_username()}")
-        st.button("Logout", "logout_btn", on_click=logout)
+# Check authentication before proceeding
+check_authentication()
 
 # Add title on the page
-st.title("Medical Device Management System")
+st.title("🏥 Medical Device Management System")
 st.write("AI-powered assistant for medical device monitoring, literature research, and clinical trials information.")
+
+# Display authentication status
+if ENABLE_AUTHENTICATION and 'username' in st.session_state:
+    # Sanitize username display to prevent XSS
+    safe_username = st.session_state.username.replace('<', '&lt;').replace('>', '&gt;')
+    st.info(f"👤 **Authenticated User:** {safe_username}")
+elif not ENABLE_AUTHENTICATION:
+    st.warning("⚠️ **Development Mode:** Authentication disabled")
 
 # Sample questions
 st.subheader("Sample Questions:")
@@ -70,7 +124,7 @@ if "agent" not in st.session_state:
 # Display old chat messages
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
-        st.empty()  # This forces the container to render without adding visible content (workaround for streamlit bug)
+        st.empty()  # Workaround for Streamlit container rendering issue in chat history
         if message.get("type") == "tool_use":
             st.code(message["content"])
         else:
@@ -97,15 +151,16 @@ if prompt or chat_prompt:
     if "details_placeholder" in st.session_state:
         st.session_state.details_placeholder.empty()
     
-    # Display user message
+    # Display user message (sanitized to prevent XSS)
     with st.chat_message("user"):
-        st.write(prompt)
+        safe_prompt = prompt.replace('<', '&lt;').replace('>', '&gt;') if prompt else ''
+        st.write(safe_prompt)
 
     # Prepare containers for response
     with st.chat_message("assistant"):
         st.session_state.details_placeholder = st.empty()  # Create a new placeholder
     
-    # Initialize strings to store streaming of model output
+    # Clear previous output for new conversation
     st.session_state.output = []
 
     # Create the callback handler to display streaming responses
@@ -124,14 +179,12 @@ if prompt or chat_prompt:
                     st.session_state.output.append({"type": output_type, "content": content})
 
         with st.session_state.details_placeholder.container():
-            current_streaming_tool_use = ""
             # Process stream data
             if "data" in kwargs:
                 add_to_output("data", kwargs["data"])
             elif "current_tool_use" in kwargs and kwargs["current_tool_use"].get("name"):
-                tool_use_id = kwargs["current_tool_use"].get("toolUseId")
-                current_streaming_tool_use = "Using tool: " + kwargs["current_tool_use"]["name"] + " with args: " + str(kwargs["current_tool_use"]["input"])
-                add_to_output("tool_use", current_streaming_tool_use, append = False)
+                tool_use_msg = "Using tool: " + kwargs["current_tool_use"]["name"] + " with args: " + str(kwargs["current_tool_use"]["input"])
+                add_to_output("tool_use", tool_use_msg, append = False)
             elif "reasoningText" in kwargs:
                 add_to_output("reasoning", kwargs["reasoningText"])
 
