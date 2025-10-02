@@ -2431,6 +2431,19 @@ def query_openfda(
             endpoint += f"&limit={max_results}"
     else:
         endpoint += f"?limit={max_results}"
+    
+    # Make the API request using the REST API helper
+    description = "OpenFDA API query"
+    if prompt:
+        description = f"OpenFDA API query for: {prompt}"
+
+    api_result = _query_rest_api(endpoint=endpoint, method="GET", description=description)
+
+    # Format results based on verbose setting
+    if not verbose and "success" in api_result and api_result["success"] and "result" in api_result:
+        return _format_query_results(api_result["result"])
+
+    return api_result   
 
 
 def query_clinicaltrials(
@@ -3667,7 +3680,8 @@ def query_synapse(
             '{"query_term": ["term1", "term2"], "query_type": "dataset", "max_results": 20}.\n'
             "query_type should be 'dataset' for datasets, 'file' for data files, or 'folder' for collections.\n"
             "max_results should be 20 for typical searches, or up to 50 if extensive/comprehensive results are desired.\n"
-            "Start with 1-2 most relevant search terms (these are combined with AND; more terms = more restrictive). Do not include explanations."
+            "Use 1-2 most relevant search terms (these are combined with AND; more terms = more restrictive). Only include main term (disease, gene, etc.) of the search query and do not include any other terms/adjectives/modifiers. Do not include explanations.\n"
+            "Try to remove hyphens and other special characters from the search terms. For example, use RNAseq instead of RNA-seq."
         )
 
         llm_result = _query_llm_for_api(

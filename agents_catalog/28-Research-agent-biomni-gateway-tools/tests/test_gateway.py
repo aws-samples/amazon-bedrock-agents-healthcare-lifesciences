@@ -185,10 +185,8 @@ def main(prompt: str):
     "Use pride tool to find proteomics data for breast cancer",
     
     # Pathway and Functional Databases
-    "Use kegg tool to find metabolic pathways related to insulin",
     "Use reactome tool to find insulin signaling pathways",
     "Use jaspar tool to find transcription factor binding sites for p53",
-    "Use remap tool to find CTCF binding sites in human genome",
     
     # Genetic Variation and Clinical Databases
     "Use clinvar tool to find pathogenic variants in BRCA1 gene",
@@ -215,7 +213,6 @@ def main(prompt: str):
     
     # Model Organism and Biodiversity Databases
     "Use mpd tool to find mouse strain phenotype data for diabetes",
-    "Use iucn tool to find conservation status of polar bears (requires API token)",
     "Use worms tool to find marine species classification",
     "Use paleobiology tool to find fossil records of dinosaurs",
     

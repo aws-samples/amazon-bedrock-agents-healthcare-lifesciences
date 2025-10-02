@@ -17,7 +17,7 @@ os.environ["KNOWLEDGE_BASE_ID"] = get_ssm_parameter(
 )
 
 # Logging setup
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Bedrock app and global agent instance
