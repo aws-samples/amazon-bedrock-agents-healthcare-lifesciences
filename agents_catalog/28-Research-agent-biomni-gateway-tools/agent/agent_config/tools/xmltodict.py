@@ -6,8 +6,10 @@ try:
 except ImportError:
     # nosemgrep alternate use of expat
     from xml.parsers import expat
-from defusedxml.sax.saxutils import XMLGenerator
-from defusedxml.sax.xmlreader import AttributesImpl
+# nosemgrep alternate use of expat
+from xml.sax.saxutils import XMLGenerator
+# nosemgrep alternate use of expat
+from xml.sax.xmlreader import AttributesImpl
 from defusedxml import defuse_stdlib
 try:  # pragma no cover
     from cStringIO import StringIO

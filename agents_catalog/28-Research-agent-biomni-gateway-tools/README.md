@@ -150,11 +150,11 @@ streamlit run app_oauth.py --server.port 8501 -- --agent=researchapp<AgentName>
 
 ## Sample Queries
 
-1. Conduct a comprehensive analysis of trastuzumab (Herceptin) mechanism of action and resistance mechanisms. 
+1. Conduct a comprehensive analysis of trastuzumab (Herceptin) mechanism of action, and resistance mechanisms. 
     I need:
     1. HER2 protein structure and binding sites
     2. Downstream signaling pathways affected
-    3. Known resistance mechanisms from clinical data
+    3. Known resistance mechanisms from clinical data and adverse events from OpenFDA data
     4. Current clinical trials investigating combination therapies
     5. Biomarkers for treatment response prediction
     

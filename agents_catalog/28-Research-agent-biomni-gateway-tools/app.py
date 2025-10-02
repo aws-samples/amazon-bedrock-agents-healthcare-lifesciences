@@ -276,6 +276,10 @@ def invoke_agent_streaming(
                         if parsed_chunk.strip():  # Only yield non-empty chunks
                             if "🔧 Using tool:" in parsed_chunk and not show_tool:
                                 yield ""
+                            elif "🔧 Tool input:" in parsed_chunk and not show_tool:
+                                yield ""
+                            elif "🔧 Tool result:" in parsed_chunk and not show_tool:
+                                yield ""
                             else:
                                 yield parsed_chunk
                     else:

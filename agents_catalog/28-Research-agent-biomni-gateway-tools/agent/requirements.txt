@@ -16,3 +16,4 @@ uv
 mcp
 aws-opentelemetry-distro
 defusedxml
+requests>=2.31.0

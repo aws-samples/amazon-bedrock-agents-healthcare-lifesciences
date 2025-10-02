@@ -12,9 +12,7 @@ from database import (
     query_interpro,
     query_pdb,
     query_pdb_identifiers,
-    query_kegg,
     query_stringdb,
-    query_iucn,
     query_paleobiology,
     query_jaspar,
     query_worms,
@@ -34,7 +32,6 @@ from database import (
     query_regulomedb,
     query_pride,
     query_gtopdb,
-    query_remap,
     query_mpd,
     query_emdb,
     query_synapse
@@ -95,19 +92,8 @@ def lambda_handler(event, context):
                 download=event.get('download', False),
                 attributes=event.get('attributes')
             )
-        elif tool_name == 'query_kegg':
-            result = query_kegg(
-                prompt=event.get('prompt'),
-                endpoint=event.get('endpoint'),
-                verbose=event.get('verbose', True)
-            )
         elif tool_name == 'query_stringdb':
             result = query_stringdb(
-                prompt=event.get('prompt'),
-                endpoint=event.get('endpoint')
-            )
-        elif tool_name == 'query_iucn':
-            result = query_iucn(
                 prompt=event.get('prompt'),
                 endpoint=event.get('endpoint')
             )
@@ -207,11 +193,6 @@ def lambda_handler(event, context):
                 prompt=event.get('prompt'),
                 endpoint=event.get('endpoint')
             )
-        elif tool_name == 'query_remap':
-            result = query_remap(
-                prompt=event.get('prompt'),
-                endpoint=event.get('endpoint')
-            )
         elif tool_name == 'query_mpd':
             result = query_mpd(
                 prompt=event.get('prompt'),
@@ -238,12 +219,12 @@ def lambda_handler(event, context):
                     'error': f'Unknown tool: {tool_name}',
                     'available_tools': [
                         'query_uniprot', 'query_alphafold', 'query_interpro', 'query_pdb',
-                        'query_pdb_identifiers', 'query_kegg', 'query_stringdb', 'query_iucn',
+                        'query_pdb_identifiers', 'query_stringdb', 
                         'query_paleobiology', 'query_jaspar', 'query_worms', 'query_cbioportal',
                         'query_clinvar', 'query_geo', 'query_dbsnp', 'query_ucsc', 'query_ensembl',
                         'query_opentarget', 'query_monarch', 'query_openfda', 'query_clinicaltrials',
                         'query_gwas_catalog', 'query_gnomad', 'query_reactome', 'query_regulomedb',
-                        'query_pride', 'query_gtopdb', 'query_remap', 'query_mpd', 'query_emdb',
+                        'query_pride', 'query_gtopdb',  'query_mpd', 'query_emdb',
                         'query_synapse'
                     ]
                 })
