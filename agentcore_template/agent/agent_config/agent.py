@@ -92,7 +92,7 @@ class TemplateAgent:
                     ):
                         tool_name = event["current_tool_use"]["name"]
                         yield f"\n\n🔧 Using tool: {tool_name}\n\n"
-                    
+                        
 
                     if "data" in event:
                         tool_name = None
