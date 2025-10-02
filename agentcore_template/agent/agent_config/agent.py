@@ -92,11 +92,6 @@ class TemplateAgent:
                     ):
                         tool_name = event["current_tool_use"]["name"]
                         yield f"\n\n🔧 Using tool: {tool_name}\n\n"
-                    elif "message" in event and "content" in event["message"]:
-                        for obj in event["message"]["content"]:
-                            if "toolResult" in obj:
-                                tool_result = obj["toolResult"]["content"][0]["text"]
-                                yield f"\n\n🔧 Tool result: {tool_result}\n\n"
 
                     if "data" in event:
                         tool_name = None
