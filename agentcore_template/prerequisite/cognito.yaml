@@ -34,8 +34,6 @@ Resources:
     Properties:
       UserPoolName: !Ref UserPoolName
       MfaConfiguration: 'OPTIONAL'
-      EnabledMfas:
-        - SOFTWARE_TOKEN_MFA
       UsernameConfiguration:
         CaseSensitive: false
       UsernameAttributes:
