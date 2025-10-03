@@ -20,20 +20,20 @@ jobs:
   deploy:
     name: Deploy to S3
     runs-on: ubuntu-latest
-    
-    # Only run on merged PRs or direct pushes to main
-    if: github.event_name == 'push' || (github.event.pull_request.merged == true)
-    
+
+    # Only run on direct pushes to main or merged PRs from the same repo (not forks)
+    if: github.event_name == 'push' || (github.event.pull_request.merged == true && github.event.pull_request.head.repo.full_name == github.repository)
+
     strategy:
       matrix:
         region: [us-east-1, us-west-2]
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v5.0.0
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           role-session-name: GitHubActions-Deploy-${{ matrix.region }}

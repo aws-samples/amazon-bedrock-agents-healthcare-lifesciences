@@ -1,0 +1,4 @@
+app_prefix: 'myapp'
+knowledge_base_name: 'myapp'
+knowledge_base_description: 'bedrock-allow'
+kb_files_path: 'docs-rag'
