@@ -1,0 +1,16 @@
+[
+  {
+    "name": "echo_message",
+    "description": "Echo back a message",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string",
+          "description": "The message to echo back"
+        }
+      },
+      "required": ["message"]
+    }
+  }
+]
