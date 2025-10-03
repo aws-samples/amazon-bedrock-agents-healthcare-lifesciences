@@ -259,26 +259,67 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
-                  - omics:*
+                  - omics:GetWorkflow
+                  - omics:ListWorkflows
+                  - omics:StartRun
+                  - omics:GetRun
+                  - omics:ListRuns
+                  - omics:GetVariantStore
+                  - omics:ListVariantStores
+                  - omics:GetAnnotationStore
+                  - omics:ListAnnotationStores
+                Resource: 
+                  - !Sub 'arn:aws:omics:${AWS::Region}:${AWS::AccountId}:*'
+              - Effect: Allow
+                Action:
                   - s3:GetObject
                   - s3:PutObject
                   - s3:ListBucket
                   - s3:DeleteObject
+                Resource:
+                  - !Sub '${VcfInputBucket.Arn}/*'
+                  - !Sub '${VepOutputBucket.Arn}/*'
+                  - !GetAtt VcfInputBucket.Arn
+                  - !GetAtt VepOutputBucket.Arn
+              - Effect: Allow
+                Action:
                   - dynamodb:PutItem
                   - dynamodb:GetItem
                   - dynamodb:UpdateItem
                   - dynamodb:Query
                   - dynamodb:Scan
+                Resource: !GetAtt VcfTrackingTable.Arn
+              - Effect: Allow
+                Action:
                   - events:PutEvents
+                Resource: !Sub 'arn:aws:events:${AWS::Region}:${AWS::AccountId}:event-bus/default'
+              - Effect: Allow
+                Action:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                  - kms:Decrypt
-                  - kms:GenerateDataKey
-                  - lakeformation:*
-                  - glue:*
+                Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${ProjectName}-*'
+              - Effect: Allow
+                Action:
+                  - lakeformation:GetDataAccess
+                  - lakeformation:GrantPermissions
+                  - lakeformation:RevokePermissions
+                Resource: !Sub 'arn:aws:lakeformation:${AWS::Region}:${AWS::AccountId}:catalog:${AWS::AccountId}'
+              - Effect: Allow
+                Action:
+                  - glue:GetDatabase
+                  - glue:GetTable
+                  - glue:GetPartitions
+                  - glue:CreateTable
+                  - glue:UpdateTable
+                Resource: 
+                  - !Sub 'arn:aws:glue:${AWS::Region}:${AWS::AccountId}:catalog'
+                  - !Sub 'arn:aws:glue:${AWS::Region}:${AWS::AccountId}:database/${DatabaseName}'
+                  - !Sub 'arn:aws:glue:${AWS::Region}:${AWS::AccountId}:table/${DatabaseName}/*'
+              - Effect: Allow
+                Action:
                   - iam:PassRole
-                Resource: '*'
+                Resource: !GetAtt HealthOmicsWorkflowRole.Arn
               - Effect: Allow
                 Action:
                   - kms:Decrypt
@@ -333,7 +374,7 @@ Resources:
                   - logs:PutLogEvents
                   - logs:DescribeLogGroups
                   - logs:DescribeLogStreams
-                Resource: '*'
+                Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/omics/*'
 
   # IAM Role for Agent Queries
   GenomicsAgentRole:
@@ -362,21 +403,55 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
-                  - athena:*
-                  - glue:*
-                  - lakeformation:*
+                  - athena:StartQueryExecution
+                  - athena:GetQueryExecution
+                  - athena:GetQueryResults
+                  - athena:StopQueryExecution
+                  - athena:GetWorkGroup
+                Resource: 
+                  - !Sub 'arn:aws:athena:${AWS::Region}:${AWS::AccountId}:workgroup/primary'
+                  - !Sub 'arn:aws:athena:${AWS::Region}:${AWS::AccountId}:datacatalog/AwsDataCatalog'
+              - Effect: Allow
+                Action:
+                  - glue:GetDatabase
+                  - glue:GetTable
+                  - glue:GetPartitions
+                  - glue:GetTables
+                Resource: 
+                  - !Sub 'arn:aws:glue:${AWS::Region}:${AWS::AccountId}:catalog'
+                  - !Sub 'arn:aws:glue:${AWS::Region}:${AWS::AccountId}:database/${DatabaseName}'
+                  - !Sub 'arn:aws:glue:${AWS::Region}:${AWS::AccountId}:table/${DatabaseName}/*'
+              - Effect: Allow
+                Action:
+                  - lakeformation:GetDataAccess
+                  - lakeformation:GetResourceLFTags
+                  - lakeformation:ListLFTags
+                Resource: !Sub 'arn:aws:lakeformation:${AWS::Region}:${AWS::AccountId}:catalog:${AWS::AccountId}'
+              - Effect: Allow
+                Action:
                   - s3:GetObject
                   - s3:ListBucket
+                Resource:
+                  - !Sub '${VepOutputBucket.Arn}/*'
+                  - !GetAtt VepOutputBucket.Arn
+              - Effect: Allow
+                Action:
                   - dynamodb:Query
                   - dynamodb:Scan
                   - dynamodb:GetItem
+                Resource: !GetAtt VcfTrackingTable.Arn
+              - Effect: Allow
+                Action:
                   - bedrock:InvokeModel
                   - bedrock:InvokeModelWithResponseStream
+                Resource: !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/*'
+              - Effect: Allow
+                Action:
                   - omics:GetVariantStore
                   - omics:ListVariantStores
                   - omics:GetAnnotationStore
                   - omics:ListAnnotationStores
-                Resource: '*'
+                Resource: !Sub 'arn:aws:omics:${AWS::Region}:${AWS::AccountId}:*'
               - Effect: Allow
                 Action:
                   - kms:Decrypt

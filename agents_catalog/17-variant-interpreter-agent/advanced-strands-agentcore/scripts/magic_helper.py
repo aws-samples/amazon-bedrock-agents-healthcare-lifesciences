@@ -13,6 +13,6 @@ def write_and_run(line, cell):
     mode = 'w'
     if len(argz) == 2 and argz[0] == '-a':
         mode = 'a'
-    with open(file, mode) as f:
+    with open(file, mode, encoding="utf-8") as f:
         f.write(cell)
     get_ipython().run_cell(cell)

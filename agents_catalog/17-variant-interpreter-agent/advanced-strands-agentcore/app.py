@@ -313,10 +313,14 @@ def invoke_agent_streaming(
                     logger.debug(f"Raw line: {line}")
 
                     if line.startswith("data: "):
-                        line = line[6:]
+                        line = line[6:].strip()
+                        if not line:  # Skip empty lines
+                            continue
                         try:
                             data = json.loads(line)
-                            data = json.loads(data)
+                            # Only double parse if data is a string
+                            if isinstance(data, str):
+                                data = json.loads(data)
 
                             # Parse each chunk and display only what is relevant
                             if "data" in data:
@@ -407,10 +411,10 @@ def main():
         st.subheader("Agent Selection")
         
         # Use the specific genomics agent - REPLACE WITH YOUR AGENT ARN
-        agent_arn = "arn:aws:bedrock-agentcore:<YOUR_REGION>:<YOUR_ACCOUNT_ID>:runtime/<YOUR_AGENT_NAME>"
+        agent_arn = "arn:aws:bedrock-agentcore:<REGION>:<ACCOUNT_ID>:runtime/genomicsapp_agent_name>"
         
         st.info("🧬 **Genomics Variant Analysis Agent**")
-        st.write("**Agent:** <YOUR_AGENT_NAME>")
+        st.write("**Agent:** genomicsapp_vcf_agent_supervisor")
         st.write(f"**Region:** {region}")
         
         with st.expander("View ARN"):
@@ -475,12 +479,12 @@ def main():
         
         sample_questions = [
             "How many patients are in the present cohort?",
-            "Analyze chromosome 17 variants in patient <SAMPLE_ID>?",
+            "Analyze chromosome 17 variants in patient NA21135?",
             "What's the frequency of chr13:32332591 in BRCA2 variant in this cohort and 1000 genome cohort(1000g)?",
-            "Can you check how many variants are present for BRCA family of genes in patient '<SAMPLE_ID>'?",
-            "Analyze patient <SAMPLE_ID> for risk stratification",
-            "Which are the major drug related impactful variant pathway enriched in the patients?",
-            "What are the key genomics aberrations linked with heart disease conditions in patient <SAMPLE_ID>?",
+            "Can you check how many variants are present for BRCA family of genes in patient NA21135?",
+            "Analyze patient NA21135 for risk stratification",
+            "Which are the major drug related impactful variant pathway enriched in this patients cohort and give me the patient IDs who have the variants in those pharmacogenomics pathway?",
+            "What are the key genomics aberrations linked with heart disease conditions in patient NA21135?",
             "Analyze the patients cohort and provide a comprehensive clinical summary"
         ]
         
@@ -501,7 +505,7 @@ def main():
     # Display chat messages
     for i, message in enumerate(st.session_state.messages):
         with st.chat_message(message["role"], avatar=message["avatar"]):
-            st.markdown(message["content"])
+            st.markdown(f'<span style="color: blue; font-size: 18px; font-weight: bold;">{message["content"]}</span>', unsafe_allow_html=True)
             # Show elapsed time for assistant messages
             if message["role"] == "assistant" and "elapsed" in message:
                 st.caption(f"⏱️ Response time: {message['elapsed']:.2f} seconds")
@@ -611,7 +615,7 @@ def main():
                 {"role": "user", "content": prompt, "avatar": HUMAN_AVATAR}
             )
             with st.chat_message("user", avatar=HUMAN_AVATAR):
-                st.markdown(prompt)
+                st.markdown(f'<span style="color: blue; font-size: 18px; font-weight: bold;">{prompt}</span>', unsafe_allow_html=True)
 
             # Generate assistant response
             with st.chat_message("assistant", avatar=AI_AVATAR):
@@ -657,7 +661,7 @@ def main():
                                 container.markdown(f"🔧 Tool result:")
                                 container.code(chunk_data["content"], language="text")
 
-                        time.sleep(0.01)
+                        time.sleep(0.01)  # nosemgrep: arbitrary-sleep
 
                     # Calculate elapsed time
                     elapsed = time.time() - start_time
@@ -727,7 +731,7 @@ def main():
             {"role": "user", "content": prompt, "avatar": HUMAN_AVATAR}
         )
         with st.chat_message("user", avatar=HUMAN_AVATAR):
-            st.markdown(prompt)
+            st.markdown(f'<span style="color: blue; font-size: 18px; font-weight: bold;">{prompt}</span>', unsafe_allow_html=True)
 
         # Generate assistant response
         with st.chat_message("assistant", avatar=AI_AVATAR):
@@ -778,7 +782,7 @@ def main():
                             container.markdown(f"🔧 Tool result:")
                             container.code(chunk_data["content"], language="text")
 
-                    time.sleep(0.01)
+                    time.sleep(0.01)  # nosemgrep: arbitrary-sleep
 
                 # Calculate elapsed time
                 elapsed = time.time() - start_time

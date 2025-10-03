@@ -1,14 +1,19 @@
-FROM public.ecr.aws/docker/library/python:3.10-slim
+FROM ghcr.io/astral-sh/uv:python3.10-bookworm-slim
 WORKDIR /app
+
+# Configure UV for container environment
+ENV UV_SYSTEM_PYTHON=1 UV_COMPILE_BYTECODE=1
 
 
 
 COPY runtime_requirements.txt runtime_requirements.txt
 # Install from requirements file
-RUN pip install -r runtime_requirements.txt
+RUN uv pip install -r runtime_requirements.txt
 
 
 
+
+RUN uv pip install aws-opentelemetry-distro>=0.10.1
 
 
 # Set AWS region environment variable
@@ -32,4 +37,4 @@ COPY . .
 
 # Use the full module path
 
-CMD ["python", "-m", "vcf_agent_marker"]
+CMD ["opentelemetry-instrument", "python", "-m", "agent.main"]

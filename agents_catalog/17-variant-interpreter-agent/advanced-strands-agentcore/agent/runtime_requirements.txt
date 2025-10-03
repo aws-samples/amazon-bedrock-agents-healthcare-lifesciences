@@ -6,6 +6,8 @@ matplotlib
 strands-agents
 strands-agents-tools
 uv
+argparse
+json
 bedrock-agentcore
 bedrock-agentcore-starter-toolkit
 aws-opentelemetry-distro==0.10.0

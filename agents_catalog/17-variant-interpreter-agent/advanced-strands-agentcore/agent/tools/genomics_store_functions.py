@@ -14,6 +14,15 @@ import re
 import pandas as pd
 from botocore.exceptions import ClientError, NoCredentialsError, NoRegionError
 
+def validate_sql_input(value):
+    """Validate input to prevent SQL injection - only allow alphanumeric and safe characters"""
+    if not isinstance(value, str):
+        value = str(value)
+    # Allow alphanumeric, underscore, hyphen, and dot
+    if not re.match(r'^[a-zA-Z0-9_.-]+$', value):
+        raise ValueError(f"Invalid input: {value}. Only alphanumeric characters, underscore, hyphen, and dot are allowed.")
+    return value
+
 # Initialize AWS configuration with comprehensive error handling
 def get_aws_config():
     """Get AWS configuration with multiple fallback options"""
@@ -52,7 +61,7 @@ def get_aws_config():
 REGION, ACCOUNT_ID = get_aws_config()
 
 # Environment variables for genomics stores
-MODEL_ID = os.environ.get('MODEL_ID', 'us.anthropic.claude-3-5-sonnet-20241022-v2:0')
+MODEL_ID = os.environ.get('MODEL_ID', 'us.anthropic.claude-3-7-sonnet-20250219-v1:0')
 LAKE_FORMATION_DATABASE = os.environ.get('LAKE_FORMATION_DATABASE', '<YOUR_AWS_PROFILE>')
 VARIANT_STORE_NAME = os.environ.get('VARIANT_STORE_NAME', 'genomicsvariantstore')
 ANNOTATION_STORE_NAME = os.environ.get('ANNOTATION_STORE_NAME', 'genomicsannotationstore')
@@ -221,7 +230,7 @@ def execute_athena_query_on_stores(query, database=None):
                 error_reason = result['QueryExecution']['Status'].get('StateChangeReason', 'Unknown error')
                 raise Exception(f"Query failed: {error_reason}")
             
-            time.sleep(2)
+            time.sleep(2)  # nosemgrep: arbitrary-sleep
         
         if status != 'SUCCEEDED':
             raise Exception("Query timed out")
@@ -394,6 +403,7 @@ CRITICAL SYNTAX RULES:
 3. VEP arrays: ALWAYS use CASE WHEN cardinality(v.annotations.vep) > 0 THEN v.annotations.vep[1].field END
 4. Alternatealleles: Use v.alternatealleles[1] for first alternate allele
 5. Quality filtering: Always include v.qual > 30 AND contains(v.filters, 'PASS')
+6. The 1000 genomes frequency: 1000 genomes frequency available in v.information['af']
 
 USER QUESTION: {user_question}
 """
@@ -526,10 +536,13 @@ def get_available_samples_from_variant_store():
     Get available samples directly from the variant store instead of DynamoDB
     """
     try:
+        # Validate store name
+        validated_store = validate_sql_input(VARIANT_STORE_NAME)
+        
         # Query the variant store to get unique sample IDs
         query = f"""
         SELECT DISTINCT sampleid, COUNT(*) as variant_count
-        FROM {VARIANT_STORE_NAME}
+        FROM {validated_store}
         GROUP BY sampleid
         ORDER BY sampleid
         """
@@ -619,21 +632,27 @@ def query_variants_by_gene_function(gene_symbols, sample_ids=None, include_frequ
     """Query variants in specific genes with comprehensive clinical annotations"""
     try:
         genes = [g.strip().upper() for g in gene_symbols if g.strip()]
-        if not genes:
+        # Validate gene symbols
+        validated_genes = [validate_sql_input(gene.strip()) for gene in genes if gene.strip()]
+        if not validated_genes:
             return {"error": "No valid gene symbols provided"}
         
-        gene_list = "', '".join(genes)
+        gene_list = "', '".join(validated_genes)
         
         sample_filter = ""
         if sample_ids:
-            samples = [s.strip() for s in sample_ids if s.strip()]
-            if samples:
-                sample_list = "', '".join(samples)
+            validated_samples = [validate_sql_input(s.strip()) for s in sample_ids if s.strip()]
+            if validated_samples:
+                sample_list = "', '".join(validated_samples)
                 sample_filter = f"AND v.sampleid IN ('{sample_list}')"
         
         frequency_fields = ""
         if include_frequency:
             frequency_fields = "v.information['af'] as allele_frequency_1000g,"
+        
+        # Validate store names
+        validated_variant_store = validate_sql_input(VARIANT_STORE_NAME)
+        validated_annotation_store = validate_sql_input(ANNOTATION_STORE_NAME)
         
         query = f"""
         WITH variant_annotations AS (
@@ -657,8 +676,8 @@ def query_variants_by_gene_function(gene_symbols, sample_ids=None, include_frequ
                 a.attributes['CLNDN'] as associated_disease,
                 split_part(a.attributes['GENEINFO'], ':', 1) as clinvar_gene
                 
-            FROM {VARIANT_STORE_NAME} v
-            LEFT JOIN {ANNOTATION_STORE_NAME} a ON (
+            FROM {validated_variant_store} v
+            LEFT JOIN {validated_annotation_store} a ON (
                 REPLACE(v.contigname, 'chr', '') = REPLACE(a.contigname, 'chr', '')
                 AND v.start = a.start
                 AND v.referenceallele = a.referenceallele
@@ -735,13 +754,14 @@ def query_variants_by_gene_function(gene_symbols, sample_ids=None, include_frequ
 def query_variants_by_chromosome_function(chromosome, sample_ids=None, position_range=None):
     """Query variants by chromosome with optional position range filtering"""
     try:
-        chr_clean = chromosome.replace('chr', '').upper()
+        # Validate chromosome input
+        chr_clean = validate_sql_input(chromosome.replace('chr', '').upper())
         
         sample_filter = ""
         if sample_ids:
-            samples = [s.strip() for s in sample_ids if s.strip()]
-            if samples:
-                sample_list = "', '".join(samples)
+            validated_samples = [validate_sql_input(s.strip()) for s in sample_ids if s.strip()]
+            if validated_samples:
+                sample_list = "', '".join(validated_samples)
                 sample_filter = f"AND v.sampleid IN ('{sample_list}')"
         
         position_filter = ""
@@ -771,8 +791,8 @@ def query_variants_by_chromosome_function(chromosome, sample_ids=None, position_
             a.attributes['CLNSIG'] as clinical_significance,
             a.attributes['CLNDN'] as associated_disease
             
-        FROM {VARIANT_STORE_NAME} v
-        LEFT JOIN {ANNOTATION_STORE_NAME} a ON (
+        FROM {validate_sql_input(VARIANT_STORE_NAME)} v
+        LEFT JOIN {validate_sql_input(ANNOTATION_STORE_NAME)} a ON (
             REPLACE(v.contigname, 'chr', '') = REPLACE(a.contigname, 'chr', '')
             AND v.start = a.start
             AND v.referenceallele = a.referenceallele
@@ -848,8 +868,8 @@ def analyze_allele_frequencies_function(sample_ids=None, frequency_threshold=0.0
                 TRY_CAST(v.information['dp'] as INTEGER) as total_depth,
                 TRY_CAST(v.information['mq'] as DOUBLE) as mapping_quality
                 
-            FROM {VARIANT_STORE_NAME} v
-            LEFT JOIN {ANNOTATION_STORE_NAME} a ON (
+            FROM {validate_sql_input(VARIANT_STORE_NAME)} v
+            LEFT JOIN {validate_sql_input(ANNOTATION_STORE_NAME)} a ON (
                 REPLACE(v.contigname, 'chr', '') = REPLACE(a.contigname, 'chr', '')
                 AND v.start = a.start
                 AND v.referenceallele = a.referenceallele
@@ -944,11 +964,11 @@ def analyze_allele_frequencies_function(sample_ids=None, frequency_threshold=0.0
 def compare_sample_variants_function(sample_ids):
     """Compare variant profiles between multiple samples for population analysis"""
     try:
-        samples = [s.strip() for s in sample_ids if s.strip()]
-        if len(samples) < 2:
+        validated_samples = [validate_sql_input(s.strip()) for s in sample_ids if s.strip()]
+        if len(validated_samples) < 2:
             return {"error": "At least 2 sample IDs required for comparison"}
         
-        sample_list = "', '".join(samples)
+        sample_list = "', '".join(validated_samples)
         
         query = f"""
         WITH sample_variants AS (
@@ -966,8 +986,8 @@ def compare_sample_variants_function(sample_ids):
                 a.attributes['CLNSIG'] as clinical_significance,
                 split_part(a.attributes['GENEINFO'], ':', 1) as clinvar_gene
                 
-            FROM {VARIANT_STORE_NAME} v
-            LEFT JOIN {ANNOTATION_STORE_NAME} a ON (
+            FROM {validate_sql_input(VARIANT_STORE_NAME)} v
+            LEFT JOIN {validate_sql_input(ANNOTATION_STORE_NAME)} a ON (
                 REPLACE(v.contigname, 'chr', '') = REPLACE(a.contigname, 'chr', '')
                 AND v.start = a.start
                 AND v.referenceallele = a.referenceallele
