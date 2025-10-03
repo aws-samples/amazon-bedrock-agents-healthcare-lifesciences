@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comprehensive Genomic Annotation Fields Guide</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 20px; background: #f5f7fa; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .annotation-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px; }
+        .annotation-panel { background: white; border-radius: 12px; padding: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .clinvar { border-left: 5px solid #e74c3c; }
+        .vep { border-left: 5px solid #3498db; }
+        .category-section { margin-bottom: 25px; }
+        .category-title { font-size: 1.2em; font-weight: bold; color: #2c3e50; margin-bottom: 15px; padding: 10px; background: #ecf0f1; border-radius: 8px; }
+        .field-card { background: #f8f9fa; border-radius: 8px; padding: 15px; margin: 8px 0; border-left: 3px solid #ddd; }
+        .field-name { font-weight: bold; color: #2c3e50; font-size: 1.05em; margin-bottom: 8px; }
+        .field-desc { color: #5d6d7e; margin-bottom: 10px; font-size: 0.9em; line-height: 1.4; }
+        .field-values { background: white; padding: 10px; border-radius: 5px; font-family: 'Courier New', monospace; font-size: 0.85em; }
+        .importance { background: #fff3cd; padding: 5px 10px; border-radius: 15px; font-size: 0.8em; color: #856404; display: inline-block; margin-top: 5px; }
+        .tag { display: inline-block; background: #ecf0f1; padding: 3px 8px; margin: 2px; border-radius: 12px; font-size: 0.8em; }
+        .critical { background: #e74c3c; color: white; }
+        .high { background: #f39c12; color: white; }
+        .moderate { background: #f1c40f; }
+        .low { background: #2ecc71; color: white; }
+        .clinical { border-left-color: #e74c3c; }
+        .structural { border-left-color: #9b59b6; }
+        .functional { border-left-color: #3498db; }
+        .quality { border-left-color: #f39c12; }
+        .identifier { border-left-color: #1abc9c; }
+        .prediction { border-left-color: #e67e22; }
+        .population { border-left-color: #34495e; }
+        .regulatory { border-left-color: #8e44ad; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧬 Comprehensive Genomic Annotation Fields Guide</h1>
+            <p>Detailed analysis of ClinVar and VEP annotation systems for clinical genomics workflows</p>
+        </div>
+
+        <div class="annotation-grid">
+            <!-- ClinVar Panel -->
+            <div class="annotation-panel clinvar">
+                <h2>🏥 ClinVar Annotations</h2>
+                <p><strong>Focus:</strong> Clinical significance, disease association, and evidence quality</p>
+                
+                <div class="category-section">
+                    <div class="category-title">🎯 Clinical Significance</div>
+                    
+                    <div class="field-card clinical">
+                        <div class="field-name">CLNSIG - Clinical Significance</div>
+                        <div class="field-desc">Clinical interpretation of variant pathogenicity for human health</div>
+                        <div class="field-values">
+                            <span class="tag critical">Pathogenic</span>
+                            <span class="tag high">Likely_pathogenic</span>
+                            <span class="tag moderate">Uncertain_significance</span>
+                            <span class="tag low">Likely_benign</span>
+                            <span class="tag low">Benign</span>
+                        </div>
+                        <div class="importance">🎯 Primary clinical decision factor</div>
+                    </div>
+
+                    <div class="field-card clinical">
+                        <div class="field-name">CLNREVSTAT - Review Status</div>
+                        <div class="field-desc">Quality and reliability of clinical assertion evidence</div>
+                        <div class="field-values">
+                            <span class="tag">criteria_provided</span>
+                            <span class="tag">no_assertion_criteria_provided</span>
+                        </div>
+                        <div class="importance">📊 Evidence reliability indicator</div>
+                    </div>
+                </div>
+
+                <div class="category-section">
+                    <div class="category-title">🏗️ Structural Classification</div>
+                    
+                    <div class="field-card structural">
+                        <div class="field-name">CLNVC - Variant Class</div>
+                        <div class="field-desc">Structural type and architecture of genetic variant</div>
+                        <div class="field-values">
+                            <span class="tag">single_nucleotide_variant</span>
+                            <span class="tag">Deletion</span>
+                            <span class="tag">Insertion</span>
+                            <span class="tag">Indel</span>
+                            <span class="tag">Microsatellite</span>
+                        </div>
+                        <div class="importance">🔧 Defines variant structure</div>
+                    </div>
+
+                    <div class="field-card structural">
+                        <div class="field-name">CLNVCSO - Variant Class SO</div>
+                        <div class="field-desc">Sequence Ontology term for variant classification</div>
+                        <div class="field-values">
+                            <span class="tag">SO:0001483</span>
+                            <span class="tag">SO:0000159</span>
+                            <span class="tag">SO:0000667</span>
+                        </div>
+                        <div class="importance">📚 Standardized ontology reference</div>
+                    </div>
+                </div>
+
+                <div class="category-section">
+                    <div class="category-title">🔗 Disease & Gene Association</div>
+                    
+                    <div class="field-card functional">
+                        <div class="field-name">CLNDN - Disease Name</div>
+                        <div class="field-desc">Associated diseases, conditions, and pharmacogenomic drug sensitivities</div>
+                        <div class="field-values">
+                            <span class="tag">Retinitis_pigmentosa</span>
+                            <span class="tag">SAMD11-related_disorder</span>
+                            <span class="tag">Drug_sensitivity_variants</span>
+                        </div>
+                        <div class="importance">💊 Includes pharmacogenomic information</div>
+                    </div>
+
+                    <div class="field-card functional">
+                        <div class="field-name">CLNDISDB - Disease Database</div>
+                        <div class="field-desc">External database references for associated diseases</div>
+                        <div class="field-values">
+                            <span class="tag">MedGen:CN169374</span>
+                            <span class="tag">OMIM:268000</span>
+                            <span class="tag">Orphanet:791</span>
+                        </div>
+                        <div class="importance">🔗 Cross-database linkage</div>
+                    </div>
+
+                    <div class="field-card functional">
+                        <div class="field-name">GENEINFO - Gene Information</div>
+                        <div class="field-desc">Gene symbol and Entrez Gene ID for variant location</div>
+                        <div class="field-values">
+                            <span class="tag">OR4F5:79501</span>
+                            <span class="tag">SAMD11:148398</span>
+                        </div>
+                        <div class="importance">🧬 Gene identification</div>
+                    </div>
+                </div>
+
+                <div class="category-section">
+                    <div class="category-title">🆔 Identifiers & References</div>
+                    
+                    <div class="field-card identifier">
+                        <div class="field-name">ALLELEID - Allele Identifier</div>
+                        <div class="field-desc">Unique ClinVar identifier for tracking variants across submissions</div>
+                        <div class="field-values">
+                            <span class="tag">1003021</span>
+                            <span class="tag">3544463</span>
+                        </div>
+                        <div class="importance">🔢 Unique tracking ID</div>
+                    </div>
+
+                    <div class="field-card identifier">
+                        <div class="field-name">CLNHGVS - HGVS Nomenclature</div>
+                        <div class="field-desc">Standardized variant description using HGVS notation</div>
+                        <div class="field-values">
+                            <span class="tag">NC_000001.11:g.66927del</span>
+                            <span class="tag">NC_000001.11:g.69134A>G</span>
+                        </div>
+                        <div class="importance">📝 Standard variant notation</div>
+                    </div>
+
+                    <div class="field-card identifier">
+                        <div class="field-name">CLNSIGSCV - Submission IDs</div>
+                        <div class="field-desc">ClinVar submission identifiers for traceability</div>
+                        <div class="field-values">
+                            <span class="tag">SCV005419006</span>
+                            <span class="tag">SCV003526545</span>
+                        </div>
+                        <div class="importance">📋 Submission tracking</div>
+                    </div>
+                </div>
+
+                <div class="category-section">
+                    <div class="category-title">⚙️ Functional Impact</div>
+                    
+                    <div class="field-card functional">
+                        <div class="field-name">MC - Molecular Consequence</div>
+                        <div class="field-desc">Predicted molecular effect using Sequence Ontology terms</div>
+                        <div class="field-values">
+                            <span class="tag">SO:0001583|missense_variant</span>
+                            <span class="tag">SO:0001627|intron_variant</span>
+                        </div>
+                        <div class="importance">🔬 Molecular impact prediction</div>
+                    </div>
+
+                    <div class="field-card quality">
+                        <div class="field-name">ORIGIN - Variant Origin</div>
+                        <div class="field-desc">Source of variant (germline, somatic, inherited, etc.)</div>
+                        <div class="field-values">
+                            <span class="tag">0 (unknown)</span>
+                            <span class="tag">1 (germline)</span>
+                        </div>
+                        <div class="importance">🧬 Inheritance pattern</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VEP Panel -->
+            <div class="annotation-panel vep">
+                <h2>🔬 VEP Annotations</h2>
+                <p><strong>Focus:</strong> Comprehensive functional consequences and molecular predictions</p>
+                
+                <div class="category-section">
+                    <div class="category-title">⚙️ Functional Consequences</div>
+                    
+                    <div class="field-card functional">
+                        <div class="field-name">Consequence</div>
+                        <div class="field-desc">Predicted functional consequence using Sequence Ontology terms</div>
+                        <div class="field-values">
+                            <span class="tag critical">missense_variant</span>
+                            <span class="tag critical">frameshift_variant</span>
+                            <span class="tag high">splice_donor_variant</span>
+                            <span class="tag high">stop_gained</span>
+                            <span class="tag low">synonymous_variant</span>
+                            <span class="tag moderate">intron_variant</span>
+                        </div>
+                        <div class="importance">🎯 Primary functional classification</div>
+                    </div>
+
+                    <div class="field-card functional">
+                        <div class="field-name">Impact</div>
+                        <div class="field-desc">Qualitative assessment of variant's predicted functional impact</div>
+                        <div class="field-values">
+                            <span class="tag critical">HIGH</span>
+                            <span class="tag high">MODERATE</span>
+                            <span class="tag moderate">LOW</span>
+                            <span class="tag low">MODIFIER</span>
+                        </div>
+                        <div class="importance">📊 Impact severity ranking</div>
+                    </div>
+                </div>
+
+                <div class="category-section">
+                    <div class="category-title">🧬 Gene & Transcript Information</div>
+                    
+                    <div class="field-card identifier">
+                        <div class="field-name">SYMBOL</div>
+                        <div class="field-desc">Gene symbol (HGNC identifier for human genes)</div>
+                        <div class="field-values">
+                            <span class="tag">BRCA1</span>
+                            <span class="tag">TP53</span>
+                            <span class="tag">CFTR</span>
+                        </div>
+                        <div class="importance">🏷️ Human-readable gene name</div>
+                    </div>
+
+                    <div class="field-card identifier">
+                        <div class="field-name">Feature</div>
+                        <div class="field-desc">Ensembl stable ID of overlapping feature (transcript, regulatory)</div>
+                        <div class="field-values">
+                            <span class="tag">ENST00000357654</span>
+                            <span class="tag">ENST00000269305</span>
+                        </div>
+                        <div class="importance">🔗 Stable feature identifier</div>
+                    </div>
+
+                    <div class="field-card structural">
+                        <div class="field-name">Feature_type</div>
+                        <div class="field-desc">Type of genomic feature affected by variant</div>
+                        <div class="field-values">
+                            <span class="tag">Transcript</span>
+                            <span class="tag">RegulatoryFeature</span>
+                        </div>
+                        <div class="importance">📋 Feature classification</div>
+                    </div>
+                </div>
+
+                <div class="category-section">
+                    <div class="category-title">📝 Variant Nomenclature</div>
+                    
+                    <div class="field-card identifier">
+                        <div class="field-name">HGVSc</div>
+                        <div class="field-desc">HGVS nomenclature at coding DNA level</div>
+                        <div class="field-values">
+                            <span class="tag">ENST00000357654.8:c.123A>G</span>
+                            <span class="tag">ENST00000269305.8:c.215del</span>
+                        </div>
+                        <div class="importance">📝 Coding sequence notation</div>
+                    </div>
+
+                    <div class="field-card identifier">
+                        <div class="field-name">HGVSp</div>
+                        <div class="field-desc">HGVS nomenclature at protein level</div>
+                        <div class="field-values">
+                            <span class="tag">ENSP00000350283.3:p.Lys42Asn</span>
+                            <span class="tag">ENSP00000269305.4:p.Arg72fs</span>
+                        </div>
+                        <div class="importance">🧪 Protein change notation</div>
+                    </div>
+                </div>
+
+                <div class="category-section">
+                    <div class="category-title">🏆 Transcript Quality</div>
+                    
+                    <div class="field-card quality">
+                        <div class="field-name">CANONICAL</div>
+                        <div class="field-desc">Indicates canonical transcript for the gene (1 = canonical)</div>
+                        <div class="field-values">
+                            <span class="tag">1</span>
+                            <span class="tag">(empty)</span>
+                        </div>
+                        <div class="importance">⭐ Primary transcript indicator</div>
+                    </div>
+
+                    <div class="field-card quality">
+                        <div class="field-name">TSL - Transcript Support Level</div>
+                        <div class="field-desc">Quality assessment of transcript annotation evidence</div>
+                        <div class="field-values">
+                            <span class="tag">1 (highest)</span>
+                            <span class="tag">2-5 (decreasing)</span>
+                        </div>
+                        <div class="importance">📊 Transcript reliability</div>
+                    </div>
+
+                    <div class="field-card quality">
+                        <div class="field-name">APPRIS</div>
+                        <div class="field-desc">Principal isoform annotation reliability</div>
+                        <div class="field-values">
+                            <span class="tag">PRINCIPAL</span>
+                            <span class="tag">ALTERNATIVE</span>
+                        </div>
+                        <div class="importance">🎯 Isoform priority</div>
+                    </div>
+                </div>
+
+                <div class="category-section">
+                    <div class="category-title">🔗 External References</div>
+                    
+                    <div class="field-card identifier">
+                        <div class="field-name">CCDS</div>
+                        <div class="field-desc">Consensus CDS transcript identifier</div>
+                        <div class="field-values">
+                            <span class="tag">CCDS11118.1</span>
+                            <span class="tag">CCDS53455.1</span>
+                        </div>
+                        <div class="importance">🔗 Consensus sequence ID</div>
+                    </div>
+
+                    <div class="field-card identifier">
+                        <div class="field-name">Protein</div>
+                        <div class="field-desc">Ensembl protein identifier (ENSP)</div>
+                        <div class="field-values">
+                            <span class="tag">ENSP00000350283</span>
+                            <span class="tag">ENSP00000269305</span>
+                        </div>
+                        <div class="importance">🧪 Protein sequence ID</div>
+                    </div>
+
+                    <div class="field-card identifier">
+                        <div class="field-name">UniProt</div>
+                        <div class="field-desc">UniProt database identifiers (SWISSPROT, TREMBL, UniParc)</div>
+                        <div class="field-values">
+                            <span class="tag">P38398</span>
+                            <span class="tag">Q9Y6K1</span>
+                        </div>
+                        <div class="importance">🗃️ Protein database links</div>
+                    </div>
+                </div>
+
+                <div class="category-section">
+                    <div class="category-title">🔮 Functional Predictions</div>
+                    
+                    <div class="field-card prediction">
+                        <div class="field-name">SIFT</div>
+                        <div class="field-desc">SIFT prediction and score for amino acid substitution effects</div>
+                        <div class="field-values">
+                            <span class="tag critical">DELETERIOUS (0.01)</span>
+                            <span class="tag low">TOLERATED (0.85)</span>
+                        </div>
+                        <div class="importance">🎯 Protein function prediction</div>
+                    </div>
+
+                    <div class="field-card prediction">
+                        <div class="field-name">PolyPhen</div>
+                        <div class="field-desc">PolyPhen-2 prediction and score for amino acid effects</div>
+                        <div class="field-values">
+                            <span class="tag critical">PROBABLY_DAMAGING (0.95)</span>
+                            <span class="tag moderate">POSSIBLY_DAMAGING (0.65)</span>
+                            <span class="tag low">BENIGN (0.15)</span>
+                        </div>
+                        <div class="importance">🔬 Structural impact prediction</div>
+                    </div>
+                </div>
+
+                <div class="category-section">
+                    <div class="category-title">👥 Population & Regulatory</div>
+                    
+                    <div class="field-card population">
+                        <div class="field-name">AF - Allele Frequency</div>
+                        <div class="field-desc">Population allele frequencies (1000 Genomes, gnomAD)</div>
+                        <div class="field-values">
+                            <span class="tag">0.001 (rare)</span>
+                            <span class="tag">0.25 (common)</span>
+                        </div>
+                        <div class="importance">📊 Population prevalence</div>
+                    </div>
+
+                    <div class="field-card identifier">
+                        <div class="field-name">Existing_variation</div>
+                        <div class="field-desc">Known variant IDs from dbSNP and other databases</div>
+                        <div class="field-values">
+                            <span class="tag">rs123456789</span>
+                            <span class="tag">COSM123456</span>
+                        </div>
+                        <div class="importance">🔗 Known variant references</div>
+                    </div>
+
+                    <div class="field-card regulatory">
+                        <div class="field-name">Regulatory_feature_consequences</div>
+                        <div class="field-desc">Effects on regulatory elements (promoters, enhancers)</div>
+                        <div class="field-values">
+                            <span class="tag">regulatory_region_variant</span>
+                            <span class="tag">TF_binding_site_variant</span>
+                        </div>
+                        <div class="importance">🎛️ Regulatory impact</div>
+                    </div>
+
+                    <div class="field-card regulatory">
+                        <div class="field-name">MOTIF_FEATURE</div>
+                        <div class="field-desc">Information about affected transcription factor binding motifs</div>
+                        <div class="field-values">
+                            <span class="tag">TFBS_ablation</span>
+                            <span class="tag">TFBS_amplification</span>
+                        </div>
+                        <div class="importance">🧬 Motif disruption</div>
+                    </div>
+
+                    <div class="field-card structural">
+                        <div class="field-name">STRAND</div>
+                        <div class="field-desc">DNA strand orientation of the feature (+1 or -1)</div>
+                        <div class="field-values">
+                            <span class="tag">+1 (forward)</span>
+                            <span class="tag">-1 (reverse)</span>
+                        </div>
+                        <div class="importance">🧭 Strand orientation</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-top: 30px; padding: 20px; background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <h3>💡 Integration Strategy for Clinical Genomics</h3>
+            <p><strong>Clinical Workflow:</strong> Use ClinVar CLNSIG for immediate clinical decisions, VEP Impact for variant prioritization, and combine both for comprehensive interpretation.</p>
+            <p><strong>Pharmacogenomics:</strong> ClinVar CLNDN field includes drug sensitivity information, complementing standard clinical significance data.</p>
+            <p><strong>Quality Control:</strong> Leverage CLNREVSTAT, TSL, CANONICAL, and APPRIS fields to assess annotation reliability and transcript priority.</p>
+        </div>
+    </div>
+</body>
+</html>
