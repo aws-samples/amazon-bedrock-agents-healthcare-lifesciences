@@ -80,7 +80,7 @@ class ResearchAgent:
 
             self.gateway_client.start()
         except Exception as e:
-            raise f"Error initializing agent: {str(e)}"
+            raise Exception(f"Error initializing agent: {str(e)}")
 
         self.tools = (
             [
