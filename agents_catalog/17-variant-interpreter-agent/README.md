@@ -121,6 +121,14 @@ docker push <account_id>.dkr.ecr.<region_info>.amazonaws.com/genomics-vep:113.4
 
 **Note**: Replace `<account_id>`, `<region_info>`, and `<docker_uri>` with your actual AWS account ID, region, and ECR repository URI.
 
+### Download Clinvar annotation for disease/drug-specific evidence
+
+```bash
+wget https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/clinvar_20250810.vcf.gz
+aws s3 cp clinvar_20250810.vcf.gz s3://<YOUR_CLINVAR_BUCKET>/clinvar20250810/
+SOURCE_ANNOTATION_URI = f"s3://<YOUR_CLINVAR_BUCKET>/clinvar20250810/clinvar_20250810.vcf.gz"
+```
+
 ### Reference Genome
 You can use the publicly available reference genome from the 1000 Genomes project:
 
