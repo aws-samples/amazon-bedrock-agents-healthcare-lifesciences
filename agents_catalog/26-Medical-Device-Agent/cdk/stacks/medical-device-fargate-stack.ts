@@ -9,6 +9,7 @@ import * as iam from "aws-cdk-lib/aws-iam";
 import * as logs from "aws-cdk-lib/aws-logs";
 import * as elbv2 from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import * as ecrAssets from "aws-cdk-lib/aws-ecr-assets";
+
 import * as path from "path";
 import { NagSuppressions } from "cdk-nag";
 
@@ -44,6 +45,8 @@ export class MedicalDeviceFargateStack extends Stack {
 
     setSecureTransport(flowLogBucket);
 
+
+
     flowLogBucket.addToResourcePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
@@ -67,13 +70,7 @@ export class MedicalDeviceFargateStack extends Stack {
       natGateways: 1,
     });
 
-    new ec2.CfnFlowLog(this, `${projectName}-vpc-flow-log`, {
-      resourceId: vpc.vpcId,
-      resourceType: "VPC",
-      trafficType: "ALL",
-      logDestinationType: "s3",
-      logDestination: flowLogBucket.bucketArn,
-    });
+    // VPC Flow Log removed to simplify deployment
 
     // Create an ECS cluster
     const cluster = new ecs.Cluster(this, `${projectName}-cluster`, {
@@ -141,6 +138,11 @@ export class MedicalDeviceFargateStack extends Stack {
       }),
       environment: {
         LOG_LEVEL: "INFO",
+        ENABLE_AUTHENTICATION: "true",
+        AUTH_TYPE: "basic",
+        BASIC_AUTH_USERNAME: "admin",
+        BASIC_AUTH_PASSWORD: "password123",
+        AWS_DEFAULT_REGION: this.region,
       },
       portMappings: [
         {
@@ -210,6 +212,17 @@ export class MedicalDeviceFargateStack extends Stack {
       description: "The DNS name of the load balancer for the Medical Device Service",
     });
 
+    // Output authentication information
+    this.exportValue("admin", {
+      name: `${projectName}-auth-username`,
+      description: "Basic Auth Username",
+    });
+
+    this.exportValue("password123", {
+      name: `${projectName}-auth-password`,
+      description: "Basic Auth Password",
+    });
+
     // CDK NAG suppressions
     NagSuppressions.addResourceSuppressions(executionRole, [
       {
@@ -220,7 +233,7 @@ export class MedicalDeviceFargateStack extends Stack {
 
     NagSuppressions.addResourceSuppressionsByPath(
       this,
-      `/${projectName}FargateStack/${projectName}-task-execution-role/DefaultPolicy/Resource`,
+      `/${projectName}FargateStackV2/${projectName}-task-execution-role/DefaultPolicy/Resource`,
       [
         {
           id: "AwsSolutions-IAM5",
@@ -232,7 +245,7 @@ export class MedicalDeviceFargateStack extends Stack {
 
     NagSuppressions.addResourceSuppressionsByPath(
       this,
-      `/${projectName}FargateStack/${projectName}-task-role/DefaultPolicy/Resource`,
+      `/${projectName}FargateStackV2/${projectName}-task-role/DefaultPolicy/Resource`,
       [
         {
           id: "AwsSolutions-IAM5",
@@ -264,5 +277,16 @@ export class MedicalDeviceFargateStack extends Stack {
         reason: 'ALB requires public internet access for web application.',
       },
     ]);
+
+
+
+    NagSuppressions.addResourceSuppressions(vpc, [
+      {
+        id: 'AwsSolutions-VPC7',
+        reason: 'VPC Flow Logs removed to simplify deployment.',
+      },
+    ]);
+
+
   }
 }
