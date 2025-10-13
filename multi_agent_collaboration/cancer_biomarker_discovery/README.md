@@ -1,4 +1,6 @@
-# Accelerate analysis and discovery of cancer biomarkers with Bedrock
+# Accelerate analysis and discovery of cancer biomarkers with Amazon Bedrock
+
+**Oct 2025**: This project has been update to use [Bedrock AgentCore](https://aws.amazon.com/bedrock/agentcore/), but we keep the legacy version with Bedrock Agents under sub-folder [bedrock_agents](bedrock_agents).
 
 Read more about these agents here: https://aws.amazon.com/blogs/machine-learning/accelerate-analysis-and-discovery-of-cancer-biomarkers-with-amazon-bedrock-agents/
 
@@ -11,21 +13,21 @@ In this solution, we show you how agentic workflows with LLMs from Amazon Bedroc
 
 ## Biomarker analysis workflow
 The biomarker analysis workflow is illustrated below that incorporates multimodal data, including clinical, genomic, and CT scan imaging data. We augment this pipeline with Agents for Amazon Bedrock.
-![architecture](images/biomarker_analysis_workflow.jpg)
+![architecture](strands_agentcore/images/biomarker_analysis_workflow.jpg)
 
 
 ## Architecture Overview
 The multi-agent solution architecture is illustrated below. 
-![architecture](images/MultiAgentBiomarkers.png)
+![architecture](strands_agentcore/images/Biomarker_agents_Strands_AgentCore.png)
 
 Amazon Bedrock enables generative AI applications to execute multistep tasks across company systems and data sources. We define our solution to include planning and reasoning with multiple agents. 
 
-    Biomarker database analyst : Convert natural language questions to SQL statements and execute on an Amazon Redshift database of biomarkers.
-    Statistician: Use a custom container with lifelines library to build survival regression models and visualization such as Kaplan Meier charts for survival analysis.
-    Clinical evidence researcher: Use PubMed APIs to search biomedical literature for external evidence. Use Amazon Bedrock Knowledge Bases for Retrieval Augmented Generation (RAG) to deliver responses from internal literature evidence.
-    Medical imaging expert: Use Amazon SageMaker jobs to augment agents with the capability to trigger asynchronous jobs with an ephemeral cluster to process CT scan images.
+- **Biomarker database analyst**: Convert natural language questions to SQL statements and execute on an Amazon Redshift database of biomarkers.
+- **Clinical evidence researcher**: Use PubMed APIs to search biomedical literature for external evidence. Use Amazon Bedrock Knowledge Bases for Retrieval Augmented Generation (RAG) to deliver responses from internal literature evidence.
+- **Medical imaging expert**: Use Amazon SageMaker jobs to augment agents with the capability to trigger asynchronous jobs with an ephemeral cluster to process CT scan images.
+- **Statistician**: Use a custom container with lifelines library to build survival regression models and visualization such as Kaplan Meier charts for survival analysis.
 
-![architecture](images/architecture_details.jpg)
+![architecture](strands_agentcore/images/architecture_details.jpg)
 
 
 ### What Does the Input Data Look Like?
@@ -85,7 +87,7 @@ Medical imaging biomarkers of cancer promise improvements in patient care throug
 
 ## Chain of thought reasoning example
 Here is an example chain of thought sequence with the agent. 11 questions are listed in the image with their expected responses.  
-![architecture](images/question_sequence_example.jpg)
+![architecture](strands_agentcore/images/question_sequence_example.jpg)
 
 ## License
 This project is licensed under the MIT License. The open-souce packages used in this project are under these [licenses](https://sagemaker-solutions-prod-us-east-2.s3-us-east-2.amazonaws.com/sagemaker-lung-cancer-survival-prediction/1.0.0/LICENSE.txt).
