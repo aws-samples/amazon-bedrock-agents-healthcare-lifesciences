@@ -1,6 +1,8 @@
 # Development requirements for Customer Support Assistant
 # Generated from pyproject.toml dependencies
 
+pip>=25.2
+
 # Core AgentCore dependencies
 bedrock-agentcore>=0.1.0
 bedrock-agentcore-starter-toolkit>=0.1.0
@@ -43,3 +45,19 @@ black>=23.0.0
 flake8>=6.0.0
 mypy>=1.0.0
 pre-commit>=3.0.0
+
+
+# Debug
+requests
+pathlib2>=2.3.7
+PyYAML
+fastmcp
+pydantic
+streamlit
+streamlit-cookies-controller
+PyJWT
+uv
+mcp
+aws-opentelemetry-distro
+defusedxml
+requests>=2.31.0

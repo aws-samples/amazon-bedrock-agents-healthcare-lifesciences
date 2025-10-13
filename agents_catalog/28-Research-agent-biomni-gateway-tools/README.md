@@ -4,13 +4,13 @@
 > This is a biomedical research agent with multiple tools using Amazon Bedrock AgentCore framework with Strands. The agent can connect to your own data infrastructure with your own local tools like PubMed and knowledge base, includes a sample public tools gateway, Amazon Cognito identity, memory, observability and a local Streamlit UI.
 NOTE: The public tools gateway includes all the database tools from Biomni https://github.com/snap-stanford/Biomni/tree/main/biomni/tool
 
-he template provides you two options for authentication with the AgentCore Runtime - you can either deploy the runtime with OAuth authentication or IAM authentication. Based on your choice, you can run a local streamlit app with /without Cogntio authentication. The runtime internally will use M2M auth flow to connect with the AgentCore Gateway.
+The template provides you two options for authentication with the AgentCore Runtime - you can either deploy the runtime with OAuth authentication or IAM authentication. Based on your choice, you can run a local streamlit app with /without Cogntio authentication. The runtime internally will use M2M auth flow to connect with the AgentCore Gateway.
 
 ![architecture](image.png)
 
 ## Table of Contents
 
-- [AgentCore Strands Template](#agentcore-strands-template)
+- [Research agent with Biomni gateway on Amazon Bedrock AgentCore](#research-agent-with-biomni-gateway-on-amazon-bedrock-agentcore)
   - [Table of Contents](#table-of-contents)
   - [Prerequisites](#prerequisites)
     - [AWS Account Setup](#aws-account-setup)
@@ -60,8 +60,7 @@ he template provides you two options for authentication with the AgentCore Runti
 1. **Create infrastructure**
 
     ```bash
-    python -m venv .venv
-    source .venv/bin/activate
+    uv venv
     uv pip install -r dev-requirements.txt
 
     chmod +x scripts/prereq.sh

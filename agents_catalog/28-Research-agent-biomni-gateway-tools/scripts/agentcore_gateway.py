@@ -23,17 +23,29 @@ gateway_client = boto3.client(
 )
 
 
-def create_gateway(gateway_name: str, api_spec: List) -> dict:
+def create_gateway(gateway_name: str, db_api_spec: List, lit_api_spec: List) -> dict:
     """Create an AgentCore gateway with the specified configuration."""
     try:
         # Use Cognito for Inbound OAuth to our Gateway
-        lambda_target_config = {
+        database_lambda_target_config = {
             "mcp": {
                 "lambda": {
                     "lambdaArn": get_ssm_parameter(
                         "/app/researchapp/agentcore/lambda_arn"
                     ),
-                    "toolSchema": {"inlinePayload": api_spec},
+                    "toolSchema": {"inlinePayload": db_api_spec},
+                }
+            }
+        }
+
+        # Literature Lambda target configuration
+        literature_lambda_target_config = {
+            "mcp": {
+                "lambda": {
+                    "lambdaArn": get_ssm_parameter(
+                        "/app/researchapp/agentcore/literature_lambda_arn"
+                    ),
+                    "toolSchema": {"inlinePayload": lit_api_spec},
                 }
             }
         }
@@ -75,19 +87,65 @@ def create_gateway(gateway_name: str, api_spec: List) -> dict:
 
         click.echo(f"✅ Gateway created: {create_response['gatewayId']}")
 
-        # Create gateway target
-        credential_config = [{"credentialProviderType": "GATEWAY_IAM_ROLE"}]
+        # Wait for gateway to be ACTIVE before creating targets
         gateway_id = create_response["gatewayId"]
+        click.echo("⏳ Waiting for gateway to become READY...")
+        
+        import time
+        max_wait_time = 300  # 5 minutes
+        wait_interval = 10   # 10 seconds
+        elapsed_time = 0
+        
+        while elapsed_time < max_wait_time:
+            try:
+                gateway_status = gateway_client.get_gateway(gatewayIdentifier=gateway_id)
+                status = gateway_status['status']
+                click.echo(f"Gateway status: {status}")
+                
+                if status == 'READY':
+                    click.echo("✅ Gateway is now READY")
+                    break
+                elif status in ['FAILED', 'DELETING']:
+                    raise Exception(f"Gateway creation failed with status: {status}")
+                    
+                time.sleep(wait_interval)
+                elapsed_time += wait_interval
+                
+            except Exception as e:
+                if "ResourceNotFoundException" in str(e):
+                    click.echo("Gateway not found, continuing to wait...")
+                    time.sleep(wait_interval)
+                    elapsed_time += wait_interval
+                else:
+                    raise e
+        
+        if elapsed_time >= max_wait_time:
+            raise Exception("Timeout waiting for gateway to become READY")
 
-        create_target_response = gateway_client.create_gateway_target(
+        # Create gateway targets
+        credential_config = [{"credentialProviderType": "GATEWAY_IAM_ROLE"}]
+
+        # Create database Lambda target
+        create_db_target_response = gateway_client.create_gateway_target(
             gatewayIdentifier=gateway_id,
-            name="LambdaUsingSDK",
-            description="Lambda Target using SDK",
-            targetConfiguration=lambda_target_config,
+            name="DatabaseLambda",
+            description="Database Lambda Target for biomedical database queries",
+            targetConfiguration=database_lambda_target_config,
             credentialProviderConfigurations=credential_config,
         )
 
-        click.echo(f"✅ Gateway target created: {create_target_response['targetId']}")
+        click.echo(f"✅ Database gateway target created: {create_db_target_response['targetId']}")
+
+        # Create literature Lambda target
+        create_lit_target_response = gateway_client.create_gateway_target(
+            gatewayIdentifier=gateway_id,
+            name="LiteratureLambda",
+            description="Literature Lambda Target for research and web search",
+            targetConfiguration=literature_lambda_target_config,
+            credentialProviderConfigurations=credential_config,
+        )
+
+        click.echo(f"✅ Literature gateway target created: {create_lit_target_response['targetId']}")
 
         gateway = {
             "id": gateway_id,
@@ -174,21 +232,31 @@ def cli(ctx):
 @click.option(
     "--api-spec-file",
     default="prerequisite/lambda/api_spec.json",
-    help="Path to the API specification file (default: prerequisite/lambda/api_spec.json)",
+    help="Path to the database API specification file (default: prerequisite/lambda/api_spec.json)",
 )
-def create(name, api_spec_file):
+@click.option(
+    "--literature-api-spec-file",
+    default="prerequisite/lambda-literature/api_spec.json",
+    help="Path to the literature API specification file (default: prerequisite/lambda-literature/api_spec.json)",
+)
+def create(name, api_spec_file, literature_api_spec_file):
     """Create a new AgentCore gateway."""
     click.echo(f"🚀 Creating AgentCore gateway: {name}")
     click.echo(f"📍 Region: {REGION}")
 
-    # Validate API spec file exists
+    # Validate API spec files exist
     if not os.path.exists(api_spec_file):
-        click.echo(f"❌ API specification file not found: {api_spec_file}", err=True)
+        click.echo(f"❌ Database API specification file not found: {api_spec_file}", err=True)
+        sys.exit(1)
+        
+    if not os.path.exists(literature_api_spec_file):
+        click.echo(f"❌ Literature API specification file not found: {literature_api_spec_file}", err=True)
         sys.exit(1)
 
     try:
-        api_spec = load_api_spec(api_spec_file)
-        gateway = create_gateway(gateway_name=name, api_spec=api_spec)
+        db_api_spec = load_api_spec(api_spec_file)
+        lit_api_spec = load_api_spec(literature_api_spec_file)
+        gateway = create_gateway(gateway_name=name, db_api_spec=db_api_spec, lit_api_spec=lit_api_spec)
         click.echo(f"🎉 Gateway created successfully with ID: {gateway['id']}")
 
     except Exception as e:
