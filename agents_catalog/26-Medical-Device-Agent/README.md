@@ -11,6 +11,7 @@ This example deploys a medical device management agent built with the Strands Ag
 - **Clinical Trials Lookup**: Search ClinicalTrials.gov for relevant studies
 - **Multi-Agent Architecture**: Coordinated AI agents for comprehensive medical support
 - **Streaming UI**: Real-time response updates with Streamlit
+- **Basic Authentication**: Secure username/password authentication
 - **Fargate Deployment**: Scalable containerized deployment on AWS
 
 ### Tools
@@ -67,15 +68,32 @@ pip install -r requirements.txt
 npx cdk bootstrap
 ```
 
-3. **Deploy to AWS:**
+3. **Configure Authentication:**
+
+Copy the example environment file and set secure credentials:
 
 ```bash
-npx cdk deploy
+cp .env.example .env
+# Edit .env with your secure username and password
 ```
 
-4. **Get the application URL:**
+4. **Deploy to AWS:**
 
-After deployment completes, the CloudFormation output will show the Application Load Balancer DNS name where you can access the Streamlit application.
+```bash
+npm run deploy
+```
+
+5. **Access the application:**
+
+After deployment completes, the output will show:
+- Application Load Balancer DNS name for accessing the Streamlit application
+- Authentication credentials (username/password)
+
+⚠️ **IMPORTANT**: Change the default credentials immediately after first deployment!
+
+**First-time setup:**
+1. Configure authentication credentials (see Security section below)
+2. Access the application URL and sign in with your credentials
 
 ## Usage
 
@@ -100,7 +118,8 @@ Access the deployed Streamlit application through the ALB URL. The interface pro
 Run the application locally for development:
 
 ```bash
-streamlit run app.py --server.port 8501
+# Ensure .env file is configured with credentials
+npm run local
 ```
 
 ## Architecture
@@ -119,16 +138,26 @@ streamlit run app.py --server.port 8501
 - **Amazon ECS Fargate**: Container hosting
 - **Application Load Balancer**: Load balancing and health checks
 - **Amazon VPC**: Network isolation
+- **Basic Authentication**: Username/password authentication
 - **CloudWatch Logs**: Application logging
 - **Amazon ECR**: Container image registry
 - **Amazon Bedrock**: Claude 3 Sonnet model access
 
 ## Configuration
 
+### Authentication
+
+The application uses Basic Authentication with username/password. See `SECURITY.md` for detailed security configuration.
+
 ### Environment Variables
 
-The application uses these environment variables (set automatically by CDK):
+The application uses these environment variables:
 
+- `ENABLE_AUTHENTICATION`: Enable/disable authentication (default: true)
+- `AUTH_TYPE`: Authentication type (default: basic)
+- `BASIC_AUTH_USERNAME`: Username for authentication
+- `BASIC_AUTH_PASSWORD`: Password for authentication
+- `AWS_DEFAULT_REGION`: AWS region
 - `LOG_LEVEL`: Logging level (default: INFO)
 
 ### Model Configuration
@@ -174,8 +203,10 @@ The deployment is configured for development/demo use. For production:
 - Increase ECS service `desiredCount`
 - Use Amazon RDS instead of SQLite
 - Add CloudFront for global distribution
-- Implement proper authentication (Cognito)
+- Implement stronger authentication (OAuth, SAML)
+- Add IP restrictions and rate limiting
 - Add monitoring and alerting
+- Set up proper SSL certificates
 
 ## Additional Resources
 
