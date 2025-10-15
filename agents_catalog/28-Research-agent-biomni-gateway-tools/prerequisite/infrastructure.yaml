@@ -175,6 +175,7 @@ Resources:
                   - lambda:InvokeFunction
                 Resource:
                   - !GetAtt ResearchAppLambda.Arn
+                  - !GetAtt CancerBiologyLambda.Arn
 
 
   # Lambda target
@@ -208,6 +209,57 @@ Resources:
         - x86_64
       Timeout: 300
 
+  # Cancer Biology Lambda target
+  CancerBiologyLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: /service-role/
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+      Policies:
+        - PolicyName: CancerBiologyLambdaPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3DataAccess
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource:
+                  - !Sub arn:aws:s3:::${LambdaS3Bucket}/*
+              - Sid: SSMGetParameter
+                Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                Resource:
+                  - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/app/researchapp/*
+
+  CancerBiologyLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: "Lambda function for Cancer Biology Analysis Tools"
+      Handler: cancer_biology_lambda_function.lambda_handler
+      Code:
+        S3Bucket: !Ref LambdaS3Bucket
+        S3Key: cancer-biology-lambda-function.zip
+      Role: !GetAtt CancerBiologyLambdaRole.Arn
+      Runtime: python3.12
+      PackageType: Zip
+      Architectures:
+        - x86_64
+      MemorySize: 3008
+      Timeout: 900
+      EphemeralStorage:
+        Size: 2048
+
   
   GatewayAgentcoreIAMRoleParameter:
     Type: AWS::SSM::Parameter
@@ -236,5 +288,15 @@ Resources:
       Type: String
       Value: !GetAtt ResearchAppLambda.Arn
       Description: ARN of the lambda that integrates with agentcore
+      Tags:
+        Application: ResearchApp
+
+  CancerBiologyLambdaArnParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /app/researchapp/agentcore/cancer_biology_lambda_arn
+      Type: String
+      Value: !GetAtt CancerBiologyLambda.Arn
+      Description: ARN of the Cancer Biology Lambda function
       Tags:
         Application: ResearchApp

@@ -1,0 +1,181 @@
+[
+  {
+    "name": "analyze_ddr_network_in_cancer",
+    "description": "Analyze DNA Damage Response (DDR) network alterations and dependencies in cancer samples.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "expression_data_path": {
+          "type": "string",
+          "description": "Path to gene expression data file (CSV format with genes as rows, samples as columns)"
+        },
+        "mutation_data_path": {
+          "type": "string",
+          "description": "Path to mutation data file (CSV format with genes as rows, samples as columns, values indicating mutation status)"
+        },
+        "output_dir": {
+          "type": "string",
+          "description": "Directory to save output files"
+        }
+      },
+      "required": ["expression_data_path", "mutation_data_path"]
+    }
+  },
+  {
+    "name": "analyze_cell_senescence_and_apoptosis",
+    "description": "Analyze flow cytometry data to quantify senescent and apoptotic cell populations.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "fcs_file_path": {
+          "type": "string",
+          "description": "Path to the FCS file containing flow cytometry data with measurements for senescence-associated β-galactosidase (SA-β-Gal) and Annexin V/7-AAD staining"
+        }
+      },
+      "required": ["fcs_file_path"]
+    }
+  },
+  {
+    "name": "detect_and_annotate_somatic_mutations",
+    "description": "Detects and annotates somatic mutations in tumor samples compared to matched normal samples using GATK Mutect2 for variant calling, GATK FilterMutectCalls for filtering, and SnpEff for functional annotation.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "tumor_bam": {
+          "type": "string",
+          "description": "Path to the tumor sample BAM file"
+        },
+        "normal_bam": {
+          "type": "string",
+          "description": "Path to the matched normal sample BAM file"
+        },
+        "reference_genome": {
+          "type": "string",
+          "description": "Path to the reference genome FASTA file"
+        },
+        "output_prefix": {
+          "type": "string",
+          "description": "Prefix for output files"
+        },
+        "snpeff_database": {
+          "type": "string",
+          "description": "SnpEff database to use for annotation"
+        }
+      },
+      "required": ["tumor_bam", "normal_bam", "reference_genome", "output_prefix"]
+    }
+  },
+  {
+    "name": "detect_and_characterize_structural_variations",
+    "description": "Detects and characterizes structural variations (SVs) in genomic sequencing data using LUMPY for SV detection followed by annotation with COSMIC and/or ClinVar databases.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "bam_file_path": {
+          "type": "string",
+          "description": "Path to the aligned sequencing data in BAM format"
+        },
+        "reference_genome_path": {
+          "type": "string",
+          "description": "Path to the reference genome in FASTA format"
+        },
+        "output_dir": {
+          "type": "string",
+          "description": "Directory where results will be saved"
+        },
+        "cosmic_db_path": {
+          "type": "string",
+          "description": "Path to the COSMIC database for cancer annotation"
+        },
+        "clinvar_db_path": {
+          "type": "string",
+          "description": "Path to the ClinVar database for clinical annotation"
+        }
+      },
+      "required": ["bam_file_path", "reference_genome_path", "output_dir"]
+    }
+  },
+  {
+    "name": "perform_gene_expression_nmf_analysis",
+    "description": "Performs Non-negative Matrix Factorization (NMF) on gene expression data to extract metagenes and their associated sample weights for tumor subtype identification.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "expression_data_path": {
+          "type": "string",
+          "description": "Path to a CSV or TSV file containing gene expression data with genes as rows and samples as columns. Values should be non-negative."
+        },
+        "n_components": {
+          "type": "integer",
+          "description": "Number of metagenes (components) to extract."
+        },
+        "normalize": {
+          "type": "boolean",
+          "description": "Whether to normalize the expression data before applying NMF."
+        },
+        "output_dir": {
+          "type": "string",
+          "description": "Directory to save the output files."
+        },
+        "random_state": {
+          "type": "integer",
+          "description": "Random seed for reproducibility."
+        }
+      },
+      "required": ["expression_data_path"]
+    }
+  },
+  {
+    "name": "analyze_copy_number_purity_ploidy_and_focal_events",
+    "description": "CNVkit-based copy number workflow performing CNV segmentation, purity & ploidy approximation, simplified HRD-style metrics, and focal amplification/deletion detection in selected genes.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "tumor_bam": {
+          "type": "string",
+          "description": "Path to tumor BAM (indexed)"
+        },
+        "reference_genome": {
+          "type": "string",
+          "description": "Path to reference genome FASTA"
+        },
+        "normal_bam": {
+          "type": "string",
+          "description": "Path to matched normal BAM (recommended for CNVkit)"
+        },
+        "output_dir": {
+          "type": "string",
+          "description": "Directory to store CNVkit workflow outputs"
+        },
+        "targets_bed": {
+          "type": "string",
+          "description": "BED file of target regions for CNVkit (panel/exome)"
+        },
+        "antitargets_bed": {
+          "type": "string",
+          "description": "BED file of antitarget regions for CNVkit"
+        },
+        "gene_bed": {
+          "type": "string",
+          "description": "Gene BED (chrom, start, end, gene) for focal event annotation"
+        },
+        "focal_genes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Genes to highlight for focal events (defaults: MYC, ERBB2, CDKN2A)"
+        },
+        "log2_amp_threshold": {
+          "type": "number",
+          "description": "Log2 ratio threshold for focal amplification calls"
+        },
+        "log2_del_threshold": {
+          "type": "number",
+          "description": "Log2 ratio threshold for focal deep deletion calls"
+        }
+      },
+      "required": ["tumor_bam", "reference_genome"]
+    }
+  }
+]
