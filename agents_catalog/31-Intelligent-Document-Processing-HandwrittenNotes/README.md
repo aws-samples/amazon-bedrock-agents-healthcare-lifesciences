@@ -49,18 +49,15 @@ Multimodal document processing via Model Context Protocol:
 ```
 User Question → Streamlit UI → AgentCore Runtime → Strands Agent
                                                          ↓
-                                                    First Request?
-                                                    ↙          ↘
-                                            Yes: Process      No: Use Cache
-                                                 ↓
-                                            BDA MCP Server
-                                                 ↓
-                                            Extract Data
-                                                 ↓
-                                            Cache Results
-                                                 ↓
-                                            Return JSON ← Answer from Cache
+                                                   BDA MCP Server
+                                                         ↓
+                                                  Extract Data
+                                                         ↓
+                                                  Cache Results (for follow-up questions)
+                                                         ↓
+                                                Return JSON and the answer
 ```
+![Architecture](architecture/IDP_Agent_Architecture.png)
 
 ## Deployment Steps
 
