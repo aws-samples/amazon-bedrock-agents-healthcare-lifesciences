@@ -129,6 +129,13 @@ The UI will open at `http://localhost:8501`
 
 ## Key Implementation Details
 
+### Why is Bedrock Data Automation MCP Required?
+Testing showed that even the latest LLMs cannot extract handwritten notes from medical forms without specialized tools. We tested with Claude Sonnet 3.5 and Haiku 3.5 models via the Bedrock Playground, and both returned the same response indicating the PDF file was empty or unreadable.
+
+This demonstrates that standard LLM vision capabilities are insufficient for processing complex handwritten documents, making Bedrock Data Automation MCP essential for accurate data extraction.
+
+![Test via Bedrock Playground](images/Test-via-Bedrock-Playground.png) 
+
 ### File Caching
 Files are downloaded from S3 once and cached in `/tmp/` for reuse across invocations within the same container instance.
 
