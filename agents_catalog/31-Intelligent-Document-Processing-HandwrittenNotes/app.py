@@ -13,7 +13,7 @@ logger.setLevel("INFO")
 
 # Page config
 st.set_page_config(
-    page_title="Bedrock AgentCore Chat",
+    page_title="IDP Agent Chat",
     page_icon="static/gen-ai-dark.svg",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -370,7 +370,7 @@ def invoke_agent_streaming(
 
 def main():
     st.logo("static/agentcore-service-icon.png", size="large")
-    st.title("Amazon Bedrock AgentCore Chat")
+    st.title("IDP Agent Chat")
 
     # Sidebar for settings
     with st.sidebar:

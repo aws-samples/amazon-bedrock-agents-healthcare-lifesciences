@@ -24,6 +24,10 @@ An AI-powered conversational agent that:
 - ✅ Sub-90 second processing time
 - ✅ Conversational follow-up questions
 
+## Demo
+
+<video src="demo/IDP_Agent_Demo.mp4" controls></video>
+
 ## Technology Stack
 
 ### Amazon Bedrock AgentCore
@@ -97,7 +101,7 @@ The UI will open at `http://localhost:8501`
 
 ### 4. Test the Agent
 
-**First message**: "extract all data from the form in JSON format including the confidence scores"
+**First message**: "extract all data from the medical intake form. The output should be in JSON format and include the confidence scores for each field"
 - Processes document (~20-30 seconds)
 - Returns structured JSON with confidence scores
 - Caches results for session
