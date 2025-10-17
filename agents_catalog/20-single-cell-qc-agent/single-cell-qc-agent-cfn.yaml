@@ -86,9 +86,7 @@ Resources:
         Variables:
           LOG_LEVEL: "INFO"
           BEDROCK_MODEL_ID: !Ref BedrockModelId
-      Code: 
-        S3Bucket: !Sub "lambda-${AWS::Region}-${AWS::AccountId}"
-        S3Key: single-cell-qc-agent/web-summary-analyzer.zip
+      Code: "action-groups/web-summary-analyzer"
 
   WebSummaryAnalyzerLambdaPermission:
     Type: AWS::Lambda::Permission
@@ -156,9 +154,7 @@ Resources:
         Variables:
           LOG_LEVEL: "INFO"
           BEDROCK_MODEL_ID: !Ref BedrockModelId
-      Code: 
-        S3Bucket: !Sub "lambda-${AWS::Region}-${AWS::AccountId}"
-        S3Key: single-cell-qc-agent/qc-validator.zip
+      Code: "action-groups/qc-validator"
 
   QCValidatorLambdaPermission:
     Type: AWS::Lambda::Permission

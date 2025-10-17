@@ -13,8 +13,8 @@ Multiple agents as Strands tools with AgentCore Runtime deployment and a local S
 ### Research agent with Biomni database tools
 Research agent based on the end to end template with all Bedrock AgentCore components and 30+ database tools from [Biomni](https://github.com/snap-stanford/Biomni/tree/main) made available via a AgentCore Gateway [research-agent-biomni-tools](agents_catalog/28-Research-agent-biomni-gateway-tools/)
 
-### Upcoming examples
-Variant interpreter agent with HealthOmics and more. 
+### Variant interpreter agent with HealthOmics 
+Processing and interpretation of genomics pipelines at scale with Clinvar and VEP annotations of patient VCF data [agentcore-variant-interpreter-omics](agents_catalog/17-variant-interpreter-agent)
 
 ## Project Components
 
