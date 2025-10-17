@@ -8,7 +8,7 @@ const app = new App();
 
 const envName: EnvNameType = app.node.tryGetContext('envName') || 'dev';
 
-const fargateStack = new MedicalDeviceFargateStack(app, `${projectName}FargateStack`, {
+const fargateStack = new MedicalDeviceFargateStack(app, `${projectName}FargateStackV2`, {
   envName: envName,
 });
 
