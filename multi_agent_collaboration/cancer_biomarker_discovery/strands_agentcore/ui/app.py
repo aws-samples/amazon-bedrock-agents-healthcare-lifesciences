@@ -39,9 +39,27 @@ latency = 0
 
 ssm_client = boto3.client('ssm')
 
-agent_arn = (ssm_client.get_parameter(Name=f"/streamlitapp/{environmentName}/AGENT_ARN", WithDecryption=True)["Parameter"]["Value"])
-           
 s3_bucket_name = (ssm_client.get_parameter(Name=f"/streamlitapp/{environmentName}/S3_BUCKET_NAME",WithDecryption=True,)["Parameter"]["Value"])
+
+def fetch_agent_runtimes():
+        try:
+            agentcore_client = boto3.client('bedrock-agentcore-control', region_name=region)
+            response = agentcore_client.list_agent_runtimes(maxResults=50)
+
+            # Filter only READY agents and sort by name
+            ready_agents = [
+                agent
+                for agent in response.get("agentRuntimes", [])
+                if agent.get("status") == "READY"
+            ]
+
+            # Sort by most recent update time (newest first)
+            ready_agents.sort(key=lambda x: x.get("lastUpdatedAt", ""), reverse=True)
+
+            return ready_agents
+        except Exception as e:
+            st.error(f"Error fetching agent runtimes: {str(e)}")
+            return None
 
 def list_png_files():
         try:
@@ -318,6 +336,19 @@ st.markdown("""
 
 # Sidebar
 with st.sidebar:
+    st.header("Agent Selection")
+
+    # Fetch available agents
+    with st.spinner("Loading available agents..."):
+        available_agents = fetch_agent_runtimes()
+
+    if available_agents:
+        name_to_arn = {item['agentRuntimeName']: item['agentRuntimeArn'] for item in available_agents}
+        selected_agent_name = st.selectbox('Select an agent runtime:', list(name_to_arn.keys()))
+        selected_agent_arn = name_to_arn[selected_agent_name]
+    else:
+        st.error("No agent runtimes found or error loading agents")
+
     st.header('Image Controls')
     
     st.subheader("Biomarker Imaging Results")
@@ -330,7 +361,7 @@ with st.sidebar:
     fetch_graph = st.button("Fetch Graphs")
 
     # Response formatting options
-    st.subheader("Display Options")
+    st.header("Display Options")
     show_tools = st.checkbox(
         "Show tools",
         value=True,
@@ -442,7 +473,7 @@ if prompt := st.chat_input("How can I help?"):
 
         try:
             # Stream the response
-            for chunk in invoke_agent_streaming(prompt, agent_arn, session_id, region):
+            for chunk in invoke_agent_streaming(prompt, selected_agent_arn, session_id, region):
                 logger.debug(f"received chunk ({type(chunk)}): {chunk}")
 
                 # Add chunk to buffer
@@ -497,14 +528,14 @@ image_placeholder = st.empty()
 if selected_file and load_image:
     try:
         image = get_image_from_s3(selected_file)
-        image_placeholder.image(image, caption=selected_file, use_column_width=True)
+        image_placeholder.image(image, caption=selected_file, use_container_width=True)
     except Exception as e:
         st.error(f"Unable loading image: {str(e)}")
 elif fetch_image:
     s3_image = get_s3_image(isKMplot=True, invocation_id=invocation_id) 
     if s3_image and 'error' not in s3_image:  
         try:
-            image_placeholder.image(s3_image['path'], caption=s3_image['name'], use_column_width=True)
+            image_placeholder.image(s3_image['path'], caption=s3_image['name'], use_container_width=True)
         except Exception as e:
             st.error(f"Unable loading image: {str(e)}")
     else:
@@ -514,7 +545,7 @@ elif fetch_graph:
     s3_image = get_s3_image(isKMplot=False)  
     if s3_image and 'error' not in s3_image: 
         try:
-            image_placeholder.image(s3_image['path'], caption=s3_image['name'], use_column_width=True)
+            image_placeholder.image(s3_image['path'], caption=s3_image['name'], use_container_width=True)
         except Exception as e:
             st.error(f"Unable loading image: {str(e)}")
     else:
