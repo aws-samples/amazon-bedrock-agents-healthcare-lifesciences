@@ -38,8 +38,8 @@ popd
 # popd
 
 # Process Cancer biomarker discovery Subagent templates
-# cd multi_agent_collaboration/cancer_biomarker_discovery/agents || exit
-pushd multi_agent_collaboration/cancer_biomarker_discovery/agents || exit
+# cd multi_agent_collaboration/cancer_biomarker_discovery/bedrock_agents/agents || exit
+pushd multi_agent_collaboration/cancer_biomarker_discovery/bedrock_agents/agents || exit
 echo "Processing agent templates..."
 for agent_file in *.yaml; do
   if [ -f "${agent_file}" ]; then
@@ -61,8 +61,8 @@ done
 popd
 
 # Process Cancer Biomarker discovery Supervisor agent template - note the quotes around directory name
-# cd multi_agent_collaboration/cancer_biomarker_discovery/SupervisorAgent || exit
-pushd multi_agent_collaboration/cancer_biomarker_discovery/SupervisorAgent || exit
+# cd multi_agent_collaboration/cancer_biomarker_discovery/bedrock_agents/SupervisorAgent || exit
+pushd multi_agent_collaboration/cancer_biomarker_discovery/bedrock_agents/SupervisorAgent || exit
 echo "Processing supervisor agent template..."
 if [ -f "supervisor_agent.yaml" ]; then
   echo "Packaging supervisor agent"
