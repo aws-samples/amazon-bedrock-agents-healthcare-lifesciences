@@ -107,7 +107,7 @@
 Note : We have decoupled the OAuth authentication of the Gateway from the Runtime. This means that you can use the Runtime either with IAM or OAuth authentication. The gateway bearer token will be retrieved using M2M authentication internally. 
 
   ```bash
-  agentcore configure --entrypoint agent/main.py -er arn:aws:iam::<Account-Id>:role/<Role> --name myapp<AgentName>
+  agentcore configure --entrypoint main.py -rf agent/requirements.txt -er arn:aws:iam::<Account-Id>:role/<Role> --name myapp<AgentName>
   ```
 If you want to use OAuth authentication, enter 'yes' for OAuth. 
 
