@@ -24,7 +24,6 @@ A Bedrock Data Automation-powered IDP agent that:
 - ✅ Checkbox detection
 - ✅ Confidence scoring per field
 - ✅ JSON structured output
-- ✅ Sub-90 second processing time
 - ✅ Conversational follow-up questions
 
 ## Demo
