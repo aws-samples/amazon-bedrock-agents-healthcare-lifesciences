@@ -1,16 +1,20 @@
-# Intelligent Document Processing with Conversational AI
+# IDP Agent for Hand-written Documents
 
 ## Problem Statement
 
-Healthcare organizations process hundreds of handwritten medical forms daily, requiring manual data validation or extraction that is:
-- **Time-consuming**: 200-300 forms/day with manual review that could take 10-15 min per form
-- **Error-prone**: Handwriting interpretation varies by reviewer
-- **Inefficient**: No ability to ask follow-up questions without re-reading entire documents
-- **Costly**: Significant human resources dedicated to data entry
+Intelligent Document Processin (IDP) is extracting structured data from unstructured text. 
+Unstructured data comprises 80% of enterprise data and largely untapped due to its complexity. This content represents a rich source of insights that can drive better decision-making, enhance customer experiences, and uncover new business opportunities. And yet, only about 18% of organizations are actually able to take advantage of their unstructured data at scale.
+
+Organisations process hundreds of unstructured forms daily, requiring manual data validation or extraction that is:
+- **Time-consuming**: 200-300 forms/day with manual review that could take 10-15 min per form. Manual processing is consuming 50-70% of employee time with error rates up to 4%. 
+- **Current Solutions are Costly and Insufficient**: OCR accuracy is 70% and the cost is $5-15 per documents
+- **Inefficient**: Incomplete workflows mean that employees need to search for information in different systems. No ability to ask follow-up questions without re-reading entire documents
+
+
 
 ## Solution Overview
 
-An AI-powered conversational agent that:
+A Bedrock Data Automation powered IDP agent that:
 1. **Extracts structured data** from handwritten medical forms with confidence scores
 2. **Enables natural language queries** - ask follow-up questions without reprocessing
 3. **Maintains conversation context** - remembers extracted data across questions
