@@ -46,7 +46,7 @@ async def strands_agent_bedrock(payload):
                 yield f"✅ Using cached file: {local_file}\n\n"
             else:
                 # Download file from S3 and cache it
-                import boto3
+                # Download file from S3 and cache it
                 s3 = boto3.client('s3')
                 
                 try:
