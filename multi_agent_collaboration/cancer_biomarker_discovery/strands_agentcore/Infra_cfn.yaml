@@ -36,12 +36,6 @@ Parameters:
     Type: String
     Default: latest
     Description: Tag of the Docker image to deploy Streamlit UI
-  # MultiAgentDevMode:
-  #   Type: String
-  #   Description: Select True to use a python notebook to manually create the agents step by step. Select false to auto create all agents. 
-  #   AllowedValues: 
-  #    - True
-  #    - False
   GitBranch:
     Type: String
     Description: The github branch to clone 
@@ -368,8 +362,7 @@ Resources:
   
   # S3
   S3Bucket:
-    Type: 
-    DeletionPolicy: Delete
+    Type: AWS::S3::Bucket
     Properties:
       BucketName: !Sub '${AWS::StackName}-${AWS::AccountId}-${AWS::Region}'
       BucketEncryption:
@@ -1019,40 +1012,6 @@ Resources:
     Properties:
       RepositoryName: lifelines-lambda-sample
 
-  # TriggerAgentBuildCustomResource:
-  #     Type: Custom::TriggerAgentBuild
-  #     Properties:
-  #       ServiceToken: !GetAtt TriggerAgentBuildLambda.Arn
-  #       ProjectName: !Ref AgentandUICodeBuild
-
-  # TriggerAgentBuildLambda:
-  #   Type: AWS::Lambda::Function
-  #   Properties:
-  #     Handler: index.handler
-  #     Role: !GetAtt TriggerAgentBuildLambdaRole.Arn
-  #     Code:
-  #       ZipFile: |
-  #         import boto3
-  #         import cfnresponse
-
-  #         def handler(event, context):
-  #             if event['RequestType'] in ['Create', 'Update']:
-  #                 try:
-  #                     codebuild = boto3.client('codebuild')
-  #                     project_name = event['ResourceProperties']['ProjectName']
-  #                     response = codebuild.start_build(projectName=project_name)
-  #                     build_id = response['build']['id']
-  #                     print(f"Build started: {build_id}")
-  #                     cfnresponse.send(event, context, cfnresponse.SUCCESS, {"BuildId": build_id})
-  #                 except Exception as e:
-  #                     print(f"Error: {str(e)}")
-  #                     cfnresponse.send(event, context, cfnresponse.FAILED, {"Error": str(e)})
-  #             elif event['RequestType'] == 'Delete':
-  #                 # No action needed for delete, as S3 cleanup will be handled separately
-  #                 cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
-  #     Runtime: python3.8
-  #     Timeout: 300
-  
   CleanupLambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
@@ -1153,7 +1112,7 @@ Resources:
       LogGroupName: !Sub "/aws/codebuild/${AWS::StackName}-DockerPushProject"
       RetentionInDays: 14
 
-  #Gather Assets for pubmed lambda function, knowledgebase and survival data processing lambda
+  # Gather Assets for pubmed lambda function, knowledgebase and survival data processing lambda
   DataRetrievalLogic:
     Type: AWS::CodeBuild::Project
     Properties:
@@ -1731,7 +1690,31 @@ Resources:
             Principal:
               Service: sagemaker.amazonaws.com
             Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/AmazonSageMakerFullAccess"
+        - "arn:aws:iam::aws:policy/AWSCloudFormationFullAccess"
+        - "arn:aws:iam::aws:policy/AmazonBedrockFullAccess"
+        - "arn:aws:iam::aws:policy/IAMFullAccess"
+        - "arn:aws:iam::aws:policy/AmazonSSMFullAccess"
+        - "arn:aws:iam::aws:policy/AWSLambda_FullAccess"
+        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+        - "arn:aws:iam::aws:policy/AmazonAthenaFullAccess"
+        - "arn:aws:iam::aws:policy/AmazonVPCFullAccess"
+        - "arn:aws:iam::aws:policy/AmazonRedshiftQueryEditor"
       Policies:
+        - PolicyName: StrandsPolicies
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - states:*
+                  - codebuild:*
+                  - bedrock-agentcore:*
+                  - redshift:*
+                  - states:*
+                  - ecr:*
+                Resource: "*"
         - PolicyName: SageMakerProcessingAccess
           PolicyDocument:
             Version: "2012-10-17"
@@ -1802,7 +1785,6 @@ Resources:
                 Condition:
                   StringEquals:
                     "kms:ViaService": !Sub "sagemaker.${AWS::Region}.amazonaws.com"
-
         - PolicyName: NetworkAccess
           PolicyDocument:
             Version: "2012-10-17"
@@ -1838,7 +1820,7 @@ Resources:
       DefaultUserSettings: 
         ExecutionRole: !GetAtt SageMakerExecutionRole.Arn
         StudioWebPortal: ENABLED
-      DomainName: 'bedrock-agents-hcls-workshop'
+      DomainName: 'agents-hcls-workshop'
       SubnetIds: 
         - !Ref PublicSubnet1 
       VpcId: !Ref VPC  
@@ -1847,7 +1829,7 @@ Resources:
       Tags:
         - Key: 'env'
           Value: 'bedrock-hcls-ws'
-       
+
   #user profile
   UserProfile:
     Type: AWS::SageMaker::UserProfile
@@ -1875,42 +1857,14 @@ Resources:
           EbsStorageSettings: 
             EbsVolumeSizeInGb: 50
         JupyterLabAppSettings:
+          CodeRepositories:
+            - RepositoryUrl: !Ref GithubLink
           DefaultResourceSpec: 
             InstanceType: ml.m5.xlarge
       SpaceSharingSettings:
         SharingType: Private
       OwnershipSettings:
         OwnerUserProfileName: 'sagemakeruserws'
-
-  # TriggerAgentBuildLambdaRole:
-  #   Type: AWS::IAM::Role
-  #   Properties:
-  #     AssumeRolePolicyDocument:
-  #       Version: '2012-10-17'
-  #       Statement:
-  #         - Effect: Allow
-  #           Principal:
-  #             Service: lambda.amazonaws.com
-  #           Action: sts:AssumeRole
-  #     Policies:
-  #       - PolicyName: CodeBuildStartBuildPolicy
-  #         PolicyDocument:
-  #           Version: '2012-10-17'
-  #           Statement:
-  #             - Effect: Allow
-  #               Action: 
-  #                 - codebuild:StartBuild
-  #               Resource: !GetAtt AgentandUICodeBuild.Arn
-  #       - PolicyName: CloudWatchLogsPolicy
-  #         PolicyDocument:
-  #           Version: '2012-10-17'
-  #           Statement:
-  #             - Effect: Allow
-  #               Action:
-  #                 - logs:CreateLogGroup
-  #                 - logs:CreateLogStream
-  #                 - logs:PutLogEvents
-  #               Resource: arn:aws:logs:*:*:*
 
   CodeBuildServiceRole:
     Type: AWS::IAM::Role
@@ -1948,78 +1902,6 @@ Resources:
                 Resource:
                   - !Sub arn:aws:s3:::${S3Bucket}
                   - !Sub arn:aws:s3:::${S3Bucket}/*
-
-  
-  # AgentandUICodeBuild:
-  #   Type: AWS::CodeBuild::Project
-  #   Properties:
-  #     Name: !Sub ${AWS::StackName}-AgentandUIBuild
-  #     Description: "CodeBuild project to build and package agent CloudFormation templates"
-  #     ServiceRole: !GetAtt CodeBuildServiceRole.Arn
-  #     TimeoutInMinutes: 15
-  #     Artifacts:
-  #       Type: S3
-  #       Location: !Ref S3Bucket
-  #       Name: packaged_agents
-  #       NamespaceType: NONE
-  #       Packaging: NONE
-  #     Environment:
-  #       Type: LINUX_CONTAINER
-  #       ComputeType: BUILD_GENERAL1_SMALL
-  #       Image: aws/codebuild/amazonlinux2-x86_64-standard:3.0
-  #     Source:
-  #       Type: NO_SOURCE
-  #       BuildSpec: !Sub |
-  #         version: 0.2
-  #         env:
-  #           variables:
-  #             S3_BUCKET: ${S3Bucket}
-  #             GIT_BRANCH: ${GitBranch}
-  #             GITHUB_LINK: ${GithubLink}
-  #         phases:
-  #           install:
-  #             runtime-versions:
-  #               python: 3.8
-  #           pre_build:
-  #             commands:
-  #               - echo Cloning the repository
-  #               - git clone -b $GIT_BRANCH --single-branch $GITHUB_LINK repo
-  #               - cd repo
-  #               - chmod +x build_agents.sh
-  #           build:
-  #             commands:
-  #               - echo Processing agent templates
-  #               - ./build_agents.sh
-  #           post_build:
-  #             commands:
-  #               - echo Build completed on `date`
-  # AgentBuildNestedStack:
-  #   Type: AWS::CloudFormation::Stack
-  #   DependsOn: 
-  #     - TriggerAgentBuildCustomResource
-  #     - CleanupCustomResource
-  #     - RedshiftCluster
-  #   Properties:
-  #     TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/packaged_agent_build.yaml
-  #     Parameters:
-  #       BedrockModelId: !Ref BedrockModelId
-  #       MultiAgentDevMode: !Ref MultiAgentDevMode
-  #       EnvironmentName: !Ref EnvironmentName
-  #       GitBranch: !Ref GitBranch
-  #       SubAgentS3Bucket: !Ref S3Bucket
-  #     TimeoutInMinutes: 30
-  # StreamlitBuildNestedStack:
-  #   Type: AWS::CloudFormation::Stack
-  #   DependsOn: 
-  #     - AgentBuildNestedStack
-  #   Properties:
-  #     TemplateURL: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/packaged_streamlit_build.yaml
-  #     Parameters:
-  #       EnvironmentName: !Ref EnvironmentName
-  #       GitRepoURL: !Ref GithubLink
-  #       ImageTag: !Ref ImageTag
-  #       GitBranch: !Ref GitBranch
-  #     TimeoutInMinutes: 35
 
   # StreamlitBuildNestedStackAgentCore:
   #   Type: AWS::CloudFormation::Stack
