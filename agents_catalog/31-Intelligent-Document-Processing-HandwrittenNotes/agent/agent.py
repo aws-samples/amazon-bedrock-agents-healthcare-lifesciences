@@ -13,11 +13,13 @@ os.environ["BYPASS_TOOL_CONSENT"] = "true"
 
 app = BedrockAgentCoreApp()
 
-SOURCE_FILE = "s3://idp-wwso-input-files/input-pdfs/Sample_Filled_MedicalIntakeForm.pdf"
+SOURCE_FILE = os.environ.get("SOURCE_FILE", "")
 
 # AgentCore entry point
-# Store conversation state per session
+# Store conversation state per session - use thread-safe storage
+import threading
 conversation_cache = {}
+cache_lock = threading.Lock()
 
 @app.entrypoint
 async def strands_agent_bedrock(payload):
