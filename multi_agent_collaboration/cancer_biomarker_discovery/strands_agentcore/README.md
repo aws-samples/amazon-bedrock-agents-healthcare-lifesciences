@@ -4,7 +4,7 @@ This implementation demonstrates how to replicate the cancer biomarker discovery
 
 ## Architecture Overview
 
-![architecture](../images/Biomarker_agents_Strands_AgentCore.png)
+![architecture](images/Biomarker_agents_Strands_AgentCore.png)
 
 The **Strands Orchestrator Agent** implements the [Agent as Tools](https://strandsagents.com/latest/documentation/docs/user-guide/concepts/multi-agent/agents-as-tools/) concept proposed by Strands Agents framework by defining the specialized agents below as tools.
 
