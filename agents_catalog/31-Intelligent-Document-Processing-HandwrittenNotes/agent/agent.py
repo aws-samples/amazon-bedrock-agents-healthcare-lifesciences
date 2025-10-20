@@ -8,6 +8,8 @@ from strands.models import BedrockModel
 from mcp import stdio_client, StdioServerParameters
 from strands.tools.mcp import MCPClient
 import os
+import boto3
+import threading
 
 os.environ["BYPASS_TOOL_CONSENT"] = "true"
 
