@@ -1,21 +1,20 @@
-# IDP Agent for Hand-written Documents
+# IDP Agent for Handwritten Documents
 
 ## Problem Statement
 
-Intelligent Document Processin (IDP) is extracting structured data from unstructured text. 
-Unstructured data comprises 80% of enterprise data and largely untapped due to its complexity. This content represents a rich source of insights that can drive better decision-making, enhance customer experiences, and uncover new business opportunities. And yet, only about 18% of organizations are actually able to take advantage of their unstructured data at scale.
+Intelligent Document Processing (IDP) extracts structured data from unstructured text. Unstructured data comprises 80% of enterprise data and remains largely untapped due to its complexity. This content represents a rich source of insights that can drive better decision-making, enhance customer experiences, and uncover new business opportunities. Yet only about 18% of organizations are able to take advantage of their unstructured data at scale.
 
-Organisations process hundreds of unstructured forms daily, requiring manual data validation or extraction that is:
-- **Time-consuming**: 200-300 forms/day with manual review that could take 10-15 min per form. Manual processing is consuming 50-70% of employee time with error rates up to 4%. 
-- **Current Solutions are Costly and Insufficient**: OCR accuracy is 70% and the cost is $5-15 per documents
-- **Inefficient**: Incomplete workflows mean that employees need to search for information in different systems. No ability to ask follow-up questions without re-reading entire documents
+Organizations process hundreds of handwritten forms daily, requiring manual data validation and extraction that is:
+- **Time-consuming**: Processing 200-300 forms/day with manual review takes 10-15 minutes per form. Manual processing consumes 50-70% of employee time with error rates up to 4%
+- **Costly and Insufficient**: Current OCR solutions achieve only 70% accuracy at a cost of $5-15 per document
+- **Inefficient**: Incomplete workflows force employees to search for information across different systems with no ability to ask follow-up questions without re-reading entire documents
 
 
 
 ## Solution Overview
 
-A Bedrock Data Automation powered IDP agent that:
-1. **Extracts structured data** from handwritten medical forms with confidence scores
+A Bedrock Data Automation-powered IDP agent that:
+1. **Extracts structured data** from handwritten forms with confidence scores
 2. **Enables natural language queries** - ask follow-up questions without reprocessing
 3. **Maintains conversation context** - remembers extracted data across questions
 4. **Processes multimodal content** - handles checkboxes, handwriting, and printed text
@@ -134,7 +133,7 @@ The UI will open at `http://localhost:8501`
 ## Key Implementation Details
 
 ### Why is Bedrock Data Automation MCP Required?
-Testing showed that even the latest LLMs cannot extract handwritten notes from medical forms without specialized tools. We tested with Claude Sonnet 3.5 and Haiku 3.5 models via the Bedrock Playground, and both returned the same response indicating the PDF file was empty or unreadable.
+Testing showed that even the latest LLMs cannot extract handwritten notes from forms without specialized tools. We tested with Claude Sonnet 3.5 and Haiku 3.5 models via the Bedrock Playground, and both returned the same response indicating the PDF file was empty or unreadable.
 
 This demonstrates that standard LLM vision capabilities are insufficient for processing complex handwritten documents, making Bedrock Data Automation MCP essential for accurate data extraction.
 
