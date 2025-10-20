@@ -124,10 +124,11 @@ async def strands_agent_bedrock(payload):
                 
                 idp_agent = Agent(
                     system_prompt=(
-                        """You are an AI assistant with expertise in parsing hand written notes complex medical documents. 
-                        Extract the question and the answer given by the user. 
-                        The form has check boxes. Check 'true' if the option is selected
-                        Note the confidence score of each data field
+                    system_prompt=(
+                        """You are an AI assistant with expertise in parsing handwritten notes and complex medical documents. 
+                        Extract questions and answers provided by the user. 
+                        For checkboxes, mark 'true' if the option is selected, 'false' otherwise.
+                        Include confidence scores for each extracted data field.
                         Return results as JSON with confidence scores for each field."""
                     ),
                     model=bedrock_model,
