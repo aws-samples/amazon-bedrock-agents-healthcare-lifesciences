@@ -252,7 +252,7 @@ def invoke_agent_streaming(
     """Invoke agent and yield streaming response chunks"""
     try:
         # Configure boto3 with longer timeout for document processing
-        from botocore.config import Config
+        # Configure boto3 with longer timeout for document processing
         config = Config(
             read_timeout=300,  # 5 minutes for document processing
             connect_timeout=60,
