@@ -1,11 +1,11 @@
 from .context import ResearchContext
 from .memory_hook_provider import MemoryHook
 from .utils import get_ssm_parameter
-from agent.agent_config.agent import ResearchAgent
+from .agent import ResearchAgent
 from bedrock_agentcore.memory import MemoryClient
 from bedrock_agentcore.memory.integrations.strands.config import AgentCoreMemoryConfig, RetrievalConfig
 from bedrock_agentcore.memory.integrations.strands.session_manager import AgentCoreMemorySessionManager
-from agent.agent_config.tools.research_tools import query_pubmed
+from .tools.research_tools import query_pubmed
 import logging
 
 # Logging setup
