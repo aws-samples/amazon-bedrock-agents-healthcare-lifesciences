@@ -47,8 +47,8 @@ Run the following command to deploy all the infrastructure components needed for
 aws cloudformation deploy --template-file Infra_cfn.yaml --stack-name biomarker-agentcore
 ```
 
-The tempalte will create the following resources in your AWS account:
-- VPC with 2 private subnets, 1 public subnet and a NAT gateway and an Internet gateway
+The template will create the following resources in your AWS account:
+- VPC with 3 subnets (2 private and 1 public), a NAT gateway and an Internet gateway
 - Redshift database
 - S3 buckets for data and logs
 - Lambda functions to provision custom resources, data processing, and populating the database
