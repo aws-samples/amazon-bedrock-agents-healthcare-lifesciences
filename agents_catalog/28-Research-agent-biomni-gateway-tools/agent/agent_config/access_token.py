@@ -1,23 +1,20 @@
 from .utils import get_ssm_parameter
-from bedrock_agentcore.identity.auth import requires_access_token
 import boto3
 import requests
+import os
 gateway_access_token = None
 
 
-@requires_access_token(
-    provider_name=get_ssm_parameter("/app/researchapp/agentcore/cognito_provider"),
-    scopes=[],  # Optional unless required
-    auth_flow="M2M",
-)
-async def get_access_token(*, access_token: str):
-    
-    global gateway_access_token
-    gateway_access_token = access_token
-    return access_token
-
 async def get_gateway_access_token():
     """Get gateway access token using manual M2M flow."""
+    # For IAM authentication, we don't need an OAuth token
+    # The gateway will use IAM credentials from the execution role
+    auth_type = os.environ.get("AUTH_TYPE", "IAM")
+    
+    if auth_type == "IAM":
+        # Return None for IAM - the gateway client will use IAM credentials
+        return None
+    
     try:
         # Get credentials from SSM
         machine_client_id = get_ssm_parameter("/app/researchapp/agentcore/machine_client_id")

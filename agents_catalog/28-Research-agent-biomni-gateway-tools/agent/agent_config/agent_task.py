@@ -21,8 +21,8 @@ async def agent_task(user_message: str, session_id: str, actor_id: str):
     response_queue = ResearchContext.get_response_queue_ctx()
     gateway_access_token = ResearchContext.get_gateway_token_ctx()
 
-    if not gateway_access_token:
-        raise RuntimeError("Gateway Access token is none")
+    # For IAM authentication, gateway_access_token can be None
+    # The gateway will use IAM credentials from the execution role
     # Below option uses a self managed memory hook with the agent 
     """ try:
         if agent is None:
@@ -51,32 +51,32 @@ async def agent_task(user_message: str, session_id: str, actor_id: str):
     # Below option uses fully managed Memory Sessions Manager from Strands
     try:
         if agent is None:
-            MEM_ID = get_ssm_parameter("/app/researchapp/agentcore/memory_id")
-            ACTOR_ID = actor_id
-            SESSION_ID = session_id
-
+            # Memory disabled for now - create agent without memory
+            # MEM_ID = get_ssm_parameter("/app/researchapp/agentcore/memory_id")
+            # ACTOR_ID = actor_id
+            # SESSION_ID = session_id
 
             # Configure memory
-            agentcore_memory_config = AgentCoreMemoryConfig(
-                memory_id=MEM_ID,
-                session_id=SESSION_ID,
-                actor_id=ACTOR_ID
-            )
+            # agentcore_memory_config = AgentCoreMemoryConfig(
+            #     memory_id=MEM_ID,
+            #     session_id=SESSION_ID,
+            #     actor_id=ACTOR_ID
+            # )
 
             # Create session manager
-            session_manager = AgentCoreMemorySessionManager(
-                agentcore_memory_config=agentcore_memory_config
-            )
+            # session_manager = AgentCoreMemorySessionManager(
+            #     agentcore_memory_config=agentcore_memory_config
+            # )
 
-            # Create agent
+            # Create agent without memory
             agent = ResearchAgent(
                 bearer_token=gateway_access_token,
-                session_manager=session_manager,
+                session_manager=None,  # Memory disabled
                 tools=[]
                 #tools=[query_pubmed],  # Add custom tools here as needed
             )
 
-            logger.info("Agent created successfully")   
+            logger.info("Agent created successfully (memory disabled)")   
 
             ResearchContext.set_agent_ctx(agent)
 
