@@ -58,7 +58,7 @@ async def strands_agent_bedrock(payload):
                     os.makedirs(os.path.dirname(cached_file), exist_ok=True)
                     
                     # Download to cache location so it persists across invocations
-                    s3.download_file('idp-wwso-input-files', 'input-pdfs/Sample_Filled_MedicalIntakeForm.pdf', cached_file)
+                    s3.download_file('<S3 bucket name>', 'path/Sample_Filled_MedicalIntakeForm.pdf', cached_file)
                     yield f"✅ Downloaded and cached file to {local_file}\n\n"
                 except Exception as s3_error:
                     yield f"❌ S3 download error: {str(s3_error)}\n\n"
@@ -107,8 +107,8 @@ async def strands_agent_bedrock(payload):
                         command="uvx",
                         args=["awslabs.aws-bedrock-data-automation-mcp-server@latest"],
                         env={
-                            "AWS_REGION": "us-east-1",
-                            "AWS_BUCKET_NAME": "idp-wwso-input-files",
+                            "AWS_REGION": "<AWS Region>",
+                            "AWS_BUCKET_NAME": "<S3 bucket name>",
                             "BASE_DIR": "/tmp",  # BDA MCP server base directory
                             "FASTMCP_LOG_LEVEL": "ERROR"
                         }
