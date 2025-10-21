@@ -81,6 +81,51 @@ he template provides you two options for authentication with the AgentCore Runti
     python scripts/agentcore_gateway.py create --name researchapp-gw
     ```
 
+2a. **Deploy Cancer Biology Tools (Optional)**
+    
+    The Cancer Biology Gateway provides 6 specialized tools for cancer research:
+    - `analyze_ddr_network_in_cancer` - DNA damage response network analysis
+    - `analyze_cell_senescence_and_apoptosis` - Cell senescence and apoptosis analysis
+    - `detect_and_annotate_somatic_mutations` - Somatic mutation detection
+    - `detect_and_characterize_structural_variations` - Structural variation analysis
+    - `perform_gene_expression_nmf_analysis` - NMF gene expression analysis
+    - `analyze_copy_number_purity_ploidy_and_focal_events` - Copy number variation analysis
+
+    **Package and Deploy:**
+    
+    ```bash
+    # Package Lambda function and layer
+    cd prerequisite
+    python3 create_cancer_biology_lambda_zip.py
+    
+    # Upload to S3 (replace with your bucket name)
+    export S3_BUCKET="your-lambda-deployment-bucket"
+    aws s3 cp cancer-biology-lambda-layer.zip s3://${S3_BUCKET}/
+    aws s3 cp cancer-biology-lambda-function.zip s3://${S3_BUCKET}/
+    
+    # The Lambda resources are already included in infrastructure.yaml
+    # They will be created when you deploy the CloudFormation stack in step 1
+    
+    # Create gateway target
+    cd ../scripts
+    python3 create_cancer_biology_target.py create
+    ```
+    
+    **Verify deployment:**
+    ```bash
+    # List gateway targets
+    python3 -c "
+    import boto3
+    client = boto3.client('bedrock-agentcore-control', region_name='us-east-1')
+    ssm = boto3.client('ssm', region_name='us-east-1')
+    gateway_id = ssm.get_parameter(Name='/app/researchapp/agentcore/gateway_id')['Parameter']['Value']
+    targets = client.list_gateway_targets(gatewayIdentifier=gateway_id)
+    print('Gateway Targets:')
+    for t in targets.get('items', []):
+        print(f\"  - {t['name']} ({t['targetId']})\")
+    "
+    ```
+
 3. **Setup Agentcore Identity**
     You can look to reuse the credentials provider user pool across multiple deployments if required.
     
@@ -182,6 +227,21 @@ streamlit run app_oauth.py --server.port 8501 -- --agent=researchapp<AgentName>
 
 4. What can you tell me about your capabilities?
 
+### Cancer Biology Analysis Queries (if deployed)
+
+5. Analyze the DNA damage response network in my tumor samples. 
+   Expression data: s3://my-bucket/expression.csv
+   Mutation data: s3://my-bucket/mutations.csv
+
+6. Detect somatic mutations in my tumor-normal pair.
+   Tumor BAM: s3://my-bucket/tumor.bam
+   Normal BAM: s3://my-bucket/normal.bam
+   Reference: s3://my-bucket/reference.fa
+
+7. Identify gene expression patterns using NMF analysis.
+   Expression data: s3://my-bucket/expression_matrix.csv
+   Number of components: 10
+
 7. **Setup AgentCore Observability dashboard**
 You are able to view all your Agents that have observability in them and filter the data based on time frames as described [here](https://aws.amazon.com/blogs/machine-learning/build-trustworthy-ai-agents-with-amazon-bedrock-agentcore-observability/)
 You will need to Enable Transaction Search on Amazon CloudWatch as described [here](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Enable-TransactionSearch.html)
@@ -196,6 +256,16 @@ python scripts/agentcore_gateway.py create --name researchapp-gw
 
 # Delete gateway
 python scripts/agentcore_gateway.py delete
+```
+
+### Cancer Biology Gateway Target
+
+```bash
+# Create cancer biology target
+python scripts/create_cancer_biology_target.py create
+
+# Delete cancer biology target
+python scripts/create_cancer_biology_target.py delete --confirm
 ```
 
 ### Amazon Bedrock AgentCore Memory
@@ -231,6 +301,10 @@ python scripts/agentcore_agent_runtime.py researchapp<AgentName>
 chmod +x scripts/cleanup.sh
 ./scripts/cleanup.sh
 
+# Delete cancer biology target (if deployed)
+python scripts/create_cancer_biology_target.py delete --confirm
+
+# Delete other resources
 python scripts/cognito_credentials_provider.py delete
 python scripts/agentcore_memory.py delete
 python scripts/agentcore_gateway.py delete
