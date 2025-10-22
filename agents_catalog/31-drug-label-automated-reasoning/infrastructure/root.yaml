@@ -1,0 +1,122 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Demonstration of using Automated Reasoning checks in Amazon Bedrock Guardrails to prevent RAG poisoning."
+
+Parameters:
+  ProjectName:
+    Type: String
+    Description: "Name of the project for resource naming and tagging"
+    Default: "doc-qa"
+    AllowedPattern: "^[a-zA-Z0-9-]+$"
+    ConstraintDescription: "Must contain only alphanumeric characters and hyphens"
+  S3BucketName:
+    Type: String
+    Description: "Name of the S3 bucket containing the knowledge base content"
+    AllowedPattern: "^[a-z0-9.-]+$"
+    ConstraintDescription: "Must be a valid S3 bucket name"
+  S3BucketPrefix:
+    Type: String
+    Description: "S3 prefix/folder path for knowledge base content (without leading/trailing slashes)"
+    Default: "data"
+  S3CodeBucket:
+    Description: Name of the S3 bucket to use for deployment and run storage
+    Type: String
+  S3CodeKey:
+    Description: S3 key for the zip file containing CodeBuild code
+    Type: String
+  BuildContextPath:
+    Description: Path to the build context directory
+    Type: String
+    Default: "."
+  Timestamp:
+    Description: Timestamp for the cfn deployment
+    Type: Number
+    Default: 9999999999
+  WaitForCodeBuild:
+    Description: Should CloudFormation wait for CodeBuild?
+    Type: String
+    Default: "N"
+    AllowedValues: [Y, N]
+  BedrockAutomatedReasoningPolicyId:
+    Type: String
+    Description: "Amazon Bedrock Automated reasoning policy id"
+    AllowedPattern: "^[a-zA-Z0-9-]+$"
+    ConstraintDescription: "Must contain only alphanumeric characters and hyphens"
+
+Resources:
+  KendraGenAIIndexStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: "kendra-genai-index.yaml"
+      Parameters:
+        ProjectName: !Ref ProjectName
+        S3BucketName: !Ref S3BucketName
+        S3BucketPrefix: !Ref S3BucketPrefix
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Component
+          Value: KendraIndex
+
+  KBAgentStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: "kb_agent.yaml"
+      Parameters:
+        S3CodeBucket: !Ref S3CodeBucket
+        S3CodeKey: !Ref S3CodeKey
+        BuildContextPath: !Sub "${BuildContextPath}/kb"
+        Timestamp: !Ref Timestamp
+        WaitForCodeBuild: !Ref WaitForCodeBuild
+        KendraIndexId: !GetAtt KendraGenAIIndexStack.Outputs.KendraIndexId
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Component
+          Value: KB_Agent
+
+  GuardrailStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: "bedrock-guardrails.yaml"
+      Parameters:
+        ProjectName: !Ref ProjectName
+        BedrockAutomatedReasoningPolicyId: !Ref BedrockAutomatedReasoningPolicyId
+        ConfidenceThreshold: 0.2
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Component
+          Value: Guardrail
+
+  PoisonedKBAgentStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: "poisoned_kb_agent.yaml"
+      Parameters:
+        S3CodeBucket: !Ref S3CodeBucket
+        S3CodeKey: !Ref S3CodeKey
+        BuildContextPath: !Sub "${BuildContextPath}/poisoned_kb"
+        Timestamp: !Ref Timestamp
+        WaitForCodeBuild: !Ref WaitForCodeBuild
+        BedrockARGuardrailId: !GetAtt GuardrailStack.Outputs.BedrockARGuardrailId
+        BedrockARGuardrailVersion: !GetAtt GuardrailStack.Outputs.BedrockARGuardrailVersion
+        AutomatedReasoningPolicyId: !Ref BedrockAutomatedReasoningPolicyId
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Component
+          Value: KB_Agent
+
+Outputs:
+  KendraIndexId:
+    Description: "ID of the created Kendra index"
+    Value: !GetAtt KendraGenAIIndexStack.Outputs.KendraIndexId
+  KendraDataSourceId:
+    Description: "ID of the created Kendra data source"
+    Value: !GetAtt KendraGenAIIndexStack.Outputs.KendraDataSourceId
+  KBAgentRuntimeId:
+    Description: "KB agent runtime ID"
+    Value: !GetAtt KBAgentStack.Outputs.AgentRuntimeId
+  PoisonedKBAgentRuntimeId:
+    Description: "Poisoned KB agent runtime ID"
+    Value: !GetAtt PoisonedKBAgentStack.Outputs.AgentRuntimeId
