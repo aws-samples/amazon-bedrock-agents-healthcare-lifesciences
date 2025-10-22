@@ -15,6 +15,10 @@ FULL_BUCKET_NAME="${BUCKET_NAME}-${ACCOUNT_ID}"
 ZIP_FILE="prerequisite/database-gateway-function.zip"
 LAMBDA_SRC="prerequisite/lambda/python"
 S3_KEY="${ZIP_FILE}"
+CANCER_BIO_FUNCTION_ZIP="prerequisite/cancer-biology-lambda-function.zip"
+CANCER_BIO_LAYER_ZIP="prerequisite/cancer-biology-lambda-layer.zip"
+CANCER_BIO_FUNCTION_S3_KEY="${CANCER_BIO_FUNCTION_ZIP}"
+CANCER_BIO_LAYER_S3_KEY="${CANCER_BIO_LAYER_ZIP}"
 
 # ----- 1. Create S3 bucket -----
 echo "🪣 Using S3 bucket: $FULL_BUCKET_NAME"
@@ -37,9 +41,19 @@ python prerequisite/create_lambda_zip.py
 #zip -r "../../../$ZIP_FILE" . > /dev/null
 #cd - > /dev/null
 
+# ----- 2b. Package Cancer Biology Lambda -----
+echo "📦 Packaging Cancer Biology Lambda function and layer..."
+python prerequisite/create_cancer_biology_lambda_zip.py
+
 # ----- 3. Upload to S3 -----
 echo "☁️ Uploading $ZIP_FILE to s3://$FULL_BUCKET_NAME/$S3_KEY..."
 aws s3 cp "$ZIP_FILE" "s3://$FULL_BUCKET_NAME/$S3_KEY"
+
+echo "☁️ Uploading $CANCER_BIO_FUNCTION_ZIP to s3://$FULL_BUCKET_NAME/$CANCER_BIO_FUNCTION_S3_KEY..."
+aws s3 cp "$CANCER_BIO_FUNCTION_ZIP" "s3://$FULL_BUCKET_NAME/$CANCER_BIO_FUNCTION_S3_KEY"
+
+echo "☁️ Uploading $CANCER_BIO_LAYER_ZIP to s3://$FULL_BUCKET_NAME/$CANCER_BIO_LAYER_S3_KEY..."
+aws s3 cp "$CANCER_BIO_LAYER_ZIP" "s3://$FULL_BUCKET_NAME/$CANCER_BIO_LAYER_S3_KEY"
 
 # ----- 4. Deploy CloudFormation -----
 deploy_stack() {
@@ -80,7 +94,9 @@ deploy_stack() {
 
 # ----- Run both stacks -----
 echo "🔧 Starting deployment of infrastructure stack..."
-deploy_stack "$INFRA_STACK_NAME" "$INFRA_TEMPLATE_FILE" --parameter-overrides LambdaS3Bucket="$FULL_BUCKET_NAME" LambdaS3Key="$S3_KEY"
+deploy_stack "$INFRA_STACK_NAME" "$INFRA_TEMPLATE_FILE" --parameter-overrides \
+  LambdaS3Bucket="$FULL_BUCKET_NAME" \
+  LambdaS3Key="$S3_KEY"
 infra_exit_code=$?
 
 echo "🔧 Starting deployment of Cognito stack..."
@@ -92,5 +108,13 @@ echo "🔍 Fetching Knowledge Base and Data Source IDs from SSM..."
 # ----- 6. Create Knowledge Base -----
 
 python prerequisite/knowledge_base.py --mode create
+
+# ----- 7. Create AgentCore Gateway -----
+echo "🌐 Creating AgentCore Gateway..."
+python scripts/agentcore_gateway.py create --name researchapp-gw
+
+# ----- 8. Create Cancer Biology Gateway Target -----
+echo "🧬 Creating Cancer Biology Gateway Target..."
+python scripts/create_cancer_biology_target.py create
 
 echo "✅ Deployment complete."

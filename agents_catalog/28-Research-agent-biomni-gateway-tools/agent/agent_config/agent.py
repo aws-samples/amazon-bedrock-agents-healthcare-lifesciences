@@ -1,12 +1,14 @@
 from .utils import get_ssm_parameter
-from agent.agent_config.memory_hook_provider import MemoryHook
+from .memory_hook_provider import MemoryHook
 from bedrock_agentcore.memory.integrations.strands.session_manager import AgentCoreMemorySessionManager
-from mcp.client.streamable_http import streamablehttp_client
+from bedrock_agentcore_starter_toolkit.operations.gateway import GatewayClient
 from strands import Agent
 from strands_tools import current_time, retrieve
 from strands.models import BedrockModel
-from strands.tools.mcp import MCPClient
+from strands import tool
 from typing import List
+import json
+import boto3
 
 
 class ResearchAgent:
@@ -15,7 +17,7 @@ class ResearchAgent:
         bearer_token: str,
         memory_hook: MemoryHook = None,
         session_manager: AgentCoreMemorySessionManager = None,
-        bedrock_model_id: str = "us.anthropic.claude-sonnet-4-20250514-v1:0",
+        bedrock_model_id: str = "us.anthropic.claude-haiku-4-5-20251001-v1:0",
         #bedrock_model_id: str = "openai.gpt-oss-120b-1:0",  # Alternative
         system_prompt: str = None,
         tools: List[callable] = None,
@@ -67,27 +69,32 @@ class ResearchAgent:
     """
         )
 
-        gateway_url = get_ssm_parameter("/app/researchapp/agentcore/gateway_url")
-        print(f"Gateway Endpoint - MCP URL: {gateway_url}")
+        # Get gateway information
+        gateway_id = get_ssm_parameter("/app/researchapp/agentcore/gateway_id", region="us-east-1")
+        print(f"Gateway ID: {gateway_id}")
 
         try:
-            self.gateway_client = MCPClient(
-                lambda: streamablehttp_client(
-                    gateway_url,
-                    headers={"Authorization": f"Bearer {bearer_token}"},
-                )
-            )
-
-            self.gateway_client.start()
+            # Initialize GatewayClient with IAM authentication
+            self.gateway_client = GatewayClient(region_name="us-east-1")
+            
+            # Get gateway details to extract tools
+            gateway_info = self.gateway_client.get_gateway(gateway_id)
+            print(f"Gateway retrieved: {gateway_info.get('name', 'unknown')}")
+            
+            # Create tools from gateway targets
+            self.gateway_tools = self._create_gateway_tools(gateway_id)
+            print(f"Created {len(self.gateway_tools)} gateway tools")
+            
         except Exception as e:
-            raise Exception(f"Error initializing agent: {str(e)}")
+            print(f"Warning: Could not initialize gateway tools: {str(e)}")
+            self.gateway_tools = []
 
         self.tools = (
             [
                 #retrieve,
                 current_time,
             ]
-            + self.gateway_client.list_tools_sync()
+            + self.gateway_tools
             + (tools or [])
         )
 
@@ -101,6 +108,63 @@ class ResearchAgent:
             tools=self.tools,
             session_manager=self.session_manager,
         )
+    
+    def _create_gateway_tools(self, gateway_id: str):
+        """Create Strands tools from gateway targets."""
+        gateway_tools = []
+        
+        try:
+            # Get gateway targets
+            targets = self.gateway_client.list_targets(gateway_id)
+            
+            for target in targets.get('targets', []):
+                target_id = target.get('targetId')
+                target_name = target.get('name', target_id)
+                
+                # Get target details including API spec
+                target_details = self.gateway_client.get_target(gateway_id, target_id)
+                api_spec = target_details.get('apiSpec', {})
+                
+                # Create tools from API spec operations
+                for operation_id, operation in api_spec.get('paths', {}).items():
+                    for method, details in operation.items():
+                        if method.lower() in ['get', 'post', 'put', 'delete']:
+                            tool_func = self._create_tool_function(
+                                gateway_id, 
+                                target_id, 
+                                operation_id, 
+                                method, 
+                                details
+                            )
+                            gateway_tools.append(tool_func)
+        
+        except Exception as e:
+            print(f"Error creating gateway tools: {str(e)}")
+        
+        return gateway_tools
+    
+    def _create_tool_function(self, gateway_id: str, target_id: str, path: str, method: str, details: dict):
+        """Create a Strands tool function for a gateway operation."""
+        operation_id = details.get('operationId', f"{method}_{path.replace('/', '_')}")
+        description = details.get('summary', details.get('description', f"Call {operation_id}"))
+        
+        @tool(name=operation_id, description=description)
+        def gateway_tool(**kwargs):
+            """Dynamically created gateway tool."""
+            try:
+                # Invoke the gateway target
+                response = self.gateway_client.invoke_target(
+                    gateway_id=gateway_id,
+                    target_id=target_id,
+                    path=path,
+                    method=method.upper(),
+                    body=json.dumps(kwargs) if kwargs else None
+                )
+                return response
+            except Exception as e:
+                return f"Error calling {operation_id}: {str(e)}"
+        
+        return gateway_tool
 
     def invoke(self, user_query: str):
         try:

@@ -20,6 +20,10 @@ if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
   exit 1
 fi
 
+# ----- 0. Delete Cancer Biology Gateway Target -----
+echo "🧬 Deleting Cancer Biology Gateway Target..."
+python scripts/create_cancer_biology_target.py delete --confirm || echo "⚠️ Failed to delete cancer biology target or it doesn't exist."
+
 # ----- 1. Delete CloudFormation stacks -----
 echo "🧨 Deleting stack: $INFRA_STACK_NAME..."
 aws cloudformation delete-stack --stack-name "$INFRA_STACK_NAME" --region "$REGION"
@@ -47,13 +51,17 @@ else
   echo "🪣 Bucket retained: $FULL_BUCKET_NAME"
 fi
 
-# ----- 4. Clean up local zip file -----
+# ----- 4. Clean up local zip files -----
 echo "🗑️ Removing local file $ZIP_FILE..."
 rm -f "$ZIP_FILE"
+
+echo "🗑️ Removing Cancer Biology Lambda packages..."
+rm -f "prerequisite/cancer-biology-lambda-function.zip"
+rm -f "prerequisite/cancer-biology-lambda-layer.zip"
 
 # ----- 5. Delete Knowledge Base -----
 
 echo "🗑️ Deleting Knowledgebase"
 python prerequisite/knowledge_base.py --mode delete
 
-echo "✅ Deployment complete."
+echo "✅ Cleanup complete."
