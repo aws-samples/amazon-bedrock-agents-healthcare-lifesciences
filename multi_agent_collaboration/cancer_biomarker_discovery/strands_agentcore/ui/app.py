@@ -39,6 +39,8 @@ latency = 0
 
 ssm_client = boto3.client('ssm')
 
+selected_agent_arn = (ssm_client.get_parameter(Name=f"/streamlitapp/{environmentName}/AGENT_ARN", WithDecryption=True)["Parameter"]["Value"])
+
 s3_bucket_name = (ssm_client.get_parameter(Name=f"/streamlitapp/{environmentName}/S3_BUCKET_NAME",WithDecryption=True,)["Parameter"]["Value"])
 
 def fetch_agent_runtimes():
@@ -336,18 +338,18 @@ st.markdown("""
 
 # Sidebar
 with st.sidebar:
-    st.header("Agent Selection")
+    # st.header("Agent Selection")
 
-    # Fetch available agents
-    with st.spinner("Loading available agents..."):
-        available_agents = fetch_agent_runtimes()
+    # # Fetch available agents
+    # with st.spinner("Loading available agents..."):
+    #     available_agents = fetch_agent_runtimes()
 
-    if available_agents:
-        name_to_arn = {item['agentRuntimeName']: item['agentRuntimeArn'] for item in available_agents}
-        selected_agent_name = st.selectbox('Select an agent runtime:', list(name_to_arn.keys()))
-        selected_agent_arn = name_to_arn[selected_agent_name]
-    else:
-        st.error("No agent runtimes found or error loading agents")
+    # if available_agents:
+    #     name_to_arn = {item['agentRuntimeName']: item['agentRuntimeArn'] for item in available_agents}
+    #     selected_agent_name = st.selectbox('Select an agent runtime:', list(name_to_arn.keys()))
+    #     selected_agent_arn = name_to_arn[selected_agent_name]
+    # else:
+    #     st.error("No agent runtimes found or error loading agents")
 
     st.header('Image Controls')
     
