@@ -4,7 +4,7 @@ This implementation demonstrates how to replicate the cancer biomarker discovery
 
 ## Architecture Overview
 
-![architecture](../images/Biomarker_agents_Strands_AgentCore.png)
+![architecture](images/Biomarker_agents_Strands_AgentCore.png)
 
 The **Strands Orchestrator Agent** implements the [Agent as Tools](https://strandsagents.com/latest/documentation/docs/user-guide/concepts/multi-agent/agents-as-tools/) concept proposed by Strands Agents framework by defining the specialized agents below as tools.
 
@@ -43,9 +43,20 @@ The infrastructure deployment is required to run the notebooks in step 2, but th
 Run the following command to deploy all the infrastructure components needed for the agents:
 
 ```bash
-# Deploy the original CloudFormation stack (no changes needed)
-aws cloudformation deploy --template-file agent_build.yaml --stack-name biomarker-agents
+# Deploy the provided CloudFormation stack (no changes needed)
+aws cloudformation deploy --template-file Infra_cfn.yaml --stack-name biomarker-agentcore
 ```
+
+The template will create the following resources in your AWS account:
+- VPC with 3 subnets (2 private and 1 public), a NAT gateway and an Internet gateway
+- Redshift database
+- S3 buckets for data and logs
+- Lambda functions to provision custom resources, data processing, and populating the database
+- ECR repositories
+- CodeBuild projects to create custom container images
+- Step Function to process medical images
+- Bedrock Knowledge Base
+- AgentCore and SageMaker execution roles
 
 ### 2. Notebooks
 
