@@ -28,7 +28,9 @@ A Bedrock Data Automation-powered IDP agent that:
 
 ## Demo
 
-<video src="demo/IDP_Agent_Demo.mp4" controls></video>
+[▶️ Watch Demo Video](demo/IDP_Agent_Demo.mp4)
+
+*Click the link above to download and view the demo video showing the IDP agent extracting data from a handwritten medical intake form.*
 
 ## Technology Stack
 
