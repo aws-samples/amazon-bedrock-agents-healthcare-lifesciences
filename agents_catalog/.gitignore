@@ -55,10 +55,13 @@ venv.bak/
 # OS
 .DS_Store
 Thumbs.db
-# YAML 
-files
+
+# YAML files
 *.yaml
 *.yml
 
 # Docker
 Dockerfile
+
+#ignored files
+Cost Considerations.txt

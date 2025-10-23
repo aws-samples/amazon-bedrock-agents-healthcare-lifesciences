@@ -66,6 +66,7 @@ User Question → Streamlit UI → AgentCore Runtime → Strands Agent
 ![Architecture](architecture/IDP_Agent_Architecture.png)
 
 ## Deployment Steps
+- Upload your input file to your S3 Bucket
 
 ### Prerequisites
 - AWS CLI configured with credentials
@@ -138,6 +139,9 @@ This demonstrates that standard LLM vision capabilities are insufficient for pro
 
 ![Test via Bedrock Playground](images/Test-via-Bedrock-Playground.png) 
 
+### Input File
+Please upload the input file **/data/Sample_Filled_MedicalIntakeForm.pdf** to your S3 bucket. 
+ 
 ### File Caching
 Files are downloaded from S3 once and cached in `/tmp/` for reuse across invocations within the same container instance.
 

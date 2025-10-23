@@ -15,11 +15,10 @@ os.environ["BYPASS_TOOL_CONSENT"] = "true"
 
 app = BedrockAgentCoreApp()
 
-SOURCE_FILE = os.environ.get("SOURCE_FILE", "")
+SOURCE_FILE = os.environ.get("SOURCE_FILE", "s3://<YOUR S3 BUCKET>/Sample_Filled_MedicalIntakeForm.pdf")
 
 # AgentCore entry point
 # Store conversation state per session - use thread-safe storage
-import threading
 conversation_cache = {}
 cache_lock = threading.Lock()
 
@@ -57,8 +56,13 @@ async def strands_agent_bedrock(payload):
                     # Ensure directory exists
                     os.makedirs(os.path.dirname(cached_file), exist_ok=True)
                     
+                    # Parse S3 URI to get bucket and key
+                    s3_uri = SOURCE_FILE.replace("s3://", "")
+                    bucket_name = s3_uri.split("/")[0]
+                    object_key = "/".join(s3_uri.split("/")[1:])
+                    
                     # Download to cache location so it persists across invocations
-                    s3.download_file('<S3 bucket name>', 'path/Sample_Filled_MedicalIntakeForm.pdf', cached_file)
+                    s3.download_file(bucket_name, object_key, cached_file)
                     yield f"✅ Downloaded and cached file to {local_file}\n\n"
                 except Exception as s3_error:
                     yield f"❌ S3 download error: {str(s3_error)}\n\n"
@@ -107,8 +111,8 @@ async def strands_agent_bedrock(payload):
                         command="uvx",
                         args=["awslabs.aws-bedrock-data-automation-mcp-server@latest"],
                         env={
-                            "AWS_REGION": "<AWS Region>",
-                            "AWS_BUCKET_NAME": "<S3 bucket name>",
+                            "AWS_REGION": os.environ.get("AWS_REGION", "us-east-1"),
+                            "AWS_BUCKET_NAME": SOURCE_FILE.replace("s3://", "").split("/")[0] if SOURCE_FILE.startswith("s3://") else "<YOUR S3 BUCKET NAME>",
                             "BASE_DIR": "/tmp",  # BDA MCP server base directory
                             "FASTMCP_LOG_LEVEL": "ERROR"
                         }
@@ -125,7 +129,6 @@ async def strands_agent_bedrock(payload):
                 yield "🤖 Extracting data from document...\n\n"
                 
                 idp_agent = Agent(
-                    system_prompt=(
                     system_prompt=(
                         """You are an AI assistant with expertise in parsing handwritten notes and complex medical documents. 
                         Extract questions and answers provided by the user. 
