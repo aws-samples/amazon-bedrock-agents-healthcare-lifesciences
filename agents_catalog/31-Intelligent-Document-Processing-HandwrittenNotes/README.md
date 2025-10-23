@@ -32,6 +32,8 @@ A Bedrock Data Automation-powered IDP agent that:
 
 *The demo shows the IDP agent extracting structured data from a handwritten medical intake form and answering follow-up questions.*
 
+📹 [Download high-quality video (15MB)](demo/IDP_Agent_Demo.mp4)
+
 ## Technology Stack
 
 ### Amazon Bedrock AgentCore
