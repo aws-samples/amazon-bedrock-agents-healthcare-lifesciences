@@ -4,13 +4,13 @@
 > This is a biomedical research agent with multiple tools using Amazon Bedrock AgentCore framework with Strands. The agent can connect to your own data infrastructure with your own local tools like PubMed and knowledge base, includes a sample public tools gateway, Amazon Cognito identity, memory, observability and a local Streamlit UI.
 NOTE: The public tools gateway includes all the database tools from Biomni https://github.com/snap-stanford/Biomni/tree/main/biomni/tool
 
-he template provides you two options for authentication with the AgentCore Runtime - you can either deploy the runtime with OAuth authentication or IAM authentication. Based on your choice, you can run a local streamlit app with /without Cogntio authentication. The runtime internally will use M2M auth flow to connect with the AgentCore Gateway.
+The template provides you two options for authentication with the AgentCore Runtime - you can either deploy the runtime with OAuth authentication or IAM authentication. Based on your choice, you can run a local streamlit app with /without Cogntio authentication. The runtime internally will use M2M auth flow to connect with the AgentCore Gateway.
 
 ![architecture](image.png)
 
 ## Table of Contents
 
-- [AgentCore Strands Template](#agentcore-strands-template)
+- [Research agent with Biomni gateway on Amazon Bedrock AgentCore](#research-agent-with-biomni-gateway-on-amazon-bedrock-agentcore)
   - [Table of Contents](#table-of-contents)
   - [Prerequisites](#prerequisites)
     - [AWS Account Setup](#aws-account-setup)
@@ -55,18 +55,20 @@ he template provides you two options for authentication with the AgentCore Runti
 
 0. **Setup agent tools**
     - Review the sample agent local tools under 'agent_config/tools/research_tools.py' and add/modify your own tools if required. We provide PubMed as a local tool. 
-    - Clone the Biomni code repository and copy the schema files for the database tools from https://github.com/snap-stanford/Biomni/tree/main/biomni/tool/schema_db to 'prerequisite/lambda/python/schema_db'. Note, we provide the Biomni database tools adapted with Bedrock Converse API in 'prerequisite/lambda/python/database.py' and have removed the following commercial license tools 'kegg', 'iucn', and 'remap'.   You can review the gateway lambda tools under 'prerequisite/lambda' and add/modify your own lambda tools if required. 
+    - Clone the Biomni code repository and copy the schema files for the database tools from https://github.com/snap-stanford/Biomni/tree/main/biomni/tool/schema_db to 'prerequisite/lambda/python/schema_db'. Note, we provide the Biomni database tools adapted with Bedrock Converse API in 'prerequisite/lambda-database/python/database.py' and have removed the following commercial license tools 'kegg', 'iucn', and 'remap'.   You can review the gateway lambda tools under 'prerequisite/lambda-database' and add/modify your own lambda tools if required. 
 
 1. **Create infrastructure**
-
     ```bash
-    python -m venv .venv
-    source .venv/bin/activate
-    uv pip install -r dev-requirements.txt
+    uv sync
+    # source .venv/bin/activate if environment already exists
+    uv add -r dev-requirements.txt
 
     chmod +x scripts/prereq.sh
     ./scripts/prereq.sh
+    ```
+    You can double check that the Resources were created correctly and retrieve their ARN values  with the following script: 
 
+    ```bash
     chmod +x scripts/list_ssm_parameters.sh
     ./scripts/list_ssm_parameters.sh
     ```
@@ -74,31 +76,29 @@ he template provides you two options for authentication with the AgentCore Runti
     > [!CAUTION]
     > Please prefix all the resource names with your chosen prefix (e.g., `researchapp`).
 
-2. **Create Agentcore Gateway**
-    The agentcore gateway will be installed with a lambda target to the deployed lambda functions from 'prerequisite/lambda' 
-
-    ```bash
-    python scripts/agentcore_gateway.py create --name researchapp-gw
-    ```
-
-3. **Setup Agentcore Identity**
+2. **Setup Agentcore Identity**
     You can look to reuse the credentials provider user pool across multiple deployments if required.
     
     ```bash
     python scripts/cognito_credentials_provider.py create --name researchapp-cp
-    
-    python tests/test_gateway.py --prompt "Hello, can you help me?"
+    python tests/test_gateway.py --prompt "What tools are available?"
+    python tests/test_gateway.py --prompt "Find information about human insulin protein" --use-search
     ```
      For the current implementation, we do not use the decorator function to get the access token for the gateway. Rather we fetch it by directly retrieving the cognito domain, resource server, user pool. 
 
-4. **Create Memory**
+3. **Test Memory**
+    The memory has been created as part of the deployment process in step 1. Let's test it. 
 
     ```bash
-    python scripts/agentcore_memory.py create --name researchapp
-
     python tests/test_memory.py load-conversation
     python tests/test_memory.py load-prompt "My preferred response format is detailed explanations"
     python tests/test_memory.py list-memory
+    ```
+
+4. **Test local deployment of Agent**
+
+    ```bash
+    python tests/test_agent_locally.py --prompt "Find information about human insulin protein"
     ```
 
 5. **Setup Agent Runtime**
@@ -108,7 +108,7 @@ he template provides you two options for authentication with the AgentCore Runti
 Note : We have decoupled the OAuth authentication of the Gateway from the Runtime. This means that you can use the Runtime either with IAM or OAuth authentication. The gateway bearer token will be retrieved using M2M authentication internally. 
 
   ```bash
-  agentcore configure --entrypoint agent/main.py -er arn:aws:iam::<Account-Id>:role/<Role> --name researchapp<AgentName>
+  agentcore configure --entrypoint main.py -er arn:aws:iam::<Account-Id>:role/<Role> --name researchapp<AgentName>
   ```
 If you want to use OAuth authentication, enter 'yes' for OAuth. 
 
@@ -127,7 +127,7 @@ If you want to use OAuth authentication, enter 'yes' for OAuth.
   ```
   If you are using IAM based authenticaiton, invoke directly
   ```
-  agentcore invoke '{"prompt": "Hello"}'
+  agentcore invoke '{"prompt": "Find information about human insulin protein"}'
   ```
   If you are using OAuth authentication, invoke via HTTPS endpoint like the script below 
   ```

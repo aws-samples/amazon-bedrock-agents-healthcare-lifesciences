@@ -5,10 +5,10 @@ from mcp.client.streamable_http import streamablehttp_client
 from strands import Agent
 from strands_tools import current_time, retrieve
 from strands.models import BedrockModel
-from strands.tools.mcp import MCPClient
+from strands.tools.mcp import MCPClient, MCPAgentTool
+from mcp.types import Tool as MCPTool
 from typing import List
-
-
+import requests
 class ResearchAgent:
     def __init__(
         self,
@@ -82,6 +82,9 @@ class ResearchAgent:
         except Exception as e:
             raise Exception(f"Error initializing agent: {str(e)}")
 
+        # Store gateway info for semantic search
+        self.gateway_url = gateway_url
+        self.bearer_token = bearer_token
         self.tools = (
             [
                 #retrieve,
@@ -102,19 +105,60 @@ class ResearchAgent:
             session_manager=self.session_manager,
         )
 
-    def invoke(self, user_query: str):
-        try:
-            response = str(self.agent(user_query))
-        except Exception as e:
-            return f"Error invoking agent: {e}"
-        return response
+    def _tool_search(self, query: str, max_tools: int = 5):
+        """Search for tools using semantic search. Currently hardcoded as 5"""
+        tool_params = {
+            "name": "x_amz_bedrock_agentcore_search",
+            "arguments": {"query": query},
+        }
+        
+        request_body = {
+            "jsonrpc": "2.0",
+            "id": 2,
+            "method": "tools/call",
+            "params": tool_params,
+        }
+        
+        response = requests.post(
+            self.gateway_url,
+            json=request_body,
+            headers={
+                "Authorization": f"Bearer {self.bearer_token}",
+                "Content-Type": "application/json",
+            },
+        )
+        
+        if response.status_code == 200:
+            tool_resp = response.json()
+            tools = tool_resp["result"]["structuredContent"]["tools"]
+            return tools[:max_tools]
+        else:
+            print(f"Search failed: {response.text}")
+            return []
+
+    def _tools_to_strands_mcp_tools(self, tools):
+        """Convert search results to Strands MCPAgentTool objects."""
+        strands_mcp_tools = []
+        for tool in tools:
+            mcp_tool = MCPTool(
+                name=tool["name"],
+                description=tool["description"],
+                inputSchema=tool["inputSchema"],
+            )
+            strands_mcp_tools.append(MCPAgentTool(mcp_tool, self.gateway_client))
+        return strands_mcp_tools
+
+    def _get_relevant_tools(self, user_query: str):
+        """Get relevant tools based on user query using semantic search."""
+        # Search for relevant tools
+        tools_found = self._tool_search(user_query)
+        if tools_found:
+            relevant_tools = self._tools_to_strands_mcp_tools(tools_found)
+            return [current_time] + relevant_tools
 
     async def stream(self, user_query: str):
         try:
-
-            tool_name = None
-            async for event in self.agent.stream_async(user_query):
-                    
+            async for event in self.agent.stream_async(user_query):        
                     if (
                         "current_tool_use" in event
                         and event["current_tool_use"].get("name") != tool_name

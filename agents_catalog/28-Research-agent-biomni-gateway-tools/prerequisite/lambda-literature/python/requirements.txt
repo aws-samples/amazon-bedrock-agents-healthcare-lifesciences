@@ -1,0 +1,9 @@
+requests
+beautifulsoup4
+PyPDF2
+googlesearch-python
+arxiv
+scholarly
+pymed
+anthropic
+boto3
