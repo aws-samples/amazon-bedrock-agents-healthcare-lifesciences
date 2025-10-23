@@ -140,7 +140,9 @@ This demonstrates that standard LLM vision capabilities are insufficient for pro
 ![Test via Bedrock Playground](images/Test-via-Bedrock-Playground.png) 
 
 ### Input File
-Please upload the input file **/data/Sample_Filled_MedicalIntakeForm.pdf** to your S3 bucket. 
+The IDP agent processes documents from your S3 bucket. To use a different file:
+- Upload the new file to your S3 bucket
+- Update the SOURCE_FILE environment variable with the S3 URI"
  
 ### File Caching
 Files are downloaded from S3 once and cached in `/tmp/` for reuse across invocations within the same container instance.
