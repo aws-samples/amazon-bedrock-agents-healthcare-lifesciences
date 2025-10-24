@@ -2,10 +2,6 @@ AWSTemplateFormatVersion: "2010-09-09"
 Description: Creates infrastructure dependencies for cancer biomarker discovery workshop
 
 Parameters:
-  BedrockModelId:
-    Type: String
-    Description: The ID of the Foundation Model to use for the Agent
-    Default: us.anthropic.claude-3-5-sonnet-20241022-v2:0
   EnvironmentName:
     Type: String
     Description: The name of the agent environment, used to differentiate agent application. Must be lowercase, contain one number, and be no more than 5 characters long.
@@ -367,7 +363,7 @@ Resources:
   S3Bucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub '${AWS::StackName}-${AWS::AccountId}-${AWS::Region}'
+      BucketName: !Sub "${EnvironmentName}-${AWS::AccountId}-${AWS::Region}-agent-build-bucket"
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
@@ -391,7 +387,6 @@ Resources:
             Principal:
               AWS: 
                 - !GetAtt CodeBuildServiceRole.Arn
-                # - !GetAtt TriggerAgentBuildLambdaRole.Arn
             Action:
               - s3:PutObject
               - s3:GetObject
@@ -1014,6 +1009,26 @@ Resources:
     Type: AWS::ECR::Repository
     Properties:
       RepositoryName: lifelines-lambda-sample
+
+  EnsureECRImagePushed:
+    Type: Custom::EnsureECRImagePushed
+    DependsOn:
+      - TriggerBuildCustomResource
+      - TriggerImagingDockerBuild
+    Properties:
+      ServiceToken: !GetAtt TriggerBuildLambda.Arn
+      ECRRepository: !Ref ECRRepository
+      ImageTag: !Ref ImageTag
+
+  EnsureImagingDockerImagePushed:
+    Type: Custom::EnsureECRImagePushed
+    DependsOn:
+      - TriggerBuildCustomResource
+      - TriggerImagingDockerBuild
+    Properties:
+      ServiceToken: !GetAtt TriggerBuildLambda.Arn
+      ECRRepository: !Ref ImagingECRRepository
+      ImageTag: !Ref ImageTag
 
   CleanupLambdaFunction:
     Type: AWS::Lambda::Function
@@ -1793,6 +1808,138 @@ Resources:
                   StringEquals:
                     "aws:RequestedRegion": !Ref "AWS::Region"
 
+  TriggerBuildLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt TriggerBuildLambdaRole.Arn
+      Code:
+        ZipFile: |
+          import boto3
+          import cfnresponse
+          import time
+
+          def handler(event, context):
+              if event['RequestType'] in ['Create', 'Update']:
+                  try:
+                      codebuild = boto3.client('codebuild')
+                      ecr = boto3.client('ecr')
+                      
+                      if 'ProjectName' in event['ResourceProperties']:
+                          # This is for TriggerBuildCustomResource
+                          project_name = event['ResourceProperties']['ProjectName']
+                          response = codebuild.start_build(projectName=project_name)
+                          build_id = response['build']['id']
+                          print(f"Build started: {build_id}")
+                          
+                          # Wait for build to complete
+                          while True:
+                              build_status = codebuild.batch_get_builds(ids=[build_id])['builds'][0]['buildStatus']
+                              if build_status == 'SUCCEEDED':
+                                  print("Build completed successfully")
+                                  break
+                              elif build_status in ['FAILED', 'STOPPED', 'TIMED_OUT']:
+                                  print(f"Build failed with status: {build_status}")
+                                  cfnresponse.send(event, context, cfnresponse.FAILED, {"Error": f"Build failed with status: {build_status}"})
+                                  return
+                              time.sleep(10)  # Wait for 10 seconds before checking again
+                          
+                          cfnresponse.send(event, context, cfnresponse.SUCCESS, {"BuildId": build_id})
+                          
+                      elif 'ECRRepository' in event['ResourceProperties']:
+                          # This is for EnsureECRImagePushed
+                          repository_name = event['ResourceProperties']['ECRRepository']
+                          image_tag = event['ResourceProperties']['ImageTag']
+                          
+                          # Wait for image to be available in ECR
+                          max_attempts = 30  # Maximum number of attempts
+                          for attempt in range(max_attempts):
+                              try:
+                                  ecr.describe_images(repositoryName=repository_name, imageIds=[{'imageTag': image_tag}])
+                                  print(f"Image {repository_name}:{image_tag} exists in ECR")
+                                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+                                  return
+                              except ecr.exceptions.ImageNotFoundException:
+                                  if attempt == max_attempts - 1:
+                                      print(f"Image {repository_name}:{image_tag} not found in ECR after {max_attempts} attempts")
+                                      cfnresponse.send(event, context, cfnresponse.FAILED, {"Error": "Image not found in ECR after maximum attempts"})
+                                      return
+                                  time.sleep(10)  # Wait for 10 seconds before trying again
+                      else:
+                          cfnresponse.send(event, context, cfnresponse.FAILED, {"Error": "Invalid ResourceProperties"})
+                  except Exception as e:
+                      print(f"Error: {str(e)}")
+                      cfnresponse.send(event, context, cfnresponse.FAILED, {"Error": str(e)})
+              else:
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+      Runtime: python3.12
+      Timeout: 900
+
+  TriggerBuildLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CodeBuildAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - codebuild:StartBuild
+                  - codebuild:BatchGetBuilds
+                Resource:
+                  - !GetAtt DockerPushLogic.Arn
+                  - !GetAtt DataRetrievalLogic.Arn
+                  - !Sub "arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:project/ImagingDockerBuildProject-*"
+        - PolicyName: CloudWatchLogs
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${AWS::StackName}-TriggerBuildLambda-*"
+        - PolicyName: ECRDescribeAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: ecr:DescribeImages
+                Resource:
+                  - !Sub "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/${ECRRepository}"
+                  - !Sub "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/medical-image-processing-smstudio"
+
+  TriggerBuildCustomResource:
+    Type: Custom::TriggerBuild
+    DependsOn: DockerPushLogic
+    Properties:
+      ServiceToken: !GetAtt TriggerBuildLambda.Arn
+      ProjectName: !Ref DockerPushLogic
+
+  TriggerImagingDockerBuild:
+    Type: Custom::TriggerBuild
+    DependsOn: ImagingDockerBuildProject
+    Properties:
+      ServiceToken: !GetAtt TriggerBuildLambda.Arn
+      ProjectName: !Ref ImagingDockerBuildProject
+
+  TriggerDataRetrievalLogic:
+    Type: Custom::TriggerBuild
+    DependsOn: DataRetrievalLogic
+    Properties:
+      ServiceToken: !GetAtt TriggerBuildLambda.Arn
+      ProjectName: !Ref DataRetrievalLogic
+
   CodeBuildServiceRole:
     Type: AWS::IAM::Role
     Properties:
@@ -2197,6 +2344,61 @@ Resources:
           FixedSizeChunkingConfiguration:
             MaxTokens: 300
             OverlapPercentage: 20
+
+  ScientificPlotLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/AmazonBedrockFullAccess
+      Policies:
+        - PolicyName: S3ObjectPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                Resource: !Sub 'arn:aws:s3:::${S3Bucket}/*'
+        - PolicyName: ECRAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - ecr:BatchGetImage
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchCheckLayerAvailability
+                Resource:
+                  - !Sub 'arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/${ECRRepository}'
+
+  ScientificPlotLambdaFunction:
+    Type: AWS::Lambda::Function
+    DependsOn:
+      - EnsureECRImagePushed
+    Properties:
+      FunctionName: ScientificPlotLambda
+      PackageType: Image
+      Code:
+        ImageUri: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ECRRepository}:${ImageTag}
+      Role: !GetAtt ScientificPlotLambdaExecutionRole.Arn
+      MemorySize: 512
+      Timeout: 900
+      Environment:
+        Variables:
+          S3_BUCKET: !Ref S3Bucket
 
 Outputs:
   RedshiftClusterEndpoint:
