@@ -1,5 +1,5 @@
 from .utils import get_ssm_parameter
-from agent.agent_config.memory_hook_provider import MemoryHook
+from .memory_hook_provider import MemoryHook
 from mcp.client.streamable_http import streamablehttp_client
 from strands import Agent
 from strands_tools import current_time, retrieve
