@@ -136,16 +136,22 @@ If you want to use OAuth authentication, enter 'yes' for OAuth.
 
   agentcore launch
   ```
+
+  Alternatively, you can deploy the agent using the python SDK:
+  ```
+  uv run scripts/deploy_agentruntime.py
+  ```
+  
   If you are using IAM based authenticaiton, invoke directly
   ```
-  uv run agentcore invoke '{"prompt": "Find information about human insulin protein"}'
+  uv run agentcore invoke '{"prompt": "Find information about human insulin protein"}' --agent researchapp<AgentName>
   ```
   If you are using OAuth authentication, invoke via HTTPS endpoint like the script below 
   ```
   uv run tests/test_agent.py researchapp<AgentName> -p "Hi"
   ```
 
-6. **Local Host Streamlit UI**
+6. **Local Host Streamlit UI**å
 
 > [!CAUTION]
 > Streamlit app should only run on port `8501`.

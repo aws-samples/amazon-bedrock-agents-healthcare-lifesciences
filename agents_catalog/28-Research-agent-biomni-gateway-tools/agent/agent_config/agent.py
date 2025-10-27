@@ -1,5 +1,6 @@
 from .utils import get_ssm_parameter
 from agent.agent_config.memory_hook_provider import MemoryHook
+from agent.agent_config.tool_logger_hook import ToolLoggerHook
 from bedrock_agentcore.memory.integrations.strands.session_manager import AgentCoreMemorySessionManager
 from mcp.client.streamable_http import streamablehttp_client
 from strands import Agent
@@ -103,6 +104,7 @@ class ResearchAgent:
             system_prompt=self.system_prompt,
             tools=self.tools,
             session_manager=self.session_manager,
+            hooks=[ToolLoggerHook()],
         )
 
     def _tool_search(self, query: str, max_tools: int = 5):
