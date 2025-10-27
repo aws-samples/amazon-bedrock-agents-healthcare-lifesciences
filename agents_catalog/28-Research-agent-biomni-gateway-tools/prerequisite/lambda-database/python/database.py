@@ -18,10 +18,13 @@ except ImportError as e:
     print(f"Warning: Bedrock imports not available: {e}")
     BEDROCK_AVAILABLE = False
 
-def get_bedrock_client(region="us-west-2"):
+def get_bedrock_client():
     """Get Bedrock runtime client for database queries."""
     if not BEDROCK_AVAILABLE:
         return None
+    
+    session = boto3.session.Session()
+    region = session.region_name
     
     try:
         return boto3.client("bedrock-runtime", region_name=region)
@@ -63,9 +66,9 @@ def invoke_bedrock_model(client, model_id, system_prompt, user_message, max_toke
         
     except Exception as e:
         print(f"Model invocation error: {e}")
-        return "Model invocation error"
+        return None
 
-def _query_llm_for_api(prompt, schema, system_template, model="us.anthropic.claude-3-7-sonnet-20250219-v1:0"):
+def _query_llm_for_api(prompt, schema, system_template, model="us.anthropic.claude-sonnet-4-20250514-v1:0"):
     """Query Bedrock for generating API calls using direct Converse API."""
     client = get_bedrock_client()
     if not client:
@@ -74,6 +77,9 @@ def _query_llm_for_api(prompt, schema, system_template, model="us.anthropic.clau
             "error": "Bedrock client not available"
         }
     
+    print('****')
+    print(schema)
+
     try:
         # Format the system prompt with the schema
         if schema is not None:
@@ -84,8 +90,7 @@ def _query_llm_for_api(prompt, schema, system_template, model="us.anthropic.clau
         
         # Create full prompt
         full_prompt = f"{system_prompt}\n\nUser: {prompt}\n\nAssistant:"
-        print('invoking bedrock')
-        #print(full_prompt)
+        print(full_prompt)
 
         # Use direct Bedrock Converse API
         claude_text = invoke_bedrock_model(
@@ -97,6 +102,13 @@ def _query_llm_for_api(prompt, schema, system_template, model="us.anthropic.clau
             max_tokens=4096,
             temperature=0.7
         )
+
+        if claude_text is None:
+            return {
+                "success": False,
+                "error": "Bedrock model invocation failed",
+                "raw_response": "No content"
+            }
         # Remove the metrics info for JSON parsing
         if '--- Latency:' in claude_text:
             claude_text = claude_text.split('--- Latency:')[0].strip()

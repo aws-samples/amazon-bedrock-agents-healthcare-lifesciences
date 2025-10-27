@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 # Bedrock app and global agent instance
 app = BedrockAgentCoreApp()
 
-USE_SEMANTIC_SEARCH = False
+USE_SEMANTIC_SEARCH = True
 
 @app.entrypoint
 async def invoke(payload, context):

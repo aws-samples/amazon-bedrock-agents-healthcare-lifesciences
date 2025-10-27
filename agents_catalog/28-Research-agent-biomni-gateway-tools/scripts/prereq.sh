@@ -13,7 +13,7 @@ COGNITO_TEMPLATE_FILE="prerequisite/cognito.yaml"
 AGENTCORE_STACK_FILE="prerequisite/agentcore.yaml"
 REGION=$(aws configure get region)
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-FULL_BUCKET_NAME="${BUCKET_NAME}-${ACCOUNT_ID}"
+FULL_BUCKET_NAME="${BUCKET_NAME}-${REGION}-${ACCOUNT_ID}"
 DB_ZIP_FILE="prerequisite/database-gateway-function.zip"
 LIT_ZIP_FILE="prerequisite/literature-gateway-function.zip"
 
