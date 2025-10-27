@@ -15,52 +15,24 @@ logger = logging.getLogger(__name__)
 memory_client = MemoryClient()
 
 
-async def agent_task(user_message: str, session_id: str, actor_id: str):
+async def agent_task(user_message: str, session_id: str, actor_id: str, use_semantic_search: bool=False):
     agent = ResearchContext.get_agent_ctx()
-
     response_queue = ResearchContext.get_response_queue_ctx()
     gateway_access_token = ResearchContext.get_gateway_token_ctx()
 
     if not gateway_access_token:
         raise RuntimeError("Gateway Access token is none")
-    # Below option uses a self managed memory hook with the agent 
-    """ try:
-        if agent is None:
-            # Create memory hook (using a default memory_id for now)
-            memory_hook = MemoryHook(
-                memory_client=memory_client,
-                memory_id=get_ssm_parameter("/app/researchapp/agentcore/memory_id"),
-                actor_id=actor_id,
-                session_id=session_id,
-            )
-            logger.info("Memory hook created successfully")
-            agent = ResearchAgent(
-                bearer_token=gateway_access_token,
-                memory_hook=memory_hook,
-                tools=[]
-                #tools=[query_pubmed],  # Add custom tools here as needed
-            )
 
-            logger.info("Agent created successfully")   
-
-            ResearchContext.set_agent_ctx(agent)
-
-        async for chunk in agent.stream(user_query=user_message):
-            await response_queue.put(chunk)
- """
-    # Below option uses fully managed Memory Sessions Manager from Strands
     try:
         if agent is None:
-            MEM_ID = get_ssm_parameter("/app/researchapp/agentcore/memory_id")
-            ACTOR_ID = actor_id
-            SESSION_ID = session_id
-
+            MEM_ARN = get_ssm_parameter("/app/researchapp/agentcore/memory_id")
+            MEM_ID = MEM_ARN.split("/")[-1]
 
             # Configure memory
             agentcore_memory_config = AgentCoreMemoryConfig(
                 memory_id=MEM_ID,
-                session_id=SESSION_ID,
-                actor_id=ACTOR_ID
+                session_id=session_id,
+                actor_id=actor_id
             )
 
             # Create session manager
@@ -68,18 +40,24 @@ async def agent_task(user_message: str, session_id: str, actor_id: str):
                 agentcore_memory_config=agentcore_memory_config
             )
 
-            # Create agent
+            # Create agent with semantic search enabled
             agent = ResearchAgent(
                 bearer_token=gateway_access_token,
                 session_manager=session_manager,
-                tools=[]
-                #tools=[query_pubmed],  # Add custom tools here as needed
             )
-
-            logger.info("Agent created successfully")   
-
+  
             ResearchContext.set_agent_ctx(agent)
 
+        # Get relevant tools based on the user query
+        if use_semantic_search:
+            relevant_tools = agent._get_relevant_tools(user_message)
+            agent.agent.tools = relevant_tools
+            logger.info(f"Using Semantic Search: Updated agent with {len(relevant_tools)} relevant tools")
+        else:
+            agent.agent.tools = agent.gateway_client.list_tools_sync()
+            logger.info(f"Retrieved all tools. (Semantic not enabled)")
+
+        # Stream response with query-specific tools
         async for chunk in agent.stream(user_query=user_message):
             await response_queue.put(chunk)
 
