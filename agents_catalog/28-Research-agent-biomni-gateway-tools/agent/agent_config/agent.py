@@ -15,11 +15,14 @@ class ResearchAgent:
         bearer_token: str,
         memory_hook: MemoryHook = None,
         session_manager: AgentCoreMemorySessionManager = None,
-        bedrock_model_id: str = "us.anthropic.claude-sonnet-4-20250514-v1:0",
-        #bedrock_model_id: str = "openai.gpt-oss-120b-1:0",  # Alternative
+        bedrock_model_id: str = None,
         system_prompt: str = None,
         tools: List[callable] = None,
     ):
+        # Set default model if none provided
+        if bedrock_model_id is None:
+            bedrock_model_id = "us.anthropic.claude-sonnet-4-20250514-v1:0"
+        
         self.model_id = bedrock_model_id
         
         # Check if model supports interleaved thinking (Anthropic models only)
@@ -29,16 +32,17 @@ class ResearchAgent:
             # For Anthropic models (Haiku, Sonnet) with interleaved thinking
             self.model = BedrockModel(
                 model_id=self.model_id,
-                additional_request_fields={
-                    "anthropic_beta": ["interleaved-thinking-2025-05-14"],
-                    "thinking": {"type": "enabled", "budget_tokens": 8000},
-                },
+                #additional_request_fields={
+                #    "anthropic_beta": ["interleaved-thinking-2025-05-14"],
+                #    "thinking {"type": "enabled", "budget_tokens": 8000},
+                #},
             )
         else:
             # For non-Anthropic models (GPT, QWEN, etc.)
+            # Don't add any additional_request_fields to avoid sending unsupported parameters
             self.model = BedrockModel(
                 model_id=self.model_id
-            ) 
+            )
         self.system_prompt = (
             system_prompt
             if system_prompt
@@ -101,6 +105,7 @@ class ResearchAgent:
         self.session_manager = session_manager
         #we are using the fully managed session manager instead of the memory hook
 
+        # Create agent
         self.agent = Agent(
             model=self.model,
             system_prompt=self.system_prompt,
@@ -117,6 +122,8 @@ class ResearchAgent:
 
     async def stream(self, user_query: str):
         try:
+            # Emit model information at the start
+            yield f"🤖 Using model: {self.model_id}\n\n"
 
             tool_name = None
             async for event in self.agent.stream_async(user_query):

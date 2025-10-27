@@ -513,7 +513,7 @@ def main():
         model_options = {
             "Haiku 4.5": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
             "Sonnet 4.5": "us.anthropic.claude-sonnet-4-20250514-v1:0",
-            "GPT OSS": "openai.gpt-oss-120b-1:0",
+            #"GPT OSS": "openai.gpt-oss-120b-1:0",
             "QWEN Coder": "qwen.qwen3-coder-480b-a35b-v1:0"
         }
         
@@ -526,12 +526,23 @@ def main():
         
         selected_model_id = model_options[selected_model_name]
         
-        # Store selected model in session state
+        # Store selected model in session state and detect model type changes
         if "selected_model_id" not in st.session_state:
             st.session_state.selected_model_id = selected_model_id
         elif st.session_state.selected_model_id != selected_model_id:
+            old_model_id = st.session_state.selected_model_id
+            old_is_anthropic = "anthropic" in old_model_id.lower()
+            new_is_anthropic = "anthropic" in selected_model_id.lower()
+            
             st.session_state.selected_model_id = selected_model_id
             st.info(f"Model changed to {selected_model_name}")
+            
+            # Automatically clear session when switching between Anthropic and non-Anthropic models
+            if old_is_anthropic != new_is_anthropic:
+                st.session_state.runtime_session_id = str(uuid.uuid4())
+                st.session_state.messages = []
+                st.warning("⚠️ Session automatically refreshed due to model type change (Anthropic ↔ non-Anthropic). Conversation history cleared to avoid compatibility issues.")
+                st.rerun()
         
         with st.expander("View Model ID"):
             st.code(selected_model_id)
@@ -595,10 +606,6 @@ def main():
 
         # Generate assistant response
         with st.chat_message("assistant", avatar=AI_AVATAR):
-            # Display model being used
-            model_name = next((name for name, id in model_options.items() if id == st.session_state.selected_model_id), "Unknown")
-            st.caption(f"🤖 Using model: {model_name}")
-            
             message_placeholder = st.empty()
             chunk_buffer = ""
 
