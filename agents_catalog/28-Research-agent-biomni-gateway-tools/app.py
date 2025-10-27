@@ -247,16 +247,22 @@ def invoke_agent_streaming(
     runtime_session_id: str,
     region: str = "us-east-1",
     show_tool: bool = True,
+    model_id: str = None,
 ) -> Iterator[str]:
     """Invoke agent and yield streaming response chunks"""
     try:
         agentcore_client = boto3.client("bedrock-agentcore", region_name=region)
 
+        # Build payload with optional model_id
+        payload_data = {"prompt": prompt}
+        if model_id:
+            payload_data["model_id"] = model_id
+
         boto3_response = agentcore_client.invoke_agent_runtime(
             agentRuntimeArn=agent_arn,
             qualifier="DEFAULT",
             runtimeSessionId=runtime_session_id,
-            payload=json.dumps({"prompt": prompt}),
+            payload=json.dumps(payload_data),
         )
 
         logger.debug(f"contentType: {boto3_response.get('contentType', 'NOT_FOUND')}")
@@ -500,6 +506,36 @@ def main():
         if runtime_session_id != st.session_state.runtime_session_id:
             st.session_state.runtime_session_id = runtime_session_id
 
+        # Model selection
+        st.subheader("Model Configuration")
+        
+        # Define available models
+        model_options = {
+            "Haiku 4.5": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+            "Sonnet 4.5": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+            "GPT OSS": "openai.gpt-oss-120b-1:0",
+            "QWEN Coder": "qwen.qwen3-coder-480b-a35b-v1:0"
+        }
+        
+        selected_model_name = st.selectbox(
+            "Select Model",
+            options=list(model_options.keys()),
+            index=1,  # Default to Sonnet 4.5
+            help="Choose the Bedrock model for the agent"
+        )
+        
+        selected_model_id = model_options[selected_model_name]
+        
+        # Store selected model in session state
+        if "selected_model_id" not in st.session_state:
+            st.session_state.selected_model_id = selected_model_id
+        elif st.session_state.selected_model_id != selected_model_id:
+            st.session_state.selected_model_id = selected_model_id
+            st.info(f"Model changed to {selected_model_name}")
+        
+        with st.expander("View Model ID"):
+            st.code(selected_model_id)
+        
         # Response formatting options
         st.subheader("Display Options")
         auto_format = st.checkbox(
@@ -570,6 +606,7 @@ def main():
                     st.session_state.runtime_session_id,
                     region,
                     show_tools,
+                    st.session_state.selected_model_id,
                 ):
                     # Let's see what we get
                     logger.debug(f"MAIN LOOP: chunk type: {type(chunk)}")
