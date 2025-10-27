@@ -88,7 +88,7 @@ deploy_stack "$COGNITO_STACK_NAME" "$COGNITO_TEMPLATE_FILE"
 cognito_exit_code=$?
 
 echo "🔧 Starting deployment of AgentCore Gateway and Memory stack..."
-deploy_stack "$AGENTCORE_STACK_NAME" "$AGENTCORE_STACK_FILE"
+deploy_stack "$AGENTCORE_STACK_NAME" "$AGENTCORE_STACK_FILE" --S3Bucket="$FULL_BUCKET_NAME"
 agentcore_exit_code=$?
 
 echo "✅ CloudFormation Deployment complete."

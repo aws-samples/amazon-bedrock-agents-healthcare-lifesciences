@@ -119,6 +119,7 @@ Note : We have decoupled the OAuth authentication of the Gateway from the Runtim
 
   ```bash
   uv run agentcore configure --entrypoint main.py -er arn:aws:iam::<Account-Id>:role/<Role> --name researchapp<AgentName>
+  uv run agentcore configure --entrypoint main.py -er arn:aws:iam::<Account-Id>:role/<Role> --name researchapp<AgentName> --use-search
   ```
 If you want to use OAuth authentication, enter 'yes' for OAuth. 
 

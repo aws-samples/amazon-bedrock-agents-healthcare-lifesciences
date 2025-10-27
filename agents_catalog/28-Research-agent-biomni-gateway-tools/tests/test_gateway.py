@@ -72,6 +72,8 @@ TOOL_SPECIFIC_PROMPTS = [
     "Use paleobiology tool to find fossil records of dinosaurs",
 ]
 
+MAX_TOOLS=5
+
 def get_gateway_access_token():
     """Get M2M bearer token for gateway authentication."""
     try:
@@ -122,7 +124,7 @@ def get_gateway_access_token():
         print(f"Error getting M2M bearer token: {str(e)}")
         return None
 
-def tool_search(gateway_endpoint, jwt_token, query):
+def tool_search(gateway_endpoint, jwt_token, query, max_tools=5):
     """Search for tools using the gateway's semantic search."""
     tool_params = {
         "name": "x_amz_bedrock_agentcore_search",
@@ -148,6 +150,7 @@ def tool_search(gateway_endpoint, jwt_token, query):
     if response.status_code == 200:
         tool_resp = response.json()
         tools = tool_resp["result"]["structuredContent"]["tools"]
+        tools = tools[:max_tools]
         return tools
     else:
         print(f"Search failed: {response.text}")
@@ -240,7 +243,7 @@ def main(prompt, use_search, search_query, max_tools, test_prompts, test_tool_pr
                 print(f"\n🔍 Searching for tools with query: '{search_query_to_use}'")
                 
                 start_time = time.time()
-                tools_found = tool_search(gateway_endpoint, jwt_token, search_query_to_use)
+                tools_found = tool_search(gateway_endpoint, jwt_token, search_query_to_use, max_tools=MAX_TOOLS)
                 search_time = time.time() - start_time
                 
                 if not tools_found:
