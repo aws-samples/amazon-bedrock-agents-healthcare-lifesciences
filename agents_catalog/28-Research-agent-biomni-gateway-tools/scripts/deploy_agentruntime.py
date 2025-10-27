@@ -12,7 +12,7 @@ runtime_iam_role = get_ssm_parameter(
 )
 agentcore_runtime = Runtime()
 
-agent_name = "researchappagent"
+agent_name = "researchappagent2"
 
 response = agentcore_runtime.configure(
     entrypoint="main.py",
