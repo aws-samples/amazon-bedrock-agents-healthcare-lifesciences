@@ -34,7 +34,7 @@ HUMAN_AVATAR = "static/user-profile.svg"
 AI_AVATAR = "static/gen-ai-dark.svg"
 
 
-def fetch_agent_runtimes(region: str = "us-east-1") -> List[Dict]:
+def fetch_agent_runtimes(region: str = "us-west-2") -> List[Dict]:
     """Fetch available agent runtimes from bedrock-agentcore-control"""
     try:
         client = boto3.client("bedrock-agentcore-control", region_name=region)
@@ -57,7 +57,7 @@ def fetch_agent_runtimes(region: str = "us-east-1") -> List[Dict]:
 
 
 def fetch_agent_runtime_versions(
-    agent_runtime_id: str, region: str = "us-east-1"
+    agent_runtime_id: str, region: str = "us-west-2"
 ) -> List[Dict]:
     """Fetch versions for a specific agent runtime"""
     try:
@@ -245,7 +245,7 @@ def invoke_agent_streaming(
     prompt: str,
     agent_arn: str,
     runtime_session_id: str,
-    region: str = "us-east-1",
+    region: str = "us-west-2",
     show_tool: bool = True,
     model_id: str = None,
 ) -> Iterator[str]:
@@ -379,7 +379,7 @@ def main():
         # Region selection (moved up since it affects agent fetching)
         region = st.selectbox(
             "AWS Region",
-            ["us-east-1", "us-west-2", "eu-west-1", "ap-southeast-1"],
+            ["us-west-2", "us-east-1", "eu-west-1", "ap-southeast-1"],
             index=0,
         )
 
@@ -595,6 +595,10 @@ def main():
 
         # Generate assistant response
         with st.chat_message("assistant", avatar=AI_AVATAR):
+            # Display model being used
+            model_name = next((name for name, id in model_options.items() if id == st.session_state.selected_model_id), "Unknown")
+            st.caption(f"🤖 Using model: {model_name}")
+            
             message_placeholder = st.empty()
             chunk_buffer = ""
 

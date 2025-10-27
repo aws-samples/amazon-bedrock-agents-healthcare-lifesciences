@@ -22,17 +22,23 @@ class ResearchAgent:
     ):
         self.model_id = bedrock_model_id
         
-        """ self.model = BedrockModel(
-            model_id=self.model_id
-        )  """
-        #for Anthropic Sonnet 4 interleaved thinking
-        self.model = BedrockModel(
-            model_id=self.model_id,
-            additional_request_fields={
-            "anthropic_beta": ["interleaved-thinking-2025-05-14"],
-            "thinking": {"type": "enabled", "budget_tokens": 8000},
-            },
-        ) 
+        # Check if model supports interleaved thinking (Anthropic models only)
+        is_anthropic_model = "anthropic" in self.model_id.lower()
+        
+        if is_anthropic_model:
+            # For Anthropic models (Haiku, Sonnet) with interleaved thinking
+            self.model = BedrockModel(
+                model_id=self.model_id,
+                additional_request_fields={
+                    "anthropic_beta": ["interleaved-thinking-2025-05-14"],
+                    "thinking": {"type": "enabled", "budget_tokens": 8000},
+                },
+            )
+        else:
+            # For non-Anthropic models (GPT, QWEN, etc.)
+            self.model = BedrockModel(
+                model_id=self.model_id
+            ) 
         self.system_prompt = (
             system_prompt
             if system_prompt

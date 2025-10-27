@@ -23,6 +23,13 @@ async def agent_task(user_message: str, session_id: str, actor_id: str, bedrock_
 
     if not gateway_access_token:
         raise RuntimeError("Gateway Access token is none")
+    
+    # Check if model has changed - if so, clear the cached agent
+    if agent is not None and bedrock_model_id is not None:
+        if agent.model_id != bedrock_model_id:
+            logger.info(f"Model changed from {agent.model_id} to {bedrock_model_id}, recreating agent")
+            agent = None
+            ResearchContext.set_agent_ctx(None)
     # Below option uses a self managed memory hook with the agent 
     """ try:
         if agent is None:
