@@ -45,6 +45,9 @@ Thumbs.db
 .bedrock_agentcore.yaml
 .bedrock_agentcore/
 
+# Folders
+prerequisite/lambda-database/python/schema_db/
+
 # Environment variables
 .env
 .env.local

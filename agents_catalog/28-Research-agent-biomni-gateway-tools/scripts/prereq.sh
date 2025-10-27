@@ -23,7 +23,7 @@ aws s3 mb "s3://$FULL_BUCKET_NAME" --region "$REGION" 2>/dev/null || \
   echo "ℹ️ Bucket may already exist or be owned by you."
 
 # ----- 2. Zip Lambda code -----
-# python prerequisite/create_lambda_zip.py
+uv run prerequisite/create_lambda_zip.py
 
 # Generate hashes of ZIP files to force Lambda updates when code changes
 DB_HASH=$(shasum -a 256 "$DB_ZIP_FILE" | cut -d' ' -f1 | cut -c1-8)
