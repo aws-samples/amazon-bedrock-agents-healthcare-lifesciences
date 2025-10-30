@@ -12,7 +12,7 @@ from literature import (
     query_scholar,
     query_pubmed,
     search_google,
-    advanced_web_search_claude,
+    # advanced_web_search_claude,
     extract_url_content,
     extract_pdf_content
 )
@@ -21,30 +21,38 @@ def lambda_handler(event, context):
     """
     AWS Lambda handler for literature research functions.
     
-    Expected event structure:
+    Expected event structure from AgentCore Gateway:
     {
-        "function_name": "query_pubmed",
-        "parameters": {
-            "query": "cancer research",
-            "max_papers": 10
-        }
+        "query": "cancer research",
+        "max_papers": 10
     }
     """
-    # tool_name = context.client_context.custom['bedrockAgentCoreToolName']
     print(f"Context : {context}")
     print(f"Event: {event}")
+    
     try:
-        # Extract function name and parameters from the event
-        function_name = event.get('function_name')
-        parameters = event.get('parameters', {})
+        # Extract function name from context (AgentCore Gateway provides this)
+        function_name = None
+        if hasattr(context, 'client_context') and context.client_context and hasattr(context.client_context, 'custom'):
+            tool_name = context.client_context.custom.get('bedrockAgentCoreToolName', '')
+            # Extract function name from tool name (e.g., "LiteratureLambda___query_pubmed" -> "query_pubmed")
+            if '___' in tool_name:
+                function_name = tool_name.split('___')[1]
+        
+        # Fallback to event-based function name
+        if not function_name:
+            function_name = event.get('function_name')
         
         if not function_name:
             return {
                 'statusCode': 400,
                 'body': json.dumps({
-                    'error': 'Missing function_name in request'
+                    'error': 'Missing function_name in request or context'
                 })
             }
+        
+        # Parameters come directly from event for AgentCore Gateway
+        parameters = {k: v for k, v in event.items() if k != 'function_name'}
         
         # Map function names to actual functions
         function_map = {
@@ -53,7 +61,7 @@ def lambda_handler(event, context):
             'query_scholar': query_scholar,
             'query_pubmed': query_pubmed,
             'search_google': search_google,
-            'advanced_web_search_claude': advanced_web_search_claude,
+            # 'advanced_web_search_claude': advanced_web_search_claude,
             'extract_url_content': extract_url_content,
             'extract_pdf_content': extract_pdf_content
         }
@@ -78,7 +86,7 @@ def lambda_handler(event, context):
                 'result': result
             })
         }
-        print(out)
+        print(f"Function output: {out}")
         return out
         
     except Exception as e:

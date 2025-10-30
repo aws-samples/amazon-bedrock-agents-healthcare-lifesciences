@@ -83,10 +83,8 @@ Verify the deployment:
     ./scripts/list_ssm_parameters.sh
     ```
 
-    > [!CAUTION]
-    > Please prefix all the resource names with your chosen prefix (e.g., `researchapp`).
-
 1. **Setup Agentcore Identity**
+   
     You can look to reuse the credentials provider user pool across multiple deployments if required.
     
     ```bash
@@ -109,6 +107,7 @@ Verify the deployment:
 
     ```bash
     uv run tests/test_agent_locally.py --prompt "Find information about human insulin protein"
+    uv run tests/test_agent_locally.py --prompt "Find information about human insulin protein" --use-search
     ```
 
 4. **Setup Agent Runtime**
@@ -118,8 +117,8 @@ Verify the deployment:
 Note : We have decoupled the OAuth authentication of the Gateway from the Runtime. This means that you can use the Runtime either with IAM or OAuth authentication. The gateway bearer token will be retrieved using M2M authentication internally. 
 
   ```bash
-  uv run agentcore configure --entrypoint main.py -er arn:aws:iam::<Account-Id>:role/<Role> --name researchapp<AgentName>
-  uv run agentcore configure --entrypoint main.py -er arn:aws:iam::<Account-Id>:role/<Role> --name researchapp<AgentName> --use-search
+  uv run agentcore configure --entrypoint main.py -er arn:aws:iam::<Account-Id>:role/<Role> --name <researchappAgentName>
+  uv run agentcore configure --entrypoint main.py -er arn:aws:iam::<Account-Id>:role/<Role> --name <researchappAgentName> --use-search
   ```
 If you want to use OAuth authentication, enter 'yes' for OAuth. 
 
@@ -132,16 +131,13 @@ If you want to use OAuth authentication, enter 'yes' for OAuth.
   > Please make sure to delete `.agentcore.yaml` before running agentcore launch.
 
   ```bash
-  rm .agentcore.yaml
-
-  agentcore launch
+  uv run agentcore launch --agent <researchappAgentName>
   ```
 
-  Alternatively, you can deploy the agent using the python SDK:
-  ```
-  uv run scripts/deploy_agentruntime.py
-  ```
-  
+  if you want to reconfigure the agent, you can remove the previous configuration : `rm /.bedrock_agentcore.yaml`
+
+  You are now ready to test your deployed agent: 
+
   If you are using IAM based authenticaiton, invoke directly
   ```
   uv run agentcore invoke '{"prompt": "Find information about human insulin protein"}' --agent researchapp<AgentName>

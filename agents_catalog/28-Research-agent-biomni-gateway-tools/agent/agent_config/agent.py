@@ -38,7 +38,7 @@ async def agent_task(user_message: str, session_id: str, actor_id: str, use_sema
     
     # Create model
     model = BedrockModel(
-        model_id="us.anthropic.claude-sonnet-4-20250514-v1:0",
+        model_id="global.anthropic.claude-sonnet-4-20250514-v1:0",
         additional_request_fields={
             "anthropic_beta": ["interleaved-thinking-2025-05-14"],
             "thinking": {"type": "enabled", "budget_tokens": 8000},
@@ -124,7 +124,11 @@ You will ALWAYS follow the below guidelines and citation requirements when assis
     except Exception as e:
         yield f"Error processing request: {str(e)}"
     finally:
-        gateway_client.close()
+        try:
+            gateway_client.close()
+        except AttributeError:
+            # MCPClient might not have close method in this version
+            pass
 
 def _tool_search(query: str, gateway_url: str, bearer_token: str, max_tools: int = 5):
     """Search for tools using semantic search"""

@@ -212,7 +212,7 @@ def main(prompt, use_search, search_query, max_tools, test_prompts, test_tool_pr
     
     # Create Bedrock model
     model = BedrockModel(
-        model_id="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+        model_id="global.anthropic.claude-sonnet-4-20250514-v1:0",
         temperature=0.7,
         streaming=True,
     )

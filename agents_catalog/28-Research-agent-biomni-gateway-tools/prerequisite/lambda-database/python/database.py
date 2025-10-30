@@ -68,7 +68,7 @@ def invoke_bedrock_model(client, model_id, system_prompt, user_message, max_toke
         print(f"Model invocation error: {e}")
         return None
 
-def _query_llm_for_api(prompt, schema, system_template, model="us.anthropic.claude-sonnet-4-20250514-v1:0"):
+def _query_llm_for_api(prompt, schema, system_template, model="global.anthropic.claude-sonnet-4-20250514-v1:0"):
     """Query Bedrock for generating API calls using direct Converse API."""
     client = get_bedrock_client()
     if not client:

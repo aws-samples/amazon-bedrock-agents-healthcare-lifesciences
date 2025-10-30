@@ -94,28 +94,6 @@
     }
   },
   {
-    "name": "advanced_web_search_claude",
-    "description": "Initiate an advanced web search by launching a specialized agent to collect relevant information and citations through multiple rounds of web searches for a given query.",
-    "inputSchema": {
-      "type": "object",
-      "properties": {
-        "query": {
-          "type": "string",
-          "description": "The search phrase you want Claude to look up"
-        },
-        "max_searches": {
-          "type": "integer",
-          "description": "Upper-bound on searches Claude may issue inside this request (default: 1)"
-        },
-        "max_retries": {
-          "type": "integer",
-          "description": "Maximum number of retry attempts with exponential backoff (default: 3)"
-        }
-      },
-      "required": ["query"]
-    }
-  },
-  {
     "name": "extract_url_content",
     "description": "Extract the text content of a webpage using requests and BeautifulSoup.",
     "inputSchema": {

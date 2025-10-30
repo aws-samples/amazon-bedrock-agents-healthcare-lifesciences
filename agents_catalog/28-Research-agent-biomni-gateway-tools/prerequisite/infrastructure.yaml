@@ -257,8 +257,7 @@ Resources:
                   - ssm:GetParameter
                 Resource:
                   - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/app/researchapp/*
-      
-
+    
   DatabaseLambda:
     Type: AWS::Lambda::Function
     Properties:
@@ -332,16 +331,6 @@ Resources:
       Tags:
         Application: ResearchApp
 
-  LambdaArnParameter:
-    Type: AWS::SSM::Parameter
-    Properties:
-      Name: /app/researchapp/agentcore/lambda_arn
-      Type: String
-      Value: !GetAtt DatabaseLambda.Arn
-      Description: ARN of the lambda that integrates with agentcore
-      Tags:
-        Application: ResearchApp
-
   LiteratureLambdaArnParameter:
     Type: AWS::SSM::Parameter
     Properties:
@@ -352,12 +341,12 @@ Resources:
       Tags:
         Application: ResearchApp
 
-  LiteratureLambdaArnParameter:
+  DatabaseLambdaArnParameter:
     Type: AWS::SSM::Parameter
     Properties:
-      Name: /app/researchapp/agentcore/literature_lambda_arn
+      Name: /app/researchapp/agentcore/database_lambda_arn
       Type: String
-      Value: !GetAtt LiteratureLambda.Arn
+      Value: !GetAtt DatabaseLambda.Arn
       Description: ARN of the literature lambda that integrates with agentcore
       Tags:
         Application: ResearchApp

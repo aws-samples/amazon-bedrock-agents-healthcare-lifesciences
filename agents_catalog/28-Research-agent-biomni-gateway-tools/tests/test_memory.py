@@ -24,7 +24,7 @@ MEMORY_ARN = get_ssm_parameter("/app/researchapp/agentcore/memory_id")
 MEMORY_ID = MEMORY_ARN.split("/")[-1]
 
 model = BedrockModel(
-    model_id="us.anthropic.claude-3-5-haiku-20241022-v1:0",
+    model_id="global.anthropic.claude-sonnet-4-20250514-v1:0",
 )
 
 memory_client = boto3.client("bedrock-agentcore")
