@@ -5,7 +5,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from typing import Any, Dict, Iterator, List
-from agent.agent_config.tools import xmltodict
+from . import xmltodict
 
 
 logger = logging.getLogger(__name__)

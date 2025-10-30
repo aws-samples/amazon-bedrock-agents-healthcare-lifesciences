@@ -6,7 +6,7 @@ These are basic tools that can be used as examples or starting points.
 from typing import Dict, Any
 import json
 from strands import tool
-from agent.agent_config.tools.PubMed import PubMed
+from .PubMed import PubMed
 
 @tool(
     name="Query_pubmed",

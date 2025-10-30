@@ -1,12 +1,18 @@
-from agent.agent_config.context import ResearchContext
-from agent.agent_config.access_token import get_gateway_access_token
-from agent.agent_config.agent_task import agent_task
-from agent.agent_config.streaming_queue import StreamingQueue
+from agent_config.context import ResearchContext
+from agent_config.access_token import get_gateway_access_token
+from agent_config.agent_task import agent_task
+from agent_config.streaming_queue import StreamingQueue
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
-from scripts.utils import get_ssm_parameter
+import boto3
 import asyncio
 import logging
 import os
+
+# Helper function to get SSM parameters
+def get_ssm_parameter(name, region="us-east-1", with_decryption=True):
+    ssm = boto3.client("ssm", region_name=region)
+    response = ssm.get_parameter(Name=name, WithDecryption=with_decryption)
+    return response["Parameter"]["Value"]
 
 # Environment flags
 os.environ["STRANDS_OTEL_ENABLE_CONSOLE_EXPORT"] = "true"
