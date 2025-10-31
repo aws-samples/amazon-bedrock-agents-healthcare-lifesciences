@@ -8,6 +8,7 @@ import boto3
 import streamlit as st
 from streamlit.logger import get_logger
 
+
 logger = get_logger(__name__)
 logger.setLevel("INFO")
 

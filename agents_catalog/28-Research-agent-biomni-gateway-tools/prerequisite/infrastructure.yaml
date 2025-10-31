@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "CloudFormation template for Research ResearchApp System with SSM parameters and lambda function"
+Description: "CloudFormation template for Research System with SSM parameters and lambda function supporting tools"
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -7,7 +7,8 @@ Metadata:
           default: Lambda Code Configuration
         Parameters:
           - LambdaS3Bucket
-          - LambdaS3Key
+          - DatabaseLambdaS3Key
+          - LiteratureLambdaS3Key
 
 Parameters:
   LambdaS3Bucket:
@@ -15,10 +16,26 @@ Parameters:
     Type: String
     MinLength: 1
 
-  LambdaS3Key:
-    Description: The S3 object key which contains research app  assistant code in zip format
+  DatabaseLambdaS3Key:
+    Description: The S3 object key which contains research app assistant code in zip format
     Type: String
     MinLength: 1
+
+  LiteratureLambdaS3Key:
+    Description: The S3 object key which contains literature research lambda code in zip format
+    Type: String
+    MinLength: 1
+
+  AnthropicApiKey:
+    Description: Anthropic API key for literature research
+    Type: String
+    Default: "PLACEHOLDER_REPLACE_ME"
+    NoEcho: true
+
+  PubmedEmail:
+    Description: Email for PubMed API requests
+    Type: String
+    Default: "your-email@example.com"
 
 Resources:
   RuntimeAgentCoreRole:
@@ -174,16 +191,29 @@ Resources:
                 Action:
                   - lambda:InvokeFunction
                 Resource:
-                  - !GetAtt ResearchAppLambda.Arn
+                  - !GetAtt DatabaseLambda.Arn
+                  - !GetAtt LiteratureLambda.Arn
 
 
   # Lambda target
-  ResearchAppLambdaRole:
+  DatabaseLambdaRole:
     Type: AWS::IAM::Role
     Properties:
       Path: /service-role/
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: BedrockInvokePolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                Resource:
+                  - "arn:aws:bedrock:*::foundation-model/*"
+                  - !Sub "arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:*"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -191,23 +221,95 @@ Resources:
             Effect: Allow
             Principal:
               Service: lambda.amazonaws.com
-      
 
-  ResearchAppLambda:
+  LiteratureLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: /service-role/
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: BedrockInvokePolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                Resource:
+                  - "arn:aws:bedrock:*::foundation-model/*"
+                  - !Sub "arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:*"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+      Policies:
+        - PolicyName: SSMReadPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                Resource:
+                  - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/app/researchapp/*
+    
+  DatabaseLambda:
     Type: AWS::Lambda::Function
     Properties:
       Description: "Lambda function for Research ResearchApp Assistant"
       Handler: lambda_function.lambda_handler
       Code:
         S3Bucket: !Ref LambdaS3Bucket
-        S3Key: !Ref LambdaS3Key
-      Role: !GetAtt ResearchAppLambdaRole.Arn
+        S3Key: !Ref DatabaseLambdaS3Key
+      Role: !GetAtt DatabaseLambdaRole.Arn
       Runtime: python3.12
       PackageType: Zip
       Architectures:
         - x86_64
       Timeout: 300
 
+  AnthropicApiKeyParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /app/researchapp/anthropic_api_key
+      Type: String
+      Value: !Ref AnthropicApiKey
+      Description: Anthropic API key for literature research
+      Tags:
+        Application: ResearchApp
+
+  PubmedEmailParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /app/researchapp/pubmed_email
+      Type: String
+      Value: !Ref PubmedEmail
+      Description: Email for PubMed API requests
+      Tags:
+        Application: ResearchApp
+
+  LiteratureLambda:
+    Type: AWS::Lambda::Function
+    DependsOn: 
+      - AnthropicApiKeyParameter
+      - PubmedEmailParameter
+    Properties:
+      Description: "Lambda function for Literature Research"
+      Handler: lambda_function.lambda_handler
+      Code:
+        S3Bucket: !Ref LambdaS3Bucket
+        S3Key: !Ref LiteratureLambdaS3Key
+      Role: !GetAtt LiteratureLambdaRole.Arn
+      Runtime: python3.12
+      PackageType: Zip
+      Architectures:
+        - x86_64
+      Timeout: 300
   
   GatewayAgentcoreIAMRoleParameter:
     Type: AWS::SSM::Parameter
@@ -229,12 +331,22 @@ Resources:
       Tags:
         Application: ResearchApp
 
-  LambdaArnParameter:
+  LiteratureLambdaArnParameter:
     Type: AWS::SSM::Parameter
     Properties:
-      Name: /app/researchapp/agentcore/lambda_arn
+      Name: /app/researchapp/agentcore/literature_lambda_arn
       Type: String
-      Value: !GetAtt ResearchAppLambda.Arn
-      Description: ARN of the lambda that integrates with agentcore
+      Value: !GetAtt LiteratureLambda.Arn
+      Description: ARN of the literature lambda that integrates with agentcore
+      Tags:
+        Application: ResearchApp
+
+  DatabaseLambdaArnParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /app/researchapp/agentcore/database_lambda_arn
+      Type: String
+      Value: !GetAtt DatabaseLambda.Arn
+      Description: ARN of the literature lambda that integrates with agentcore
       Tags:
         Application: ResearchApp
