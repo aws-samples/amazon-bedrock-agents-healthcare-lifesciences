@@ -35,9 +35,9 @@ The template provides you two options for authentication with the AgentCore Runt
    - [Install AWS Command Line Interface (AWS CLI)](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
    - [Configure AWS Command Line Interface (AWS CLI)](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-quickstart.html)
 
-   ```bash
-   aws configure
-   ```
+```bash
+aws configure
+```
 
 3. **Bedrock Models:
 For this application, we will be leveraging LLM models provided through Amazon Bedrock. 
@@ -46,11 +46,11 @@ For this application, we will be leveraging LLM models provided through Amazon B
 
 4. Download Database files
    
-    ```bash
-    cd prerequisite/lambda-database/python && mkdir schema_db && cd schema_db
-    curl -s https://api.github.com/repos/snap-stanford/Biomni/contents/biomni/tool/schema_db | grep '"download_url"' | cut -d '"' -f 4 | xargs -n 1 wget
-    cd ../../../../
-    ```
+```bash
+cd prerequisite/lambda-database/python && mkdir schema_db && cd schema_db
+curl -s https://api.github.com/repos/snap-stanford/Biomni/contents/biomni/tool/schema_db | grep '"download_url"' | cut -d '"' -f 4 | xargs -n 1 wget
+cd ../../../../
+```
 
 ## Deploy
 
@@ -62,14 +62,13 @@ For this application, we will be leveraging LLM models provided through Amazon B
 
 Set up the Python environment and deploy AWS resources:
 
-    ```bash
-    uv sync
-    # source .venv/bin/activate if environment already exists
-    uv add -r dev-requirements.txt
+```bash
+uv sync
+# source .venv/bin/activate if environment already exists
 
-    chmod +x scripts/prereq.sh
-    ./scripts/prereq.sh
-    ```
+chmod +x scripts/prereq.sh
+./scripts/prereq.sh
+```
 This creates:
    - 2 Lambda functions (database and literature tools)
    - AgentCore Gateway to register the tools
@@ -78,37 +77,36 @@ This creates:
 
 Verify the deployment:
 
-    ```bash
-    chmod +x scripts/list_ssm_parameters.sh
-    ./scripts/list_ssm_parameters.sh
-    ```
+```bash
+chmod +x scripts/list_ssm_parameters.sh
+./scripts/list_ssm_parameters.sh
+```
 
 1. **Setup Agentcore Identity**
    
-    You can look to reuse the credentials provider user pool across multiple deployments if required.
+You can look to reuse the credentials provider user pool across multiple deployments if required.
     
-    ```bash
-    uv run scripts/cognito_credentials_provider.py create --name researchapp-cp
-    uv run tests/test_gateway.py --prompt "What tools are available?"
-    uv run tests/test_gateway.py --prompt "Find information about human insulin protein" --use-search
-    ```
-     For the current implementation, we do not use the decorator function to get the access token for the gateway. Rather we fetch it by directly retrieving the cognito domain, resource server, user pool. 
+```bash
+uv run tests/test_gateway.py --prompt "What tools are available?"
+uv run tests/test_gateway.py --prompt "Find information about human insulin protein" --use-search
+```
+For the current implementation, we do not use the decorator function to get the access token for the gateway. Rather we fetch it by directly retrieving the cognito domain, resource server, user pool. 
 
 2. **Test Memory**
-    The memory has been created as part of the deployment process in step 1. Let's test it. 
+The memory has been created as part of the deployment process in step 1. Let's test it. 
 
-    ```bash
-    uv run tests/test_memory.py load-conversation
-    uv run tests/test_memory.py load-prompt "My preferred response format is detailed explanations"
-    uv run tests/test_memory.py list-memory
-    ```
+```bash
+uv run tests/test_memory.py load-conversation
+uv run tests/test_memory.py load-prompt "My preferred response format is detailed explanations"
+uv run tests/test_memory.py list-memory
+```
 
 3. **Test local deployment of Agent**
 
-    ```bash
-    uv run tests/test_agent_locally.py --prompt "Find information about human insulin protein"
-    uv run tests/test_agent_locally.py --prompt "Find information about human insulin protein" --use-search
-    ```
+```bash
+uv run tests/test_agent_locally.py --prompt "Find information about human insulin protein"
+uv run tests/test_agent_locally.py --prompt "Find information about human insulin protein" --use-search
+```
 
 4. **Setup Agent Runtime**
 
@@ -116,38 +114,41 @@ Verify the deployment:
 > Please ensure the name of the agent starts with your chosen prefix.
 Note : We have decoupled the OAuth authentication of the Gateway from the Runtime. This means that you can use the Runtime either with IAM or OAuth authentication. The gateway bearer token will be retrieved using M2M authentication internally. 
 
-  ```bash
-  uv run agentcore configure --entrypoint main.py -er arn:aws:iam::<Account-Id>:role/<Role> --name <researchappAgentName>
-  uv run agentcore configure --entrypoint main.py -er arn:aws:iam::<Account-Id>:role/<Role> --name <researchappAgentName> --use-search
-  ```
+You can retrieve the `runtime_iam_role` from the AWS Systems Manager Parameter store in the console under `/app/researchapp/agentcore/runtime_iam_role` or use the `./scripts/list_ssm_parameters.sh` script.
+
+```bash
+uv run agentcore configure --entrypoint main.py -er arn:aws:iam::<Account-Id>:role/<Role> --name <researchappAgentName>
+```
+When prompted for the dependency file, please choose: `dev-requirements.txt` and choose the default for the remaining settings.
+
 If you want to use OAuth authentication, enter 'yes' for OAuth. 
 
-  Use `./scripts/list_ssm_parameters.sh` to fill:
-  - `Role = ValueOf(/app/researchapp/agentcore/runtime_iam_role)`
-  - `OAuth Discovery URL = ValueOf(/app/researchapp/agentcore/cognito_discovery_url)`
-  - `OAuth client id = ValueOf(/app/researchapp/agentcore/web_client_id)`.
+Use `./scripts/list_ssm_parameters.sh` to fill:
+- `Role = ValueOf(/app/researchapp/agentcore/runtime_iam_role)`
+- `OAuth Discovery URL = ValueOf(/app/researchapp/agentcore/cognito_discovery_url)`
+- `OAuth client id = ValueOf(/app/researchapp/agentcore/web_client_id)`.
 
-  > [!CAUTION]
-  > Please make sure to delete `.agentcore.yaml` before running agentcore launch.
+> [!CAUTION]
+> Please make sure to delete `.agentcore.yaml` before running agentcore launch.
 
-  ```bash
-  uv run agentcore launch --agent <researchappAgentName>
-  ```
+```bash
+uv run agentcore launch --agent <researchappAgentName>
+```
 
-  if you want to reconfigure the agent, you can remove the previous configuration : `rm /.bedrock_agentcore.yaml`
+if at some point, you wish to reconfigure the agent, you can remove the previous configuration : `rm /.bedrock_agentcore.yaml`
 
-  You are now ready to test your deployed agent: 
+You are now ready to test your deployed agent: 
 
-  If you are using IAM based authenticaiton, invoke directly
-  ```
-  uv run agentcore invoke '{"prompt": "Find information about human insulin protein"}' --agent researchapp<AgentName>
-  ```
-  If you are using OAuth authentication, invoke via HTTPS endpoint like the script below 
-  ```
-  uv run tests/test_agent.py researchapp<AgentName> -p "Hi"
-  ```
+If you are using IAM based authenticaiton, invoke directly
+```bash
+uv run agentcore invoke '{"prompt": "Find information about human insulin protein"}' --agent researchapp<AgentName>
+```
+If you are using OAuth authentication, invoke via HTTPS endpoint like the script below 
+```bash
+uv run tests/test_agent.py researchapp<AgentName> -p "Hi"
+```
 
-6. **Local Host Streamlit UI**å
+5. **Local Host Streamlit UI**å
 
 > [!CAUTION]
 > Streamlit app should only run on port `8501`.
@@ -195,7 +196,7 @@ uv run streamlit run app_oauth.py --server.port 8501 -- --agent=researchapp<Agen
 
 4. What can you tell me about your capabilities?
 
-7. **Setup AgentCore Observability dashboard**
+6. **Setup AgentCore Observability dashboard**
 You are able to view all your Agents that have observability in them and filter the data based on time frames as described [here](https://aws.amazon.com/blogs/machine-learning/build-trustworthy-ai-agents-with-amazon-bedrock-agentcore-observability/)
 You will need to Enable Transaction Search on Amazon CloudWatch as described [here](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Enable-TransactionSearch.html)
 
