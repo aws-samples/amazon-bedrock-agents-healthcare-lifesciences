@@ -7,6 +7,9 @@ from strands_tools import current_time, retrieve
 from strands.models import BedrockModel
 from strands.tools.mcp import MCPClient
 from typing import List
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class ResearchAgent:
@@ -32,10 +35,10 @@ class ResearchAgent:
             # For Anthropic models (Haiku, Sonnet) with interleaved thinking
             self.model = BedrockModel(
                 model_id=self.model_id,
-                #additional_request_fields={
-                #    "anthropic_beta": ["interleaved-thinking-2025-05-14"],
-                #    "thinking {"type": "enabled", "budget_tokens": 8000},
-                #},
+                additional_request_fields={
+                    "anthropic_beta": ["interleaved-thinking-2025-05-14"],
+                    "thinking": {"type": "enabled", "budget_tokens": 8000},
+                },
             )
         else:
             # For non-Anthropic models (GPT, QWEN, etc.)
@@ -113,6 +116,28 @@ class ResearchAgent:
             session_manager=self.session_manager,
         )
 
+    def update_model(self, new_model_id: str):
+        """Update the model configuration without recreating the agent"""
+        try:
+            old_model_id = self.model_id
+            self.agent.model.update_config(model_id=new_model_id)
+            self.model_id = new_model_id
+            logger.info(f"Model updated from {old_model_id} to {new_model_id}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to update model: {e}")
+            return False
+    
+    def get_current_config(self):
+        """Get the current agent and model configuration"""
+        return {
+            'model_config': self.agent.model.get_config(),
+            'model_id': self.model_id,
+            'system_prompt_length': len(self.system_prompt),
+            'tool_count': len(self.tools),
+            'agent_id': self.agent.agent_id
+        }
+
     def invoke(self, user_query: str):
         try:
             response = str(self.agent(user_query))
@@ -122,8 +147,9 @@ class ResearchAgent:
 
     async def stream(self, user_query: str):
         try:
-            # Emit model information at the start
-            yield f"🤖 Using model: {self.model_id}\n\n"
+            # Emit current model information at the start
+            current_config = self.agent.model.get_config()
+            yield f"🤖 Using model: {current_config.get('model_id', self.model_id)}\n\n"
 
             tool_name = None
             async for event in self.agent.stream_async(user_query):

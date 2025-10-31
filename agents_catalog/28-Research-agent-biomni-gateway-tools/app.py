@@ -512,21 +512,22 @@ def main():
         # Define available models
         model_options = {
             "Haiku 4.5": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
-            "Sonnet 4.5": "us.anthropic.claude-sonnet-4-20250514-v1:0",
-            #"GPT OSS": "openai.gpt-oss-120b-1:0",
+            "Sonnet 4.5": "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+            "Sonnet 4": "us.anthropic.claude-sonnet-4-20250514-v1:0",
             "QWEN Coder": "qwen.qwen3-coder-480b-a35b-v1:0"
         }
         
         selected_model_name = st.selectbox(
             "Select Model",
             options=list(model_options.keys()),
-            index=1,  # Default to Sonnet 4.5
+            index=2,  # Default to Sonnet 4
             help="Choose the Bedrock model for the agent"
         )
         
         selected_model_id = model_options[selected_model_name]
         
         # Store selected model in session state and detect model type changes
+        model_changed = False
         if "selected_model_id" not in st.session_state:
             st.session_state.selected_model_id = selected_model_id
         elif st.session_state.selected_model_id != selected_model_id:
@@ -535,6 +536,7 @@ def main():
             new_is_anthropic = "anthropic" in selected_model_id.lower()
             
             st.session_state.selected_model_id = selected_model_id
+            model_changed = True
             st.info(f"Model changed to {selected_model_name}")
             
             # Automatically clear session when switching between Anthropic and non-Anthropic models
@@ -544,8 +546,30 @@ def main():
                 st.warning("⚠️ Session automatically refreshed due to model type change (Anthropic ↔ non-Anthropic). Conversation history cleared to avoid compatibility issues.")
                 st.rerun()
         
-        with st.expander("View Model ID"):
-            st.code(selected_model_id)
+        # Add refresh session button when model changes
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            with st.expander("View Model ID"):
+                st.code(selected_model_id)
+        
+        with col2:
+            # Show refresh button - more prominent when model changed
+            if model_changed:
+                st.markdown("**🔄 Model Changed**")
+                refresh_clicked = st.button("Refresh", 
+                                          help="Clear conversation history for new model",
+                                          key="refresh_session_model",
+                                          type="primary")
+            else:
+                refresh_clicked = st.button("Refresh", 
+                                          help="Generate new session ID and clear conversation history",
+                                          key="refresh_session_model")
+            
+            if refresh_clicked:
+                st.session_state.runtime_session_id = str(uuid.uuid4())
+                st.session_state.messages = []
+                st.success("✅ Session refreshed!")
+                st.rerun()
         
         # Response formatting options
         st.subheader("Display Options")
