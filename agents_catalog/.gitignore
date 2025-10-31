@@ -52,6 +52,16 @@ venv.bak/
 *.swp
 *.swo
 
+# Docker
+Dockerfile
+.dockerignore
+docker-compose.yml
+docker-compose.yaml
+
+# YAML files
+*.yml
+*.yaml
+
 # OS
 .DS_Store
 Thumbs.db

@@ -34,6 +34,7 @@ async def invoke(payload, context):
 
     user_message = payload["prompt"]
     actor_id = payload.get("actor_id", "DEFAULT")
+    model_id = payload.get("model_id", None)
     
 
     session_id = context.session_id
@@ -46,6 +47,7 @@ async def invoke(payload, context):
             user_message=user_message,
             session_id=session_id,
             actor_id=actor_id,
+            bedrock_model_id=model_id,
         )
     )
 

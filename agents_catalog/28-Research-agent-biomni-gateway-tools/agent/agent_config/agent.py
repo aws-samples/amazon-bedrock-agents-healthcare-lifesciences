@@ -7,6 +7,9 @@ from strands_tools import current_time, retrieve
 from strands.models import BedrockModel
 from strands.tools.mcp import MCPClient
 from typing import List
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class ResearchAgent:
@@ -15,24 +18,34 @@ class ResearchAgent:
         bearer_token: str,
         memory_hook: MemoryHook = None,
         session_manager: AgentCoreMemorySessionManager = None,
-        bedrock_model_id: str = "us.anthropic.claude-sonnet-4-20250514-v1:0",
-        #bedrock_model_id: str = "openai.gpt-oss-120b-1:0",  # Alternative
+        bedrock_model_id: str = None,
         system_prompt: str = None,
         tools: List[callable] = None,
     ):
+        # Set default model if none provided
+        if bedrock_model_id is None:
+            bedrock_model_id = "us.anthropic.claude-sonnet-4-20250514-v1:0"
+        
         self.model_id = bedrock_model_id
         
-        """ self.model = BedrockModel(
-            model_id=self.model_id
-        )  """
-        #for Anthropic Sonnet 4 interleaved thinking
-        self.model = BedrockModel(
-            model_id=self.model_id,
-            additional_request_fields={
-            "anthropic_beta": ["interleaved-thinking-2025-05-14"],
-            "thinking": {"type": "enabled", "budget_tokens": 8000},
-            },
-        ) 
+        # Check if model supports interleaved thinking (Anthropic models only)
+        is_anthropic_model = "anthropic" in self.model_id.lower()
+        
+        if is_anthropic_model:
+            # For Anthropic models (Haiku, Sonnet) with interleaved thinking
+            self.model = BedrockModel(
+                model_id=self.model_id,
+                additional_request_fields={
+                    "anthropic_beta": ["interleaved-thinking-2025-05-14"],
+                    "thinking": {"type": "enabled", "budget_tokens": 8000},
+                },
+            )
+        else:
+            # For non-Anthropic models (GPT, QWEN, etc.)
+            # Don't add any additional_request_fields to avoid sending unsupported parameters
+            self.model = BedrockModel(
+                model_id=self.model_id
+            )
         self.system_prompt = (
             system_prompt
             if system_prompt
@@ -95,12 +108,35 @@ class ResearchAgent:
         self.session_manager = session_manager
         #we are using the fully managed session manager instead of the memory hook
 
+        # Create agent
         self.agent = Agent(
             model=self.model,
             system_prompt=self.system_prompt,
             tools=self.tools,
             session_manager=self.session_manager,
         )
+
+    def update_model(self, new_model_id: str):
+        """Update the model configuration without recreating the agent"""
+        try:
+            old_model_id = self.model_id
+            self.agent.model.update_config(model_id=new_model_id)
+            self.model_id = new_model_id
+            logger.info(f"Model updated from {old_model_id} to {new_model_id}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to update model: {e}")
+            return False
+    
+    def get_current_config(self):
+        """Get the current agent and model configuration"""
+        return {
+            'model_config': self.agent.model.get_config(),
+            'model_id': self.model_id,
+            'system_prompt_length': len(self.system_prompt),
+            'tool_count': len(self.tools),
+            'agent_id': self.agent.agent_id
+        }
 
     def invoke(self, user_query: str):
         try:
@@ -111,6 +147,9 @@ class ResearchAgent:
 
     async def stream(self, user_query: str):
         try:
+            # Emit current model information at the start
+            current_config = self.agent.model.get_config()
+            yield f"🤖 Using model: {current_config.get('model_id', self.model_id)}\n\n"
 
             tool_name = None
             async for event in self.agent.stream_async(user_query):

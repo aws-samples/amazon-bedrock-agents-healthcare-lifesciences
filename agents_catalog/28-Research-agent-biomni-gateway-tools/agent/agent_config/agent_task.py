@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 memory_client = MemoryClient()
 
 
-async def agent_task(user_message: str, session_id: str, actor_id: str):
+async def agent_task(user_message: str, session_id: str, actor_id: str, bedrock_model_id: str = None):
     agent = ResearchContext.get_agent_ctx()
 
     response_queue = ResearchContext.get_response_queue_ctx()
@@ -23,6 +23,19 @@ async def agent_task(user_message: str, session_id: str, actor_id: str):
 
     if not gateway_access_token:
         raise RuntimeError("Gateway Access token is none")
+    
+    # Check if model has changed - update config instead of recreating agent
+    if agent is not None and bedrock_model_id is not None:
+        if agent.model_id != bedrock_model_id:
+            logger.info(f"Model changed from {agent.model_id} to {bedrock_model_id}, updating agent configuration")
+            # Update the model configuration dynamically using the new method
+            success = agent.update_model(bedrock_model_id)
+            if success:
+                logger.info(f"Agent model configuration updated successfully to: {bedrock_model_id}")
+            else:
+                logger.error(f"Failed to update model configuration, will recreate agent")
+                agent = None
+                ResearchContext.set_agent_ctx(None)
     # Below option uses a self managed memory hook with the agent 
     """ try:
         if agent is None:
@@ -68,13 +81,20 @@ async def agent_task(user_message: str, session_id: str, actor_id: str):
                 agentcore_memory_config=agentcore_memory_config
             )
 
-            # Create agent
-            agent = ResearchAgent(
-                bearer_token=gateway_access_token,
-                session_manager=session_manager,
-                tools=[]
+            # Create agent with optional model_id
+            agent_kwargs = {
+                "bearer_token": gateway_access_token,
+                "session_manager": session_manager,
+                "tools": []
                 #tools=[query_pubmed],  # Add custom tools here as needed
-            )
+            }
+            
+            # Add model_id if provided
+            if bedrock_model_id:
+                agent_kwargs["bedrock_model_id"] = bedrock_model_id
+                logger.info(f"Using model: {bedrock_model_id}")
+            
+            agent = ResearchAgent(**agent_kwargs)
 
             logger.info("Agent created successfully")   
 

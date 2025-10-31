@@ -34,7 +34,7 @@ HUMAN_AVATAR = "static/user-profile.svg"
 AI_AVATAR = "static/gen-ai-dark.svg"
 
 
-def fetch_agent_runtimes(region: str = "us-east-1") -> List[Dict]:
+def fetch_agent_runtimes(region: str = "us-west-2") -> List[Dict]:
     """Fetch available agent runtimes from bedrock-agentcore-control"""
     try:
         client = boto3.client("bedrock-agentcore-control", region_name=region)
@@ -57,7 +57,7 @@ def fetch_agent_runtimes(region: str = "us-east-1") -> List[Dict]:
 
 
 def fetch_agent_runtime_versions(
-    agent_runtime_id: str, region: str = "us-east-1"
+    agent_runtime_id: str, region: str = "us-west-2"
 ) -> List[Dict]:
     """Fetch versions for a specific agent runtime"""
     try:
@@ -245,18 +245,24 @@ def invoke_agent_streaming(
     prompt: str,
     agent_arn: str,
     runtime_session_id: str,
-    region: str = "us-east-1",
+    region: str = "us-west-2",
     show_tool: bool = True,
+    model_id: str = None,
 ) -> Iterator[str]:
     """Invoke agent and yield streaming response chunks"""
     try:
         agentcore_client = boto3.client("bedrock-agentcore", region_name=region)
 
+        # Build payload with optional model_id
+        payload_data = {"prompt": prompt}
+        if model_id:
+            payload_data["model_id"] = model_id
+
         boto3_response = agentcore_client.invoke_agent_runtime(
             agentRuntimeArn=agent_arn,
             qualifier="DEFAULT",
             runtimeSessionId=runtime_session_id,
-            payload=json.dumps({"prompt": prompt}),
+            payload=json.dumps(payload_data),
         )
 
         logger.debug(f"contentType: {boto3_response.get('contentType', 'NOT_FOUND')}")
@@ -373,7 +379,7 @@ def main():
         # Region selection (moved up since it affects agent fetching)
         region = st.selectbox(
             "AWS Region",
-            ["us-east-1", "us-west-2", "eu-west-1", "ap-southeast-1"],
+            ["us-west-2", "us-east-1", "eu-west-1", "ap-southeast-1"],
             index=0,
         )
 
@@ -500,6 +506,71 @@ def main():
         if runtime_session_id != st.session_state.runtime_session_id:
             st.session_state.runtime_session_id = runtime_session_id
 
+        # Model selection
+        st.subheader("Model Configuration")
+        
+        # Define available models
+        model_options = {
+            "Haiku 4.5": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+            "Sonnet 4.5": "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+            "Sonnet 4": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+            "QWEN Coder": "qwen.qwen3-coder-480b-a35b-v1:0"
+        }
+        
+        selected_model_name = st.selectbox(
+            "Select Model",
+            options=list(model_options.keys()),
+            index=2,  # Default to Sonnet 4
+            help="Choose the Bedrock model for the agent"
+        )
+        
+        selected_model_id = model_options[selected_model_name]
+        
+        # Store selected model in session state and detect model type changes
+        model_changed = False
+        if "selected_model_id" not in st.session_state:
+            st.session_state.selected_model_id = selected_model_id
+        elif st.session_state.selected_model_id != selected_model_id:
+            old_model_id = st.session_state.selected_model_id
+            old_is_anthropic = "anthropic" in old_model_id.lower()
+            new_is_anthropic = "anthropic" in selected_model_id.lower()
+            
+            st.session_state.selected_model_id = selected_model_id
+            model_changed = True
+            st.info(f"Model changed to {selected_model_name}")
+            
+            # Automatically clear session when switching between Anthropic and non-Anthropic models
+            if old_is_anthropic != new_is_anthropic:
+                st.session_state.runtime_session_id = str(uuid.uuid4())
+                st.session_state.messages = []
+                st.warning("⚠️ Session automatically refreshed due to model type change (Anthropic ↔ non-Anthropic). Conversation history cleared to avoid compatibility issues.")
+                st.rerun()
+        
+        # Add refresh session button when model changes
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            with st.expander("View Model ID"):
+                st.code(selected_model_id)
+        
+        with col2:
+            # Show refresh button - more prominent when model changed
+            if model_changed:
+                st.markdown("**🔄 Model Changed**")
+                refresh_clicked = st.button("Refresh", 
+                                          help="Clear conversation history for new model",
+                                          key="refresh_session_model",
+                                          type="primary")
+            else:
+                refresh_clicked = st.button("Refresh", 
+                                          help="Generate new session ID and clear conversation history",
+                                          key="refresh_session_model")
+            
+            if refresh_clicked:
+                st.session_state.runtime_session_id = str(uuid.uuid4())
+                st.session_state.messages = []
+                st.success("✅ Session refreshed!")
+                st.rerun()
+        
         # Response formatting options
         st.subheader("Display Options")
         auto_format = st.checkbox(
@@ -570,6 +641,7 @@ def main():
                     st.session_state.runtime_session_id,
                     region,
                     show_tools,
+                    st.session_state.selected_model_id,
                 ):
                     # Let's see what we get
                     logger.debug(f"MAIN LOOP: chunk type: {type(chunk)}")
