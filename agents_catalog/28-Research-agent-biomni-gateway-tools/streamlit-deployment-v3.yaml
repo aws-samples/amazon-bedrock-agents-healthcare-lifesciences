@@ -1,0 +1,942 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  Streamlit Application with ECS Fargate, ALB, and Existing Cognito Integration
+  Addresses: No CloudFront exposure, Cognito auth, uses existing User Pool
+
+Parameters:
+  ResourceName:
+    Type: String
+    Description: Name prefix for all resources
+    Default: research-agent-streamlit
+    AllowedPattern: '^[a-z0-9\-]+$'
+
+  ApplicationLoadBalancerSSLCertificate:
+    Type: String
+    Description: ARN of ACM certificate for HTTPS (leave blank for self-signed dev cert)
+    Default: ''
+
+  ApplicationLoadBalancerCIDRWhitelist:
+    Type: String
+    Description: CIDR IP range allowed to access the application
+    Default: '0.0.0.0/0'
+    AllowedPattern: '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))$'
+
+  ContainerImage:
+    Type: String
+    Description: Docker image URI for Streamlit (leave blank to auto-build from source)
+    Default: ''
+
+  GitRepoURL:
+    Type: String
+    Description: Git repository URL for the Streamlit application
+    Default: 'https://github.com/aws-samples/amazon-bedrock-agents-healthcare-lifesciences.git'
+
+  GitBranch:
+    Type: String
+    Description: Git branch to build from
+    Default: 'hosted-streamlit'
+
+  BuildDockerfile:
+    Type: String
+    Description: Path to Dockerfile in the repository
+    Default: 'agents_catalog/28-Research-agent-biomni-gateway-tools/Dockerfile.streamlit.txt'
+
+  # Existing Cognito SSM Parameters
+  CognitoUserPoolIdParameter:
+    Type: String
+    Description: SSM Parameter name for Cognito User Pool ID
+    Default: /app/researchapp/agentcore/userpool_id
+
+  CognitoDomainParameter:
+    Type: String
+    Description: SSM Parameter name for Cognito Domain
+    Default: /app/researchapp/agentcore/cognito_domain
+
+Conditions:
+  UseSelfSignedSSLCertificate: !Equals [!Ref ApplicationLoadBalancerSSLCertificate, '']
+  HasContainerImage: !Not [!Equals [!Ref ContainerImage, '']]
+
+Resources:
+  # Lambda to read SSM parameters
+  GetCognitoConfig:
+    Type: Custom::GetCognitoConfig
+    Properties:
+      ServiceToken: !GetAtt GetCognitoConfigLambda.Arn
+      UserPoolIdParameter: !Ref CognitoUserPoolIdParameter
+      DomainParameter: !Ref CognitoDomainParameter
+
+  GetCognitoConfigLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ResourceName}-get-cognito-config'
+      Handler: index.handler
+      Role: !GetAtt GetCognitoConfigLambdaRole.Arn
+      Runtime: python3.12
+      Timeout: 60
+      Code:
+        ZipFile: |
+          import boto3
+          import cfnresponse
+          
+          def handler(event, context):
+              try:
+                  if event['RequestType'] in ['Create', 'Update']:
+                      ssm = boto3.client('ssm')
+                      
+                      # Get User Pool ID
+                      user_pool_param = event['ResourceProperties']['UserPoolIdParameter']
+                      user_pool_id = ssm.get_parameter(Name=user_pool_param)['Parameter']['Value']
+                      
+                      # Get Cognito Domain
+                      domain_param = event['ResourceProperties']['DomainParameter']
+                      cognito_domain = ssm.get_parameter(Name=domain_param)['Parameter']['Value']
+                      
+                      # Extract just the domain name (remove https://)
+                      domain_name = cognito_domain.replace('https://', '').split('.auth.')[0]
+                      
+                      # Get User Pool ARN
+                      cognito = boto3.client('cognito-idp')
+                      user_pool = cognito.describe_user_pool(UserPoolId=user_pool_id)
+                      user_pool_arn = user_pool['UserPool']['Arn']
+                      
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {
+                          'UserPoolId': user_pool_id,
+                          'UserPoolArn': user_pool_arn,
+                          'DomainName': domain_name,
+                          'FullDomain': cognito_domain
+                      })
+                  else:
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+              except Exception as e:
+                  print(f"Error: {str(e)}")
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {})
+
+  GetCognitoConfigLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: SSMAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                  - ssm:GetParameters
+                Resource:
+                  - !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/app/researchapp/agentcore/*'
+        - PolicyName: CognitoAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cognito-idp:DescribeUserPool
+                Resource: '*'
+
+  # VPC and Networking
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: '10.0.0.0/16'
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${ResourceName}-vpc'
+
+  PublicSubnetAz1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: '10.0.0.0/24'
+      AvailabilityZone: !Select [0, !GetAZs '']
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${ResourceName}-public-subnet-az1'
+
+  PublicSubnetAz2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: '10.0.1.0/24'
+      AvailabilityZone: !Select [1, !GetAZs '']
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${ResourceName}-public-subnet-az2'
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub '${ResourceName}-igw'
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref Vpc
+      InternetGatewayId: !Ref InternetGateway
+
+  RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Sub '${ResourceName}-route-table'
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref RouteTable
+      DestinationCidrBlock: '0.0.0.0/0'
+      GatewayId: !Ref InternetGateway
+
+  SubnetRouteTableAssociation1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnetAz1
+      RouteTableId: !Ref RouteTable
+
+  SubnetRouteTableAssociation2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnetAz2
+      RouteTableId: !Ref RouteTable
+
+  # Security Groups
+  AlbSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ALB Security Group
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - Description: HTTPS from allowed CIDR
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: !Ref ApplicationLoadBalancerCIDRWhitelist
+        - Description: HTTP redirect to HTTPS
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: !Ref ApplicationLoadBalancerCIDRWhitelist
+      SecurityGroupEgress:
+        - Description: HTTPS to Cognito
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: '0.0.0.0/0'
+      Tags:
+        - Key: Name
+          Value: !Sub '${ResourceName}-alb-sg'
+
+  AlbToEcsSecurityGroupRule:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      Description: ALB to ECS on port 8501
+      GroupId: !Ref AlbSecurityGroup
+      IpProtocol: tcp
+      FromPort: 8501
+      ToPort: 8501
+      DestinationSecurityGroupId: !Ref EcsSecurityGroup
+
+  EcsSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ECS Security Group
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - Description: From ALB on port 8501
+          IpProtocol: tcp
+          FromPort: 8501
+          ToPort: 8501
+          SourceSecurityGroupId: !Ref AlbSecurityGroup
+      SecurityGroupEgress:
+        - Description: HTTPS for AWS API calls
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: '0.0.0.0/0'
+      Tags:
+        - Key: Name
+          Value: !Sub '${ResourceName}-ecs-sg'
+
+  # Application Load Balancer
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub '${ResourceName}-alb'
+      Scheme: internet-facing
+      Type: application
+      SecurityGroups:
+        - !Ref AlbSecurityGroup
+      Subnets:
+        - !Ref PublicSubnetAz1
+        - !Ref PublicSubnetAz2
+      Tags:
+        - Key: Name
+          Value: !Sub '${ResourceName}-alb'
+
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub '${ResourceName}-tg'
+      VpcId: !Ref Vpc
+      Port: 8501
+      Protocol: HTTP
+      TargetType: ip
+      HealthCheckEnabled: true
+      HealthCheckPath: /
+      HealthCheckProtocol: HTTP
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 3
+      Tags:
+        - Key: Name
+          Value: !Sub '${ResourceName}-tg'
+
+  # Cognito User Pool Client for ALB
+  CognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub '${ResourceName}-alb-client'
+      UserPoolId: !GetAtt GetCognitoConfig.UserPoolId
+      GenerateSecret: true
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthScopes:
+        - openid
+        - email
+        - profile
+      SupportedIdentityProviders:
+        - COGNITO
+      CallbackURLs:
+        - !GetAtt CallbackURL.OutputString
+      ExplicitAuthFlows:
+        - ALLOW_REFRESH_TOKEN_AUTH
+      RefreshTokenValidity: 30
+      PreventUserExistenceErrors: ENABLED
+
+  # Lambda for callback URL
+  CallbackURL:
+    Type: Custom::CallbackURL
+    Properties:
+      ServiceToken: !GetAtt StringFunctionsLambda.Arn
+      Function: lower
+      InputString: !Sub 'https://${ApplicationLoadBalancer.DNSName}/oauth2/idpresponse'
+
+  StringFunctionsLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ResourceName}-string-functions'
+      Handler: index.handler
+      Role: !GetAtt StringFunctionsLambdaRole.Arn
+      Runtime: python3.12
+      Timeout: 60
+      Code:
+        ZipFile: |
+          import cfnresponse
+          
+          def handler(event, context):
+              try:
+                  if event['RequestType'] in ['Create', 'Update']:
+                      function = event['ResourceProperties']['Function']
+                      if function == 'lower':
+                          input_string = event['ResourceProperties']['InputString']
+                          output_string = input_string.lower()
+                      else:
+                          raise ValueError('Unsupported function.')
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, 
+                                     {'OutputString': output_string})
+                  else:
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+              except Exception as e:
+                  print(f"Error: {str(e)}")
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {})
+
+  StringFunctionsLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  # Self-Signed Certificate (conditional)
+  SelfSignedCertificate:
+    Type: Custom::SelfSignedCertificate
+    Condition: UseSelfSignedSSLCertificate
+    Properties:
+      ServiceToken: !GetAtt CreateCertificateLambda.Arn
+
+  CreateCertificateLambda:
+    Type: AWS::Lambda::Function
+    Condition: UseSelfSignedSSLCertificate
+    Properties:
+      FunctionName: !Sub '${ResourceName}-create-cert'
+      Handler: index.handler
+      Role: !GetAtt CreateCertificateLambdaRole.Arn
+      Runtime: python3.12
+      Timeout: 120
+      Code:
+        ZipFile: |
+          import boto3
+          import cfnresponse
+          from datetime import datetime, timedelta
+          import subprocess
+          import sys
+          import tempfile
+          from pathlib import Path
+          
+          def handler(event, context):
+              try:
+                  if event['RequestType'] == 'Create':
+                      tmp_path = Path(tempfile.gettempdir())
+                      subprocess.check_call([
+                          sys.executable, "-m", "pip", "install",
+                          "--target={}".format(tmp_path), "cryptography"
+                      ])
+                      sys.path.append(str(tmp_path))
+                      
+                      from cryptography.hazmat.backends import default_backend
+                      from cryptography.hazmat.primitives import serialization, hashes
+                      from cryptography.hazmat.primitives.asymmetric import rsa
+                      from cryptography import x509
+                      from cryptography.x509.oid import NameOID
+                      
+                      key = rsa.generate_private_key(
+                          public_exponent=65537, key_size=2048,
+                          backend=default_backend()
+                      )
+                      
+                      subject = issuer = x509.Name([
+                          x509.NameAttribute(NameOID.COUNTRY_NAME, "US"),
+                          x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, "WA"),
+                          x509.NameAttribute(NameOID.LOCALITY_NAME, "Seattle"),
+                          x509.NameAttribute(NameOID.ORGANIZATION_NAME, "AWS"),
+                          x509.NameAttribute(NameOID.COMMON_NAME, "localhost")
+                      ])
+                      
+                      cert = x509.CertificateBuilder()
+                      cert = cert.subject_name(subject)
+                      cert = cert.issuer_name(issuer)
+                      cert = cert.public_key(key.public_key())
+                      cert = cert.serial_number(x509.random_serial_number())
+                      cert = cert.not_valid_before(datetime.utcnow())
+                      cert = cert.not_valid_after(datetime.utcnow() + timedelta(days=365))
+                      cert = cert.add_extension(
+                          x509.SubjectAlternativeName([x509.DNSName("localhost")]),
+                          critical=False,
+                      )
+                      cert = cert.sign(key, hashes.SHA256(), default_backend())
+                      
+                      cert_pem = cert.public_bytes(serialization.Encoding.PEM)
+                      key_pem = key.private_bytes(
+                          encoding=serialization.Encoding.PEM,
+                          format=serialization.PrivateFormat.TraditionalOpenSSL,
+                          encryption_algorithm=serialization.NoEncryption()
+                      )
+                      
+                      acm = boto3.client('acm')
+                      response = acm.import_certificate(
+                          Certificate=cert_pem, PrivateKey=key_pem
+                      )
+                      
+                      cert_arn = response['CertificateArn']
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, 
+                                     {'CertificateArn': cert_arn}, cert_arn)
+                  
+                  elif event['RequestType'] == 'Delete':
+                      cert_arn = event['PhysicalResourceId']
+                      if cert_arn and cert_arn.startswith('arn:'):
+                          acm = boto3.client('acm')
+                          try:
+                              acm.delete_certificate(CertificateArn=cert_arn)
+                          except Exception as e:
+                              print(f"Error deleting certificate: {str(e)}")
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+                  
+                  else:
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+              
+              except Exception as e:
+                  print(f"Error: {str(e)}")
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {})
+
+  CreateCertificateLambdaRole:
+    Type: AWS::IAM::Role
+    Condition: UseSelfSignedSSLCertificate
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: ACMAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - acm:ImportCertificate
+                  - acm:DeleteCertificate
+                Resource: '*'
+
+  # ALB Listeners
+  HttpsListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 443
+      Protocol: HTTPS
+      SslPolicy: ELBSecurityPolicy-TLS13-1-2-2021-06
+      Certificates:
+        - CertificateArn: !If
+            - UseSelfSignedSSLCertificate
+            - !Ref SelfSignedCertificate
+            - !Ref ApplicationLoadBalancerSSLCertificate
+      DefaultActions:
+        - Order: 1
+          Type: authenticate-cognito
+          AuthenticateCognitoConfig:
+            UserPoolArn: !GetAtt GetCognitoConfig.UserPoolArn
+            UserPoolClientId: !Ref CognitoUserPoolClient
+            UserPoolDomain: !GetAtt GetCognitoConfig.DomainName
+        - Order: 2
+          Type: forward
+          TargetGroupArn: !Ref TargetGroup
+
+  HttpListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: redirect
+          RedirectConfig:
+            Protocol: HTTPS
+            Port: '443'
+            StatusCode: HTTP_301
+
+  # ECS Resources
+  EcsCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub '${ResourceName}-cluster'
+      ClusterSettings:
+        - Name: containerInsights
+          Value: enabled
+
+  EcsTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+  EcsTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: BedrockAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                  - bedrock-runtime:InvokeModel
+                  - bedrock-runtime:InvokeModelWithResponseStream
+                  - bedrock-agentcore:InvokeAgentRuntime
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - bedrock-agentcore-control:ListAgentRuntimes
+                  - bedrock-agentcore-control:ListAgentRuntimeVersions
+                  - bedrock-agentcore-control:GetAgentRuntime
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                  - ssm:GetParameters
+                Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/*'
+
+  EcsTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub '${ResourceName}-task'
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      Cpu: '1024'
+      Memory: '2048'
+      ExecutionRoleArn: !GetAtt EcsTaskExecutionRole.Arn
+      TaskRoleArn: !GetAtt EcsTaskRole.Arn
+      ContainerDefinitions:
+        - Name: streamlit-app
+          Image: !If
+            - HasContainerImage
+            - !Ref ContainerImage
+            - !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ECRRepository}:latest'
+          PortMappings:
+            - ContainerPort: 8501
+              Protocol: tcp
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref EcsLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+          Environment:
+            - Name: AWS_DEFAULT_REGION
+              Value: !Ref AWS::Region
+
+  EcsLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/ecs/${ResourceName}'
+      RetentionInDays: 7
+
+  EcsService:
+    Type: AWS::ECS::Service
+    DependsOn: HttpsListener
+    Properties:
+      ServiceName: !Sub '${ResourceName}-service'
+      Cluster: !Ref EcsCluster
+      TaskDefinition: !Ref EcsTaskDefinition
+      DesiredCount: 0
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - !Ref EcsSecurityGroup
+          Subnets:
+            - !Ref PublicSubnetAz1
+            - !Ref PublicSubnetAz2
+      LoadBalancers:
+        - ContainerName: streamlit-app
+          ContainerPort: 8501
+          TargetGroupArn: !Ref TargetGroup
+
+  # ECR Repository
+  ECRRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Ref ResourceName
+      EmptyOnDelete: true
+      ImageScanningConfiguration:
+        ScanOnPush: true
+
+  # CodeBuild Project
+  CodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub '${ResourceName}-build'
+      ServiceRole: !GetAtt CodeBuildRole.Arn
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:7.0
+        PrivilegedMode: true
+        EnvironmentVariables:
+          - Name: AWS_DEFAULT_REGION
+            Value: !Ref AWS::Region
+          - Name: AWS_ACCOUNT_ID
+            Value: !Ref AWS::AccountId
+          - Name: IMAGE_REPO_NAME
+            Value: !Ref ResourceName
+          - Name: IMAGE_TAG
+            Value: latest
+          - Name: DOCKERFILE_PATH
+            Value: !Ref BuildDockerfile
+          - Name: GIT_BRANCH
+            Value: !Ref GitBranch
+      Source:
+        Type: GITHUB
+        Location: !Ref GitRepoURL
+        BuildSpec: |
+          version: 0.2
+          phases:
+            pre_build:
+              commands:
+                - echo "Starting pre_build phase"
+                - echo "Current directory:" && pwd
+                - echo "Listing root directory:"
+                - ls -la
+                - echo "Logging into Amazon ECR..."
+                - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+                - echo "ECR login complete"
+            build:
+              commands:
+                - echo "Starting build phase"
+                - echo "Dockerfile path is $DOCKERFILE_PATH"
+                - DOCKERFILE_DIR=$(dirname "$DOCKERFILE_PATH")
+                - DOCKERFILE_NAME=$(basename "$DOCKERFILE_PATH")
+                - echo "Navigating to directory $DOCKERFILE_DIR"
+                - cd "$DOCKERFILE_DIR"
+                - echo "Current directory:" && pwd
+                - echo "Listing files:"
+                - ls -la
+                - echo "Renaming Dockerfile.streamlit.txt to Dockerfile.streamlit"
+                - mv Dockerfile.streamlit.txt Dockerfile.streamlit
+                - echo "Building Docker image..."
+                - docker build -f Dockerfile.streamlit -t $IMAGE_REPO_NAME:$IMAGE_TAG .
+                - echo "Tagging Docker image..."
+                - docker tag $IMAGE_REPO_NAME:$IMAGE_TAG $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG
+                - echo "Docker image tagged"
+            post_build:
+              commands:
+                - echo "Starting post_build phase"
+                - echo "Pushing Docker image to ECR..."
+                - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG
+                - echo "Docker image pushed to ECR"
+                - echo "Build completed on $(date)"
+      LogsConfig:
+        CloudWatchLogs:
+          Status: ENABLED
+          GroupName: !Ref CodeBuildLogGroup
+      TimeoutInMinutes: 15
+
+  CodeBuildLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/codebuild/${ResourceName}'
+      RetentionInDays: 7
+
+  CodeBuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CodeBuildPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:${CodeBuildLogGroup}'
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:${CodeBuildLogGroup}:*'
+              - Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchGetImage
+                  - ecr:PutImage
+                  - ecr:InitiateLayerUpload
+                  - ecr:UploadLayerPart
+                  - ecr:CompleteLayerUpload
+                Resource: !GetAtt ECRRepository.Arn
+
+  # Lambda to trigger CodeBuild
+  TriggerBuildLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ResourceName}-trigger-build'
+      Handler: index.handler
+      Role: !GetAtt TriggerBuildLambdaRole.Arn
+      Runtime: python3.12
+      Timeout: 900
+      Code:
+        ZipFile: |
+          import boto3
+          import cfnresponse
+          import time
+          
+          def handler(event, context):
+              try:
+                  if event['RequestType'] in ['Create', 'Update']:
+                      codebuild = boto3.client('codebuild')
+                      ecs = boto3.client('ecs')
+                      
+                      project_name = event['ResourceProperties']['ProjectName']
+                      cluster_name = event['ResourceProperties'].get('ClusterName')
+                      service_name = event['ResourceProperties'].get('ServiceName')
+                      
+                      # Start build
+                      print(f"Starting build for project: {project_name}")
+                      response = codebuild.start_build(projectName=project_name)
+                      build_id = response['build']['id']
+                      print(f"Build started: {build_id}")
+                      
+                      # Wait for build to complete
+                      while True:
+                          build_status = codebuild.batch_get_builds(ids=[build_id])['builds'][0]['buildStatus']
+                          print(f"Build status: {build_status}")
+                          
+                          if build_status == 'SUCCEEDED':
+                              print("Build completed successfully")
+                              break
+                          elif build_status in ['FAILED', 'STOPPED', 'TIMED_OUT']:
+                              print(f"Build failed with status: {build_status}")
+                              cfnresponse.send(event, context, cfnresponse.FAILED, 
+                                             {"Error": f"Build failed: {build_status}"})
+                              return
+                          
+                          time.sleep(15)
+                      
+                      # Update ECS service if provided
+                      if cluster_name and service_name:
+                          print(f"Updating ECS service: {service_name}")
+                          ecs.update_service(
+                              cluster=cluster_name,
+                              service=service_name,
+                              forceNewDeployment=True,
+                              desiredCount=1
+                          )
+                          print("ECS service updated")
+                      
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, 
+                                     {"BuildId": build_id})
+                  else:
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+              except Exception as e:
+                  print(f"Error: {str(e)}")
+                  cfnresponse.send(event, context, cfnresponse.FAILED, 
+                                 {"Error": str(e)})
+
+  TriggerBuildLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: CodeBuildAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - codebuild:StartBuild
+                  - codebuild:BatchGetBuilds
+                Resource: !GetAtt CodeBuildProject.Arn
+              - Effect: Allow
+                Action:
+                  - ecs:UpdateService
+                Resource: !Sub 'arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:service/${EcsCluster}/${EcsService.Name}'
+
+  # Trigger build on stack creation
+  TriggerBuild:
+    Type: Custom::TriggerBuild
+    DependsOn:
+      - CodeBuildProject
+      - ECRRepository
+      - EcsService
+    Properties:
+      ServiceToken: !GetAtt TriggerBuildLambda.Arn
+      ProjectName: !Ref CodeBuildProject
+      ClusterName: !Ref EcsCluster
+      ServiceName: !GetAtt EcsService.Name
+
+Outputs:
+  ApplicationURL:
+    Description: URL to access the Streamlit application
+    Value: !Sub 'https://${ApplicationLoadBalancer.DNSName}'
+
+  LoadBalancerDNS:
+    Description: DNS name of the Application Load Balancer
+    Value: !GetAtt ApplicationLoadBalancer.DNSName
+
+  CognitoUserPoolId:
+    Description: Cognito User Pool ID (existing)
+    Value: !GetAtt GetCognitoConfig.UserPoolId
+
+  CognitoUserPoolClientId:
+    Description: Cognito User Pool Client ID (ALB-specific)
+    Value: !Ref CognitoUserPoolClient
+
+  CognitoDomain:
+    Description: Cognito Domain (existing)
+    Value: !GetAtt GetCognitoConfig.FullDomain
+
+  CognitoUsersConsoleURL:
+    Description: URL to manage Cognito users
+    Value: !Sub 'https://${AWS::Region}.console.aws.amazon.com/cognito/v2/idp/user-pools/${GetCognitoConfig.UserPoolId}/users'
+
+  EcsClusterName:
+    Description: ECS Cluster Name
+    Value: !Ref EcsCluster
+
+  EcsServiceName:
+    Description: ECS Service Name
+    Value: !GetAtt EcsService.Name
+
+  SecurityNote:
+    Description: Security improvements over CloudFront approach
+    Value: 'No CloudFront exposure - Cognito authentication required at ALB - HTTPS only'
+
+  ECRRepositoryURI:
+    Description: ECR Repository URI
+    Value: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ECRRepository}'
+
+  CodeBuildProjectName:
+    Description: CodeBuild project name for rebuilding the image
+    Value: !Ref CodeBuildProject
+
+  CodeBuildConsoleURL:
+    Description: URL to view CodeBuild project
+    Value: !Sub 'https://console.aws.amazon.com/codesuite/codebuild/projects/${CodeBuildProject}?region=${AWS::Region}'
