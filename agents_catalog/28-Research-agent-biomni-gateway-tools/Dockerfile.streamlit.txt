@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM public.ecr.aws/docker/library/python:3.11-slim
 
 WORKDIR /app
 
@@ -20,8 +20,7 @@ COPY . .
 
 # Verify required files exist
 RUN ls -la && \
-    test -f app_oauth.py && echo "✓ app_oauth.py found" || (echo "✗ app_oauth.py not found" && exit 1) && \
-    test -d app_modules && echo "✓ app_modules found" || (echo "✗ app_modules not found" && exit 1)
+    test -f app.py && echo "✓ app.py found" || (echo "✗ app.py not found" && exit 1)
 
 # Expose port
 EXPOSE 8501
@@ -31,4 +30,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8501/_stcore/health || exit 1
 
 # Run Streamlit
-CMD ["streamlit", "run", "app_oauth.py", "--server.port=8501", "--server.address=0.0.0.0", "--server.headless=true", "--server.enableCORS=false", "--server.enableXsrfProtection=false"]
+CMD ["streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0", "--server.headless=true", "--server.enableCORS=false", "--server.enableXsrfProtection=false"]
