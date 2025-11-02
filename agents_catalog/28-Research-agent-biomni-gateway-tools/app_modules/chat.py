@@ -21,10 +21,15 @@ class ChatManager:
             st.session_state["session_id"] = str(uuid.uuid4())
 
         if "agent_arn" not in st.session_state:
-            runtime_config = read_config(".bedrock_agentcore.yaml")
-            st.session_state["agent_arn"] = runtime_config["agents"][self.agent_name][
-                "bedrock_agentcore"
-            ]["agent_arn"]
+            # Try to load from config file, but don't fail if not found
+            try:
+                runtime_config = read_config(".bedrock_agentcore.yaml")
+                st.session_state["agent_arn"] = runtime_config["agents"][self.agent_name][
+                    "bedrock_agentcore"
+                ]["agent_arn"]
+            except (FileNotFoundError, KeyError):
+                # Will be set by agent discovery in main.py
+                st.session_state["agent_arn"] = None
 
         if "region" not in st.session_state:
             st.session_state["region"] = get_aws_region()

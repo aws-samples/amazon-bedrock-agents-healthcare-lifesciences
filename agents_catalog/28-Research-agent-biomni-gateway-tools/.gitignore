@@ -44,7 +44,7 @@ Thumbs.db
 # AgentCore
 .bedrock_agentcore.yaml
 .bedrock_agentcore/
-Dockerfile
+# Note: Dockerfile.streamlit is intentionally NOT ignored
 
 # Folders
 prerequisite/lambda-database/python/schema_db/
