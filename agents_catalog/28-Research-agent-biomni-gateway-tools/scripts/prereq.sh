@@ -99,13 +99,50 @@ echo "✅ CloudFormation Deployment complete."
 # python prerequisite/knowledge_base.py --mode create
 # echo "✅ Deployment complete."
 
+# ----- 7. Optional: Deploy Streamlit UI -----
+read -p "🌐 Deploy Streamlit web UI? (y/N): " deploy_streamlit
+if [[ "$deploy_streamlit" =~ ^[Yy]$ ]]; then
+  STREAMLIT_STACK_NAME=${5:-research-agent-streamlit}
+  STREAMLIT_TEMPLATE_FILE="streamlit-deployment-v3.yaml"
+  
+  # Get Cognito details from SSM
+  COGNITO_USER_POOL_ID=$(aws ssm get-parameter --name '/app/researchapp/agentcore/userpool_id' --query 'Parameter.Value' --output text 2>/dev/null || echo "")
+  COGNITO_DOMAIN=$(aws ssm get-parameter --name '/app/researchapp/agentcore/cognito_domain' --query 'Parameter.Value' --output text 2>/dev/null || echo "")
+  
+  if [[ -z "$COGNITO_USER_POOL_ID" || -z "$COGNITO_DOMAIN" ]]; then
+    echo "❌ Error: Cognito configuration not found in SSM. Skipping Streamlit deployment."
+  else
+    echo "🔧 Deploying Streamlit UI stack..."
+    
+    # Optional: Ask for SSL certificate ARN
+    read -p "Enter ACM SSL Certificate ARN (leave empty for self-signed dev cert): " SSL_CERT_ARN
+    
+    # Optional: Ask for CIDR whitelist
+    read -p "Enter CIDR whitelist for ALB access (default: 0.0.0.0/0): " CIDR_WHITELIST
+    CIDR_WHITELIST=${CIDR_WHITELIST:-0.0.0.0/0}
+    
+    # Deploy Streamlit stack
+    STREAMLIT_PARAMS=(
+      "ResourceName=$STREAMLIT_STACK_NAME"
+      "ApplicationLoadBalancerCIDRWhitelist=$CIDR_WHITELIST"
+    )
+    
+    if [[ -n "$SSL_CERT_ARN" ]]; then
+      STREAMLIT_PARAMS+=("ApplicationLoadBalancerSSLCertificate=$SSL_CERT_ARN")
+    fi
+    
+    deploy_stack "$STREAMLIT_STACK_NAME" "$STREAMLIT_TEMPLATE_FILE" --parameter-overrides "${STREAMLIT_PARAMS[@]}"
+    streamlit_exit_code=$?
+    
+    if [ $streamlit_exit_code -eq 0 ]; then
+      echo ""
+      echo "✅ Streamlit UI deployed successfully!"
+      echo ""
+    fi
+  fi
+else
+  echo "ℹ️ Skipping Streamlit UI deployment"
+fi
+
 echo ""
-echo "📝 IMPORTANT: Update Literature Lambda Environment Variables"
-echo "   Before using the literature research functions, update these SSM parameters:"
-echo ""
-echo "   # Update Anthropic API key for web search and advanced research"
-echo "   aws ssm put-parameter --name '/app/researchapp/anthropic_api_key' --value 'your-actual-api-key' --type 'SecureString' --overwrite"
-echo ""
-echo "   # Update PubMed email for API requests"
-echo "   aws ssm put-parameter --name '/app/researchapp/pubmed_email' --value 'your-email@example.com' --type 'String' --overwrite"
-echo ""
+echo "🎉 Deployment complete!"

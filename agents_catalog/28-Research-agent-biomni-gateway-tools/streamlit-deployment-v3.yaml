@@ -143,6 +143,23 @@ Resources:
                   - cognito-idp:DescribeUserPool
                 Resource: '*'
 
+  # Cognito User Pool Client for ALB Authentication
+  CognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub '${ResourceName}-alb-client'
+      UserPoolId: !GetAtt GetCognitoConfig.UserPoolId
+      GenerateSecret: true
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthScopes:
+        - openid
+      AllowedOAuthFlowsUserPoolClient: true
+      CallbackURLs:
+        - !Sub 'https://${ApplicationLoadBalancer.DNSName}/oauth2/idpresponse'
+      SupportedIdentityProviders:
+        - COGNITO
+
   # VPC and Networking
   Vpc:
     Type: AWS::EC2::VPC
@@ -586,15 +603,10 @@ Resources:
                 Action:
                   - bedrock:InvokeModel
                   - bedrock:InvokeModelWithResponseStream
-                  - bedrock-runtime:InvokeModel
-                  - bedrock-runtime:InvokeModelWithResponseStream
                   - bedrock-agentcore:InvokeAgentRuntime
-                Resource: '*'
-              - Effect: Allow
-                Action:
-                  - bedrock-agentcore-control:ListAgentRuntimes
-                  - bedrock-agentcore-control:ListAgentRuntimeVersions
-                  - bedrock-agentcore-control:GetAgentRuntime
+                  - bedrock-agentcore:ListAgentRuntimes
+                  - bedrock-agentcore:ListAgentRuntimeVersions
+                  - bedrock-agentcore:GetAgentRuntime
                 Resource: '*'
               - Effect: Allow
                 Action:
@@ -631,6 +643,8 @@ Resources:
           Environment:
             - Name: AWS_DEFAULT_REGION
               Value: !Ref AWS::Region
+            - Name: REDIRECT_URI
+              Value: !Sub 'https://${ApplicationLoadBalancer.DNSName}/'
 
   EcsLogGroup:
     Type: AWS::Logs::LogGroup
@@ -695,18 +709,20 @@ Resources:
             Value: !Ref BuildDockerfile
           - Name: GIT_BRANCH
             Value: !Ref GitBranch
+          - Name: GIT_REPO_URL
+            Value: !Ref GitRepoURL
       Source:
-        Type: GITHUB
-        Location: !Ref GitRepoURL
+        Type: NO_SOURCE
         BuildSpec: |
           version: 0.2
           phases:
             pre_build:
               commands:
                 - echo "Starting pre_build phase"
+                - echo "Cloning Git repository from branch $GIT_BRANCH..."
+                - GIT_LFS_SKIP_SMUDGE=1 git clone -b $GIT_BRANCH --single-branch $GIT_REPO_URL repo
+                - cd repo
                 - echo "Current directory:" && pwd
-                - echo "Listing root directory:"
-                - ls -la
                 - echo "Logging into Amazon ECR..."
                 - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
                 - echo "ECR login complete"
