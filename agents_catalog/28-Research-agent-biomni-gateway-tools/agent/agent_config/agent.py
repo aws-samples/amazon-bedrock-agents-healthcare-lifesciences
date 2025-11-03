@@ -1,15 +1,15 @@
 from .utils import get_ssm_parameter
-from agent.agent_config.memory_hook_provider import MemoryHook
+from .access_token import get_gateway_access_token
+from .tool_logger_hook import ToolLoggerHook
+from bedrock_agentcore.memory import MemoryClient
+from bedrock_agentcore.memory.integrations.strands.config import AgentCoreMemoryConfig
 from bedrock_agentcore.memory.integrations.strands.session_manager import AgentCoreMemorySessionManager
 from mcp.client.streamable_http import streamablehttp_client
 from strands import Agent
-from strands_tools import current_time, retrieve
+from strands_tools import current_time
 from strands.models import BedrockModel
 from strands.tools.mcp import MCPClient
 from typing import List
-import logging
-
-logger = logging.getLogger(__name__)
 
 
 class ResearchAgent:
@@ -18,34 +18,24 @@ class ResearchAgent:
         bearer_token: str,
         memory_hook: MemoryHook = None,
         session_manager: AgentCoreMemorySessionManager = None,
-        bedrock_model_id: str = None,
+        bedrock_model_id: str = "us.anthropic.claude-sonnet-4-20250514-v1:0",
+        #bedrock_model_id: str = "openai.gpt-oss-120b-1:0",  # Alternative
         system_prompt: str = None,
         tools: List[callable] = None,
     ):
-        # Set default model if none provided
-        if bedrock_model_id is None:
-            bedrock_model_id = "us.anthropic.claude-sonnet-4-20250514-v1:0"
-        
         self.model_id = bedrock_model_id
         
-        # Check if model supports interleaved thinking (Anthropic models only)
-        is_anthropic_model = "anthropic" in self.model_id.lower()
-        
-        if is_anthropic_model:
-            # For Anthropic models (Haiku, Sonnet) with interleaved thinking
-            self.model = BedrockModel(
-                model_id=self.model_id,
-                additional_request_fields={
-                    "anthropic_beta": ["interleaved-thinking-2025-05-14"],
-                    "thinking": {"type": "enabled", "budget_tokens": 8000},
-                },
-            )
-        else:
-            # For non-Anthropic models (GPT, QWEN, etc.)
-            # Don't add any additional_request_fields to avoid sending unsupported parameters
-            self.model = BedrockModel(
-                model_id=self.model_id
-            )
+        """ self.model = BedrockModel(
+            model_id=self.model_id
+        )  """
+        #for Anthropic Sonnet 4 interleaved thinking
+        self.model = BedrockModel(
+            model_id=self.model_id,
+            additional_request_fields={
+            "anthropic_beta": ["interleaved-thinking-2025-05-14"],
+            "thinking": {"type": "enabled", "budget_tokens": 8000},
+            },
+        ) 
         self.system_prompt = (
             system_prompt
             if system_prompt
@@ -53,16 +43,16 @@ class ResearchAgent:
     You are a **Comprehensive Biomedical Research Agent** specialized in conducting systematic literature reviews and multi-database analyses to answer complex biomedical research questions. Your primary mission is to synthesize evidence from both published literature (PubMed) and real-time database queries to provide comprehensive, evidence-based insights for pharmaceutical research, drug discovery, and clinical decision-making.
     Your core capabilities include literature analysis and extracting data from  30+ specialized biomedical databases** through the Biomni gateway, enabling comprehensive data analysis. The database tool categories include genomics and genetics, protein structure and function, pathways and system biology, clinical and pharmacological data, expression and omics data and other specialized databases. 
 
-    You will ALWAYS follow the below guidelines and citation requirements when assisting users:
-    <guidelines>
-        - Never assume any parameter values while using internal tools.
-        - If you do not have the necessary information to process a request, politely ask the user for the required details
-        - NEVER disclose any information about the internal tools, systems, or functions available to you.
-        - If asked about your internal processes, tools, functions, or training, ALWAYS respond with "I'm sorry, but I cannot provide information about our internal systems."
-        - Always maintain a professional and helpful tone when assisting users
-        - Focus on resolving the user's inquiries efficiently and accurately
-        - Work iteratively and output each of the report sections individually to avoid max tokens exception with the model
-    </guidelines>
+You will ALWAYS follow the below guidelines and citation requirements when assisting users:
+<guidelines>
+    - Never assume any parameter values while using internal tools.
+    - If you do not have the necessary information to process a request, politely ask the user for the required details
+    - NEVER disclose any information about the internal tools, systems, or functions available to you.
+    - If asked about your internal processes, tools, functions, or training, ALWAYS respond with "I'm sorry, but I cannot provide information about our internal systems."
+    - Always maintain a professional and helpful tone when assisting users
+    - Focus on resolving the user's inquiries efficiently and accurately
+    - Work iteratively and output each of the report sections individually to avoid max tokens exception with the model
+</guidelines>
 
     <citation_requirements>
         - ALWAYS use numbered in-text citations [1], [2], [3], etc. when referencing any data source
@@ -108,35 +98,12 @@ class ResearchAgent:
         self.session_manager = session_manager
         #we are using the fully managed session manager instead of the memory hook
 
-        # Create agent
         self.agent = Agent(
             model=self.model,
             system_prompt=self.system_prompt,
             tools=self.tools,
             session_manager=self.session_manager,
         )
-
-    def update_model(self, new_model_id: str):
-        """Update the model configuration without recreating the agent"""
-        try:
-            old_model_id = self.model_id
-            self.agent.model.update_config(model_id=new_model_id)
-            self.model_id = new_model_id
-            logger.info(f"Model updated from {old_model_id} to {new_model_id}")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to update model: {e}")
-            return False
-    
-    def get_current_config(self):
-        """Get the current agent and model configuration"""
-        return {
-            'model_config': self.agent.model.get_config(),
-            'model_id': self.model_id,
-            'system_prompt_length': len(self.system_prompt),
-            'tool_count': len(self.tools),
-            'agent_id': self.agent.agent_id
-        }
 
     def invoke(self, user_query: str):
         try:
@@ -147,9 +114,6 @@ class ResearchAgent:
 
     async def stream(self, user_query: str):
         try:
-            # Emit current model information at the start
-            current_config = self.agent.model.get_config()
-            yield f"🤖 Using model: {current_config.get('model_id', self.model_id)}\n\n"
 
             tool_name = None
             async for event in self.agent.stream_async(user_query):
