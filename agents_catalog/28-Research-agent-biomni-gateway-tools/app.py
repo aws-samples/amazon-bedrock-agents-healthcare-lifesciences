@@ -254,21 +254,8 @@ def invoke_agent_with_model(
     model_id: str,
     show_tool: bool = True,
 ) -> Iterator[str]:
-    """Invoke agent with selected model using agent_task"""
+    """Invoke agent with selected model using agent_task - streams chunks as they arrive"""
     try:
-        # Run the async agent_task in sync context
-        async def run_agent():
-            chunks = []
-            async for chunk in agent_task(
-                user_message=prompt,
-                session_id=session_id,
-                actor_id="streamlit-user",
-                use_semantic_search=False,
-                model_id=model_id
-            ):
-                chunks.append(chunk)
-            return chunks
-        
         # Get or create event loop - handle both cases
         try:
             loop = asyncio.get_event_loop()
@@ -279,20 +266,33 @@ def invoke_agent_with_model(
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
         
-        # Run the async generator and collect results
-        chunks = loop.run_until_complete(run_agent())
+        # Create async generator
+        async_gen = agent_task(
+            user_message=prompt,
+            session_id=session_id,
+            actor_id="streamlit-user",
+            use_semantic_search=False,
+            model_id=model_id
+        )
         
-        # Yield chunks
-        for chunk in chunks:
-            if not show_tool and "🔧" in chunk:
-                continue
-            yield chunk
+        # Stream chunks as they arrive instead of collecting them all first
+        while True:
+            try:
+                # Get next chunk from async generator
+                chunk = loop.run_until_complete(async_gen.__anext__())
+                
+                # Filter out tool usage if requested
+                if not show_tool and "🔧" in chunk:
+                    continue
+                    
+                yield chunk
+                
+            except StopAsyncIteration:
+                # Async generator is exhausted
+                break
             
     except Exception as e:
         logger.error(f"Error invoking agent: {e}")
-        yield f"Error invoking agent: {str(e)}"
-
-
 def main():
     st.logo("static/agentcore-service-icon.png", size="large")
     st.title("Amazon Bedrock AgentCore Chat")
@@ -438,9 +438,8 @@ def main():
             "Haiku 4.5": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
             "Sonnet 4.5": "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
             "Sonnet 4": "us.anthropic.claude-sonnet-4-20250514-v1:0",
-            "QWEN Coder 30B": "qwen.qwen3-coder-30b-a3b-v1:0",
-            "Nova Premier": "amazon.nova-premier-v1:0",
-            "Nova Lite": "amazon.nova-lite-v1:0"
+            "Nova Premier": "us.amazon.nova-premier-v1:0",
+            "Nova Lite": "us.amazon.nova-lite-v1:0"
         }
         
         # Initialize selected model in session state
