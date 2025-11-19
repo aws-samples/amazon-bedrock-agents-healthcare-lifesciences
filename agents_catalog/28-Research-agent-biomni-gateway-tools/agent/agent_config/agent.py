@@ -131,6 +131,8 @@ You will ALWAYS follow the below guidelines and citation requirements when assis
     
     # Stream response
     tool_name = None
+    is_claude_model = "anthropic.claude" in model_id.lower()
+    
     try:
         async for event in agent.stream_async(user_message):
             if (
@@ -143,7 +145,8 @@ You will ALWAYS follow the below guidelines and citation requirements when assis
                 for obj in event["message"]["content"]:
                     if "toolResult" in obj:
                         pass  # Skip tool result display
-                    elif "reasoningContent" in obj:
+                    elif "reasoningContent" in obj and is_claude_model:
+                        # Only display reasoning content for Claude models
                         reasoning_text = obj["reasoningContent"]["reasoningText"]["text"]
                         yield f"\n\n🔧 Reasoning: {reasoning_text}\n\n"
             if "data" in event:
