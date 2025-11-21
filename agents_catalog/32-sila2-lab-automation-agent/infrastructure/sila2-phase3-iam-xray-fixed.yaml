@@ -1,0 +1,199 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'SiLA2 Lab Automation Agent Phase 3 - IAM with X-Ray Fixed'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    Description: Environment name
+
+Resources:
+  # Lambda実行ロール（AgentCore + X-Ray対応）
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-lambda-execution-role"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+                - bedrock-agentcore.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/AmazonBedrockFullAccess
+        - arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess
+      Policies:
+        - PolicyName: SiLA2AgentPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - bedrock:InvokeModel
+                  - bedrock-runtime:InvokeModel
+                  - bedrock-agent-runtime:*
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                  - xray:GetSamplingRules
+                  - xray:GetSamplingTargets
+                Resource: '*'
+
+  # API Gateway
+  SiLA2ApiGateway:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub "${AWS::StackName}-api"
+      Description: SiLA2 Lab Automation API
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+
+  # AgentCore Runtime Lambda（X-Ray有効化）
+  AgentCoreRuntimeFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-agentcore-runtime"
+      Runtime: python3.11
+      Handler: index.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      TracingConfig:
+        Mode: Active
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import logging
+
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+
+          def lambda_handler(event, context):
+              logger.info(f"Lambda Event: {json.dumps(event)}")
+              
+              try:
+                  # HTTPリクエストの処理
+                  path = event.get('path', '/')
+                  body = event.get('body', '{}')
+                  
+                  if isinstance(body, str):
+                      body = json.loads(body)
+                  
+                  # /devicesエンドポイントの処理
+                  if path == '/devices' or path.endswith('/devices'):
+                      action = body.get('action', 'list')
+                      
+                      if action == 'list':
+                          return {
+                              'statusCode': 200,
+                              'headers': {'Content-Type': 'application/json'},
+                              'body': json.dumps({
+                                  'devices': [
+                                      {'id': 'HPLC-01', 'type': 'HPLC', 'status': 'ready'},
+                                      {'id': 'CENTRIFUGE-01', 'type': 'Centrifuge', 'status': 'busy'},
+                                      {'id': 'PIPETTE-01', 'type': 'Pipette', 'status': 'ready'}
+                                  ]
+                              })
+                          }
+                      
+                      elif action == 'status':
+                          device_id = body.get('device_id', 'unknown')
+                          return {
+                              'statusCode': 200,
+                              'headers': {'Content-Type': 'application/json'},
+                              'body': json.dumps({
+                                  'device_id': device_id,
+                                  'status': 'ready',
+                                  'temperature': 25.0
+                              })
+                          }
+                      
+                      elif action == 'command':
+                          return {
+                              'statusCode': 200,
+                              'headers': {'Content-Type': 'application/json'},
+                              'body': json.dumps({
+                                  'result': 'Command executed successfully'
+                              })
+                          }
+                  
+                  return {
+                      'statusCode': 200,
+                      'headers': {'Content-Type': 'application/json'},
+                      'body': json.dumps({'message': 'SiLA2 Agent is running'})
+                  }
+                  
+              except Exception as e:
+                  logger.error(f"Error: {str(e)}")
+                  return {
+                      'statusCode': 500,
+                      'headers': {'Content-Type': 'application/json'},
+                      'body': json.dumps({'error': str(e)})
+                  }
+      Timeout: 30
+      Environment:
+        Variables:
+          ENVIRONMENT: !Ref Environment
+
+  # API Gateway リソースとメソッド
+  DevicesResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref SiLA2ApiGateway
+      ParentId: !GetAtt SiLA2ApiGateway.RootResourceId
+      PathPart: devices
+
+  DevicesMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref SiLA2ApiGateway
+      ResourceId: !Ref DevicesResource
+      HttpMethod: POST
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${AgentCoreRuntimeFunction.Arn}/invocations"
+
+  # Lambda権限
+  DevicesLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref AgentCoreRuntimeFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${SiLA2ApiGateway}/*/POST/devices"
+
+  # API Gateway デプロイ
+  ApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - DevicesMethod
+    Properties:
+      RestApiId: !Ref SiLA2ApiGateway
+      StageName: !Ref Environment
+
+Outputs:
+  ApiGatewayUrl:
+    Description: API Gateway URL
+    Value: !Sub "https://${SiLA2ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${Environment}"
+    Export:
+      Name: !Sub "${AWS::StackName}-api-url"
+
+  LambdaExecutionRoleArn:
+    Description: Lambda Execution Role ARN
+    Value: !GetAtt LambdaExecutionRole.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-lambda-role-arn"
+
+  AgentCoreRuntimeFunctionArn:
+    Description: AgentCore Runtime Function ARN
+    Value: !GetAtt AgentCoreRuntimeFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-agentcore-function-arn"

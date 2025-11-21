@@ -1,0 +1,138 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'SiLA2 Lab Automation Agent - AgentCore Gateway Integration'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: sila2-lab-automation
+    Description: Project name for resource naming
+  
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+    Description: Environment name
+
+Resources:
+  # IAM Role for Gateway Lambda
+  GatewayLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: !Sub 'GatewayLambdaPolicy-${AWS::StackName}'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*'
+
+  # Lambda Function for Gateway Tools
+  GatewayLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-gateway-tools-${Environment}'
+      Runtime: python3.10
+      Handler: sila2_gateway_mcp_tools.lambda_handler
+      Role: !GetAtt GatewayLambdaRole.Arn
+      Timeout: 300
+      MemorySize: 512
+      Code:
+        ZipFile: |
+          import json
+          def lambda_handler(event, context):
+              return {
+                  'statusCode': 200,
+                  'body': json.dumps({"success": True, "message": "Gateway placeholder"})
+              }
+      Environment:
+        Variables:
+          PROJECT_NAME: !Ref ProjectName
+          ENVIRONMENT: !Ref Environment
+
+  # API Gateway for Gateway Tools
+  GatewayRestApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub '${ProjectName}-gateway-api-${Environment}'
+      Description: 'API Gateway for SiLA2 Gateway Tools'
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+
+  # API Gateway Resource
+  GatewayApiResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref GatewayRestApi
+      ParentId: !GetAtt GatewayRestApi.RootResourceId
+      PathPart: tools
+
+  # API Gateway Method
+  GatewayApiMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref GatewayRestApi
+      ResourceId: !Ref GatewayApiResource
+      HttpMethod: POST
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GatewayLambdaFunction.Arn}/invocations'
+
+  # Lambda Permission for API Gateway
+  GatewayLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref GatewayLambdaFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${GatewayRestApi}/*/POST/tools'
+
+  # API Gateway Deployment
+  GatewayApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn: GatewayApiMethod
+    Properties:
+      RestApiId: !Ref GatewayRestApi
+      StageName: !Ref Environment
+
+  # CloudWatch Log Group
+  GatewayLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${ProjectName}-gateway-tools-${Environment}'
+      RetentionInDays: 14
+
+Outputs:
+  GatewayApiEndpoint:
+    Description: 'Gateway API endpoint URL'
+    Value: !Sub 'https://${GatewayRestApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/tools'
+    Export:
+      Name: !Sub '${ProjectName}-gateway-api-endpoint-${Environment}'
+
+  GatewayLambdaArn:
+    Description: 'Gateway Lambda function ARN'
+    Value: !GetAtt GatewayLambdaFunction.Arn
+    Export:
+      Name: !Sub '${ProjectName}-gateway-lambda-arn-${Environment}'
+
+  GatewayLambdaName:
+    Description: 'Gateway Lambda function name'
+    Value: !Ref GatewayLambdaFunction
+    Export:
+      Name: !Sub '${ProjectName}-gateway-lambda-name-${Environment}'

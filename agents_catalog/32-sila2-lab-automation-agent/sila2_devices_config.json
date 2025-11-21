@@ -1,0 +1,28 @@
+{
+  "devices": [
+    {
+      "id": "HPLC-01",
+      "type": "HPLC",
+      "port": 50051,
+      "status": "ready",
+      "location": "Lab-A",
+      "features": ["StatusProvider", "SimulationController"]
+    },
+    {
+      "id": "CENTRIFUGE-01", 
+      "type": "Centrifuge",
+      "port": 50052,
+      "status": "busy",
+      "location": "Lab-B",
+      "features": ["StatusProvider", "SimulationController"]
+    },
+    {
+      "id": "PIPETTE-01",
+      "type": "Pipette", 
+      "port": 50053,
+      "status": "ready",
+      "location": "Lab-A",
+      "features": ["StatusProvider", "SimulationController"]
+    }
+  ]
+}

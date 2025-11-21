@@ -1,0 +1,30 @@
+default_agent: sila2_runtime_phase3
+agents:
+  sila2_runtime_phase3:
+    name: sila2_runtime_phase3
+    entrypoint: main_agentcore_phase3.py
+    platform: linux/arm64
+    container_runtime: docker
+    aws:
+      execution_role: arn:aws:iam::590183741681:role/sila2-lab-automation-phase3-inf-LambdaExecutionRole-Jpox8sK4J411
+      execution_role_auto_create: true
+      account: '590183741681'
+      region: us-west-2
+      ecr_repository: 590183741681.dkr.ecr.us-west-2.amazonaws.com/bedrock-agentcore-sila2_runtime_phase3
+      ecr_auto_create: false
+      network_configuration:
+        network_mode: PUBLIC
+      protocol_configuration:
+        server_protocol: HTTP
+      observability:
+        enabled: true
+    bedrock_agentcore:
+      agent_id: sila2_runtime_phase3-FoDqsaG6Ms
+      agent_arn: arn:aws:bedrock-agentcore:us-west-2:590183741681:runtime/sila2_runtime_phase3-FoDqsaG6Ms
+      agent_session_id: 2f67a320-be45-4b23-99ff-f743f832d2c0
+    codebuild:
+      project_name: bedrock-agentcore-sila2_runtime_phase3-builder
+      execution_role: arn:aws:iam::590183741681:role/AmazonBedrockAgentCoreSDKCodeBuild-us-west-2-6648714c89
+      source_bucket: bedrock-agentcore-codebuild-sources-590183741681-us-west-2
+    authorizer_configuration: null
+    oauth_configuration: null

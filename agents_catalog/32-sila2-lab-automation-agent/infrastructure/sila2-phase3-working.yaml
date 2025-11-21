@@ -1,0 +1,191 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'SiLA2 Lab Automation Agent - Phase 3 Working (ECR権限追加)'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+
+Resources:
+  # IAM Role for Lambda functions (ECR権限追加)
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: 
+                - lambda.amazonaws.com
+                - bedrock-agentcore.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryFullAccess
+      Policies:
+        - PolicyName: BedrockAgentCoreAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:*
+                  - bedrock-agentcore:*
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogGroups
+                  - logs:DescribeLogStreams
+                Resource: '*'
+
+  # Mock Device Lambda
+  MockDeviceLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub 'sila2-mock-device-lambda-${Environment}'
+      Runtime: python3.10
+      Handler: index.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          import json
+          import logging
+
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+
+          def lambda_handler(event, context):
+              try:
+                  logger.info(f"Received event: {json.dumps(event)}")
+                  
+                  body = {}
+                  if 'body' in event and event['body']:
+                      if isinstance(event['body'], str):
+                          body = json.loads(event['body'])
+                      else:
+                          body = event['body']
+                  elif 'prompt' in event:
+                      # Direct Lambda invocation
+                      body = {'action': 'list'}
+                  
+                  action = body.get('action', 'unknown')
+                  device_id = body.get('device_id', 'unknown')
+                  
+                  if action == 'list':
+                      response_data = {
+                          'devices': [
+                              {'id': 'HPLC-01', 'type': 'hplc', 'status': 'ready'},
+                              {'id': 'CENTRIFUGE-01', 'type': 'centrifuge', 'status': 'busy'},
+                              {'id': 'PIPETTE-01', 'type': 'pipette', 'status': 'ready'}
+                          ]
+                      }
+                  elif action == 'status':
+                      response_data = {
+                          'device_id': device_id,
+                          'status': 'ready',
+                          'temperature': 25.0,
+                          'timestamp': '2025-11-21T03:00:00Z'
+                      }
+                  elif action == 'command':
+                      command = body.get('command', 'unknown')
+                      response_data = {
+                          'device_id': device_id,
+                          'command': command,
+                          'result': f'Command {command} executed successfully',
+                          'status': 'completed'
+                      }
+                  else:
+                      response_data = {'error': f'Unknown action: {action}'}
+                  
+                  return {
+                      'statusCode': 200,
+                      'headers': {
+                          'Content-Type': 'application/json',
+                          'Access-Control-Allow-Origin': '*'
+                      },
+                      'body': json.dumps(response_data)
+                  }
+                  
+              except Exception as e:
+                  logger.error(f"Error: {str(e)}")
+                  return {
+                      'statusCode': 500,
+                      'headers': {
+                          'Content-Type': 'application/json',
+                          'Access-Control-Allow-Origin': '*'
+                      },
+                      'body': json.dumps({'error': str(e)})
+                  }
+      Timeout: 30
+      MemorySize: 256
+
+  # API Gateway for Mock Devices
+  MockDeviceApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub 'sila2-mock-device-api-${Environment}'
+      Description: 'API Gateway for SiLA2 Mock Devices'
+
+  # Devices Resource
+  DevicesResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref MockDeviceApi
+      ParentId: !GetAtt MockDeviceApi.RootResourceId
+      PathPart: devices
+
+  # Devices GET Method
+  DevicesGetMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MockDeviceApi
+      ResourceId: !Ref DevicesResource
+      HttpMethod: GET
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${MockDeviceLambda.Arn}/invocations'
+
+  # Devices POST Method
+  DevicesPostMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MockDeviceApi
+      ResourceId: !Ref DevicesResource
+      HttpMethod: POST
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${MockDeviceLambda.Arn}/invocations'
+
+  # Lambda Permission for API Gateway
+  MockDeviceLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref MockDeviceLambda
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MockDeviceApi}/*/*'
+
+  # API Gateway Deployment
+  ApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn: 
+      - DevicesGetMethod
+      - DevicesPostMethod
+    Properties:
+      RestApiId: !Ref MockDeviceApi
+      StageName: !Ref Environment
+
+Outputs:
+  ApiGatewayUrl:
+    Description: 'API Gateway URL'
+    Value: !Sub 'https://${MockDeviceApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}'
+
+  LambdaExecutionRoleArn:
+    Description: 'Lambda Execution Role ARN'
+    Value: !GetAtt LambdaExecutionRole.Arn
