@@ -1,0 +1,188 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'SiLA2 Lab Automation Agent - Phase 3 Architecture'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+
+Resources:
+  # S3 Bucket for Lambda packages
+  LambdaPackagesBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'sila2-lambda-packages-${Environment}-${AWS::AccountId}'
+      VersioningConfiguration:
+        Status: Enabled
+
+  # IAM Role for Lambda functions
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub 'sila2-lambda-execution-role-${Environment}-${AWS::AccountId}'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: S3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource: !Sub '${LambdaPackagesBucket}/*'
+
+  # Gateway Tools Lambda (Simplified)
+  GatewayToolsLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub 'sila2-lab-automation-gateway-tools-${Environment}'
+      Runtime: python3.10
+      Handler: sila2_gateway_tools_simplified.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          import json
+          def lambda_handler(event, context):
+              return {'statusCode': 200, 'body': json.dumps({'message': 'Placeholder'})}
+      Timeout: 30
+      MemorySize: 256
+
+  # Mock Device Lambda (Enhanced)
+  MockDeviceLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub 'sila2-mock-device-lambda-${Environment}'
+      Runtime: python3.10
+      Handler: mock_device_lambda_enhanced.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          import json
+          def lambda_handler(event, context):
+              return {'statusCode': 200, 'body': json.dumps({'message': 'Placeholder'})}
+      Timeout: 30
+      MemorySize: 256
+
+  # API Gateway for Mock Devices
+  MockDeviceApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub 'sila2-mock-device-api-${Environment}'
+      Description: 'API Gateway for SiLA2 Mock Devices'
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+
+  # API Gateway Resources
+  DevicesResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref MockDeviceApi
+      ParentId: !GetAtt MockDeviceApi.RootResourceId
+      PathPart: devices
+
+  DeviceResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref MockDeviceApi
+      ParentId: !GetAtt MockDeviceApi.RootResourceId
+      PathPart: device
+
+  DeviceIdResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref MockDeviceApi
+      ParentId: !Ref DeviceResource
+      PathPart: '{device_id}'
+
+  # API Gateway Methods
+  DevicesGetMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MockDeviceApi
+      ResourceId: !Ref DevicesResource
+      HttpMethod: GET
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${MockDeviceLambda.Arn}/invocations'
+
+  DeviceStatusGetMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MockDeviceApi
+      ResourceId: !Ref DeviceIdResource
+      HttpMethod: GET
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${MockDeviceLambda.Arn}/invocations'
+
+  DeviceOperationPostMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MockDeviceApi
+      ResourceId: !Ref DeviceIdResource
+      HttpMethod: POST
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${MockDeviceLambda.Arn}/invocations'
+
+  # Lambda Permissions for API Gateway
+  MockDeviceLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref MockDeviceLambda
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MockDeviceApi}/*/*'
+
+  # API Gateway Deployment
+  ApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - DevicesGetMethod
+      - DeviceStatusGetMethod
+      - DeviceOperationPostMethod
+    Properties:
+      RestApiId: !Ref MockDeviceApi
+      StageName: !Ref Environment
+
+Outputs:
+  GatewayToolsLambdaArn:
+    Description: 'Gateway Tools Lambda ARN'
+    Value: !GetAtt GatewayToolsLambda.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-GatewayToolsLambdaArn'
+
+  MockDeviceLambdaArn:
+    Description: 'Mock Device Lambda ARN'
+    Value: !GetAtt MockDeviceLambda.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-MockDeviceLambdaArn'
+
+  MockDeviceApiUrl:
+    Description: 'Mock Device API Gateway URL'
+    Value: !Sub 'https://${MockDeviceApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}'
+    Export:
+      Name: !Sub '${AWS::StackName}-MockDeviceApiUrl'
+
+  LambdaPackagesBucket:
+    Description: 'S3 Bucket for Lambda packages'
+    Value: !Ref LambdaPackagesBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-LambdaPackagesBucket'

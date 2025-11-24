@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: GatewayConfig
+metadata:
+  name: sila2-lab-automation-gateway
+  version: "1.0.0"
+spec:
+  runtime:
+    type: lambda
+    timeout: 300
+    memory: 512
+  tools:
+    - name: get_device_status
+      description: "Get current status of SiLA2 laboratory devices"
+      schema:
+        type: object
+        properties:
+          device_id:
+            type: string
+            description: "Device identifier (e.g., HPLC-01, CENTRIFUGE-02)"
+        required: ["device_id"]
+    - name: start_device_operation
+      description: "Start operation on SiLA2 laboratory device"
+      schema:
+        type: object
+        properties:
+          device_id:
+            type: string
+            description: "Device identifier"
+          operation:
+            type: string
+            description: "Operation to perform"
+          parameters:
+            type: object
+            description: "Operation parameters"
+        required: ["device_id", "operation"]
+    - name: stop_device_operation
+      description: "Stop current operation on SiLA2 device"
+      schema:
+        type: object
+        properties:
+          device_id:
+            type: string
+            description: "Device identifier"
+        required: ["device_id"]
+    - name: list_available_devices
+      description: "List all available SiLA2 laboratory devices"
+      schema:
+        type: object
+        properties: {}
+  authentication:
+    type: iam
+  logging:
+    level: INFO
+    cloudwatch: true

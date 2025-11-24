@@ -1,0 +1,237 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'SiLA2 Lab Automation Agent - Complete Phase 2 Deployment'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: sila2-lab-automation
+    Description: Project name for resource naming
+  
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+    Description: Environment name
+
+Resources:
+  # IAM Role for MCP Server Lambda
+  MCPServerLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: MCPServerPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*'
+
+  # IAM Role for Gateway Tools Lambda
+  GatewayToolsLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: GatewayToolsPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*'
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${ProjectName}-mcp-server-${Environment}'
+
+  # MCP Server Lambda Function
+  MCPServerLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-mcp-server-${Environment}'
+      Runtime: python3.10
+      Handler: mcp_server.lambda_handler
+      Role: !GetAtt MCPServerLambdaRole.Arn
+      Timeout: 300
+      MemorySize: 512
+      Code:
+        ZipFile: |
+          import json
+          def lambda_handler(event, context):
+              return {
+                  'statusCode': 200,
+                  'body': json.dumps({"success": True, "message": "MCP Server placeholder"})
+              }
+      Environment:
+        Variables:
+          PROJECT_NAME: !Ref ProjectName
+          ENVIRONMENT: !Ref Environment
+
+  # Gateway Tools Lambda Function
+  GatewayToolsLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-gateway-tools-${Environment}'
+      Runtime: python3.10
+      Handler: sila2_gateway_mcp_tools.lambda_handler
+      Role: !GetAtt GatewayToolsLambdaRole.Arn
+      Timeout: 300
+      MemorySize: 512
+      Code:
+        ZipFile: |
+          import json
+          def lambda_handler(event, context):
+              return {
+                  'statusCode': 200,
+                  'body': json.dumps({"success": True, "message": "Gateway Tools placeholder"})
+              }
+      Environment:
+        Variables:
+          PROJECT_NAME: !Ref ProjectName
+          ENVIRONMENT: !Ref Environment
+          MCP_SERVER_FUNCTION_NAME: !Ref MCPServerLambdaFunction
+
+  # API Gateway for Gateway Tools
+  GatewayRestApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub '${ProjectName}-gateway-api-${Environment}'
+      Description: 'API Gateway for SiLA2 Gateway Tools'
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+
+  # API Gateway Resource - /tools
+  GatewayApiToolsResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref GatewayRestApi
+      ParentId: !GetAtt GatewayRestApi.RootResourceId
+      PathPart: tools
+
+  # API Gateway Method - GET /tools
+  GatewayApiGetMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref GatewayRestApi
+      ResourceId: !Ref GatewayApiToolsResource
+      HttpMethod: GET
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GatewayToolsLambdaFunction.Arn}/invocations'
+
+  # API Gateway Method - POST /tools
+  GatewayApiPostMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref GatewayRestApi
+      ResourceId: !Ref GatewayApiToolsResource
+      HttpMethod: POST
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GatewayToolsLambdaFunction.Arn}/invocations'
+
+  # Lambda Permissions for API Gateway
+  GatewayLambdaPermissionGet:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref GatewayToolsLambdaFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${GatewayRestApi}/*/GET/tools'
+
+  GatewayLambdaPermissionPost:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref GatewayToolsLambdaFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${GatewayRestApi}/*/POST/tools'
+
+  # API Gateway Deployment
+  GatewayApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn: 
+      - GatewayApiGetMethod
+      - GatewayApiPostMethod
+    Properties:
+      RestApiId: !Ref GatewayRestApi
+      StageName: !Ref Environment
+
+  # CloudWatch Log Groups
+  MCPServerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${ProjectName}-mcp-server-${Environment}'
+      RetentionInDays: 14
+
+  GatewayToolsLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${ProjectName}-gateway-tools-${Environment}'
+      RetentionInDays: 14
+
+Outputs:
+  MCPServerFunctionName:
+    Description: 'MCP Server Lambda function name'
+    Value: !Ref MCPServerLambdaFunction
+    Export:
+      Name: !Sub '${ProjectName}-mcp-server-name-${Environment}'
+
+  MCPServerFunctionArn:
+    Description: 'MCP Server Lambda function ARN'
+    Value: !GetAtt MCPServerLambdaFunction.Arn
+    Export:
+      Name: !Sub '${ProjectName}-mcp-server-arn-${Environment}'
+
+  GatewayToolsFunctionName:
+    Description: 'Gateway Tools Lambda function name'
+    Value: !Ref GatewayToolsLambdaFunction
+    Export:
+      Name: !Sub '${ProjectName}-gateway-tools-name-${Environment}'
+
+  GatewayToolsFunctionArn:
+    Description: 'Gateway Tools Lambda function ARN'
+    Value: !GetAtt GatewayToolsLambdaFunction.Arn
+    Export:
+      Name: !Sub '${ProjectName}-gateway-tools-arn-${Environment}'
+
+  GatewayApiUrl:
+    Description: 'Gateway API endpoint URL'
+    Value: !Sub 'https://${GatewayRestApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/tools'
+    Export:
+      Name: !Sub '${ProjectName}-gateway-api-url-${Environment}'
+
+  GatewayApiId:
+    Description: 'Gateway API ID'
+    Value: !Ref GatewayRestApi
+    Export:
+      Name: !Sub '${ProjectName}-gateway-api-id-${Environment}'

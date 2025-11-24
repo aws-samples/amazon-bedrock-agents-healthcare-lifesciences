@@ -1,0 +1,55 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'SiLA2 Lab Automation Agent - Minimal Phase 3'
+
+Resources:
+  # IAM Role for Lambda functions
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  # Gateway Tools Lambda
+  GatewayToolsLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: sila2-lab-automation-gateway-tools-dev
+      Runtime: python3.10
+      Handler: sila2_gateway_tools_simplified.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          import json
+          def lambda_handler(event, context):
+              return {'statusCode': 200, 'body': json.dumps({'message': 'Gateway Tools'})}
+      Timeout: 30
+      MemorySize: 256
+
+  # Mock Device Lambda
+  MockDeviceLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: sila2-mock-device-lambda-dev
+      Runtime: python3.10
+      Handler: mock_device_lambda_enhanced.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          import json
+          def lambda_handler(event, context):
+              return {'statusCode': 200, 'body': json.dumps({'message': 'Mock Device'})}
+      Timeout: 30
+      MemorySize: 256
+
+Outputs:
+  GatewayToolsLambdaArn:
+    Value: !GetAtt GatewayToolsLambda.Arn
+  MockDeviceLambdaArn:
+    Value: !GetAtt MockDeviceLambda.Arn

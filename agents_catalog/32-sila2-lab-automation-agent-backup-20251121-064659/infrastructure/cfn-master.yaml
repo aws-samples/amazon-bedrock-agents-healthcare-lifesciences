@@ -1,0 +1,79 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Master CloudFormation template for SiLA2 Lab Automation Agent with AgentCore
+
+Parameters:
+  BucketName:
+    Type: String
+    Description: S3 bucket name for deployment artifacts
+    Default: sila2-lab-automation-artifacts
+  
+  AgentRuntimeName:
+    Type: String
+    Description: Name for the AgentCore Runtime
+    Default: sila2-lab-automation
+  
+  CreateS3Bucket:
+    Type: String
+    Description: Whether to create S3 bucket or use existing
+    Default: "true"
+    AllowedValues: ["true", "false"]
+
+Conditions:
+  ShouldCreateBucket: !Equals [!Ref CreateS3Bucket, "true"]
+
+Resources:
+  # S3 Bucket (conditional)
+  S3Stack:
+    Type: AWS::CloudFormation::Stack
+    Condition: ShouldCreateBucket
+    Properties:
+      TemplateURL: !Sub 'https://${BucketName}.s3.${AWS::Region}.amazonaws.com/templates/cfn-s3.yaml'
+      Parameters:
+        BucketName: !Ref BucketName
+      Tags:
+        - Key: Application
+          Value: SiLA2LabAutomation
+        - Key: Component
+          Value: Storage
+
+  # AgentCore Runtime Stack
+  AgentCoreStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub 'https://${BucketName}.s3.${AWS::Region}.amazonaws.com/templates/cfn-sila2-agent.yaml'
+      Parameters:
+        BucketName: !Ref BucketName
+        LambdaKey: sila2-lab-automation/agentcore-package.zip
+        AgentRuntimeName: !Ref AgentRuntimeName
+        S3StackReady: !If [ShouldCreateBucket, !Ref S3Stack, "ready"]
+      Tags:
+        - Key: Application
+          Value: SiLA2LabAutomation
+        - Key: Component
+          Value: AgentCore
+
+Outputs:
+  AgentRuntimeArn:
+    Description: ARN of the AgentCore Runtime
+    Value: !GetAtt AgentCoreStack.Outputs.AgentRuntimeArn
+    Export:
+      Name: !Sub ${AWS::StackName}-AgentRuntimeArn
+
+  AgentRuntimeId:
+    Description: ID of the AgentCore Runtime
+    Value: !GetAtt AgentCoreStack.Outputs.AgentRuntimeId
+    Export:
+      Name: !Sub ${AWS::StackName}-AgentRuntimeId
+
+  S3BucketName:
+    Description: Name of the S3 bucket
+    Value: !Ref BucketName
+    Export:
+      Name: !Sub ${AWS::StackName}-S3BucketName
+
+  DeploymentInstructions:
+    Description: Next steps for deployment
+    Value: !Sub |
+      1. Test AgentCore Runtime: aws bedrock-agentcore-control get-agent-runtime --agent-runtime-id ${AgentCoreStack.Outputs.AgentRuntimeId}
+      2. Run UI: streamlit run app.py
+      3. Use Runtime ARN: ${AgentCoreStack.Outputs.AgentRuntimeArn}

@@ -1,0 +1,41 @@
+agent_name: sila2_gateway
+agent_description: "SiLA2 Lab Automation Gateway"
+model_id: anthropic.claude-3-5-sonnet-20241022-v2:0
+region: us-west-2
+execution_role_arn: arn:aws:iam::590183741681:role/sila2-lab-automation-phase3-inf-LambdaExecutionRole-xcoyuKcwfeiq
+ecr_repository: 590183741681.dkr.ecr.us-west-2.amazonaws.com/bedrock-agentcore-sila2-gateway
+
+tools:
+  - name: list_devices
+    description: "List all available SiLA2 devices"
+    parameters:
+      type: object
+      properties: {}
+  
+  - name: device_status
+    description: "Get status of a specific device"
+    parameters:
+      type: object
+      properties:
+        device_id:
+          type: string
+          description: "Device identifier"
+      required: ["device_id"]
+  
+  - name: start_operation
+    description: "Start operation on a device"
+    parameters:
+      type: object
+      properties:
+        device_id:
+          type: string
+          description: "Device identifier"
+        operation:
+          type: string
+          description: "Operation to start"
+      required: ["device_id", "operation"]
+
+environment_variables:
+  API_GATEWAY_URL: https://n6ky0ru9nd.execute-api.us-west-2.amazonaws.com/dev
+  ENVIRONMENT: dev
+  GATEWAY_MODE: true

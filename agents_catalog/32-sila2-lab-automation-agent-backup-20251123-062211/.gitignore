@@ -1,0 +1,85 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Lambda packages and dependencies
+lambda_package/
+gateway_package/
+node_modules/
+
+# Zip files
+*.zip
+
+# Temporary and cache files
+temp_*
+*.tmp
+*.cache
+.DS_Store
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# AWS and deployment
+.aws/
+*.pem
+*.key
+
+# Archive and backup
+archive/
+backup/
+old/
+*-backup-*/
+../32-sila2-lab-automation-agent-backup-*/
+
+# Temporary files and test outputs
+*.json
+response*.json
+test_*.json
+*_result.json
+*_response.json
+temp_*
+
+# AgentCore generated files
+.bedrock_agentcore*.yaml
+.phase3-config
+.python-version
+
+# Docker and deployment artifacts
+Dockerfile.fixed
+*.zip
+
+# Test outputs
+test_output/
+coverage/
+.pytest_cache/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# OS generated
+Thumbs.db
+.DS_Store

@@ -1,0 +1,69 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template for SiLA2 Lab Automation S3 bucket
+
+Parameters:
+  BucketName:
+    Type: String
+    Description: Name of the S3 bucket to create
+
+Resources:
+  # S3 bucket for storing deployment artifacts
+  ArtifactsBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      BucketName: !Ref BucketName
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldVersions
+            Status: Enabled
+            NoncurrentVersionExpiration:
+              NoncurrentDays: 90
+          - Id: DeleteOldFiles
+            Status: Enabled
+            ExpirationInDays: 90
+
+  # Bucket policy
+  ArtifactsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref ArtifactsBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DenyUnencryptedObjectUploads
+            Effect: Deny
+            Principal: '*'
+            Action: s3:PutObject
+            Resource: !Sub ${ArtifactsBucket.Arn}/*
+            Condition:
+              StringNotEquals:
+                's3:x-amz-server-side-encryption': AES256
+          - Sid: DenyInsecureConnections
+            Effect: Deny
+            Principal: '*'
+            Action: s3:*
+            Resource: !Sub ${ArtifactsBucket.Arn}/*
+            Condition:
+              Bool:
+                'aws:SecureTransport': false
+
+Outputs:
+  BucketName:
+    Description: Name of the created S3 bucket
+    Value: !Ref ArtifactsBucket
+
+  BucketArn:
+    Description: ARN of the created S3 bucket
+    Value: !GetAtt ArtifactsBucket.Arn

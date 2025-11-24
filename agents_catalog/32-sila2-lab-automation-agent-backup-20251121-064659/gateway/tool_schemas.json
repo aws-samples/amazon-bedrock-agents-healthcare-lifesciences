@@ -1,0 +1,67 @@
+{
+  "tools": [
+    {
+      "name": "get_device_status",
+      "description": "Get current status of SiLA2 laboratory devices",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "description": "Device identifier (e.g., HPLC-01, CENTRIFUGE-02)"
+          }
+        },
+        "required": ["device_id"]
+      }
+    },
+    {
+      "name": "start_device_operation",
+      "description": "Start operation on SiLA2 laboratory device",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "description": "Device identifier"
+          },
+          "operation": {
+            "type": "string",
+            "description": "Operation to perform (e.g., 'start_analysis', 'centrifuge', 'pipette')"
+          },
+          "parameters": {
+            "type": "object",
+            "description": "Operation-specific parameters",
+            "properties": {
+              "duration": {"type": "number"},
+              "speed": {"type": "number"},
+              "temperature": {"type": "number"}
+            }
+          }
+        },
+        "required": ["device_id", "operation"]
+      }
+    },
+    {
+      "name": "stop_device_operation",
+      "description": "Stop current operation on SiLA2 device",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "description": "Device identifier"
+          }
+        },
+        "required": ["device_id"]
+      }
+    },
+    {
+      "name": "list_available_devices",
+      "description": "List all available SiLA2 laboratory devices",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    }
+  ]
+}

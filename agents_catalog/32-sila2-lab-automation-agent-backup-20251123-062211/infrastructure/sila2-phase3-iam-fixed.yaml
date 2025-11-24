@@ -1,0 +1,183 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'SiLA2 Lab Automation Agent Phase 3 - IAM Fixed'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    Description: Environment name
+
+Resources:
+  # Lambda実行ロール（AgentCore対応）
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-lambda-execution-role"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+                - bedrock-agentcore.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/AmazonBedrockFullAccess
+      Policies:
+        - PolicyName: SiLA2AgentPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - bedrock:InvokeModel
+                  - bedrock-runtime:InvokeModel
+                  - bedrock-agent-runtime:*
+                Resource: '*'
+
+  # API Gateway
+  SiLA2ApiGateway:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub "${AWS::StackName}-api"
+      Description: SiLA2 Lab Automation API
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+
+  # AgentCore Runtime Lambda
+  AgentCoreRuntimeFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-agentcore-runtime"
+      Runtime: python3.11
+      Handler: agentcore_runtime.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import logging
+
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+
+          def lambda_handler(event, context):
+              logger.info(f"AgentCore Runtime Event: {json.dumps(event)}")
+              
+              try:
+                  # AgentCore からのリクエストを処理
+                  if 'tool_name' in event:
+                      tool_name = event['tool_name']
+                      parameters = event.get('parameters', {})
+                      
+                      if tool_name == 'list_devices':
+                          return {
+                              'statusCode': 200,
+                              'body': json.dumps({
+                                  'devices': [
+                                      {'id': 'hplc-001', 'name': 'HPLC System', 'status': 'ready'},
+                                      {'id': 'centrifuge-001', 'name': 'Centrifuge', 'status': 'ready'},
+                                      {'id': 'pipette-001', 'name': 'Pipette', 'status': 'ready'}
+                                  ]
+                              })
+                          }
+                      
+                      elif tool_name == 'device_status':
+                          device_id = parameters.get('device_id', 'unknown')
+                          return {
+                              'statusCode': 200,
+                              'body': json.dumps({
+                                  'device_id': device_id,
+                                  'status': 'ready',
+                                  'temperature': 25.0,
+                                  'pressure': 1.0
+                              })
+                          }
+                      
+                      elif tool_name == 'device_command':
+                          return {
+                              'statusCode': 200,
+                              'body': json.dumps({
+                                  'result': 'Command executed successfully',
+                                  'timestamp': '2024-01-01T00:00:00Z'
+                              })
+                          }
+                  
+                  return {
+                      'statusCode': 200,
+                      'body': json.dumps({'message': 'AgentCore Runtime is running'})
+                  }
+                  
+              except Exception as e:
+                  logger.error(f"Error: {str(e)}")
+                  return {
+                      'statusCode': 500,
+                      'body': json.dumps({'error': str(e)})
+                  }
+      Timeout: 30
+      Environment:
+        Variables:
+          ENVIRONMENT: !Ref Environment
+
+  # API Gateway リソースとメソッド
+  AgentCoreResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref SiLA2ApiGateway
+      ParentId: !GetAtt SiLA2ApiGateway.RootResourceId
+      PathPart: agentcore
+
+  AgentCoreMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref SiLA2ApiGateway
+      ResourceId: !Ref AgentCoreResource
+      HttpMethod: POST
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${AgentCoreRuntimeFunction.Arn}/invocations"
+
+  # Lambda権限
+  AgentCoreLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref AgentCoreRuntimeFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "${SiLA2ApiGateway}/*/POST/agentcore"
+
+  # API Gateway デプロイ
+  ApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - AgentCoreMethod
+    Properties:
+      RestApiId: !Ref SiLA2ApiGateway
+      StageName: !Ref Environment
+
+Outputs:
+  ApiGatewayUrl:
+    Description: API Gateway URL
+    Value: !Sub "https://${SiLA2ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${Environment}"
+    Export:
+      Name: !Sub "${AWS::StackName}-api-url"
+
+  LambdaExecutionRoleArn:
+    Description: Lambda Execution Role ARN
+    Value: !GetAtt LambdaExecutionRole.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-lambda-role-arn"
+
+  AgentCoreRuntimeFunctionArn:
+    Description: AgentCore Runtime Function ARN
+    Value: !GetAtt AgentCoreRuntimeFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-agentcore-function-arn"

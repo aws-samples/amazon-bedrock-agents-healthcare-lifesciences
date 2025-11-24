@@ -1,0 +1,105 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'SiLA2 Lab Automation Agent - True AgentCore Gateway Integration'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: sila2-lab-automation
+    Description: Project name for resource naming
+  
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+    Description: Environment name
+
+Resources:
+  # IAM Role for AgentCore Gateway
+  AgentCoreGatewayRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: !Sub 'AgentCoreGatewayPolicy-${AWS::StackName}'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*'
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                Resource: '*'
+
+  # Lambda Function for Gateway Tools (placeholder for true Gateway)
+  GatewayToolsLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-gateway-tools-${Environment}'
+      Runtime: python3.10
+      Handler: sila2_agentcore_gateway.lambda_handler
+      Role: !GetAtt AgentCoreGatewayRole.Arn
+      Timeout: 300
+      MemorySize: 512
+      Code:
+        ZipFile: |
+          import json
+          def lambda_handler(event, context):
+              return {
+                  'statusCode': 200,
+                  'body': json.dumps({"success": True, "message": "Gateway tools placeholder"})
+              }
+      Environment:
+        Variables:
+          PROJECT_NAME: !Ref ProjectName
+          ENVIRONMENT: !Ref Environment
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  # CloudWatch Log Group for Gateway
+  GatewayLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/bedrock-agentcore/gateway/${ProjectName}-gateway-${Environment}'
+      RetentionInDays: 14
+
+Outputs:
+  AgentCoreGatewayId:
+    Description: 'AgentCore Gateway ID (placeholder)'
+    Value: !Sub '${ProjectName}-gateway-${Environment}'
+    Export:
+      Name: !Sub '${ProjectName}-agentcore-gateway-id-${Environment}'
+
+  AgentCoreGatewayArn:
+    Description: 'AgentCore Gateway ARN (placeholder)'
+    Value: !GetAtt GatewayToolsLambda.Arn
+    Export:
+      Name: !Sub '${ProjectName}-agentcore-gateway-arn-${Environment}'
+
+  AgentCoreGatewayName:
+    Description: 'AgentCore Gateway Name'
+    Value: !Sub '${ProjectName}-gateway-${Environment}'
+    Export:
+      Name: !Sub '${ProjectName}-agentcore-gateway-name-${Environment}'
+
+  GatewayLambdaArn:
+    Description: 'Gateway Lambda function ARN'
+    Value: !GetAtt GatewayToolsLambda.Arn
+    Export:
+      Name: !Sub '${ProjectName}-gateway-lambda-arn-${Environment}'

@@ -1,0 +1,74 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Simple SiLA2 Lab Automation Agent with Lambda functions only
+
+Parameters:
+  BucketName:
+    Type: String
+    Description: S3 bucket containing deployment artifacts
+  
+  LambdaKey:
+    Type: String
+    Description: S3 key for Lambda function code
+    Default: lambda.zip
+
+Resources:
+  # IAM role for Lambda function
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: Sila2SimulatorPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ssm:PutParameter
+                  - ssm:GetParameter
+                Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/sila2-lab-automation/*
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                Resource: "*"
+
+  # Lambda function for SiLA2 simulator
+  SimulatorFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-simulator
+      Code:
+        S3Bucket: !Ref BucketName
+        S3Key: !Ref LambdaKey
+      Handler: simulator.handler
+      Role: !GetAtt LambdaRole.Arn
+      Runtime: python3.9
+      Timeout: 30
+      MemorySize: 256
+      Environment:
+        Variables:
+          REGION: !Ref AWS::Region
+
+  # SSM Parameters
+  SimulatorFunctionParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /sila2-lab-automation/simulator/function_name
+      Type: String
+      Value: !GetAtt SimulatorFunction.Arn
+
+Outputs:
+  SimulatorFunctionArn:
+    Description: ARN of the simulator Lambda function
+    Value: !GetAtt SimulatorFunction.Arn
+    Export:
+      Name: !Sub ${AWS::StackName}-SimulatorFunctionArn
