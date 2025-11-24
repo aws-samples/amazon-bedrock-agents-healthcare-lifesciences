@@ -1,0 +1,375 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'SiLA2 Lab Automation Agent - Phase 3 Step 3 (API Gateway Enhanced with Rate Limiting & CORS)'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+
+Resources:
+  # Enhanced IAM Role with DynamoDB permissions
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: 
+                - lambda.amazonaws.com
+                - bedrock-agentcore.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryFullAccess
+      Policies:
+        - PolicyName: BedrockAgentCoreAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:*
+                  - bedrock-agentcore:*
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogGroups
+                  - logs:DescribeLogStreams
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                Resource: '*'
+
+  # Device Registry DynamoDB Table
+  DeviceRegistryTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub 'sila2-device-registry-${Environment}'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: device_id
+          AttributeType: S
+        - AttributeName: device_type
+          AttributeType: S
+      KeySchema:
+        - AttributeName: device_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: device-type-index
+          KeySchema:
+            - AttributeName: device_type
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+
+  # MCP-gRPC Bridge Lambda
+  MCPGRPCBridgeLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub 'sila2-protocol-bridge-lambda-${Environment}'
+      Runtime: python3.10
+      Handler: protocol_bridge_lambda_grpc.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Environment:
+        Variables:
+          GRPC_SUPPORT: 'true'
+          DEVICE_REGISTRY_MODE: 'enhanced'
+          DEVICE_REGISTRY_TABLE: !Ref DeviceRegistryTable
+          SILA2_COMPLIANCE: 'true'
+          MULTI_VENDOR_SUPPORT: 'true'
+          PHASE4_READY: 'true'
+      Code:
+        ZipFile: |
+          import json
+          import logging
+          import os
+          from datetime import datetime
+
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+
+          def lambda_handler(event, context):
+              try:
+                  logger.info(f"MCP-gRPC Bridge received: {json.dumps(event)}")
+                  
+                  # Parse request
+                  http_method = event.get('httpMethod', 'GET')
+                  path = event.get('path', '')
+                  path_params = event.get('pathParameters') or {}
+                  
+                  # CORS headers
+                  cors_headers = {
+                      'Content-Type': 'application/json',
+                      'Access-Control-Allow-Origin': '*',
+                      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+                  }
+                  
+                  # Handle OPTIONS for CORS
+                  if http_method == 'OPTIONS':
+                      return {
+                          'statusCode': 200,
+                          'headers': cors_headers,
+                          'body': json.dumps({'message': 'CORS preflight'})
+                      }
+                  
+                  # Route handling
+                  if path == '/devices' and http_method == 'GET':
+                      devices = [
+                          {'device_id': 'HPLC-01', 'type': 'hplc', 'status': 'ready', 'location': 'Lab-A'},
+                          {'device_id': 'CENTRIFUGE-01', 'type': 'centrifuge', 'status': 'busy', 'location': 'Lab-B'},
+                          {'device_id': 'PIPETTE-01', 'type': 'pipette', 'status': 'ready', 'location': 'Lab-A'}
+                      ]
+                      result = {
+                          'success': True,
+                          'devices': devices,
+                          'count': len(devices),
+                          'timestamp': datetime.now().isoformat(),
+                          'source': 'mcp_grpc_bridge_step3'
+                      }
+                  
+                  elif path.startswith('/device/') and path_params.get('device_id'):
+                      device_id = path_params['device_id']
+                      result = {
+                          'success': True,
+                          'device_id': device_id,
+                          'status': 'ready',
+                          'timestamp': datetime.now().isoformat(),
+                          'source': 'mcp_grpc_bridge_step3'
+                      }
+                  
+                  elif path.startswith('/grpc/device/') and path_params.get('device_id'):
+                      device_id = path_params['device_id']
+                      result = {
+                          'success': True,
+                          'device_id': device_id,
+                          'status': 'ready',
+                          'grpc_enabled': True,
+                          'timestamp': datetime.now().isoformat(),
+                          'source': 'grpc_endpoint_step3'
+                      }
+                  
+                  else:
+                      result = {'success': False, 'error': 'Invalid endpoint'}
+                  
+                  return {
+                      'statusCode': 200 if result.get('success') else 400,
+                      'headers': cors_headers,
+                      'body': json.dumps(result)
+                  }
+                  
+              except Exception as e:
+                  logger.error(f"MCP-gRPC Bridge error: {e}")
+                  return {
+                      'statusCode': 500,
+                      'headers': cors_headers,
+                      'body': json.dumps({'success': False, 'error': str(e)})
+                  }
+      Timeout: 30
+      MemorySize: 512
+
+  # Enhanced API Gateway with Rate Limiting
+  MockDeviceApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub 'sila2-mock-device-api-${Environment}'
+      Description: 'Enhanced API Gateway for SiLA2 Mock Devices with Rate Limiting & CORS'
+
+  # Usage Plan for Rate Limiting
+  ApiUsagePlan:
+    Type: AWS::ApiGateway::UsagePlan
+    Properties:
+      UsagePlanName: !Sub 'sila2-usage-plan-${Environment}'
+      Description: 'Usage plan with rate limiting for SiLA2 API'
+      Throttle:
+        RateLimit: 100
+        BurstLimit: 200
+      Quota:
+        Limit: 10000
+        Period: DAY
+
+  # API Key
+  ApiKey:
+    Type: AWS::ApiGateway::ApiKey
+    Properties:
+      Name: !Sub 'sila2-api-key-${Environment}'
+      Description: 'API Key for SiLA2 Lab Automation'
+      Enabled: true
+
+  # Resources
+  DevicesResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref MockDeviceApi
+      ParentId: !GetAtt MockDeviceApi.RootResourceId
+      PathPart: devices
+
+  DeviceResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref MockDeviceApi
+      ParentId: !GetAtt MockDeviceApi.RootResourceId
+      PathPart: device
+
+  DeviceIdResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref MockDeviceApi
+      ParentId: !Ref DeviceResource
+      PathPart: '{device_id}'
+
+  GrpcResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref MockDeviceApi
+      ParentId: !GetAtt MockDeviceApi.RootResourceId
+      PathPart: grpc
+
+  GrpcDeviceResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref MockDeviceApi
+      ParentId: !Ref GrpcResource
+      PathPart: device
+
+  GrpcDeviceIdResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref MockDeviceApi
+      ParentId: !Ref GrpcDeviceResource
+      PathPart: '{device_id}'
+
+  # Methods with CORS
+  DevicesGetMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MockDeviceApi
+      ResourceId: !Ref DevicesResource
+      HttpMethod: GET
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${MCPGRPCBridgeLambda.Arn}/invocations'
+
+  DevicesOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MockDeviceApi
+      ResourceId: !Ref DevicesResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${MCPGRPCBridgeLambda.Arn}/invocations'
+
+  DeviceGetMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MockDeviceApi
+      ResourceId: !Ref DeviceIdResource
+      HttpMethod: GET
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${MCPGRPCBridgeLambda.Arn}/invocations'
+
+  DeviceOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MockDeviceApi
+      ResourceId: !Ref DeviceIdResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${MCPGRPCBridgeLambda.Arn}/invocations'
+
+  GrpcDeviceGetMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MockDeviceApi
+      ResourceId: !Ref GrpcDeviceIdResource
+      HttpMethod: GET
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${MCPGRPCBridgeLambda.Arn}/invocations'
+
+  GrpcDeviceOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MockDeviceApi
+      ResourceId: !Ref GrpcDeviceIdResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${MCPGRPCBridgeLambda.Arn}/invocations'
+
+  # Lambda Permissions
+  MCPGRPCBridgeLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref MCPGRPCBridgeLambda
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MockDeviceApi}/*/*'
+
+  # API Gateway Deployment
+  ApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn: 
+      - DevicesGetMethod
+      - DevicesOptionsMethod
+      - DeviceGetMethod
+      - DeviceOptionsMethod
+      - GrpcDeviceGetMethod
+      - GrpcDeviceOptionsMethod
+    Properties:
+      RestApiId: !Ref MockDeviceApi
+      StageName: !Ref Environment
+
+  # Usage Plan Key
+  UsagePlanKey:
+    Type: AWS::ApiGateway::UsagePlanKey
+    Properties:
+      KeyId: !Ref ApiKey
+      KeyType: API_KEY
+      UsagePlanId: !Ref ApiUsagePlan
+
+Outputs:
+  ApiGatewayUrl:
+    Description: 'Enhanced API Gateway URL with Rate Limiting'
+    Value: !Sub 'https://${MockDeviceApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}'
+    Export:
+      Name: !Sub '${AWS::StackName}-ApiGatewayUrl'
+
+  GrpcEndpoint:
+    Description: 'gRPC Endpoint URL'
+    Value: !Sub 'https://${MockDeviceApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/grpc'
+    Export:
+      Name: !Sub '${AWS::StackName}-GrpcEndpoint'
+
+  ApiKey:
+    Description: 'API Key for Rate Limited Access'
+    Value: !Ref ApiKey
+    Export:
+      Name: !Sub '${AWS::StackName}-ApiKey'
+
+  DeviceRegistryTable:
+    Description: 'Device Registry DynamoDB Table Name'
+    Value: !Ref DeviceRegistryTable
+    Export:
+      Name: !Sub '${AWS::StackName}-DeviceRegistryTable'

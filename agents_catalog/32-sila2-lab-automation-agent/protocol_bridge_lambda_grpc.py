@@ -5,7 +5,7 @@ HTTP ↔ gRPC変換、デバイスレジストリ、統合ハンドラー
 import json
 import logging
 import os
-import requests
+# import requests  # Not available in Lambda runtime
 from typing import Dict, Any
 from datetime import datetime
 
@@ -176,28 +176,10 @@ class GRPCProtocolBridge:
             # Construct API Gateway gRPC URL
             grpc_api_url = self.mock_device_api.replace('/dev', '/dev/grpc')
             
-            if method == "GET" and not operation:
-                response = requests.get(
-                    f"{grpc_api_url}/device/{device_id}",
-                    timeout=self.timeout
-                )
-            elif operation:
-                response = requests.post(
-                    f"{grpc_api_url}/device/{device_id}",
-                    json={"operation": operation, "parameters": request.get("parameters", {})},
-                    timeout=self.timeout
-                )
-            else:
-                return {"success": False, "error": "Invalid API Gateway gRPC request"}
-            
-            if response.status_code == 200:
-                result = response.json()
-                result["source"] = "api_gateway_grpc"
-                return result
-            else:
-                return {"success": False, "error": f"API Gateway error: {response.status_code}"}
+            # Simplified for Lambda runtime without requests
+            return {"success": False, "error": "API Gateway gRPC not available in Lambda runtime"}
                 
-        except requests.RequestException as e:
+        except Exception as e:
             logger.error(f"API Gateway gRPC call error: {e}")
             return {"success": False, "error": str(e)}
     
@@ -220,24 +202,10 @@ class GRPCProtocolBridge:
             # HTTP fallback
             if self.mock_device_api:
                 try:
-                    if request.get("method") == "GET":
-                        response = requests.get(
-                            f"{self.mock_device_api}/device/{device_id}",
-                            timeout=self.timeout
-                        )
-                    else:
-                        response = requests.post(
-                            f"{self.mock_device_api}/device/{device_id}",
-                            json=request,
-                            timeout=self.timeout
-                        )
-                    
-                    if response.status_code == 200:
-                        result = response.json()
-                        result["source"] = "http"
-                        return result
+                    # HTTP fallback simplified for Lambda
+                    logger.info("HTTP fallback not available in Lambda runtime")
                 
-                except requests.RequestException as e:
+                except Exception as e:
                     logger.warning(f"HTTP API call failed: {e}")
             
             # Final fallback
@@ -253,6 +221,110 @@ class GRPCProtocolBridge:
         except Exception as e:
             logger.error(f"Device routing error: {e}")
             return {"success": False, "error": str(e)}
+
+class EnhancedMCPGRPCBridge(GRPCProtocolBridge):
+    """MCP統合対応のgRPCブリッジ"""
+    
+    def __init__(self):
+        super().__init__()
+        self.device_registry_mode = os.environ.get('DEVICE_REGISTRY_MODE', 'enhanced')
+        self.phase4_ready = os.environ.get('PHASE4_READY', 'true') == 'true'
+    
+    def process_mcp_request(self, mcp_request: Dict[str, Any]) -> Dict[str, Any]:
+        """MCP リクエスト処理"""
+        try:
+            method = mcp_request.get('method', 'tools/call')
+            params = mcp_request.get('params', {})
+            
+            if method == 'tools/call':
+                tool_name = params.get('name')
+                arguments = params.get('arguments', {})
+                
+                if tool_name == 'list_devices':
+                    return self._handle_mcp_list_devices()
+                elif tool_name == 'get_device_status':
+                    device_id = arguments.get('device_id')
+                    return self._handle_mcp_device_status(device_id)
+                elif tool_name == 'execute_command':
+                    device_id = arguments.get('device_id')
+                    operation = arguments.get('operation')
+                    parameters = arguments.get('parameters', {})
+                    return self._handle_mcp_execute_command(device_id, operation, parameters)
+            
+            return {"success": False, "error": f"Unknown MCP method: {method}"}
+            
+        except Exception as e:
+            logger.error(f"MCP request processing error: {e}")
+            return {"success": False, "error": str(e)}
+    
+    def convert_mcp_to_grpc(self, mcp_request: Dict[str, Any]) -> Dict[str, Any]:
+        """MCP → gRPC変換"""
+        try:
+            params = mcp_request.get('params', {})
+            tool_name = params.get('name')
+            arguments = params.get('arguments', {})
+            
+            grpc_request = {
+                "method": "POST" if tool_name == 'execute_command' else "GET",
+                "device_id": arguments.get('device_id'),
+                "operation": arguments.get('operation'),
+                "parameters": arguments.get('parameters', {}),
+                "timestamp": datetime.now().isoformat(),
+                "mcp_tool": tool_name
+            }
+            
+            return grpc_request
+            
+        except Exception as e:
+            logger.error(f"MCP to gRPC conversion error: {e}")
+            return {}
+    
+    def _handle_mcp_list_devices(self) -> Dict[str, Any]:
+        """MCP デバイス一覧処理"""
+        devices = DeviceRegistry.list_all_devices()
+        return {
+            "success": True,
+            "content": [{
+                "type": "text",
+                "text": f"Found {len(devices)} devices: " + 
+                       ", ".join([f"{d['device_id']} ({d['type']})" for d in devices])
+            }],
+            "devices": devices,
+            "registry_mode": self.device_registry_mode
+        }
+    
+    def _handle_mcp_device_status(self, device_id: str) -> Dict[str, Any]:
+        """MCP デバイス状態取得"""
+        request = {"method": "GET", "device_id": device_id}
+        result = self.route_to_device(device_id, request)
+        
+        return {
+            "success": result.get("success", False),
+            "content": [{
+                "type": "text", 
+                "text": f"Device {device_id}: {result.get('status', 'unknown')}"
+            }],
+            "device_data": result
+        }
+    
+    def _handle_mcp_execute_command(self, device_id: str, operation: str, parameters: Dict) -> Dict[str, Any]:
+        """MCP コマンド実行"""
+        request = {
+            "method": "POST",
+            "device_id": device_id,
+            "operation": operation,
+            "parameters": parameters
+        }
+        result = self.route_to_device(device_id, request)
+        
+        return {
+            "success": result.get("success", False),
+            "content": [{
+                "type": "text",
+                "text": f"Command {operation} on {device_id}: {'completed' if result.get('success') else 'failed'}"
+            }],
+            "execution_result": result
+        }
 
 class ProtocolBridgeLambdaGRPC:
     """Protocol Bridge Lambda with gRPC support"""
@@ -287,14 +359,9 @@ class ProtocolBridgeLambdaGRPC:
                         "source": "direct_grpc"
                     }
                 
-                # Try API Gateway gRPC
+                # Try API Gateway gRPC (simplified for Lambda)
                 elif self.bridge.mock_device_api:
-                    grpc_api_url = self.bridge.mock_device_api.replace('/dev', '/dev/grpc')
-                    response = requests.get(f"{grpc_api_url}/devices", timeout=self.bridge.timeout)
-                    if response.status_code == 200:
-                        result = response.json()
-                        result["source"] = "api_gateway_grpc"
-                        return result
+                    logger.info("API Gateway gRPC fallback not implemented in Lambda runtime")
                         
             except Exception as e:
                 logger.warning(f"gRPC device list failed, using fallback: {e}")
@@ -334,10 +401,41 @@ class ProtocolBridgeLambdaGRPC:
             logger.error(f"Device request handling error: {e}")
             return {"success": False, "error": str(e)}
 
+class EnhancedProtocolBridgeLambda(ProtocolBridgeLambdaGRPC):
+    """MCP対応Protocol Bridge Lambda"""
+    
+    def __init__(self):
+        super().__init__()
+        self.bridge = EnhancedMCPGRPCBridge()
+    
+    def handle_mcp_request(self, event: Dict[str, Any]) -> Dict[str, Any]:
+        """MCP リクエスト処理"""
+        try:
+            # MCP request parsing
+            body = {}
+            if event.get('body'):
+                body = json.loads(event['body']) if isinstance(event['body'], str) else event['body']
+            
+            # Process MCP request
+            mcp_result = self.bridge.process_mcp_request(body)
+            
+            return mcp_result
+            
+        except Exception as e:
+            logger.error(f"MCP request handling error: {e}")
+            return {"success": False, "error": str(e)}
+
 def lambda_handler(event, context):
     """Lambda エントリーポイント"""
     try:
-        bridge_lambda = ProtocolBridgeLambdaGRPC()
+        # Check if MCP request
+        path = event.get('path', '')
+        body_str = event.get('body') or ''
+        if path == '/mcp' or ('"method":"tools/call"' in body_str):
+            bridge_lambda = EnhancedProtocolBridgeLambda()
+            result = bridge_lambda.handle_mcp_request(event)
+        else:
+            bridge_lambda = ProtocolBridgeLambdaGRPC()
         
         # API Gateway event parsing
         http_method = event.get('httpMethod', 'GET')
@@ -352,6 +450,19 @@ def lambda_handler(event, context):
             except json.JSONDecodeError:
                 pass
         
+        # CORS preflight handling
+        if http_method == 'OPTIONS':
+            return {
+                'statusCode': 200,
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+                },
+                'body': json.dumps({'message': 'CORS preflight', 'step': 'step3'})
+            }
+        
         # Route handling
         if path == '/devices' and http_method == 'GET':
             result = bridge_lambda.handle_device_list()
@@ -360,8 +471,23 @@ def lambda_handler(event, context):
             device_id = path_params['device_id']
             result = bridge_lambda.handle_device_request(device_id, http_method, body)
         
+        elif path.startswith('/grpc/device/') and path_params.get('device_id'):
+            device_id = path_params['device_id']
+            result = bridge_lambda.handle_device_request(device_id, http_method, body)
+            result['grpc_enabled'] = True
+            result['endpoint_type'] = 'grpc'
+        
         else:
             result = {'success': False, 'error': 'Invalid endpoint'}
+        
+            return {
+                'statusCode': 200 if result.get('success') else 400,
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                },
+                'body': json.dumps(result)
+            }
         
         return {
             'statusCode': 200 if result.get('success') else 400,

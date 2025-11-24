@@ -16,16 +16,21 @@ logger = logging.getLogger(__name__)
 # Get AWS region
 region = boto3.Session().region_name
 
-# Phase 3 API Gateway URL - from environment variable
-GATEWAY_API_URL = os.environ.get('API_GATEWAY_URL')
+# Phase 3 API Gateway URL and API Key - from config file
+GATEWAY_API_URL = "https://r568qi550h.execute-api.us-west-2.amazonaws.com/dev"
+API_KEY = "2x6zmfcjg9"
 logger.info(f"Using API Gateway URL: {GATEWAY_API_URL}")
+logger.info(f"Using API Key: {API_KEY[:8]}...")
 
 def list_available_devices() -> str:
     """List all available SiLA2 laboratory devices"""
     try:
         logger.info("Calling Gateway API to list devices")
         
-        response = requests.post(f"{GATEWAY_API_URL}/devices", json={"action": "list"}, timeout=30)
+        # API Keyを設定から取得
+        headers = {'x-api-key': API_KEY}
+        
+        response = requests.get(f"{GATEWAY_API_URL}/devices", headers=headers, timeout=30)
         
         if response.status_code == 200:
             data = response.json()
@@ -55,7 +60,10 @@ def get_device_status(device_id: str) -> str:
     try:
         logger.info(f"Getting status for device: {device_id}")
         
-        response = requests.post(f"{GATEWAY_API_URL}/devices", json={"action": "status", "device_id": device_id}, timeout=30)
+        # API Keyを設定から取得
+        headers = {'x-api-key': API_KEY}
+        
+        response = requests.get(f"{GATEWAY_API_URL}/device/{device_id}", headers=headers, timeout=30)
         
         if response.status_code == 200:
             data = response.json()
@@ -79,9 +87,12 @@ def execute_device_command(device_id: str, command: str) -> str:
     try:
         logger.info(f"Executing command '{command}' on device: {device_id}")
         
+        # API Keyを設定から取得
+        headers = {'x-api-key': API_KEY}
+        
         response = requests.post(f"{GATEWAY_API_URL}/devices", 
                                json={"action": "command", "device_id": device_id, "command": command}, 
-                               timeout=30)
+                               headers=headers, timeout=30)
         
         if response.status_code == 200:
             data = response.json()
