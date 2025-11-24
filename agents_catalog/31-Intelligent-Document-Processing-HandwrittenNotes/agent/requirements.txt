@@ -1,0 +1,6 @@
+bedrock-agentcore
+boto3
+strands-agents
+strands-agents-tools
+uv
+mcp
