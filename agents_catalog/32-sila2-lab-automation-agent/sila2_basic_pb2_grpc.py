@@ -6,8 +6,7 @@ import sila2_basic_pb2 as sila2__basic__pb2
 
 
 class SiLA2DeviceStub(object):
-    """Basic SiLA2 Device Service
-    """
+    """Missing associated documentation comment in .proto file."""
 
     def __init__(self, channel):
         """Constructor.
@@ -25,16 +24,10 @@ class SiLA2DeviceStub(object):
                 request_serializer=sila2__basic__pb2.CommandRequest.SerializeToString,
                 response_deserializer=sila2__basic__pb2.CommandResponse.FromString,
                 )
-        self.ListDevices = channel.unary_unary(
-                '/sila2.SiLA2Device/ListDevices',
-                request_serializer=sila2__basic__pb2.ListDevicesRequest.SerializeToString,
-                response_deserializer=sila2__basic__pb2.ListDevicesResponse.FromString,
-                )
 
 
 class SiLA2DeviceServicer(object):
-    """Basic SiLA2 Device Service
-    """
+    """Missing associated documentation comment in .proto file."""
 
     def GetDeviceInfo(self, request, context):
         """Missing associated documentation comment in .proto file."""
@@ -43,12 +36,6 @@ class SiLA2DeviceServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def ExecuteCommand(self, request, context):
-        """Missing associated documentation comment in .proto file."""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def ListDevices(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -67,21 +54,15 @@ def add_SiLA2DeviceServicer_to_server(servicer, server):
                     request_deserializer=sila2__basic__pb2.CommandRequest.FromString,
                     response_serializer=sila2__basic__pb2.CommandResponse.SerializeToString,
             ),
-            'ListDevices': grpc.unary_unary_rpc_method_handler(
-                    servicer.ListDevices,
-                    request_deserializer=sila2__basic__pb2.ListDevicesRequest.FromString,
-                    response_serializer=sila2__basic__pb2.ListDevicesResponse.SerializeToString,
-            ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
             'sila2.SiLA2Device', rpc_method_handlers)
-    server.add_generic_rpc_handlers((generic_handler,))
+    server.add_generic_handler(generic_handler)
 
 
  # This class is part of an EXPERIMENTAL API.
 class SiLA2Device(object):
-    """Basic SiLA2 Device Service
-    """
+    """Missing associated documentation comment in .proto file."""
 
     @staticmethod
     def GetDeviceInfo(request,
@@ -114,22 +95,5 @@ class SiLA2Device(object):
         return grpc.experimental.unary_unary(request, target, '/sila2.SiLA2Device/ExecuteCommand',
             sila2__basic__pb2.CommandRequest.SerializeToString,
             sila2__basic__pb2.CommandResponse.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
-
-    @staticmethod
-    def ListDevices(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/sila2.SiLA2Device/ListDevices',
-            sila2__basic__pb2.ListDevicesRequest.SerializeToString,
-            sila2__basic__pb2.ListDevicesResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

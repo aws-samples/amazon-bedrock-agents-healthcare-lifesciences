@@ -1,38 +1,33 @@
 # SiLA2 Lab Automation Agent
 
-**Phase 2 Complete** ✅ - Amazon Bedrock AgentCore + Gateway integration for laboratory automation using SiLA2 protocols.
+**Phase 3 Complete** ✅ - Amazon Bedrock AgentCore + Gateway Lambda Target integration for laboratory automation using SiLA2 protocols.
 
 ## 🚀 Quick Deploy
 
 ```bash
-# Setup environment
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+# Deploy everything
+cd scripts
+./deploy_all.sh
 
-# Deploy everything (Phase 2 - Gateway Integration)
-./deploy-corrected.sh
+# Test AgentCore
+agentcore invoke "List all available SiLA2 devices"
 
-# Test AgentCore integration
-agentcore status
-agentcore invoke '{"prompt": "List all available SiLA2 devices"}'
-
-# Test Streamlit UI
+# Launch UI
 streamlit run streamlit_app_agentcore.py
 ```
 
-## 🏗️ Architecture (Phase 2)
+## 🏗️ Architecture (Phase 3)
 
 ```
-User → AgentCore Runtime → Gateway API → Lambda → SiLA2 Tools → Lab Devices
+User → AgentCore Runtime → MCP Gateway → Gateway Target → Lambda (Gateway format) → Mock Devices
 ```
 
-- **Framework**: Amazon Bedrock AgentCore + Strands Agents SDK
+- **Framework**: Amazon Bedrock AgentCore
 - **Model**: Anthropic Claude 3.5 Sonnet v2
-- **Gateway**: AWS Lambda + API Gateway + MCP Gateway
-- **Infrastructure**: CloudFormation (ECR + IAM + Lambda + API Gateway)
-- **Runtime**: Docker ARM64 on AWS CodeBuild
-- **UI**: Streamlit with AgentCore integration
+- **Gateway**: MCP Gateway + Lambda Target (context.client_context)
+- **Infrastructure**: CloudFormation (IAM + Lambda)
+- **Mock Devices**: HPLC, Centrifuge, Pipette (Lambda functions)
+- **UI**: Streamlit
 
 ## 🔧 Available SiLA2 Tools
 
@@ -43,24 +38,23 @@ User → AgentCore Runtime → Gateway API → Lambda → SiLA2 Tools → Lab De
 - `start_measurement(device_name, parameters)`: Start measurements
 - `stop_measurement(device_name)`: Stop ongoing measurements
 
-## 📁 Key Files (Phase 2)
+## 📁 Key Files (Phase 3)
 
-- `deploy-corrected.sh` - **Main deployment script** ✅
-- `main_aws_official_final.py` - AgentCore Runtime implementation ✅
-- `gateway/sila2_gateway_mcp_tools.py` - Gateway Lambda handler ✅
-- `infrastructure/sila2-agent-simple-fixed.yaml` - CloudFormation template ✅
-- `streamlit_app_agentcore.py` - Streamlit UI with AgentCore integration ✅
+- `scripts/deploy_all.sh` - Automated 10-step deployment ✅
+- `mcp_grpc_bridge_lambda_gateway.py` - Gateway Lambda Target implementation ✅
+- `scripts/03_setup_mcp_bridge.sh` - Lambda deployment ✅
+- `scripts/06_create_gateway_target.sh` - Gateway Target creation ✅
 - `.bedrock_agentcore.yaml` - AgentCore configuration ✅
+- `streamlit_app_agentcore.py` - Streamlit UI ✅
 
-## 🎯 Phase 2 Achievements
+## 🎯 Phase 3 Achievements
 
-- ✅ **AWS Official Pattern**: BedrockAgentCoreApp + @app.entrypoint
-- ✅ **Gateway Integration**: MCP Gateway + Target configuration
-- ✅ **Strands SDK Integration**: Proper tool execution via Gateway API
-- ✅ **Input Processing**: Dictionary format input handling
-- ✅ **ARM64 Deployment**: CodeBuild-based container deployment
-- ✅ **Streamlit UI**: Interactive interface with AgentCore integration
-- ✅ **End-to-End Testing**: Confirmed working AgentCore invoke
+- ✅ **Gateway Lambda Target**: Correct context.client_context implementation
+- ✅ **Tool Schema Separation**: Schema in Gateway Target, logic in Lambda
+- ✅ **Mock Device Integration**: HPLC, Centrifuge, Pipette Lambda functions
+- ✅ **10-Step Deployment**: Automated infrastructure setup
+- ✅ **AgentCore Integration**: End-to-end working pipeline
+- ✅ **Streamlit UI**: Interactive device control interface
 
 ## 🧪 Example Usage
 
@@ -96,11 +90,11 @@ There are three SiLA2 devices currently available in the laboratory:
   - Amazon API Gateway
   - AWS CloudFormation
 
-## 🔄 Next Steps (Phase 3)
+## 🔄 Next Steps
 
-- Real SiLA2 protocol implementation
-- Actual device communication
-- Enhanced error handling
-- Production-ready optimizations
+- Real SiLA2 gRPC protocol implementation
+- Physical device integration
+- Production deployment optimization
+- Advanced error handling and monitoring
 
-See `DEVELOPMENT_PLAN.md` for detailed roadmap and `AWS_DEPLOYMENT_GUIDE.md` for advanced deployment options.
+See `scripts/DEPLOYMENT_ORDER.md` for deployment details.
