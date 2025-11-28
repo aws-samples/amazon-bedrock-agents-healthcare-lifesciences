@@ -7,6 +7,12 @@ export STACK_PREFIX="sila2-phase3"
 log_info() { echo -e "\033[32m[INFO]\033[0m $1"; }
 log_warn() { echo -e "\033[33m[WARN]\033[0m $1"; }
 log_error() { echo -e "\033[31m[ERROR]\033[0m $1"; }
+print_header() { echo -e "\n\033[1;36m=== $1 ===\033[0m\n"; }
+print_step() { echo -e "\033[1;34m>>> $1\033[0m"; }
+print_info() { echo -e "\033[32m[INFO]\033[0m $1"; }
+print_success() { echo -e "\033[1;32m✓\033[0m $1"; }
+print_warning() { echo -e "\033[33m[WARN]\033[0m $1"; }
+print_error() { echo -e "\033[31m[ERROR]\033[0m $1"; }
 
 confirm_action() {
     read -p "$1 (y/N): " -n 1 -r

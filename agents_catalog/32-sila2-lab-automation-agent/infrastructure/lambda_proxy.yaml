@@ -1,0 +1,83 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Lambda Proxy for MCP Bridge
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+  PrivateSubnets:
+    Type: List<AWS::EC2::Subnet::Id>
+  BridgeSecurityGroup:
+    Type: String
+
+Resources:
+  ProxySecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Lambda Proxy to ECS Bridge
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          DestinationSecurityGroupId: !Ref BridgeSecurityGroup
+        - IpProtocol: udp
+          FromPort: 53
+          ToPort: 53
+          CidrIp: 0.0.0.0/0
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+
+  LambdaProxyFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: sila2-mcp-proxy
+      Runtime: python3.12
+      Handler: index.lambda_handler
+      Timeout: 30
+      MemorySize: 256
+      Role: !GetAtt LambdaExecutionRole.Arn
+      VpcConfig:
+        SubnetIds: !Ref PrivateSubnets
+        SecurityGroupIds:
+          - !Ref ProxySecurityGroup
+      Environment:
+        Variables:
+          MCP_ENDPOINT: http://bridge.sila2.local:8080
+      Code:
+        ZipFile: |
+          import json
+          import urllib3
+          import os
+          
+          http = urllib3.PoolManager()
+          MCP_ENDPOINT = os.environ.get('MCP_ENDPOINT', 'http://bridge-service.sila2.local:8080')
+          
+          def lambda_handler(event, context):
+              try:
+                  response = http.request(
+                      'POST',
+                      f"{MCP_ENDPOINT}/mcp/v1/tools/call",
+                      body=json.dumps(event),
+                      headers={'Content-Type': 'application/json'},
+                      timeout=30.0
+                  )
+                  return json.loads(response.data.decode('utf-8'))
+              except Exception as e:
+                  return {'error': str(e), 'event': event}
+
+Outputs:
+  ProxyFunctionArn:
+    Value: !GetAtt LambdaProxyFunction.Arn
+  ProxyFunctionName:
+    Value: !Ref LambdaProxyFunction

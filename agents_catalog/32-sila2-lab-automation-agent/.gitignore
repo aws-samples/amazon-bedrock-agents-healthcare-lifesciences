@@ -1,63 +1,28 @@
-# Phase 3 deployment config files (temporary)
-.phase3-*
-.device_api_config.json
+# Zip archives
+*.zip
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Environment
+.env
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+
+# AWS
+.aws/
+
+# Temporary files
+*.tmp
+*.log
+.DS_Store
+
+# Config files with secrets
 .gateway-config
-.bedrock_agentcore_backup.yaml
-.bedrock_agentcore_simple.yaml
-
-# Backup files
-*_backup.py
-*_backup.txt
-requirements_backup.txt
-
-# Test files (keep only scripts/)
-test-*.sh
-test_*.py
-deploy-phase3-*.sh
-deploy_phase3_*.sh
-fix-*.sh
-fix_*.py
-verify_*.sh
-
-# Temporary Lambda versions
-mcp_grpc_bridge_lambda_*.py
-mock_*_device_lambda.py
-mock_*_simple.py
-unified_mock_device_lambda_enhanced.py
-device_discovery_lambda.py
-device_router.py
-
-# Temporary main files
-main_simple.py
-main_strands_agentcore_phase3.py
-main_agentcore_phase3_backup.py
-
-# Response/status files
-*.json
-!cloudformation/*.json
-!gateway/*.json
-
-# Temporary infrastructure
-infrastructure/device_api_gateway_enhanced.yaml
-infrastructure/mock_device_api_gateway.yaml
-
-# Temporary gateway files
-gateway/agentcore_gateway_tools.py
-gateway/mcp_tool_registry.py
-
-# Temporary scripts
-create_*.py
-device_*.py
-performance_test.py
-run_streamlit.sh
-
-# Temporary docs
-AWS_DEPLOYMENT_GUIDE.md
-PHASE3_COMPLETE_IMPLEMENTATION_PLAN.md
-PHASE3_DEPLOYMENT_GUIDE.md
-
-# Docker
-Dockerfile.custom
-
-# Trust policy
-agentcore_trust_policy.json
+.phase3-*-config
