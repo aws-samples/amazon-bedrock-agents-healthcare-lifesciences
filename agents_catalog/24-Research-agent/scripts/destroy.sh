@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # Deployment script
-# Usage: ./scripts/deploy.sh <project-name> <s3-bucket-name> <ar-policy-id>
+# Usage: ./scripts/destroy.sh <project-name> <s3-bucket-name>
 
 set -e
-unset -v PROJECT_NAME S3_BUCKET_NAME DATA_PREFIX CODE_PREFIX TIMESTAMP AR_POLICY_ID
+unset -v PROJECT_NAME S3_BUCKET_NAME CODE_PREFIX TIMESTAMP
 
 
 TIMESTAMP=$(date +%s)
@@ -31,11 +31,10 @@ fi
 # Sync Python environment
 uv sync
 
-PROJECT_NAME=${1:-"docs-ar-demo"}
+PROJECT_NAME=$1
 S3_BUCKET_NAME=$2
 AR_POLICY_ID=$3
 
-DATA_PREFIX="data"
 CODE_PREFIX="code"
 CFN_PREFIX="cfn"
 
@@ -49,16 +48,7 @@ aws cloudformation delete-stack --stack-name "$PROJECT_NAME"
 echo "Deleting agent code from Amazon S3"
 aws s3 rm "s3://${S3_BUCKET_NAME}/${CODE_PREFIX}/" --recursive
 
-echo "Deleting data from Amazon S3"
-aws s3 rm "s3://${S3_BUCKET_NAME}/${DATA_PREFIX}/" --recursive
-
 echo "Deleting cfn from Amazon S3"
 aws s3 rm "s3://${S3_BUCKET_NAME}/${CFN_PREFIX}/" --recursive
 
 echo "Stack deleted successfully"
-
-export ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-AR_POLICY_ARN="arn:aws:bedrock:${AWS_REGION}:${ACCOUNT_ID}:automated-reasoning-policy/${AR_POLICY_ID}"
-
-echo "To delete the automated reasoning policy, run the following AWS CLI command:"
-echo "aws bedrock delete-automated-reasoning-policy --policy-arn ${AR_POLICY_ARN}"
