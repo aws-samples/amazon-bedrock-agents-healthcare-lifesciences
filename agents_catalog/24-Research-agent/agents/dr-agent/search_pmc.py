@@ -1,129 +1,101 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
 
-# Adapted from https://github.com/andybrandt/mcp-simple-pubmed
-# SPDX-License-Identifier: MIT
-
 import logging
 import os
-from typing import Any, Dict, List
-from xml.etree.ElementTree import Element
+import re
+from typing import Any, Dict, List, Literal
+
+# Element only used for type check
+# nosemgrep: use-defused-xml
+from xml.etree.ElementTree import Element # nosec
+
 import httpx
 from defusedxml import ElementTree as ET
+from strands import tool
 
 # Global configuration for commercial use filtering
-COMMERCIAL_USE_ONLY = True
+COMMERCIAL_USE_ONLY = os.getenv("COMMERCIAL_USE_ONLY", True)
 
+# Configure logging
+logging.basicConfig(
+    format="%(levelname)s | %(name)s | %(message)s",
+    handlers=[logging.StreamHandler()],
+)
 
-logger = logging.getLogger("strands")
+logger = logging.getLogger("search_pmc")
+logger.setLevel(logging.INFO)
 
 # Type alias forbetter readibility
 ArticleDict = Dict[str, Any]
 ToolResult = Dict[str, Any]
 ReferenceDict = Dict[str, str]
 
-# Tool specification for Strands Agents framework
-TOOL_SPEC = {
-    "name": "search_pubmed",
-    "description": "Search PubMed for articles matching the query with optional citation analysis and ranking capabilities.",
-    "inputSchema": {
-        "json": {
-            "type": "object",
-            "properties": {
-                "query": {
-                    "type": "string",
-                    "description": "The search query for PubMed using standard PubMed search syntax",
-                },
-                "max_results": {
-                    "type": "integer",
-                    "description": "Maximum number of results to fetch from initial search",
-                    "default": 100,
-                    "minimum": 1,
-                    "maximum": 1000,
-                },
-                "max_records": {
-                    "type": "integer",
-                    "description": "Maximum number of articles to return in final results",
-                    "minimum": 1,
-                    "maximum": 100,
-                },
-                "rerank": {
-                    "type": "string",
-                    "description": "Reranking method to apply",
-                    "enum": ["referenced_by"],
-                    "default": "referenced_by",
-                },
-            },
-            "required": ["query"],
-        }
-    },
-}
 
-
-def search_pubmed(tool: Dict[str, Any], **kwargs: Any) -> ToolResult:
+def search_pmc(
+    query: str,
+    max_search_result_count: int = 100,
+    max_filtered_result_count: int = 10,
+    rerank_by: Literal["references", None] = "references",
+) -> dict:
     """
-    Search PubMed for articles matching the query with ToolResult format.
+    Search PMC for articles matching the query with ToolResult format.
 
-    This function performs a comprehensive search of PubMed literature with optional
+    This function performs a comprehensive search of PMC literature with optional
     citation analysis and ranking capabilities. Results can be ranked by citation count
     within the result set to surface the most influential papers. The function follows
     the Strands Agents framework ToolResult format for consistent response handling.
 
     Args:
-        tool: Dictionary containing toolUseId and input parameters
-            - toolUseId: String identifier for the tool invocation
-            - input: Dictionary with search parameters:
-                - query (required): The search query for PubMed using standard PubMed search syntax
-                - max_results (optional): Maximum number of results to fetch from initial search (default: 100, range: 1-1000)
-                - max_records (optional): Maximum number of articles to return in final results (range: 1-100)
-                - rerank (optional): Reranking method to apply (default: "referenced_by", options: ["referenced_by"])
-        **kwargs: Additional keyword arguments (unused)
+        - query (required): The search query for PMC using standard PMC search syntax
+        - max_search_result_count (optional): Maximum number of results to fetch from initial search (default: 100, range: 1-1000)
+        - max_filtered_result_count (optional): Maximum number of articles to return in final, filtered results (range: 1-100)
 
     Returns:
-        ToolResult dictionary with the following structure:
-        - toolUseId: String identifier from input tool parameter
+        Dictionary with the following structure:
         - status: "success" or "error"
         - content: List containing a single dictionary with "text" field:
             - For success: Formatted search results with article details, citation counts, and summary
             - For error: Descriptive error message explaining what went wrong
 
-    ToolResult Success Response Format:
+    Success Response Format:
         {
-            "toolUseId": "search_123",
             "status": "success",
             "content": [{"text": "Showing 5 of 50 articles found\\nResults ranked by citation count...\\n\\nArticle 1\\n..."}]
         }
 
-    ToolResult Error Response Format:
+    Error Response Format:
         {
-            "toolUseId": "search_123",
             "status": "error",
             "content": [{"text": "Error: query parameter is required"}]
         }
 
+    Note: To search by the relative date of publication, add one of the following date filters to the end of the search query INCLUDING THE DOUBLE QUOTES:
+
+    - AND "last X days"[dp]
+    - AND "last X months"[dp]
+    - AND "last X years"[dp]
+
+    where X is the number of days, months, or years immediately preceding today's date.
+
+    For example
+
     Examples:
         # Basic search with citation ranking
-        tool_input = {
-            "toolUseId": "search_123",
-            "input": {
-                "query": "CRISPR gene editing",
-                "max_results": 50,
-                "max_records": 10
-            }
+        input = {
+            "query": "CRISPR gene editing",
+            "max_search_result_count": 50,
+            "max_filtered_result_count": 10
         }
-        result = search_pubmed(tool_input)
+        result = search_pmc(input)
 
-        # Advanced search with temporal filters
-        tool_input = {
-            "toolUseId": "search_456",
-            "input": {
-                "query": "mRNA vaccine COVID-19 AND \"last 2 years\"[dp]",
-                "max_results": 200,
-                "max_records": 20,
-                "rerank": "referenced_by"
-            }
+        # Advanced search with relative publication date
+        input = {
+            "query": 'mRNA vaccine COVID-19 AND "last 2 years"[dp]',
+            "max_search_result_count": 200,
+            "max_filtered_result_count": 20
         }
-        result = search_pubmed(tool_input)
+        result = search_pmc(tool_input)
 
         # Handle success response
         if result["status"] == "success":
@@ -133,25 +105,9 @@ def search_pubmed(tool: Dict[str, Any], **kwargs: Any) -> ToolResult:
             error_message = result["content"][0]["text"]
             print(f"Search failed: {error_message}")
     """
-    # Extract toolUseId from tool parameter dictionary
-    tool_use_id = tool.get("toolUseId", "")
 
     try:
-        # Extract search parameters from tool["input"] dictionary
-        input_params = tool.get("input", {})
-
-        # Validate all parameters and return error ToolResult if validation fails
-        validation_error = _validate_parameters(tool_use_id, input_params)
-        if validation_error is not None:
-            return validation_error
-
-        # Extract validated parameters with defaults
-        query = input_params.get("query")
-        max_results = input_params.get("max_results", 100)
-        max_records = input_params.get("max_records")
-        rerank = input_params.get("rerank", "referenced_by")
-
-        logger.info(f"Searching PubMed for: {query}")
+        logger.info(f"Searching PMC for: {query}")
 
         base_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
         search_url = f"{base_url}/esearch.fcgi"
@@ -162,7 +118,6 @@ def search_pubmed(tool: Dict[str, Any], **kwargs: Any) -> ToolResult:
         except Exception as query_error:
             logger.error(f"Error building search query: {query_error}")
             return {
-                "toolUseId": tool_use_id,
                 "status": "error",
                 "content": [
                     {"text": f"Error building search query: {str(query_error)}"}
@@ -170,9 +125,9 @@ def search_pubmed(tool: Dict[str, Any], **kwargs: Any) -> ToolResult:
             }
 
         search_params = {
-            "db": "pubmed",
+            "db": "pmc",
             "term": filtered_query,
-            "retmax": max_results,
+            "retmax": max_search_result_count,
             "retmode": "json",
             "sort": "relevance",
         }
@@ -184,47 +139,37 @@ def search_pubmed(tool: Dict[str, Any], **kwargs: Any) -> ToolResult:
             )
             search_response.raise_for_status()
         except httpx.HTTPStatusError as http_error:
-            logger.error(f"HTTP error during PubMed search: {http_error}")
+            logger.error(f"HTTP error during PMC search: {http_error}")
             return {
-                "toolUseId": tool_use_id,
                 "status": "error",
                 "content": [
                     {
-                        "text": f"HTTP error during PubMed search: {http_error.response.status_code} - {str(http_error)}"
+                        "text": f"HTTP error during PMC search: {http_error.response.status_code} - {str(http_error)}"
                     }
                 ],
             }
         except httpx.TimeoutException as timeout_error:
-            logger.error(f"Timeout error during PubMed search: {timeout_error}")
+            logger.error(f"Timeout error during PMC search: {timeout_error}")
             return {
-                "toolUseId": tool_use_id,
                 "status": "error",
                 "content": [
-                    {
-                        "text": f"Request timeout during PubMed search: {str(timeout_error)}"
-                    }
+                    {"text": f"Request timeout during PMC search: {str(timeout_error)}"}
                 ],
             }
         except httpx.NetworkError as network_error:
-            logger.error(f"Network error during PubMed search: {network_error}")
+            logger.error(f"Network error during PMC search: {network_error}")
             return {
-                "toolUseId": tool_use_id,
                 "status": "error",
                 "content": [
-                    {
-                        "text": f"Network error during PubMed search: {str(network_error)}"
-                    }
+                    {"text": f"Network error during PMC search: {str(network_error)}"}
                 ],
             }
         except httpx.RequestError as request_error:
-            logger.error(f"Request error during PubMed search: {request_error}")
+            logger.error(f"Request error during PMC search: {request_error}")
             return {
-                "toolUseId": tool_use_id,
                 "status": "error",
                 "content": [
-                    {
-                        "text": f"Request error during PubMed search: {str(request_error)}"
-                    }
+                    {"text": f"Request error during PMC search: {str(request_error)}"}
                 ],
             }
 
@@ -233,7 +178,6 @@ def search_pubmed(tool: Dict[str, Any], **kwargs: Any) -> ToolResult:
         except Exception as json_error:
             logger.error(f"JSON parsing error in search response: {json_error}")
             return {
-                "toolUseId": tool_use_id,
                 "status": "error",
                 "content": [
                     {"text": f"Error parsing search response: {str(json_error)}"}
@@ -243,11 +187,10 @@ def search_pubmed(tool: Dict[str, Any], **kwargs: Any) -> ToolResult:
         try:
             # Extract IDs
             id_list = search_data["esearchresult"]["idlist"]
-            logger.info(f"Found {len(id_list)} article pmids")
+            logger.info(f"Found {len(id_list)} article pmcids")
         except KeyError as key_error:
             logger.error(f"Unexpected search response format: {key_error}")
             return {
-                "toolUseId": tool_use_id,
                 "status": "error",
                 "content": [
                     {
@@ -259,18 +202,17 @@ def search_pubmed(tool: Dict[str, Any], **kwargs: Any) -> ToolResult:
         if not id_list:
             logger.info("No articles found")
             return {
-                "toolUseId": tool_use_id,
+                # "toolUseId": tool_use_id,
                 "status": "success",
                 "content": [{"text": "No articles found for the given query."}],
             }
 
         # Fetch article details using the batch function
         try:
-            articles = fetch_pubmed(id_list)
+            articles = fetch_pmc(id_list)
         except Exception as fetch_error:
             logger.error(f"Error fetching article details: {fetch_error}")
             return {
-                "toolUseId": tool_use_id,
                 "status": "error",
                 "content": [
                     {"text": f"Error fetching article details: {str(fetch_error)}"}
@@ -278,18 +220,18 @@ def search_pubmed(tool: Dict[str, Any], **kwargs: Any) -> ToolResult:
             }
 
         # Apply reranking if requested
-        if rerank == "referenced_by":
+        if rerank_by == "references":
             try:
                 logger.info("Calculating citation relationships and ranking articles")
                 enhanced_articles = _calculate_referenced_by_counts(articles)
                 ranked_articles = _rank_by_citations(enhanced_articles)
                 logger.info("Citation ranking completed successfully")
 
-                # Apply max_records limit to ranked results
-                if max_records is not None:
-                    final_results = ranked_articles[:max_records]
+                # Apply max_filtered_result_count limit to ranked results
+                if max_filtered_result_count is not None:
+                    final_results = ranked_articles[:max_filtered_result_count]
                     logger.info(
-                        f"Applied max_records limit: returning {len(final_results)} of {len(ranked_articles)} articles"
+                        f"Applied max_filtered_result_count limit: returning {len(final_results)} of {len(ranked_articles)} articles"
                     )
                 else:
                     final_results = ranked_articles
@@ -297,7 +239,7 @@ def search_pubmed(tool: Dict[str, Any], **kwargs: Any) -> ToolResult:
                 _print_fetch_results(final_results, n=3)
 
                 # Format search results using article formatting functions
-                # Pass the total before max_records limit for proper summary
+                # Pass the total before max_filtered_result_count limit for proper summary
                 total_before_limit = len(ranked_articles)
                 try:
                     formatted_content = _format_article_list(
@@ -308,7 +250,6 @@ def search_pubmed(tool: Dict[str, Any], **kwargs: Any) -> ToolResult:
                 except Exception as format_error:
                     logger.error(f"Error formatting article results: {format_error}")
                     return {
-                        "toolUseId": tool_use_id,
                         "status": "error",
                         "content": [
                             {
@@ -318,7 +259,6 @@ def search_pubmed(tool: Dict[str, Any], **kwargs: Any) -> ToolResult:
                     }
 
                 return {
-                    "toolUseId": tool_use_id,
                     "status": "success",
                     "content": [{"text": formatted_content}],
                 }
@@ -331,11 +271,11 @@ def search_pubmed(tool: Dict[str, Any], **kwargs: Any) -> ToolResult:
             logger.info("Skipping citation-based reranking")
             warning_message = None
 
-        # Return original results (either when rerank=None or as fallback)
-        if max_records is not None:
-            final_results = articles[:max_records]
+        # Return original results (either when referenced_by=None or as fallback)
+        if max_filtered_result_count is not None:
+            final_results = articles[:max_filtered_result_count]
             logger.info(
-                f"Applied max_records limit: returning {len(final_results)} of {len(articles)} articles"
+                f"Applied max_filtered_result_count limit: returning {len(final_results)} of {len(articles)} articles"
             )
         else:
             final_results = articles
@@ -343,7 +283,7 @@ def search_pubmed(tool: Dict[str, Any], **kwargs: Any) -> ToolResult:
         _print_fetch_results(final_results, n=10)
 
         # Format search results using article formatting functions
-        # Pass the total before max_records limit for proper summary
+        # Pass the total before max_filtered_result_count limit for proper summary
         total_before_limit = len(articles)
         try:
             formatted_content = _format_article_list(
@@ -357,7 +297,6 @@ def search_pubmed(tool: Dict[str, Any], **kwargs: Any) -> ToolResult:
         except Exception as format_error:
             logger.error(f"Error formatting article results: {format_error}")
             return {
-                "toolUseId": tool_use_id,
                 "status": "error",
                 "content": [
                     {"text": f"Error formatting search results: {str(format_error)}"}
@@ -365,44 +304,40 @@ def search_pubmed(tool: Dict[str, Any], **kwargs: Any) -> ToolResult:
             }
 
         return {
-            "toolUseId": tool_use_id,
             "status": "success",
             "content": [{"text": formatted_content}],
         }
 
     except Exception as unexpected_error:
-        logger.error(f"Unexpected error in search_pubmed: {unexpected_error}")
+        logger.error(f"Unexpected error in search_pmc: {unexpected_error}")
         return {
-            "toolUseId": tool_use_id,
             "status": "error",
             "content": [
-                {
-                    "text": f"Unexpected error during PubMed search: {str(unexpected_error)}"
-                }
+                {"text": f"Unexpected error during PMC search: {str(unexpected_error)}"}
             ],
         }
 
 
-def fetch_pubmed(pmids: List[str]) -> List[ArticleDict]:
+def fetch_pmc(pmc_ids: List[str]) -> List[ArticleDict]:
     """
-    Get detailed information about one or more PubMed articles.
+    Get detailed information about one or more PMC articles.
 
     Args:
-        pmids: List of PubMed IDs to fetch
+        pmc_ids: List of PMC IDs to fetch
 
     Returns:
         List of article dictionaries with detailed information including keywords and references.
         Empty articles are filtered out. Returns empty list if no articles found or on error.
     """
-    if not pmids:
+    if not pmc_ids:
         return []
 
-    logger.info(f"Fetching {len(pmids)} PubMed articles")
+    logger.info(f"Fetching {len(pmc_ids)} PM articles")
 
     base_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
     fetch_url = f"{base_url}/efetch.fcgi"
 
-    fetch_params = {"db": "pubmed", "id": ",".join(pmids), "retmode": "xml"}
+    fetch_params = {"db": "pmc", "id": ",".join(pmc_ids)}
 
     try:
         try:
@@ -411,49 +346,49 @@ def fetch_pubmed(pmids: List[str]) -> List[ArticleDict]:
             )
             fetch_response.raise_for_status()
         except httpx.HTTPStatusError as http_error:
-            logger.error(f"HTTP error during article fetch: {http_error}")
+            logger.warning(f"HTTP error during article fetch: {http_error}")
             raise Exception(
                 f"HTTP error during article fetch: {http_error.response.status_code} - {str(http_error)}"
             )
         except httpx.TimeoutException as timeout_error:
-            logger.error(f"Timeout error during article fetch: {timeout_error}")
+            logger.warning(f"Timeout error during article fetch: {timeout_error}")
             raise Exception(
                 f"Request timeout during article fetch: {str(timeout_error)}"
             )
         except httpx.NetworkError as network_error:
-            logger.error(f"Network error during article fetch: {network_error}")
+            logger.warning(f"Network error during article fetch: {network_error}")
             raise Exception(f"Network error during article fetch: {str(network_error)}")
         except httpx.RequestError as request_error:
-            logger.error(f"Request error during article fetch: {request_error}")
+            logger.warning(f"Request error during article fetch: {request_error}")
             raise Exception(f"Request error during article fetch: {str(request_error)}")
 
         # Parse XML response
         try:
             root = ET.fromstring(fetch_response.text)
         except ET.ParseError as xml_error:
-            logger.error(f"XML parsing error in fetch response: {xml_error}")
-            raise Exception(f"Error parsing XML response from PubMed: {str(xml_error)}")
+            logger.warning(f"XML parsing error in fetch response: {xml_error}")
+            raise Exception(f"Error parsing XML response from PM: {str(xml_error)}")
         except Exception as parse_error:
-            logger.error(f"Unexpected parsing error in fetch response: {parse_error}")
-            raise Exception(f"Error parsing response from PubMed: {str(parse_error)}")
+            logger.warning(f"Unexpected parsing error in fetch response: {parse_error}")
+            raise Exception(f"Error parsing response from PM: {str(parse_error)}")
 
         articles = []
 
-        for article_element in root.findall(".//PubmedArticle"):
+        for article_element in root.findall(".//article"):
             try:
                 article = _extract_article_data(article_element)
                 if article:  # Only add non-empty articles
                     articles.append(article)
             except Exception as e:
-                logger.error(f"Error parsing individual article: {e}")
+                logger.warning(f"Error parsing individual article: {e}")
                 continue
 
         logger.info(f"Successfully fetched {len(articles)} articles")
         return articles
 
     except Exception as e:
-        logger.error(f"Error fetching article details: {e}")
-        # Re-raise the exception so search_pubmed can handle it properly
+        logger.warning(f"Error fetching article details: {e}")
+        # Re-raise the exception so search_pmc can handle it properly
         raise
 
 
@@ -480,15 +415,22 @@ def _get_api_key_params(base_params: Dict[str, Any]) -> Dict[str, Any]:
     return base_params
 
 
+def _add_quotes_to_search_filter(query: str) -> str:
+    """Search for any filter clauses in the search query and add any missing quotation marks."""
+
+    return re.sub(r"AND ([a-zA-Z0-9 ]+?)(\[[a-z]+?\])", r'AND "\1"\2', query)
+
+
 def _build_search_query(query: str) -> str:
     """Build the search query with appropriate filters."""
+
+    # Add double-quotes around date filters
+    query = _add_quotes_to_search_filter(query)
+
     if COMMERCIAL_USE_ONLY:
-        license_filter = (
-            " AND (pmc cc0 license [filter] OR pmc cc by license [filter] "
-            "OR pmc cc by-sa license [filter] OR pmc cc by-nd license [filter])"
-        )
+        license_filter = " AND (cc0 license[Filter] OR cc by license[Filter] OR cc by-sa license[Filter] OR cc by-nd license[Filter])"
     else:
-        license_filter = " AND pubmed pmc open access[Filter]"
+        license_filter = " AND cc license[Filter]"
 
     return query + license_filter
 
@@ -497,13 +439,26 @@ def _extract_article_data(article_element: Element) -> ArticleDict:
     """Extract article data from XML element."""
     article = {}
 
-    # Extract PMID
-    pmid_element = article_element.find(".//PMID")
-    if pmid_element is not None and pmid_element.text:
-        article["id"] = pmid_element.text
+    # Extract PMC ID and PMID (looking for pmcid and pmid type article-id)
+    article_id_elements = article_element.findall(".//article-meta/article-id")
+    for article_id in article_id_elements:
+        id_type = article_id.get("pub-id-type")
+        if id_type == "pmcid" and article_id.text:
+            # Remove "PMC" prefix if present to get just the numeric ID
+            pmc_id = article_id.text.replace("PMC", "")
+            article["id"] = pmc_id
+            article["pmc"] = article_id.text  # Keep full PMC ID with prefix
+        elif id_type == "pmid" and article_id.text:
+            article["pmid"] = article_id.text
+        elif id_type == "doi" and article_id.text:
+            article["doi"] = article_id.text
+            # Create URI from DOI
+            doi_url = f"https://doi.org/{article_id.text}"
+            article["uri"] = doi_url
+            article["source"] = doi_url
 
     # Extract title
-    title_element = article_element.find(".//ArticleTitle")
+    title_element = article_element.find(".//article-title")
     if title_element is not None:
         # Use itertext() to get all text content including text within child elements
         title_text = "".join(title_element.itertext()).strip()
@@ -511,75 +466,80 @@ def _extract_article_data(article_element: Element) -> ArticleDict:
             article["title"] = title_text
 
     # Extract abstract
-    abstract_parts = article_element.findall(".//AbstractText")
-    if abstract_parts:
+    abstract_element = article_element.find(".//abstract")
+    if abstract_element is not None:
+        # Get all paragraph text from abstract, excluding the "Abstract" title
         abstract_texts = []
-        for part in abstract_parts:
-            # Use itertext() to get all text content including text within child elements
-            text_content = "".join(part.itertext()).strip()
+        for p in abstract_element.findall(".//p"):
+            text_content = "".join(p.itertext()).strip()
             if text_content:
                 abstract_texts.append(text_content)
+
         if abstract_texts:
             abstract_content = " ".join(abstract_texts)
-            article["abstract"] = (
-                abstract_content  # Keep existing field for backward compatibility
-            )
-            article["text"] = abstract_content  # Add new consistent field name
+            article["abstract"] = abstract_content
+            article["text"] = abstract_content
 
     # Extract authors
-    author_elements = article_element.findall(".//Author")
+    author_elements = article_element.findall(
+        ".//contrib-group/contrib[@contrib-type='author']"
+    )
     if author_elements:
         authors = []
         for author in author_elements:
-            last_name_element = author.find("LastName")
-            fore_name_element = author.find("ForeName")
+            name_element = author.find(".//name")
+            if name_element is not None:
+                surname_element = name_element.find("surname")
+                given_names_element = name_element.find("given-names")
 
-            if last_name_element is not None and fore_name_element is not None:
-                if last_name_element.text and fore_name_element.text:
-                    authors.append(f"{fore_name_element.text} {last_name_element.text}")
-            elif last_name_element is not None and last_name_element.text:
-                authors.append(last_name_element.text)
+                if surname_element is not None and given_names_element is not None:
+                    if surname_element.text and given_names_element.text:
+                        authors.append(
+                            f"{given_names_element.text} {surname_element.text}"
+                        )
+                elif surname_element is not None and surname_element.text:
+                    authors.append(surname_element.text)
 
         if authors:
             article["authors"] = ", ".join(authors)
 
-    # Extract journal info
-    journal_element = article_element.find(".//Journal/Title")
+    # Extract journal title
+    journal_element = article_element.find(".//journal-title")
     if journal_element is not None and journal_element.text:
         article["journal"] = journal_element.text
 
-    # Extract publication year
-    pub_date_element = article_element.find(".//PubDate/Year")
+    # Extract publication year (try multiple pub-date types in order of preference)
+    year = None
+    # Try collection first (most common for PMC)
+    pub_date_element = article_element.find(".//pub-date[@pub-type='collection']/year")
     if pub_date_element is not None and pub_date_element.text:
-        article["year"] = pub_date_element.text
+        year = pub_date_element.text
+    # Fall back to epub (electronic publication)
+    if not year:
+        pub_date_element = article_element.find(".//pub-date[@pub-type='epub']/year")
+        if pub_date_element is not None and pub_date_element.text:
+            year = pub_date_element.text
+    # Fall back to ppub (print publication)
+    if not year:
+        pub_date_element = article_element.find(".//pub-date[@pub-type='ppub']/year")
+        if pub_date_element is not None and pub_date_element.text:
+            year = pub_date_element.text
+    # Last resort: any year element
+    if not year:
+        pub_date_element = article_element.find(".//pub-date/year")
+        if pub_date_element is not None and pub_date_element.text:
+            year = pub_date_element.text
 
-    # Extract DOI and PMC from ArticleIdList (only from the main article, not references)
-    # Look specifically in PubmedData/ArticleIdList to avoid picking up DOIs from references
-    pubmed_data = article_element.find("PubmedData")
-    if pubmed_data is not None:
-        article_id_list = pubmed_data.find("ArticleIdList")
-        if article_id_list is not None:
-            article_id_elements = article_id_list.findall("ArticleId")
-            for article_id in article_id_elements:
-                id_type = article_id.get("IdType")
-                if id_type == "doi" and article_id.text:
-                    article["doi"] = article_id.text
-                    # Create URI from DOI
-                    doi_url = f"https://doi.org/{article_id.text}"
-                    article["uri"] = (
-                        doi_url  # Keep existing field for backward compatibility
-                    )
-                    article["source"] = doi_url  # Add new consistent field name
-                elif id_type == "pmc" and article_id.text:
-                    article["pmc"] = article_id.text
+    if year:
+        article["year"] = year
 
     # Extract references from ReferenceList
-    reference_elements = article_element.findall(".//Reference")
+    reference_elements = article_element.findall(".//ref")
     if reference_elements:
         references = []
         for ref in reference_elements:
             # Look for PubMed ID in the reference
-            ref_pmid_element = ref.find(".//ArticleId[@IdType='pubmed']")
+            ref_pmid_element = ref.find(".//pub-id[@pub-id-type='pmid']")
             if ref_pmid_element is not None and ref_pmid_element.text:
                 references.append(ref_pmid_element.text)
 
@@ -602,47 +562,60 @@ def _calculate_referenced_by_counts(articles: List[ArticleDict]) -> List[Article
     # Create a copy of articles to avoid modifying the original list
     enhanced_articles = []
 
-    # Build a citation graph: pmid -> set of pmids that reference it
+    # Build a mapping from PMID to PMC ID since references use PMIDs
+    pmid_to_pmc = {}
+    for article in articles:
+        pmid = article.get("pmid")
+        pmc_id = article.get("id")
+        if pmid and pmc_id:
+            pmid_to_pmc[pmid] = pmc_id
+
+    # Build a citation graph: pmc_id -> set of pmc_ids that reference it
     citation_graph = {}
 
     # Initialize citation counts for all articles
     for article in articles:
-        article_id = article.get("id")
-        if article_id:
-            citation_graph[article_id] = set()
+        pmc_id = article.get("id")
+        if pmc_id:
+            citation_graph[pmc_id] = set()
 
     # Build the citation relationships
     for article in articles:
-        article_id = article.get("id")
-        references = article.get("references", [])
+        pmc_id = article.get("id")
+        references = article.get("references", [])  # These are PMIDs
 
         # Skip if article has no ID
-        if not article_id:
+        if not pmc_id:
             continue
 
-        # Process each reference
+        # Process each reference (PMID)
         for ref_pmid in references:
             # Handle edge cases
             if not ref_pmid:  # Skip empty/None references
                 continue
             if not ref_pmid.isdigit():  # Skip invalid PMIDs (non-numeric)
                 continue
-            if ref_pmid == article_id:  # Skip self-references
-                continue
 
-            # Add this article as a referencing article for the referenced PMID
-            if ref_pmid in citation_graph:
-                citation_graph[ref_pmid].add(article_id)
+            # Convert PMID to PMC ID using our mapping
+            referenced_pmc_id = pmid_to_pmc.get(ref_pmid)
+
+            if referenced_pmc_id:
+                # Skip self-references
+                if referenced_pmc_id == pmc_id:
+                    continue
+
+                # Add this article as a referencing article for the referenced PMC ID
+                citation_graph[referenced_pmc_id].add(pmc_id)
 
     # Calculate referenced_by_count for each article
     for article in articles:
         # Create a copy of the article dict
         enhanced_article = article.copy()
 
-        article_id = article.get("id")
-        if article_id and article_id in citation_graph:
+        pmc_id = article.get("id")
+        if pmc_id and pmc_id in citation_graph:
             # Count how many articles reference this one
-            enhanced_article["referenced_by_count"] = len(citation_graph[article_id])
+            enhanced_article["referenced_by_count"] = len(citation_graph[pmc_id])
         else:
             # Articles without valid IDs get count of 0
             enhanced_article["referenced_by_count"] = 0
@@ -709,18 +682,18 @@ def _format_individual_article(
     year = article.get("year", "Unknown year")
     lines.append(f"Journal: {journal} ({year})")
 
-    # Metadata (ID, DOI, PMC)
-    article_id = article.get("id")
-    if article_id:
-        lines.append(f"PMID: {article_id}")
-
-    doi = article.get("doi")
-    if doi:
-        lines.append(f"DOI: {doi}")
+    # Metadata (PMID, PMC, DOI)
+    pmid = article.get("pmid")
+    if pmid:
+        lines.append(f"PMID: {pmid}")
 
     pmc = article.get("pmc")
     if pmc:
         lines.append(f"PMC: {pmc}")
+
+    doi = article.get("doi")
+    if doi:
+        lines.append(f"DOI: {doi}")
 
     # Abstract (truncated if very long)
     abstract = article.get("abstract", "No abstract available")
@@ -747,7 +720,7 @@ def _format_article_list(
     Args:
         articles: List of article dictionaries
         include_ranking: Whether to include citation ranking information
-        total_found: Total number of articles found in search (before max_records limit)
+        total_found: Total number of articles found in search (before max_filtered_result_count limit)
 
     Returns:
         Formatted string representation of the article list
@@ -792,8 +765,8 @@ def _print_fetch_results(articles: list, n: int = 3) -> None:
     result_string += "-" * 50 + "\n"
     for article in articles[:n]:
         result_string += f"Title: {article.get('title', 'No title')}\n"
-        result_string += f"ID: {article.get('id', 'No ID')}\n"
-        result_string += f"PMCID: {article.get('pmc', 'No PMCID')}\n"
+        result_string += f"PMID: {article.get('pmid', 'No PMID')}\n"
+        result_string += f"PMC: {article.get('pmc', 'No PMC')}\n"
         result_string += f"DOI: {article.get('doi', 'No DOI')}\n"
         result_string += f"Source: {article.get('source', 'No Source')}\n"
         result_string += f"Authors: {article.get('authors', 'No authors')}\n"
@@ -809,96 +782,61 @@ def _print_fetch_results(articles: list, n: int = 3) -> None:
     return None
 
 
-def _validate_parameters(
-    tool_use_id: str, input_params: Dict[str, Any]
-) -> ToolResult | None:
-    """
-    Validate input parameters and return error ToolResult if validation fails.
+# Strands Agents Tool Wrapper
+@tool
+def search_pmc_tool(
+    query: str,
+    rerank_by: Literal["references", None] = "references",
+) -> dict:
+    """Search PubMed Central (PMC) for scientific articles with citation analysis and reranking.
+
+    This tool performs comprehensive literature searches across PMC with optional citation
+    analysis. Results can be ranked by how frequently they are cited within the result set,
+    helping surface the most influential papers. Perfect for research, literature reviews,
+    and finding authoritative sources on scientific topics.
 
     Args:
-        tool_use_id: Tool use identifier for error responses
-        input_params: Dictionary of input parameters to validate
+        query: Search query using PMC search syntax. Supports:
+            - Field tags: [Title], [Author], [Journal], [Affiliation]
+            - Boolean operators: AND, OR, NOT (must be uppercase)
+            - Phrase search: Use quotes for exact phrases
+            - Author search: Last name with initials, e.g., "Smith J[au]"
+            - Journal search: Full title, abbreviation, or ISSN
+            - Date filters (see examples below for date search syntax)
+        rerank_by: Reranking method for search results. Options are:
+            - (default) "references": Rerank results in decreasing order of incoming references. Use to identify the most influenctial articles.
+            - None. Returns articles in the same order as the PMC search API. Use to identify newer articles or those tha capture a wider range of perspective.
+
+    Date Search Syntax:
+        - Single date: "2020/06/01[dp]" (month and day optional: "2020[dp]")
+        - Date range: "2020/01/01:2023/12/31[dp]" (use colon between dates)
+        - Relative dates: "last 2 years[dp]", "last 6 months[dp]", "last 30 days[dp]"
+        - Publication date: [dp] or [pubdate]
+        - Electronic pub date: [epdat]
+        - Print pub date: [ppdat]
+        - PMC live date: [pmcrdat]
 
     Returns:
-        ToolResult with error if validation fails, None if validation passes
+        Dictionary with status and content:
+        - status: "success" or "error"
+        - content: List with single dict containing "text" field with formatted results
+            including article titles, authors, abstracts, DOIs, and citation counts
+
+    Examples:
+        Basic search:
+            search_pmc_tool("machine learning in healthcare")
+
+        Search with recent date filter:
+            search_pmc_tool("mRNA vaccine COVID-19 AND last 2 years[dp]", rerank_by=None)
+
+        Search with specific date range:
+            search_pmc_tool("CRISPR gene editing AND 2020:2023[dp]")
+
+        Search by author and date:
+            search_pmc_tool("Smith J[au] AND cancer AND 2022/01/01:2024/12/31[dp]")
+
+        Search by journal and recent articles:
+            search_pmc_tool("Nature[journal] AND last 6 months[dp]", rerank_by=None)
+
     """
-    # Validate query parameter (required string)
-    query = input_params.get("query")
-    if query is None:
-        return {
-            "toolUseId": tool_use_id,
-            "status": "error",
-            "content": [{"text": "Error: query parameter is required"}],
-        }
-
-    if not isinstance(query, str):
-        return {
-            "toolUseId": tool_use_id,
-            "status": "error",
-            "content": [{"text": "Error: query parameter must be a string"}],
-        }
-
-    if not query.strip():
-        return {
-            "toolUseId": tool_use_id,
-            "status": "error",
-            "content": [{"text": "Error: query parameter cannot be empty"}],
-        }
-
-    # Validate max_results parameter (integer 1-1000, default 100)
-    max_results = input_params.get("max_results", 100)
-    if not isinstance(max_results, int):
-        return {
-            "toolUseId": tool_use_id,
-            "status": "error",
-            "content": [{"text": "Error: max_results parameter must be an integer"}],
-        }
-
-    if max_results < 1 or max_results > 1000:
-        return {
-            "toolUseId": tool_use_id,
-            "status": "error",
-            "content": [
-                {"text": "Error: max_results parameter must be between 1 and 1000"}
-            ],
-        }
-
-    # Validate max_records parameter (optional integer 1-100)
-    max_records = input_params.get("max_records")
-    if max_records is not None:
-        if not isinstance(max_records, int):
-            return {
-                "toolUseId": tool_use_id,
-                "status": "error",
-                "content": [
-                    {"text": "Error: max_records parameter must be an integer"}
-                ],
-            }
-
-        if max_records < 1 or max_records > 100:
-            return {
-                "toolUseId": tool_use_id,
-                "status": "error",
-                "content": [
-                    {"text": "Error: max_records parameter must be between 1 and 100"}
-                ],
-            }
-
-    # Validate rerank parameter (enum ["referenced_by"], default "referenced_by")
-    rerank = input_params.get("rerank", "referenced_by")
-    if not isinstance(rerank, str):
-        return {
-            "toolUseId": tool_use_id,
-            "status": "error",
-            "content": [{"text": "Error: rerank parameter must be a string"}],
-        }
-
-    if rerank not in ["referenced_by"]:
-        return {
-            "toolUseId": tool_use_id,
-            "status": "error",
-            "content": [{"text": "Error: rerank parameter must be 'referenced_by'"}],
-        }
-
-    # All validations passed
-    return None
+    return search_pmc(query=query, rerank_by=rerank_by)

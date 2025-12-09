@@ -1,101 +1,173 @@
-# Life Sciences Research Agent on Strands Agents (Python CDK)
+# Research Agent
 
-## Introduction
-
-This example deploys a life sciences research agent built with the Strands Agents SDK using the AWS Cloud Development Kit (CDK) Python version. It uses Python CDK to deploy the Python agent code to AWS Lambda.
-
-This agent uses several tools to gather scientific information, defined in the `lambda` folder.
-
-### search_pubmed
-
-Use the PubMed search API to find articles from the PubMed database. By default, this tool will only return results for materials licensed for commercial use ([CC0](https://creativecommons.org/publicdomain/zero/1.0/), [CC BY](https://creativecommons.org/licenses/by/4.0/), [CC BY-SA](https://creativecommons.org/licenses/by-sa/4.0/), [CC BY-ND](https://creativecommons.org/licenses/by-nd/4.0/)).
-
-This tool will rerank the search results by the "Referenced By" count. For each article, this is the number of other articles in the search results that include it as a reference. For best results, set the "max_results" parameter to a large number (200-500) to increase the number of articles examined.
-
-### read_pubmed
-
-Retrieve the full text of a PubMed Central article from the [NIH NCBI PubMed Central (PMC) Article Dataset](https://aws.amazon.com/marketplace/pp/prodview-qh4qqd6ebnqio) on AWS. This product is provided as part of the [AWS Open Data Sponsorship Program](https://aws.amazon.com/marketplace/seller-profile?id=351d941c-b5a5-4250-aa21-9834ba65b1fb). The tool will download the contents of requested articles from Amazon S3 and summarize them using Amazon Bedrock to conserve space in the agent's context window.
+A Strands-based deep research agent for life science deployed to Amazon Bedrock AgentCore Runtime.
 
 ## Prerequisites
 
-- [AWS CLI](https://aws.amazon.com/cli/) installed and configured
-- Python 3.12 or later
-- [uv](https://docs.astral.sh/uv/) for Python package management
-- [jq](https://stedolan.github.io/jq/) (optional) for formatting JSON output
+- Python 3.12+
+- [uv](https://docs.astral.sh/uv/) package manager
+- AWS CLI configured with appropriate credentials
+- Access to Amazon Bedrock AgentCore
 
 ## Project Structure
 
-- `research_agent/` - Contains the CDK stack definition in Python
-- `app.py` - Main CDK application entry point
-- `bin/package_for_lambda.py` - Python script that packages Lambda code and dependencies into deployment archives
-- `lambda/` - Contains the Python Lambda function code
-- `packaging/` - Directory used to store Lambda deployment assets and dependencies
-
-## Setup and Deployment
-
-1. Install dependencies:
-
 ```bash
-cd amazon-bedrock-agents-healthcare-lifesciences/agents_catalog/24-Research-agent
-
-# Install uv - see https://docs.astral.sh/uv/getting-started/installation/ for more options
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Install Python dependencies for CDK
-uv add aws-cdk-lib constructs
-
-# Install Python dependencies for lambda with correct architecture
-uv run pip install -r requirements.txt --python-version 3.12 --platform manylinux2014_aarch64 --target ./packaging/_dependencies --only-binary=:all:
+.
+├── agents/
+│   └── dr-agent/          # Agent implementation
+├── infrastructure/
+│   └── root.yaml          # CloudFormation/CDK infrastructure
+├── scripts/
+│   └── deploy.sh          # Deployment script
+└── invoke_agentcore.py    # CLI tool for invoking the agent
 ```
 
-2. Package the lambda:
+## Deployment
+
+Deploy the agent to AgentCore Runtime using the deployment script:
 
 ```bash
-uv run python ./bin/package_for_lambda.py
+./scripts/deploy.sh my-project my-bucket
 ```
 
-3. Bootstrap your AWS environment (if not already done):
+**Parameters:**
+
+- `my-project` - Agent identifier
+- `my-bucket` - S3 bucket name for deployment artifacts
+
+The deployment will output a Runtime ID (e.g., `dr_agent-abcdefg`) that you'll use for invocation.
+
+## Invocation
+
+### Using the Python CLI Tool
+
+The `invoke_agentcore.py` script provides a convenient way to interact with your deployed agent.
+
+#### Basic Usage
 
 ```bash
-uv run cdk bootstrap
+uv run invoke_agentcore.py \
+  --name dr_agent \
+  --prompt "Tell me about yourself"
 ```
 
-4. Deploy the lambda:
+#### With Session ID (for conversation continuity)
 
 ```bash
-uv run cdk deploy
+# Generate a session ID and reuse it for multiple turns
+SESSION_ID=$(uuidgen)
+
+# First message
+uv run invoke_agentcore.py \
+  --name dr_agent \
+  --session-id $SESSION_ID \
+  --prompt "My name is Alice"
+
+# Follow-up message (maintains context)
+uv run invoke_agentcore.py \
+  --name dr_agent \
+  --session-id $SESSION_ID \
+  --prompt "What is my name?"
 ```
 
-## Usage
-
-After deployment, you can invoke the Lambda function using the AWS CLI or AWS Console. The function requires proper AWS authentication to be invoked.
+#### With Specific Region
 
 ```bash
-aws lambda invoke --function-name ResearchAgentLambda \
-      --cli-binary-format raw-in-base64-out \
-      --cli-read-timeout 900 \
-      --payload '{"prompt": "What are some recent advances in GLP-1 drugs?"}' \
-      output.json
+uv run invoke_agentcore.py \
+  --name dr_agent \
+  --region us-east-1 \
+  --prompt "What can you help me with?"
 ```
 
-If you have jq installed, you can output the response from output.json like so:
+#### Pipe Input
 
 ```bash
-jq -r '.' ./output.json
+echo "Tell me about yourself" | uv run invoke_agentcore.py --name dr_agent
 ```
 
-Otherwise, open output.json to view the result.
-
-## Cleanup
-
-To remove all resources created by this example:
+### Using AgentCore CLI
 
 ```bash
-uv run cdk destroy
+agentcore invoke dr_agent-abcdefg --prompt "What can you help me with?"
 ```
 
-## Additional Resources
+For interactive mode:
 
-- [AWS CDK Python Documentation](https://docs.aws.amazon.com/cdk/latest/guide/work-with-cdk-python.html)
-- [AWS Lambda Documentation](https://docs.aws.amazon.com/lambda/latest/dg/welcome.html)
-- [Python CDK API Reference](https://docs.aws.amazon.com/cdk/api/v2/python/)
+```bash
+agentcore invoke dr_agent-abcdefg --interactive
+```
+
+### Using AWS CLI
+
+```bash
+aws bedrock-agentcore invoke-agent-runtime \
+  --agent-runtime-arn arn:aws:bedrock-agentcore:us-east-1:123456789:runtime/dr_agent-abcdefg \
+  --qualifier DEFAULT \
+  --runtime-session-id $(uuidgen) \
+  --payload "$(echo -n '{"prompt":"Tell me about yourself"}' | base64)" \
+  --region us-east-1 \
+  response.json
+```
+
+## CLI Options
+
+```bash
+uv run invoke_agentcore.py --help
+```
+
+**Available options:**
+
+- `--name` (required) - Name of the deployed agent runtime
+- `--prompt` - Prompt to send to the agent (or pipe from stdin)
+- `--session-id` - Session ID for conversation continuity (auto-generated if not provided)
+- `--region` - AWS region name (uses default if not provided)
+
+## Development
+
+### Install Dependencies
+
+```bash
+uv sync
+```
+
+### Run Tests
+
+```bash
+uv run pytest
+```
+
+### Local Development
+
+For local testing before deployment, use the AgentCore dev server:
+
+```bash
+agentcore dev
+```
+
+Then invoke locally:
+
+```bash
+agentcore invoke --local --prompt "Test prompt"
+```
+
+## Troubleshooting
+
+### Agent Not Found
+
+If you get "Agent not found" error, verify:
+
+1. The agent name matches the deployed runtime name
+2. You're using the correct AWS region
+3. Your AWS credentials have permission to access AgentCore
+
+### Session Context Not Maintained
+
+Ensure you're using the same `--session-id` for all messages in a conversation.
+
+### Timeout Errors
+
+For long-running operations, the script is configured with a 900-second read timeout. If you still encounter timeouts, check your agent's processing logic.
+
+## License
+
+See the main repository LICENSE file.
