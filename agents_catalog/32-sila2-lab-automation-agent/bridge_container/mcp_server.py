@@ -29,12 +29,30 @@ class JSONRPCRequest(BaseModel):
 async def handle_mcp(request: Request):
     body = await request.json()
     
-    # Handle empty event from AgentCore Gateway
-    if not body or body == {}:
-        return {
+    # Handle AgentCore Gateway formats
+    # Format 1: {"name": "tool_name", "arguments": {...}}
+    # Format 2: {"method": "tools/call", "params": {...}}
+    # Format 3: Empty {} or arguments only
+    
+    # Convert Gateway format to JSON-RPC if needed
+    if "jsonrpc" not in body:
+        tool_name = body.get('name', '')
+        arguments = body.get('arguments', body if body else {})
+        
+        # Remove Gateway prefix (e.g., "gateway-id___list_devices" -> "list_devices")
+        if tool_name and '___' in tool_name:
+            tool_name = tool_name.split('___', 1)[1]
+        
+        # Handle empty event - default to list_devices
+        if not tool_name:
+            tool_name = "list_devices"
+        
+        # Convert to JSON-RPC format
+        body = {
             "jsonrpc": "2.0",
-            "error": {"code": -32600, "message": "Empty request"},
-            "id": None
+            "method": "tools/call",
+            "params": {"name": tool_name, "arguments": arguments},
+            "id": body.get('id', 1)
         }
     
     # Handle JSON-RPC format
