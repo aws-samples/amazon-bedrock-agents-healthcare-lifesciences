@@ -235,7 +235,7 @@ Resources:
     DependsOn:
       - CodeBuild
     Properties:
-      TemplateURL: multi_agent_collaboration/cancer_biomarker_discovery/agent_build.yaml
+      TemplateURL: multi_agent_collaboration/cancer_biomarker_discovery/bedrock_agents/agent_build.yaml
       Parameters:
         BedrockModelId: !Ref BedrockModelId
         RedshiftDatabaseName: !Ref RedshiftDatabaseName
