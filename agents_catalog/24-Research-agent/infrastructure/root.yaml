@@ -29,177 +29,48 @@ Parameters:
     AllowedValues: [Y, N]
 
 Resources:
-  AgentCoreRuntimeRole:
-    Type: AWS::IAM::Role
-    Metadata:
-      cfn_nag:
-        rules_to_suppress:
-          - id: W28
-            reason: "Explicit role name required for AgentCore service integration"
-          - id: W11
-            reason: "Wildcard permissions required for AgentCore service operations and Bedrock model access"
-          - id: W76
-            reason: "High SPCM acceptable for AgentCore runtime role with broad service permissions"
-    Properties:
-      # RoleName: !Sub
-      #   - "AmazonBedrockAgentCore-${AWS::Region}-${StackIdSuffix}"
-      #   - StackIdSuffix:
-      #       !Select [
-      #         4,
-      #         !Split ["-", !Select [2, !Split ["/", !Ref "AWS::StackId"]]],
-      #       ]
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: bedrock-agentcore.amazonaws.com
-            Action: sts:AssumeRole
-            Condition:
-              StringEquals:
-                aws:SourceAccount: !Ref AWS::AccountId
-              ArnLike:
-                aws:SourceArn: !Sub "arn:${AWS::Partition}:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:*"
-      Policies:
-        - PolicyName: StandardAgentCoreRuntimeExecutionPolicy
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Sid: ECRImageAccess
-                Effect: Allow
-                Action:
-                  - ecr:BatchGetImage
-                  - ecr:GetDownloadUrlForLayer
-                Resource:
-                  - !Sub "arn:${AWS::Partition}:ecr:${AWS::Region}:${AWS::AccountId}:repository/*"
-              - Effect: Allow
-                Action:
-                  - logs:DescribeLogStreams
-                  - logs:CreateLogGroup
-                Resource:
-                  - !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/bedrock-agentcore/runtimes/*"
-              - Effect: Allow
-                Action:
-                  - logs:DescribeLogGroups
-                Resource:
-                  - !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:*"
-              - Effect: Allow
-                Action:
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
-                Resource:
-                  - !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/bedrock-agentcore/runtimes/*:log-stream:*"
-              - Sid: ECRTokenAccess
-                Effect: Allow
-                Action:
-                  - ecr:GetAuthorizationToken
-                Resource: "*"
-              - Effect: Allow
-                Action:
-                  - xray:PutTraceSegments
-                  - xray:PutTelemetryRecords
-                  - xray:GetSamplingRules
-                  - xray:GetSamplingTargets
-                Resource:
-                  - "*"
-              - Effect: Allow
-                Resource: "*"
-                Action: cloudwatch:PutMetricData
-                Condition:
-                  StringEquals:
-                    cloudwatch:namespace: bedrock-agentcore
-              - Sid: GetAgentAccessToken
-                Effect: Allow
-                Action:
-                  - bedrock-agentcore:GetWorkloadAccessToken
-                  - bedrock-agentcore:GetWorkloadAccessTokenForJWT
-                  - bedrock-agentcore:GetWorkloadAccessTokenForUserId
-                Resource:
-                  - !Sub "arn:${AWS::Partition}:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:workload-identity-directory/default"
-                  - !Sub "arn:${AWS::Partition}:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:workload-identity-directory/default/workload-identity/*"
-              - Sid: BedrockModelInvocation
-                Effect: Allow
-                Action:
-                  - bedrock:InvokeModel
-                  - bedrock:InvokeModelWithResponseStream
-                Resource:
-                  - !Sub "arn:${AWS::Partition}:bedrock:*::foundation-model/*"
-                  - !Sub "arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:*"
-              - Sid: MarketplaceOperationsFromBedrockFor3pModels
-                Effect: Allow
-                Action:
-                  - "aws-marketplace:Subscribe"
-                  - "aws-marketplace:ViewSubscriptions"
-                  - "aws-marketplace:Unsubscribe"
-                Resource: "*"
-                Condition:
-                  StringEquals:
-                    aws:CalledViaLast: "bedrock.amazonaws.com"
-        # - PolicyName: DynamoDb
-        #   PolicyDocument:
-        #     Version: "2012-10-17"
-        #     Statement:
-        #       - Sid: DynamoDb
-        #         Effect: Allow
-        #         Action:
-        #           - dynamodb:CreateTable
-        #           - dynamodb:DescribeTable
-        #           - dynamodb:GetItem
-        #           - dynamodb:PutItem
-        #           - dynamodb:Scan
-        #           - dynamodb:Query
-        #         Resource:
-        #           - "{{resolve:ssm:/deep-research-workshop/table-arn}}"
-        #           - "{{resolve:ssm:/deep-research-workshop/table-arn}}/*"
-
-  DRContainer:
+  DRAgent:
     Type: AWS::CloudFormation::Stack
     DeletionPolicy: Delete
     UpdateReplacePolicy: Delete
     Properties:
-      TemplateURL: "container.yaml"
+      TemplateURL: "dr-agent.yaml"
       Parameters:
+        ProjectName: !Ref ProjectName
         S3CodeBucket: !Ref S3CodeBucket
         S3CodeKey: !Ref S3CodeKey
-        BuildContextPath: !Sub "${BuildContextPath}/dr-agent"
+        BuildContextPath: !Ref BuildContextPath
         Timestamp: !Ref Timestamp
         WaitForCodeBuild: !Ref WaitForCodeBuild
-        BuildEnvironmentType: "ARM_CONTAINER"
-        BuildComputeType: "BUILD_GENERAL1_SMALL"
-        BuildImage: "aws/codebuild/amazonlinux2-aarch64-standard:3.0"
       Tags:
         - Key: Project
           Value: !Ref ProjectName
         - Key: Component
-          Value: Container
+          Value: Agent
 
-  DRAgentRuntime:
-    Type: AWS::BedrockAgentCore::Runtime
+  DRMultiAgent:
+    Type: AWS::CloudFormation::Stack
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
     Properties:
-      AgentRuntimeArtifact:
-        ContainerConfiguration:
-          ContainerUri: !GetAtt DRContainer.Outputs.ContainerURI
-      AgentRuntimeName: "dr_agent"
-      Description: "Deep research agent with PMC access"
-      NetworkConfiguration:
-        NetworkMode: "PUBLIC"
-      ProtocolConfiguration: "HTTP"
-      RoleArn: !GetAtt AgentCoreRuntimeRole.Arn
-      Tags:
-        Project: !Ref ProjectName
-        Component: KBAgentRuntime
+      TemplateURL: "dr-multi-agent.yaml"
+      Parameters:
+        ProjectName: !Ref ProjectName
+        S3CodeBucket: !Ref S3CodeBucket
+        S3CodeKey: !Ref S3CodeKey
+        BuildContextPath: !Ref BuildContextPath
         Timestamp: !Ref Timestamp
+        WaitForCodeBuild: !Ref WaitForCodeBuild
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Component
+          Value: Agent
 
 Outputs:
-  AgentCoreRuntimeRoleARN:
-    Description: "AgentCore Runtime role ARN"
-    Value: !GetAtt AgentCoreRuntimeRole.Arn
-  DRContainerURI:
-    Description: "Deep research agent container URI"
-    Value: !GetAtt DRContainer.Outputs.ContainerURI
-  DRAgentRuntimeID:
+  DRAgentID:
     Description: "Deep Research agent runtime ID"
-    Value: !GetAtt DRAgentRuntime.AgentRuntimeId
-  DRAgentRuntimeARN:
-    Description: "Deep Research agent runtime ARN"
-    Value: !GetAtt DRAgentRuntime.AgentRuntimeArn
+    Value: !GetAtt DRAgent.Outputs.DRAgentRuntimeID
+  DRMultiAgentID:
+    Description: "Deep Research agent runtime ID"
+    Value: !GetAtt DRMultiAgent.Outputs.DRMultiAgentRuntimeID

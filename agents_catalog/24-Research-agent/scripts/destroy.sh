@@ -33,7 +33,6 @@ uv sync
 
 PROJECT_NAME=$1
 S3_BUCKET_NAME=$2
-AR_POLICY_ID=$3
 
 CODE_PREFIX="code"
 CFN_PREFIX="cfn"
@@ -51,4 +50,4 @@ aws s3 rm "s3://${S3_BUCKET_NAME}/${CODE_PREFIX}/" --recursive
 echo "Deleting cfn from Amazon S3"
 aws s3 rm "s3://${S3_BUCKET_NAME}/${CFN_PREFIX}/" --recursive
 
-echo "Stack deleted successfully"
+echo "Stack delete request submitted"
