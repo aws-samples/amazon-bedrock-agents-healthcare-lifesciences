@@ -85,3 +85,67 @@ class GrpcClient:
             return {'success': response.success, 'status': response.status, 'result': dict(response.result)}
         except Exception as e:
             return {'error': str(e)}
+    
+    def start_task(self, device_id: str, command: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
+        """Start async task via mock device TaskManager"""
+        stub = self.stubs.get(device_id)
+        if not stub:
+            return {'error': f'Device {device_id} not found'}
+        
+        try:
+            request = sila2_basic_pb2.CommandRequest(
+                device_id=device_id,
+                operation='start_task',
+                parameters={'command': command, **{k: str(v) for k, v in parameters.items()}}
+            )
+            response = stub.ExecuteCommand(request, timeout=2)
+            # Fix: Access protobuf MapField correctly
+            return {'task_id': response.result.get('task_id', ''), 'status': response.result.get('status', 'running')}
+        except Exception as e:
+            return {'error': str(e)}
+    
+    def get_task_status(self, task_id: str) -> Dict[str, Any]:
+        """Get task status from any device (check all)"""
+        # For simplicity, use hplc stub to query task status
+        stub = self.stubs.get('hplc')
+        if not stub:
+            return {'error': 'No device available'}
+        
+        try:
+            request = sila2_basic_pb2.CommandRequest(
+                device_id='hplc',
+                operation='get_task_status',
+                parameters={'task_id': task_id}
+            )
+            response = stub.ExecuteCommand(request, timeout=2)
+            # Fix: Access protobuf MapField correctly
+            return {
+                'task_id': task_id,
+                'progress': int(response.result.get('progress', '0')),
+                'status': response.result.get('status', 'unknown'),
+                'message': response.result.get('message', '')
+            }
+        except Exception as e:
+            return {'error': str(e)}
+    
+    def get_property(self, device_id: str, prop_name: str) -> Dict[str, Any]:
+        """Get property value from device"""
+        stub = self.stubs.get(device_id)
+        if not stub:
+            return {'error': f'Device {device_id} not found'}
+        
+        try:
+            request = sila2_basic_pb2.CommandRequest(
+                device_id=device_id,
+                operation=f'get_{prop_name}',
+                parameters={}
+            )
+            response = stub.ExecuteCommand(request, timeout=2)
+            # Fix: Access protobuf MapField correctly
+            return {'property': prop_name, 'value': response.result.get('value', ''), 'unit': response.result.get('unit', '')}
+        except Exception as e:
+            return {'error': str(e)}
+    
+    def set_property(self, device_id: str, prop_name: str, value: str) -> Dict[str, Any]:
+        """Set property value on device"""
+        return self.execute_command(device_id, f'set_{prop_name}', {'value': value})

@@ -1,75 +1,83 @@
 #!/usr/bin/env python3
 """
-SiLA2 Lab Automation Agent - AgentCore with Gateway
+SiLA2 Lab Automation Agent - AgentCore with Lambda Direct Call
 """
-import logging
 import os
 import boto3
+import json
 from bedrock_agentcore import BedrockAgentCoreApp
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 app = BedrockAgentCoreApp()
 
-GATEWAY_URL = os.getenv('GATEWAY_URL', 'https://sila2-gateway-1764231790-6an1qmwnun.gateway.bedrock-agentcore.us-west-2.amazonaws.com/mcp')
-MODEL_ID = "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
+LAMBDA_FUNCTION = os.getenv('LAMBDA_FUNCTION', 'sila2-mcp-proxy')
+REGION = os.getenv('AWS_REGION', 'us-west-2')
+MODEL_ID = "anthropic.claude-3-5-sonnet-20241022-v2:0"
+
+lambda_client = boto3.client('lambda', region_name=REGION)
 
 strands_available = False
-mcp_client = None
-
-logger.info(f"🔧 Gateway URL: {GATEWAY_URL}")
-logger.info(f"🔧 Model ID: {MODEL_ID}")
-
 try:
-    from strands import Agent
+    from strands import Agent, tool
     from strands.models import BedrockModel
-    from strands.tools.mcp.mcp_client import MCPClient
-    from mcp.client.streamable_http import streamablehttp_client
-    from botocore.auth import SigV4Auth
-    from botocore.awsrequest import AWSRequest
-    import httpx
-    from typing import Generator
-    
-    class SigV4HTTPXAuth(httpx.Auth):
-        def __init__(self, credentials, service: str, region: str):
-            self.credentials = credentials
-            self.service = service
-            self.region = region
-            self.signer = SigV4Auth(credentials, service, region)
-        
-        def auth_flow(self, request: httpx.Request) -> Generator[httpx.Request, httpx.Response, None]:
-            headers = dict(request.headers)
-            headers.pop("connection", None)
-            
-            aws_request = AWSRequest(
-                method=request.method,
-                url=str(request.url),
-                data=request.content,
-                headers=headers,
-            )
-            self.signer.add_auth(aws_request)
-            request.headers.update(dict(aws_request.headers))
-            yield request
-    
-    def _create_transport():
-        session = boto3.Session()
-        credentials = session.get_credentials()
-        region = session.region_name or 'us-west-2'
-        
-        auth = SigV4HTTPXAuth(credentials, 'bedrock-agentcore', region)
-        return streamablehttp_client(GATEWAY_URL, auth=auth)
-    
-    mcp_client = MCPClient(_create_transport)
     strands_available = True
-    logger.info("✅ Strands initialized with SigV4 auth")
-except Exception as e:
-    logger.warning(f"⚠️ Strands not available: {e}")
+except Exception:
+    pass
+
+def call_lambda_tool(tool_name: str, arguments: dict) -> dict:
+    """Call Lambda function with MCP tool request"""
+    payload = {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {"name": tool_name, "arguments": arguments},
+        "id": 1
+    }
+    
+    response = lambda_client.invoke(
+        FunctionName=LAMBDA_FUNCTION,
+        InvocationType='RequestResponse',
+        Payload=json.dumps(payload)
+    )
+    
+    result = json.loads(response['Payload'].read())
+    if 'result' in result and 'content' in result['result']:
+        return json.loads(result['result']['content'][0]['text'])
+    return result
+
+@tool
+def list_devices() -> str:
+    """List all available SiLA2 laboratory devices (HPLC, centrifuge, pipette)"""
+    result = call_lambda_tool("list_devices", {})
+    devices = result.get("devices", [])
+    return f"Found {len(devices)} devices: " + ", ".join([f"{d['id']} ({d['status']})" for d in devices])
+
+@tool
+def get_device_status(device_id: str) -> str:
+    """Get device status"""
+    result = call_lambda_tool("get_device_status", {"device_id": device_id})
+    return f"Device {result['device_id']}: {result['status']} ({result['type']})"
+
+@tool
+def start_task(device_id: str, command: str, parameters: dict = None) -> str:
+    """Start async task"""
+    if parameters is None:
+        parameters = {}
+    result = call_lambda_tool("start_task", {"device_id": device_id, "command": command, "parameters": parameters})
+    return f"Task {result['task_id']} started with status: {result['status']}"
+
+@tool
+def get_task_status(task_id: str) -> str:
+    """Get task status"""
+    result = call_lambda_tool("get_task_status", {"task_id": task_id})
+    return f"Task {task_id}: {result['status']} (Progress: {result['progress']}%)"
+
+@tool
+def get_property(device_id: str, property_name: str) -> str:
+    """Get device property"""
+    result = call_lambda_tool("get_property", {"device_id": device_id, "property_name": property_name})
+    return f"{result['property']}: {result['value']} {result.get('unit', '')}"
 
 @app.entrypoint
-def process_request(request_data) -> str:
-    logger.info("🚀 Entrypoint called")
-    
+async def process_request(request_data):
     try:
         if isinstance(request_data, dict):
             query = request_data.get('prompt', request_data.get('query', str(request_data)))
@@ -77,34 +85,30 @@ def process_request(request_data) -> str:
             query = str(request_data)
         
         if not query or query.strip() == '':
-            return "Please provide a valid query."
+            yield "Please provide a valid query."
+            return
         
-        logger.info(f"Query: {query}")
-        
-        if strands_available and mcp_client:
-            from strands.models import BedrockModel
-            from strands import Agent
-            
+        if strands_available:
             bedrock_model = BedrockModel(
                 inference_profile_id=MODEL_ID,
                 temperature=0.0,
                 streaming=True
             )
             
-            with mcp_client:
-                tools = mcp_client.list_tools_sync()
-                logger.info(f"Loaded {len(tools)} tools")
-                agent = Agent(model=bedrock_model, tools=tools)
-                response = agent(query)
-                logger.info("✅ Completed")
-                return str(response)
+            tools = [list_devices, get_device_status, start_task, get_task_status, get_property]
+            agent = Agent(
+                model=bedrock_model,
+                tools=tools,
+                system_prompt="You are a SiLA2 laboratory automation assistant. Always use the available tools to answer questions about devices and tasks."
+            )
+            
+            response = agent(query)
+            yield response.message['content'][0]['text']
         else:
-            return f"Fallback mode: {query}"
+            yield f"Fallback mode: {query}"
     
     except Exception as e:
-        logger.error(f"Error: {e}", exc_info=True)
-        return f"Error: {str(e)}"
+        yield f"Error: {str(e)}"
 
 if __name__ == "__main__":
-    logger.info("Starting SiLA2 Agent")
     app.run()

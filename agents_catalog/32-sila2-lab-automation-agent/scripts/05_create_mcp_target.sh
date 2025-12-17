@@ -87,16 +87,39 @@ try:
                                 }
                             },
                             {
-                                "name": "execute_command",
-                                "description": "Execute device command",
+                                "name": "start_task",
+                                "description": "Start async task on device",
                                 "inputSchema": {
                                     "type": "object",
                                     "properties": {
-                                        "device_id": {"type": "string"},
-                                        "command": {"type": "string"},
-                                        "parameters": {"type": "object"}
+                                        "device_id": {"type": "string", "description": "Device identifier"},
+                                        "command": {"type": "string", "description": "Command name"},
+                                        "parameters": {"type": "object", "description": "Command parameters"}
                                     },
                                     "required": ["device_id", "command"]
+                                }
+                            },
+                            {
+                                "name": "get_task_status",
+                                "description": "Get task status and progress",
+                                "inputSchema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "task_id": {"type": "string", "description": "Task identifier"}
+                                    },
+                                    "required": ["task_id"]
+                                }
+                            },
+                            {
+                                "name": "get_property",
+                                "description": "Get device property value (temperature, pressure, ph, etc)",
+                                "inputSchema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "device_id": {"type": "string", "description": "Device identifier"},
+                                        "property_name": {"type": "string", "description": "Property name (e.g. temperature, pressure, ph)"}
+                                    },
+                                    "required": ["device_id", "property_name"]
                                 }
                             }
                         ]

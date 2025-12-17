@@ -15,6 +15,18 @@ IMAGE_TAG=${IMAGE_TAG:-latest}
 print_info "Region: $REGION"
 print_info "Account: $ACCOUNT_ID"
 
+# Compile proto definitions (Phase 5)
+print_step "Compiling proto definitions"
+cd "$PROJECT_ROOT/proto"
+if [ -f "sila2_tasks.proto" ]; then
+    python3 -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. sila2_tasks.proto 2>/dev/null || true
+    if [ -f "sila2_tasks_pb2.py" ]; then
+        cp sila2_tasks_pb2*.py "$PROJECT_ROOT/bridge_container/proto/" 2>/dev/null || true
+        cp sila2_tasks_pb2*.py "$PROJECT_ROOT/mock_devices/proto/" 2>/dev/null || true
+        print_info "Proto compiled: sila2_tasks.proto"
+    fi
+fi
+
 # ECRログイン
 print_step "Logging in to ECR"
 aws ecr get-login-password --region $REGION | \

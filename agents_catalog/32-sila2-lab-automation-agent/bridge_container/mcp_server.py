@@ -95,9 +95,10 @@ async def handle_mcp(request: Request):
                                 "required": ["device_id"]
                             }
                         },
+
                         {
-                            "name": "execute_command",
-                            "description": "Execute a command on a device",
+                            "name": "start_task",
+                            "description": "Start an asynchronous long-running task (e.g., temperature control, analysis, incubation) and immediately return task_id. Use get_task_status to check progress. This is the correct tool for temperature tasks.",
                             "inputSchema": {
                                 "type": "object",
                                 "properties": {
@@ -106,6 +107,27 @@ async def handle_mcp(request: Request):
                                     "parameters": {"type": "object"}
                                 },
                                 "required": ["device_id", "command"]
+                            }
+                        },
+                        {
+                            "name": "get_task_status",
+                            "description": "Get status of a running task by task_id",
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {"task_id": {"type": "string"}},
+                                "required": ["task_id"]
+                            }
+                        },
+                        {
+                            "name": "get_property",
+                            "description": "Get device property value (temperature, pressure, ph, etc.)",
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {
+                                    "device_id": {"type": "string"},
+                                    "property_name": {"type": "string", "description": "Property name: temperature, pressure, ph, etc."}
+                                },
+                                "required": ["device_id", "property_name"]
                             }
                         }
                     ]
@@ -123,11 +145,18 @@ async def handle_mcp(request: Request):
                 result = grpc_client.list_devices()
             elif tool_name == "get_device_status":
                 result = grpc_client.get_device_status(arguments.get('device_id'))
-            elif tool_name == "execute_command":
-                result = grpc_client.execute_command(
+            elif tool_name == "start_task":
+                result = grpc_client.start_task(
                     arguments.get('device_id'),
                     arguments.get('command'),
                     arguments.get('parameters', {})
+                )
+            elif tool_name == "get_task_status":
+                result = grpc_client.get_task_status(arguments.get('task_id'))
+            elif tool_name == "get_property":
+                result = grpc_client.get_property(
+                    arguments.get('device_id'),
+                    arguments.get('property_name')
                 )
             else:
                 return {
@@ -150,11 +179,10 @@ async def handle_mcp(request: Request):
                 result = grpc_client.list_devices()
             elif tool_call["name"] == "get_device_status":
                 result = grpc_client.get_device_status(tool_call["arguments"].get('device_id'))
-            elif tool_call["name"] == "execute_command":
-                result = grpc_client.execute_command(
+            elif tool_call["name"] == "get_property":
+                result = grpc_client.get_property(
                     tool_call["arguments"].get('device_id'),
-                    tool_call["arguments"].get('command'),
-                    tool_call["arguments"].get('parameters', {})
+                    tool_call["arguments"].get('property_name')
                 )
             else:
                 result = {'error': f'Unknown tool: {tool_call["name"]}'}
