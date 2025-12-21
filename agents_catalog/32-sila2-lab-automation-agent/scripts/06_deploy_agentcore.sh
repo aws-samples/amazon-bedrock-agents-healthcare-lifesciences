@@ -23,6 +23,13 @@ main() {
     
     local agent_name="sila2_phase3_agent"
     
+    # Create AgentCore ECR repository if it doesn't exist
+    log_info "Creating AgentCore ECR repository..."
+    aws ecr describe-repositories --repository-names "bedrock-agentcore-$agent_name" --region "$REGION" 2>/dev/null || \
+      aws ecr create-repository --repository-name "bedrock-agentcore-$agent_name" --region "$REGION" \
+        --image-scanning-configuration scanOnPush=true
+    log_info "✅ ECR repository ready"
+    
     # Update main_agentcore_phase3.py with correct Gateway URL
     log_info "Updating Gateway URL in main_agentcore_phase3.py..."
     sed -i "s|GATEWAY_URL = os.getenv('GATEWAY_URL', '.*')|GATEWAY_URL = os.getenv('GATEWAY_URL', '$GATEWAY_URL')|" main_agentcore_phase3.py

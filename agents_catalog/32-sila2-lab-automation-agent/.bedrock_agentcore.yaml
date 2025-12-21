@@ -6,7 +6,7 @@ agents:
     platform: linux/arm64
     container_runtime: docker
     aws:
-      execution_role: arn:aws:iam::590183741681:role/sila2-phase3-architecture-compl-DeviceApiLambdaRole-CyYxEA1svxeL
+      execution_role: arn:aws:iam::590183741681:role/sila2-lambda-proxy-LambdaExecutionRole-7QxWa97JVBu7
       execution_role_auto_create: true
       account: '590183741681'
       region: us-west-2
@@ -19,9 +19,9 @@ agents:
       observability:
         enabled: true
     bedrock_agentcore:
-      agent_id: sila2_phase3_agent-RhY0NR39nY
-      agent_arn: arn:aws:bedrock-agentcore:us-west-2:590183741681:runtime/sila2_phase3_agent-RhY0NR39nY
-      agent_session_id: 1534a31d-7721-40c3-b955-8c11ab0dedaa
+      agent_id: sila2_phase3_agent-ZQQHgRDG5L
+      agent_arn: arn:aws:bedrock-agentcore:us-west-2:590183741681:runtime/sila2_phase3_agent-ZQQHgRDG5L
+      agent_session_id: fb5f92dd-34e5-4733-8111-d6acde8f7901
     codebuild:
       project_name: bedrock-agentcore-sila2_phase3_agent-builder
       execution_role: arn:aws:iam::590183741681:role/AmazonBedrockAgentCoreSDKCodeBuild-us-west-2-a64b67915b

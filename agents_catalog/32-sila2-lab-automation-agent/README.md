@@ -1,33 +1,42 @@
 # SiLA2 Lab Automation Agent
 
-**Phase 3 Complete** ✅ - Amazon Bedrock AgentCore + Gateway Lambda Target integration for laboratory automation using SiLA2 protocols.
+**Phase 4 Complete** ✅ - Amazon Bedrock AgentCore + MCP Gateway + ECS Fargate integration for laboratory automation using SiLA2 protocols.
 
 ## 🚀 Quick Deploy
 
 ```bash
-# Deploy everything
+# Deploy step by step
 cd scripts
-./deploy_all.sh
+export AWS_REGION=us-west-2
+
+./01_setup_infrastructure.sh  # Create ECR repositories
+./02_build_containers.sh      # Build and push Docker containers
+./03_deploy_ecs.sh           # Deploy ECS + Lambda Proxy
+./04_create_gateway.sh       # Create MCP Gateway
+./05_create_mcp_target.sh    # Create MCP Target
+./06_deploy_agentcore.sh     # Deploy AgentCore Runtime
+./07_run_tests.sh            # Run integration tests
+./08_setup_ui.sh             # Setup Streamlit UI
 
 # Test AgentCore
 agentcore invoke "List all available SiLA2 devices"
 
 # Launch UI
-streamlit run streamlit_app_agentcore.py
+./run_streamlit.sh
 ```
 
-## 🏗️ Architecture (Phase 3)
+## 🏗️ Architecture (Phase 4)
 
 ```
-User → AgentCore Runtime → MCP Gateway → Gateway Target → Lambda (Gateway format) → Mock Devices
+User → AgentCore Runtime → MCP Gateway → Lambda Proxy → ECS Bridge → Mock Devices (Container)
 ```
 
 - **Framework**: Amazon Bedrock AgentCore
 - **Model**: Anthropic Claude 3.5 Sonnet v2
-- **Gateway**: MCP Gateway + Lambda Target (context.client_context)
-- **Infrastructure**: CloudFormation (IAM + Lambda)
-- **Mock Devices**: HPLC, Centrifuge, Pipette (Lambda functions)
-- **UI**: Streamlit
+- **Gateway**: MCP Gateway + Lambda Target
+- **Infrastructure**: ECS Fargate + Lambda Proxy + CloudFormation
+- **Mock Devices**: HPLC, Centrifuge, Pipette (ECS Container)
+- **UI**: Streamlit (Local)
 
 ## 🔧 Available SiLA2 Tools
 
@@ -38,22 +47,41 @@ User → AgentCore Runtime → MCP Gateway → Gateway Target → Lambda (Gatewa
 - `start_measurement(device_name, parameters)`: Start measurements
 - `stop_measurement(device_name)`: Stop ongoing measurements
 
-## 📁 Key Files (Phase 3)
+## 📁 Key Files (Phase 4)
 
-- `scripts/deploy_all.sh` - Automated 10-step deployment ✅
-- `mcp_grpc_bridge_lambda_gateway.py` - Gateway Lambda Target implementation ✅
-- `scripts/03_setup_mcp_bridge.sh` - Lambda deployment ✅
-- `scripts/06_create_gateway_target.sh` - Gateway Target creation ✅
-- `.bedrock_agentcore.yaml` - AgentCore configuration ✅
-- `streamlit_app_agentcore.py` - Streamlit UI ✅
+### Deployment Scripts
+- `scripts/01_setup_infrastructure.sh` - Create ECR repositories
+- `scripts/02_build_containers.sh` - Build and push Docker containers
+- `scripts/03_deploy_ecs.sh` - Deploy ECS + Lambda Proxy stacks
+- `scripts/04_create_gateway.sh` - Create MCP Gateway
+- `scripts/05_create_mcp_target.sh` - Create Lambda MCP Target
+- `scripts/06_deploy_agentcore.sh` - Deploy AgentCore Runtime
+- `scripts/07_run_tests.sh` - Run integration tests
+- `scripts/08_setup_ui.sh` - Setup Streamlit UI
 
-## 🎯 Phase 3 Achievements
+### Infrastructure
+- `infrastructure/bridge_container_ecs_no_alb.yaml` - ECS Fargate stack
+- `infrastructure/lambda_proxy.yaml` - Lambda Proxy stack
+- `lambda_proxy/index.py` - Lambda Proxy implementation
+- `bridge_container/main.py` - MCP Bridge container
+- `mock_devices_container/server.py` - Mock devices gRPC server
 
-- ✅ **Gateway Lambda Target**: Correct context.client_context implementation
-- ✅ **Tool Schema Separation**: Schema in Gateway Target, logic in Lambda
-- ✅ **Mock Device Integration**: HPLC, Centrifuge, Pipette Lambda functions
-- ✅ **10-Step Deployment**: Automated infrastructure setup
+### Application
+- `main_agentcore_phase3.py` - AgentCore agent definition
+- `.bedrock_agentcore.yaml` - AgentCore configuration
+- `streamlit_mcp_tools.py` - Streamlit UI
+- `test_phase4_integration.py` - Integration tests
+
+## 🎯 Phase 4 Achievements
+
+- ✅ **ECS Fargate Architecture**: Container-based deployment for scalability
+- ✅ **Lambda Proxy**: VPC-enabled Lambda for ECS Bridge communication
+- ✅ **MCP Gateway + Target**: Bedrock AgentCore Gateway integration
+- ✅ **Service Discovery**: ECS Service Discovery for internal communication
+- ✅ **Mock Device Container**: HPLC, Centrifuge, Pipette in single container
+- ✅ **8-Step Deployment**: Modular infrastructure setup
 - ✅ **AgentCore Integration**: End-to-end working pipeline
+- ✅ **Integration Tests**: Automated testing with agentcore invoke
 - ✅ **Streamlit UI**: Interactive device control interface
 
 ## 🧪 Example Usage
@@ -90,11 +118,38 @@ There are three SiLA2 devices currently available in the laboratory:
   - Amazon API Gateway
   - AWS CloudFormation
 
+### Additional Prerequisites for Local Streamlit UI
+
+To run the Streamlit UI locally, your AWS credentials must have the following permissions:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Action": [
+      "bedrock-agentcore:InvokeAgent",
+      "bedrock-agentcore:InvokeAgentStream"
+    ],
+    "Resource": "*"
+  }]
+}
+```
+
+Add this policy to your IAM user/role:
+
+```bash
+aws iam put-role-policy --role-name YOUR_ROLE_NAME --policy-name BedrockAgentCoreInvokePolicy --policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["bedrock-agentcore:InvokeAgent","bedrock-agentcore:InvokeAgentStream"],"Resource":"*"}]}'
+```
+
 ## 🔄 Next Steps
 
 - Real SiLA2 gRPC protocol implementation
 - Physical device integration
 - Production deployment optimization
 - Advanced error handling and monitoring
+- Auto-scaling configuration for ECS tasks
 
-See `scripts/DEPLOYMENT_ORDER.md` for deployment details.
+## 📚 Documentation
+
+See `DEPLOYMENT_VALIDATION.md` for deployment troubleshooting and validation details.

@@ -15,15 +15,15 @@ main() {
     local region="${AWS_REGION:-us-west-2}"
     local execution_role_arn
     
-    # Get execution role ARN - always get the latest
-    execution_role_arn=$(aws iam list-roles \
-        --query 'Roles[?contains(RoleName, `DeviceApiLambdaRole`)].Arn' \
-        --output text | head -1)
+    # Get execution role ARN from Lambda Proxy stack
+    execution_role_arn=$(aws cloudformation describe-stacks \
+        --stack-name sila2-lambda-proxy \
+        --query 'Stacks[0].Outputs[?OutputKey==`LambdaRoleArn`].OutputValue' \
+        --output text --region "$region" 2>/dev/null)
     
-    # Fallback to .phase3-config if dynamic lookup fails
-    if [[ -z "$execution_role_arn" ]] && [[ -f ".phase3-config" ]]; then
-        source .phase3-config
-        execution_role_arn="$LAMBDA_ROLE_ARN"
+    if [[ -z "$execution_role_arn" ]]; then
+        log_error "Failed to get Lambda role ARN from stack"
+        return 1
     fi
     
     log_info "Account ID: $account_id"
