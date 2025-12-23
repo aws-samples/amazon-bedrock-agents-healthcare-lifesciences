@@ -1,0 +1,22 @@
+Variable Name,Label,Table Description
+DESYNPUF_ID,Beneficiary Code,CMS Inpatient Claims DE-SynPUF
+CLM_ID,Claim ID,CMS Inpatient Claims DE-SynPUF
+SEGMENT,Claim Line Segment,CMS Inpatient Claims DE-SynPUF
+CLM_FROM_DT,Claims start date,CMS Inpatient Claims DE-SynPUF
+CLM_THRU_DT,Claims end date,CMS Inpatient Claims DE-SynPUF
+PRVDR_NUM,Provider Institution,CMS Inpatient Claims DE-SynPUF
+CLM_PMT_AMT,Claim Payment Amount,CMS Inpatient Claims DE-SynPUF
+NCH_PRMRY_PYR_CLM_PD_AMT,NCH Primary Payer Claim Paid Amount,CMS Inpatient Claims DE-SynPUF
+AT_PHYSN_NPI,Attending Physician NPI,CMS Inpatient Claims DE-SynPUF
+OP_PHYSN_NPI,Operating Physician NPI,CMS Inpatient Claims DE-SynPUF
+OT_PHYSN_NPI,Other Physician NPI,CMS Inpatient Claims DE-SynPUF
+CLM_ADMSN_DT,Inpatient admission date,CMS Inpatient Claims DE-SynPUF
+ADMTNG_ICD9_DGNS_CD,Admitting Diagnosis Code,CMS Inpatient Claims DE-SynPUF
+CLM_PASS_THRU_PER_DIEM_AMT,Claim Pass Thru Per Diem Amount,CMS Inpatient Claims DE-SynPUF
+NCH_BENE_IP_DDCTBL_AMT,Inpatient Deductible Amount,CMS Inpatient Claims DE-SynPUF
+NCH_BENE_PTA_COINSRNC_LBLTY_AM,Part A Coinsurance Liability,CMS Inpatient Claims DE-SynPUF
+NCH_BENE_BLOOD_DDCTBL_LBLTY_AM,Blood Deductible Liability,CMS Inpatient Claims DE-SynPUF
+CLM_UTLZTN_DAY_CNT,Claim Utilization Day Count,CMS Inpatient Claims DE-SynPUF
+NCH_BENE_DSCHRG_DT,Discharge Date,CMS Inpatient Claims DE-SynPUF
+CLM_DRG_CD,Diagnosis Related Group Code,CMS Inpatient Claims DE-SynPUF
+
