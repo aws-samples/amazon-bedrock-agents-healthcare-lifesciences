@@ -1,0 +1,36 @@
+version: '3.8'
+services:
+  mock-device:
+    build: ./mock_devices
+    ports:
+      - "50051:50051"
+    networks:
+      - sila2-network
+    environment:
+      - SCENARIO_MODE=scenario_1
+
+  bridge-container:
+    build: ./bridge_container
+    ports:
+      - "8080:8080"
+    networks:
+      - sila2-network
+    depends_on:
+      - mock-device
+    environment:
+      - GRPC_SERVER=mock-device:50051
+
+  streamlit-ui:
+    build: ./streamlit_app
+    ports:
+      - "8501:8501"
+    networks:
+      - sila2-network
+    depends_on:
+      - mock-device
+    environment:
+      - GRPC_SERVER=mock-device:50051
+
+networks:
+  sila2-network:
+    driver: bridge

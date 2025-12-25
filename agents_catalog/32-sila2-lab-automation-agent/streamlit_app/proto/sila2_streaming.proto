@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+service SiLA2Device {
+  rpc SubscribeTemperature(SubscribeRequest) returns (stream TemperatureUpdate);
+  rpc SubscribeEvents(EventRequest) returns (stream DeviceEvent);
+}
+
+message SubscribeRequest {
+  string device_id = 1;
+}
+
+message EventRequest {
+  string device_id = 1;
+}
+
+message TemperatureUpdate {
+  string device_id = 1;
+  double temperature = 2;
+  double target_temperature = 3;
+  int64 elapsed_seconds = 4;
+  string start_time = 5;
+  string timestamp = 6;
+}
+
+message DeviceEvent {
+  string device_id = 1;
+  string event_type = 2;
+  double temperature = 3;
+  double target_temperature = 4;
+  int64 duration_seconds = 5;
+  double expected_rate = 6;
+  double actual_rate = 7;
+  string timestamp = 8;
+}

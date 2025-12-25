@@ -7,6 +7,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY proto/ ./proto/
 COPY server.py .
+COPY temperature_controller.py .
 
 EXPOSE 50051
 

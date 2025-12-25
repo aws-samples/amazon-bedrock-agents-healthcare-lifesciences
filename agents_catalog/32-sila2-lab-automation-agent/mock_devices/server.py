@@ -7,10 +7,17 @@ from datetime import datetime
 import uuid
 import threading
 import time
+import asyncio
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'proto'))
 import sila2_basic_pb2
 import sila2_basic_pb2_grpc
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), 'proto'))
+import sila2_streaming_pb2
+import sila2_streaming_pb2_grpc
+
+from temperature_controller import TemperatureController
 
 class TaskManager:
     def __init__(self):
@@ -31,27 +38,28 @@ class TaskManager:
             time.sleep(2.0)
         self.tasks[task_id] = {"progress": 100, "status": "completed", "message": "Task completed"}
 
+DEVICES = {
+    'hplc': {
+        'type': 'HPLC',
+        'location': 'Lab-A',
+        'props': {'temperature': '25', 'pressure': '150', 'flow_rate': '1.0'}
+    },
+    'centrifuge': {
+        'type': 'Centrifuge',
+        'location': 'Lab-B',
+        'props': {'speed': '3000', 'temperature': '4', 'time': '10'}
+    },
+    'pipette': {
+        'type': 'Pipette',
+        'location': 'Lab-C',
+        'props': {'volume': '100', 'speed': 'medium', 'tip_type': 'standard'}
+    }
+}
+
 class MockDeviceService(sila2_basic_pb2_grpc.SiLA2DeviceServicer):
     def __init__(self):
         self.task_manager = TaskManager()
-    
-    DEVICES = {
-        'hplc': {
-            'type': 'HPLC',
-            'location': 'Lab-A',
-            'props': {'temperature': '25', 'pressure': '150', 'flow_rate': '1.0'}
-        },
-        'centrifuge': {
-            'type': 'Centrifuge',
-            'location': 'Lab-B',
-            'props': {'speed': '3000', 'temperature': '4', 'time': '10'}
-        },
-        'pipette': {
-            'type': 'Pipette',
-            'location': 'Lab-C',
-            'props': {'volume': '100', 'speed': 'medium', 'tip_type': 'standard'}
-        }
-    }
+        self.temperature_controller = TemperatureController()
     
     def ListDevices(self, request, context):
         devices = [
@@ -61,7 +69,7 @@ class MockDeviceService(sila2_basic_pb2_grpc.SiLA2DeviceServicer):
                 status='ready',
                 location=dev['location']
             )
-            for dev_id, dev in self.DEVICES.items()
+            for dev_id, dev in DEVICES.items()
         ]
         return sila2_basic_pb2.ListDevicesResponse(
             devices=devices,
@@ -70,7 +78,7 @@ class MockDeviceService(sila2_basic_pb2_grpc.SiLA2DeviceServicer):
         )
     
     def GetDeviceInfo(self, request, context):
-        dev = self.DEVICES.get(request.device_id, self.DEVICES['hplc'])
+        dev = DEVICES.get(request.device_id, DEVICES['hplc'])
         return sila2_basic_pb2.DeviceInfoResponse(
             device_id=request.device_id,
             status='ready',
@@ -80,9 +88,8 @@ class MockDeviceService(sila2_basic_pb2_grpc.SiLA2DeviceServicer):
         )
     
     def ExecuteCommand(self, request, context):
-        dev = self.DEVICES.get(request.device_id, self.DEVICES['hplc'])
+        dev = DEVICES.get(request.device_id, DEVICES['hplc'])
         
-        # Handle task operations
         if request.operation == 'start_task':
             command = request.parameters.get('command', 'unknown')
             params = {k: v for k, v in request.parameters.items() if k != 'command'}
@@ -107,23 +114,45 @@ class MockDeviceService(sila2_basic_pb2_grpc.SiLA2DeviceServicer):
                 timestamp=datetime.now().isoformat()
             )
         
-        # Handle property get operations
         if request.operation.startswith('get_'):
-            prop_name = request.operation[4:]  # Remove 'get_' prefix
-            if prop_name in dev['props']:
+            prop_name = request.operation[4:]
+            if prop_name == 'temperature':
+                current = self.temperature_controller.get_current_temperature()
+                DEVICES[request.device_id]['props']['temperature'] = str(current)
                 return sila2_basic_pb2.CommandResponse(
                     device_id=request.device_id,
                     operation=request.operation,
                     success=True,
                     status='completed',
-                    result={'value': dev['props'][prop_name], 'unit': 'C' if prop_name == 'temperature' else ''},
+                    result={'value': str(current), 'unit': 'C'},
+                    timestamp=datetime.now().isoformat()
+                )
+            elif prop_name in dev['props']:
+                return sila2_basic_pb2.CommandResponse(
+                    device_id=request.device_id,
+                    operation=request.operation,
+                    success=True,
+                    status='completed',
+                    result={'value': dev['props'][prop_name], 'unit': ''},
                     timestamp=datetime.now().isoformat()
                 )
         
-        # Handle property set operations
         if request.operation.startswith('set_'):
-            prop_name = request.operation[4:]  # Remove 'set_' prefix
-            if prop_name in dev['props']:
+            prop_name = request.operation[4:]
+            if prop_name == 'temperature':
+                target = float(request.parameters.get('value', 25))
+                self.temperature_controller.toggle_scenario()
+                self.temperature_controller.set_temperature(target)
+                DEVICES[request.device_id]['props']['temperature'] = str(target)
+                return sila2_basic_pb2.CommandResponse(
+                    device_id=request.device_id,
+                    operation=request.operation,
+                    success=True,
+                    status='heating',
+                    result={'value': str(target), 'message': 'Heating started'},
+                    timestamp=datetime.now().isoformat()
+                )
+            elif prop_name in dev['props']:
                 dev['props'][prop_name] = request.parameters.get('value', dev['props'][prop_name])
                 return sila2_basic_pb2.CommandResponse(
                     device_id=request.device_id,
@@ -134,7 +163,6 @@ class MockDeviceService(sila2_basic_pb2_grpc.SiLA2DeviceServicer):
                     timestamp=datetime.now().isoformat()
                 )
         
-        # Normal command execution
         result = {'status': 'completed', 'device_type': dev['type']}
         result.update(request.parameters)
         
@@ -147,15 +175,101 @@ class MockDeviceService(sila2_basic_pb2_grpc.SiLA2DeviceServicer):
             timestamp=datetime.now().isoformat()
         )
 
-def serve():
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    service = MockDeviceService()
-    sila2_basic_pb2_grpc.add_SiLA2DeviceServicer_to_server(service, server)
-    server.add_insecure_port('[::]:50051')
-    server.start()
-    print("Mock Device Server started on port 50051")
-    print("TaskManager initialized")
-    server.wait_for_termination()
+class SiLA2StreamingService(sila2_streaming_pb2_grpc.SiLA2DeviceServicer):
+    def __init__(self, temperature_controller):
+        self.temperature_controller = temperature_controller
+    
+    async def SubscribeTemperature(self, request, context):
+        device_id = request.device_id
+        
+        while True:
+            temp = self.temperature_controller.get_current_temperature()
+            target = self.temperature_controller.target_temp or 0.0
+            elapsed = 0
+            start_time = ""
+            
+            if self.temperature_controller.start_time:
+                elapsed = int(time.time() - self.temperature_controller.start_time)
+                start_time = datetime.fromtimestamp(self.temperature_controller.start_time).isoformat()
+            
+            yield sila2_streaming_pb2.TemperatureUpdate(
+                device_id=device_id,
+                temperature=temp,
+                target_temperature=target,
+                elapsed_seconds=elapsed,
+                start_time=start_time,
+                timestamp=datetime.utcnow().isoformat(),
+                scenario_mode=self.temperature_controller.scenario_mode
+            )
+            
+            await asyncio.sleep(5)
+    
+    async def SubscribeEvents(self, request, context):
+        device_id = request.device_id
+        last_target_reached = False
+        malfunction_emitted = False
+        
+        while True:
+            target_reached = self.temperature_controller.check_target_reached()
+            
+            if target_reached and not last_target_reached:
+                duration = 0
+                if self.temperature_controller.start_time:
+                    duration = int(time.time() - self.temperature_controller.start_time)
+                
+                print(f"[EVENT] TEMPERATURE_REACHED: {self.temperature_controller.get_current_temperature():.1f}°C in {duration}s", flush=True)
+                
+                yield sila2_streaming_pb2.DeviceEvent(
+                    device_id=device_id,
+                    event_type="TEMPERATURE_REACHED",
+                    temperature=self.temperature_controller.get_current_temperature(),
+                    target_temperature=self.temperature_controller.target_temp,
+                    duration_seconds=duration,
+                    timestamp=datetime.utcnow().isoformat()
+                )
+                
+                self.temperature_controller.stop_heating()
+                
+                last_target_reached = True
+                malfunction_emitted = False
+            elif not target_reached:
+                last_target_reached = False
+            
+            if (self.temperature_controller.scenario_mode == "scenario_2" and 
+                self.temperature_controller.is_heating and
+                self.temperature_controller.start_time and
+                not malfunction_emitted):
+                
+                elapsed = time.time() - self.temperature_controller.start_time
+                if elapsed > 300:
+                    yield sila2_streaming_pb2.DeviceEvent(
+                        device_id=device_id,
+                        event_type="HEATER_MALFUNCTION",
+                        temperature=self.temperature_controller.get_current_temperature(),
+                        expected_rate=10.0,
+                        actual_rate=self.temperature_controller.get_heating_rate(),
+                        timestamp=datetime.utcnow().isoformat()
+                    )
+                    malfunction_emitted = True
+            
+            await asyncio.sleep(1)
+
+async def serve():
+    server = grpc.aio.server()
+    
+    mock_service = MockDeviceService()
+    sila2_basic_pb2_grpc.add_SiLA2DeviceServicer_to_server(mock_service, server)
+    
+    streaming_service = SiLA2StreamingService(mock_service.temperature_controller)
+    sila2_streaming_pb2_grpc.add_SiLA2DeviceServicer_to_server(streaming_service, server)
+    
+    listen_addr = '[::]:50051'
+    server.add_insecure_port(listen_addr)
+    
+    await server.start()
+    print("Mock Device Server started on port 50051", flush=True)
+    print("gRPC Streaming enabled", flush=True)
+    await server.wait_for_termination()
 
 if __name__ == '__main__':
-    serve()
+    asyncio.run(serve())
