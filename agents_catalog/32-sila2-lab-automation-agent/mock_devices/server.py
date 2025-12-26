@@ -93,6 +93,17 @@ class MockDeviceService(sila2_basic_pb2_grpc.SiLA2DeviceServicer):
         if request.operation == 'start_task':
             command = request.parameters.get('command', 'unknown')
             params = {k: v for k, v in request.parameters.items() if k != 'command'}
+            print(f"[START_TASK] device={request.device_id}, command={command}, params={params}", flush=True)
+            
+            # Handle SetTemperature command (both formats)
+            if command in ['SetTemperature', 'set_temperature']:
+                # Support both 'target_temperature' and 'temperature' parameter names
+                target = float(params.get('target_temperature') or params.get('temperature', 25))
+                print(f"[TEMPERATURE] Setting target to {target}°C", flush=True)
+                self.temperature_controller.toggle_scenario()
+                self.temperature_controller.set_temperature(target)
+                DEVICES[request.device_id]['props']['temperature'] = str(target)
+            
             task_id = self.task_manager.start_task(request.device_id, command, params)
             return sila2_basic_pb2.CommandResponse(
                 device_id=request.device_id,

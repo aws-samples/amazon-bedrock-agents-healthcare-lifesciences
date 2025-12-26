@@ -117,6 +117,14 @@ Resources:
                   - lambda:InvokeFunction
                   - lambda:InvokeFunctionUrl
                 Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:sila2-*
+        - PolicyName: SNSPublish
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource: !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:sila2-events-*
 
   # Bridge Task Definition
   BridgeTaskDefinition:
@@ -142,12 +150,18 @@ Resources:
               Value: !Ref EnvironmentName
             - Name: AWS_REGION
               Value: !Ref AWS::Region
+            - Name: GRPC_SERVER
+              Value: mock-devices.sila2.local:50051
+            - Name: DEVICE_ID
+              Value: hplc
             - Name: HPLC_GRPC_URL
               Value: mock-devices.sila2.local:50051
             - Name: CENTRIFUGE_GRPC_URL
               Value: mock-devices.sila2.local:50051
             - Name: PIPETTE_GRPC_URL
               Value: mock-devices.sila2.local:50051
+            - Name: SNS_TOPIC_ARN
+              Value: !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:sila2-events-topic
           LogConfiguration:
             LogDriver: awslogs
             Options:

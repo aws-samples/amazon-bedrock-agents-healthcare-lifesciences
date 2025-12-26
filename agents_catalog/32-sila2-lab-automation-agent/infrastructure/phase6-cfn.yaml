@@ -1,0 +1,156 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Phase 6 - EventBridge + SNS + Lambda for SiLA2 Agent'
+
+Parameters:
+  BridgeURL:
+    Type: String
+    Description: Bridge Server URL (e.g., http://bridge-container:8080)
+  
+  AgentCoreAgentId:
+    Type: String
+    Description: AgentCore Agent ID
+  
+  AgentCoreAliasId:
+    Type: String
+    Description: AgentCore Alias ID
+  
+  VpcId:
+    Type: String
+    Description: VPC ID for Lambda function
+  
+  PrivateSubnetIds:
+    Type: CommaDelimitedList
+    Description: Private Subnet IDs for Lambda function
+  
+  BridgeSecurityGroupId:
+    Type: String
+    Description: Security Group ID that allows access to Bridge Server
+
+Resources:
+  SNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: sila2-events-topic
+      DisplayName: SiLA2 Device Events
+
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Phase 6 Lambda function
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      Policies:
+        - PolicyName: BedrockAgentInvoke
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeAgent
+                Resource: '*'
+
+  InvokerFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: sila2-agentcore-invoker
+      Runtime: python3.11
+      Handler: index.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 60
+      Environment:
+        Variables:
+          BRIDGE_URL: !Ref BridgeURL
+          AGENTCORE_AGENT_ID: !Ref AgentCoreAgentId
+          AGENTCORE_ALIAS_ID: !Ref AgentCoreAliasId
+          SNS_TOPIC_ARN: !Ref SNSTopic
+      VpcConfig:
+        SubnetIds: !Ref PrivateSubnetIds
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
+          - !Ref BridgeSecurityGroupId
+      Code:
+        ZipFile: |
+          import json
+          def lambda_handler(event, context):
+              return {"statusCode": 200, "body": "Placeholder"}
+
+  SNSSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: lambda
+      TopicArn: !Ref SNSTopic
+      Endpoint: !GetAtt InvokerFunction.Arn
+
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref InvokerFunction
+      Action: lambda:InvokeFunction
+      Principal: sns.amazonaws.com
+      SourceArn: !Ref SNSTopic
+
+  EventBridgeSchedulerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeLambda
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !GetAtt InvokerFunction.Arn
+
+  PeriodicSchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Name: sila2-periodic-data-collection
+      ScheduleExpression: rate(5 minutes)
+      FlexibleTimeWindow:
+        Mode: 'OFF'
+      Target:
+        Arn: !GetAtt InvokerFunction.Arn
+        RoleArn: !GetAtt EventBridgeSchedulerRole.Arn
+        Input: !Sub |
+          {
+            "action": "periodic",
+            "devices": ["hplc_001", "hplc_002"]
+          }
+
+Outputs:
+  SNSTopicArn:
+    Description: SNS Topic ARN for Bridge Server
+    Value: !Ref SNSTopic
+    Export:
+      Name: SiLA2-SNS-Topic-ARN
+  
+  LambdaFunctionArn:
+    Description: Lambda Function ARN
+    Value: !GetAtt InvokerFunction.Arn
+  
+  ScheduleName:
+    Description: EventBridge Schedule Name
+    Value: !Ref PeriodicSchedule

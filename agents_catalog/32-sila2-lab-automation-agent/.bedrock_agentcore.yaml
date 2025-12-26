@@ -21,7 +21,7 @@ agents:
     bedrock_agentcore:
       agent_id: sila2_phase3_agent-ZQQHgRDG5L
       agent_arn: arn:aws:bedrock-agentcore:us-west-2:590183741681:runtime/sila2_phase3_agent-ZQQHgRDG5L
-      agent_session_id: fb5f92dd-34e5-4733-8111-d6acde8f7901
+      agent_session_id: af931ed7-0cbd-4ef7-a5ef-0e88df51b036
     codebuild:
       project_name: bedrock-agentcore-sila2_phase3_agent-builder
       execution_role: arn:aws:iam::590183741681:role/AmazonBedrockAgentCoreSDKCodeBuild-us-west-2-a64b67915b
