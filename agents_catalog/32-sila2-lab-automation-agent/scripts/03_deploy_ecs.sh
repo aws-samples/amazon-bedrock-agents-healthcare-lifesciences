@@ -82,6 +82,21 @@ LAMBDA_ARN=$(aws cloudformation describe-stacks \
   --output text \
   --region $REGION)
 
+# Get Bridge Service Discovery DNS name
+print_step "Getting Bridge Service Discovery endpoint"
+BRIDGE_DNS=$(aws cloudformation describe-stacks \
+  --stack-name $STACK_NAME \
+  --query 'Stacks[0].Outputs[?OutputKey==`BridgeServiceEndpoint`].OutputValue' \
+  --output text \
+  --region $REGION)
+
+if [[ -z "$BRIDGE_DNS" ]]; then
+    BRIDGE_DNS="http://bridge.sila2.local:8080"
+    print_warning "Using default Bridge DNS: $BRIDGE_DNS"
+else
+    print_info "Bridge DNS: $BRIDGE_DNS"
+fi
+
 # Phase 6: Deploy SNS + Lambda + EventBridge
 print_step "Deploying Phase 6 infrastructure (SNS + Lambda + EventBridge)"
 
@@ -117,7 +132,7 @@ if [[ -f "$PROJECT_ROOT/infrastructure/phase6-cfn.yaml" ]]; then
       --template-file "$PROJECT_ROOT/infrastructure/phase6-cfn.yaml" \
       --stack-name sila2-phase6-stack \
       --parameter-overrides \
-        BridgeURL="http://bridge.sila2.local:8080" \
+        BridgeURL="$BRIDGE_DNS" \
         AgentCoreAgentId="$AGENT_ID" \
         AgentCoreAliasId="$ALIAS_ID" \
         VpcId="$VPC_ID" \
@@ -139,22 +154,60 @@ if [[ -f "$PROJECT_ROOT/infrastructure/phase6-cfn.yaml" ]]; then
     if [[ -d "$PROJECT_ROOT/lambda/invoker" ]]; then
         cd "$PROJECT_ROOT/lambda/invoker"
         
-        # Install dependencies
-        print_info "Installing Lambda dependencies..."
-        pip3 install requests -t . --quiet 2>/dev/null
+        # Create Lambda Layer for requests library
+        print_info "Creating Lambda Layer for requests library..."
+        LAYER_DIR="/tmp/lambda-layer-requests"
+        rm -rf "$LAYER_DIR"
+        mkdir -p "$LAYER_DIR/python"
+        pip3 install requests -t "$LAYER_DIR/python" --quiet 2>/dev/null
         
-        # Create deployment package
+        cd "$LAYER_DIR"
+        zip -r /tmp/requests-layer.zip python/ >/dev/null 2>&1
+        
+        LAYER_ARN=$(aws lambda publish-layer-version \
+          --layer-name sila2-requests-layer \
+          --zip-file fileb:///tmp/requests-layer.zip \
+          --compatible-runtimes python3.10 python3.11 \
+          --region $REGION \
+          --query 'LayerVersionArn' \
+          --output text 2>/dev/null || echo "")
+        
+        if [ -n "$LAYER_ARN" ]; then
+            print_info "Lambda Layer created: $LAYER_ARN"
+        else
+            print_warning "Lambda Layer creation failed, will retry later"
+        fi
+        
+        rm -rf "$LAYER_DIR" /tmp/requests-layer.zip
+        
+        # Create deployment package (without requests)
+        cd "$PROJECT_ROOT/lambda/invoker"
         zip -r /tmp/phase6-lambda.zip . -x "*.pyc" "__pycache__/*" >/dev/null 2>&1
         
-        # Update Lambda function
-        aws lambda update-function-code \
-          --function-name sila2-agentcore-invoker \
-          --zip-file fileb:///tmp/phase6-lambda.zip \
-          --region $REGION >/dev/null 2>&1 || print_warning "Lambda update skipped (will update after AgentCore deployment)"
+        # Update Lambda function with Layer and DNS-based BRIDGE_URL
+        if [ -n "$LAYER_ARN" ]; then
+            aws lambda update-function-code \
+              --function-name sila2-agentcore-invoker \
+              --zip-file fileb:///tmp/phase6-lambda.zip \
+              --region $REGION >/dev/null 2>&1 || print_warning "Lambda code update skipped"
+            
+            aws lambda update-function-configuration \
+              --function-name sila2-agentcore-invoker \
+              --layers "$LAYER_ARN" \
+              --environment "Variables={BRIDGE_URL=$BRIDGE_DNS}" \
+              --region $REGION >/dev/null 2>&1 || print_warning "Lambda layer attachment skipped"
+            
+            print_info "Lambda Layer attached to function"
+            print_info "Lambda BRIDGE_URL set to: $BRIDGE_DNS"
+        else
+            aws lambda update-function-code \
+              --function-name sila2-agentcore-invoker \
+              --zip-file fileb:///tmp/phase6-lambda.zip \
+              --region $REGION >/dev/null 2>&1 || print_warning "Lambda update skipped (will update after AgentCore deployment)"
+        fi
         
         # Cleanup
         rm /tmp/phase6-lambda.zip
-        rm -rf requests* certifi* charset_normalizer* idna* urllib3*
         
         cd "$PROJECT_ROOT"
     fi

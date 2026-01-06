@@ -12,14 +12,24 @@ class DataBuffer:
         
     def add_data(self, device_id: str, temperature_data: Dict) -> None:
         with self.lock:
-            self.buffer.append({
+            data_point = {
                 'device_id': device_id,
                 'timestamp': datetime.now().isoformat(),
                 'temperature': temperature_data['current_temp'],
                 'target_temperature': temperature_data['target_temp'],
+                'heating_status': temperature_data.get('heating_status', 'unknown'),
                 'scenario_mode': temperature_data.get('scenario_mode', 'unknown'),
                 'elapsed_seconds': temperature_data.get('elapsed_seconds', 0)
-            })
+            }
+            self.buffer.append(data_point)
+    
+    def get_latest(self, device_id: str) -> Optional[Dict]:
+        """Get latest data point for device"""
+        with self.lock:
+            for d in reversed(self.buffer):
+                if d['device_id'] == device_id:
+                    return d
+            return None
     
     def get_history(
         self, 

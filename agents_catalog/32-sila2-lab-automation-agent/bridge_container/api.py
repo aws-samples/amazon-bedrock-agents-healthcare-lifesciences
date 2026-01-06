@@ -5,6 +5,14 @@ from data_buffer import DataBuffer
 app = FastAPI(title="SiLA2 Bridge Server API")
 buffer = DataBuffer(max_minutes=5)
 
+@app.get("/api/status/{device_id}")
+async def get_device_status(device_id: str):
+    """デバイス状態取得 (heating_status含む)"""
+    latest = buffer.get_latest(device_id)
+    if not latest:
+        return {"error": "Device not found or no data"}
+    return latest
+
 @app.get("/api/history/{device_id}")
 async def get_device_history(
     device_id: str,

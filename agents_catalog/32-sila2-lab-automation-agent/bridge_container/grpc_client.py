@@ -3,6 +3,8 @@ import grpc
 import os
 from typing import Dict, Any
 import sys
+import time
+import threading
 
 # Add proto directory to path
 proto_dir = os.path.join(os.path.dirname(__file__), 'proto')
@@ -20,8 +22,12 @@ class GrpcClient:
     def __init__(self):
         self.channels = {}
         self.stubs = {}
+        self.reconnect_interval = 60  # 60秒ごとに再接続チェック
+        self.last_reconnect = {}
         try:
             self._init_connections()
+            # バックグラウンドで定期再接続スレッド開始
+            self._start_reconnect_thread()
         except Exception as e:
             print(f"Warning: Failed to initialize gRPC connections: {e}")
             print("Server will start but device connections may not work")
@@ -34,12 +40,48 @@ class GrpcClient:
         }
         
         for name, url in devices.items():
-            try:
-                self.channels[name] = grpc.insecure_channel(url)
-                self.stubs[name] = sila2_basic_pb2_grpc.SiLA2DeviceStub(self.channels[name])
-                print(f"Connected to {name} at {url}")
-            except Exception as e:
-                print(f"Warning: Failed to connect to {name} at {url}: {e}")
+            self._connect_device(name, url)
+    
+    def _connect_device(self, name: str, url: str):
+        """個別デバイスへの接続"""
+        try:
+            if name in self.channels:
+                try:
+                    self.channels[name].close()
+                except:
+                    pass
+            
+            self.channels[name] = grpc.insecure_channel(url)
+            self.stubs[name] = sila2_basic_pb2_grpc.SiLA2DeviceStub(self.channels[name])
+            self.last_reconnect[name] = time.time()
+            print(f"[gRPC] Connected to {name} at {url}", flush=True)
+        except Exception as e:
+            print(f"[gRPC] Failed to connect to {name} at {url}: {e}", flush=True)
+    
+    def _start_reconnect_thread(self):
+        """定期再接続スレッド開始"""
+        def reconnect_loop():
+            devices = {
+                'hplc': os.getenv('HPLC_GRPC_URL', 'localhost:50051'),
+                'centrifuge': os.getenv('CENTRIFUGE_GRPC_URL', 'localhost:50052'),
+                'pipette': os.getenv('PIPETTE_GRPC_URL', 'localhost:50053')
+            }
+            
+            while True:
+                time.sleep(self.reconnect_interval)
+                for name, url in devices.items():
+                    if name in self.stubs:
+                        try:
+                            # 接続テスト
+                            request = sila2_basic_pb2.DeviceInfoRequest(device_id=name)
+                            self.stubs[name].GetDeviceInfo(request, timeout=2)
+                        except Exception as e:
+                            print(f"[gRPC] Connection lost to {name}, reconnecting...", flush=True)
+                            self._connect_device(name, url)
+        
+        thread = threading.Thread(target=reconnect_loop, daemon=True)
+        thread.start()
+        print(f"[gRPC] Auto-reconnect thread started (interval: {self.reconnect_interval}s)", flush=True)
     
     def list_devices(self) -> Dict[str, Any]:
         devices = []

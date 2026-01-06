@@ -5,6 +5,7 @@ class TemperatureController:
         self.current_temp = 25.0
         self.target_temp = None
         self.is_heating = False
+        self.heating_status = "idle"  # "idle", "heating", "completed"
         self.start_time = None
         self.scenario_mode = "scenario_2"
         
@@ -12,11 +13,12 @@ class TemperatureController:
         self.scenario_mode = mode
         
     def get_heating_rate(self) -> float:
-        return 10.0 if self.scenario_mode == "scenario_1" else 2.0
+        return 5.0 if self.scenario_mode == "scenario_1" else 2.0
     
     def set_temperature(self, target: float):
         self.target_temp = target
         self.is_heating = True
+        self.heating_status = "heating"
         self.start_time = time.time()
         self.current_temp = 25.0
         
@@ -29,6 +31,11 @@ class TemperatureController:
         temp_increase = rate_per_second * elapsed
         self.current_temp = min(25.0 + temp_increase, self.target_temp)
         
+        # 目標温度到達チェック
+        if self.current_temp >= self.target_temp:
+            self.heating_status = "completed"
+            self.is_heating = False
+        
         return self.current_temp
     
     def check_target_reached(self) -> bool:
@@ -38,6 +45,8 @@ class TemperatureController:
     
     def stop_heating(self):
         self.is_heating = False
+        if self.heating_status == "heating":
+            self.heating_status = "idle"
         
     def toggle_scenario(self):
         if self.scenario_mode == "scenario_1":

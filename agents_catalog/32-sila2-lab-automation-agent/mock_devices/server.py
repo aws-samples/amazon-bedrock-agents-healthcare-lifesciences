@@ -90,6 +90,22 @@ class MockDeviceService(sila2_basic_pb2_grpc.SiLA2DeviceServicer):
     def ExecuteCommand(self, request, context):
         dev = DEVICES.get(request.device_id, DEVICES['hplc'])
         
+        # Handle abort_experiment command
+        if request.operation == 'abort_experiment':
+            current_temp = self.temperature_controller.get_current_temperature()
+            print(f"[ABORT] Stopping experiment on {request.device_id} at {current_temp:.1f}°C", flush=True)
+            self.temperature_controller.stop_heating()
+            self.temperature_controller.target_temp = None
+            DEVICES[request.device_id]['props']['temperature'] = str(current_temp)
+            return sila2_basic_pb2.CommandResponse(
+                device_id=request.device_id,
+                operation=request.operation,
+                success=True,
+                status='aborted',
+                result={'message': f'Experiment aborted, temperature held at {current_temp:.1f}°C'},
+                timestamp=datetime.now().isoformat()
+            )
+        
         if request.operation == 'start_task':
             command = request.parameters.get('command', 'unknown')
             params = {k: v for k, v in request.parameters.items() if k != 'command'}
@@ -192,6 +208,7 @@ class SiLA2StreamingService(sila2_streaming_pb2_grpc.SiLA2DeviceServicer):
     
     async def SubscribeTemperature(self, request, context):
         device_id = request.device_id
+        print(f"[STREAM] Temperature subscription started for {device_id}", flush=True)
         
         while True:
             temp = self.temperature_controller.get_current_temperature()
@@ -203,6 +220,7 @@ class SiLA2StreamingService(sila2_streaming_pb2_grpc.SiLA2DeviceServicer):
                 elapsed = int(time.time() - self.temperature_controller.start_time)
                 start_time = datetime.fromtimestamp(self.temperature_controller.start_time).isoformat()
             
+            print(f"[STREAM] Sending temp={temp:.1f}°C target={target:.1f}°C mode={self.temperature_controller.scenario_mode}", flush=True)
             yield sila2_streaming_pb2.TemperatureUpdate(
                 device_id=device_id,
                 temperature=temp,
@@ -217,6 +235,7 @@ class SiLA2StreamingService(sila2_streaming_pb2_grpc.SiLA2DeviceServicer):
     
     async def SubscribeEvents(self, request, context):
         device_id = request.device_id
+        print(f"[STREAM] Event subscription started for {device_id}", flush=True)
         last_target_reached = False
         malfunction_emitted = False
         

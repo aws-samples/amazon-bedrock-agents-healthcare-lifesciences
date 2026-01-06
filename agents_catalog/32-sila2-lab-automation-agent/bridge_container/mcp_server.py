@@ -57,9 +57,9 @@ async def handle_mcp(request: Request):
                     "tools": [
                         {"name": "list_devices", "description": "List all available SiLA2 devices", "inputSchema": {"type": "object", "properties": {}}},
                         {"name": "get_device_status", "description": "Get status of a specific device", "inputSchema": {"type": "object", "properties": {"device_id": {"type": "string"}}, "required": ["device_id"]}},
-                        {"name": "start_task", "description": "Start an asynchronous long-running task", "inputSchema": {"type": "object", "properties": {"device_id": {"type": "string"}, "command": {"type": "string"}, "parameters": {"type": "object"}}, "required": ["device_id", "command"]}},
                         {"name": "get_task_status", "description": "Get status of a running task", "inputSchema": {"type": "object", "properties": {"task_id": {"type": "string"}}, "required": ["task_id"]}},
-                        {"name": "get_property", "description": "Get device property value", "inputSchema": {"type": "object", "properties": {"device_id": {"type": "string"}, "property_name": {"type": "string"}}, "required": ["device_id", "property_name"]}}
+                        {"name": "get_property", "description": "Get device property value", "inputSchema": {"type": "object", "properties": {"device_id": {"type": "string"}, "property_name": {"type": "string"}}, "required": ["device_id", "property_name"]}},
+                        {"name": "execute_control", "description": "Execute device control commands (set_temperature, abort_experiment)", "inputSchema": {"type": "object", "properties": {"device_id": {"type": "string"}, "command": {"type": "string", "enum": ["set_temperature", "abort_experiment"]}, "parameters": {"type": "object"}}, "required": ["device_id", "command"]}}
                     ]
                 },
                 "id": req_id
@@ -74,16 +74,21 @@ async def handle_mcp(request: Request):
                 result = grpc_client.list_devices()
             elif tool_name == "get_device_status":
                 result = grpc_client.get_device_status(arguments.get('device_id'))
-            elif tool_name == "start_task":
-                device_id = arguments.get('device_id')
-                command = arguments.get('command')
-                parameters = arguments.get('parameters', {})
-                print(f"[MCP] start_task called: device={device_id}, command={command}, params={parameters}", flush=True)
-                result = grpc_client.start_task(device_id, command, parameters)
             elif tool_name == "get_task_status":
                 result = grpc_client.get_task_status(arguments.get('task_id'))
             elif tool_name == "get_property":
                 result = grpc_client.get_property(arguments.get('device_id'), arguments.get('property_name'))
+            elif tool_name == "execute_control":
+                device_id = arguments.get('device_id')
+                command = arguments.get('command')
+                parameters = arguments.get('parameters', {})
+                print(f"[MCP] execute_control called: device={device_id}, command={command}, params={parameters}", flush=True)
+                if command == 'set_temperature':
+                    result = grpc_client.start_task(device_id, 'set_temperature', parameters)
+                elif command == 'abort_experiment':
+                    result = grpc_client.execute_command(device_id, 'abort_experiment', {})
+                else:
+                    result = {'error': f'Unknown command: {command}'}
             else:
                 return {"jsonrpc": "2.0", "error": {"code": -32601, "message": f"Unknown tool: {tool_name}"}, "id": req_id}
             
