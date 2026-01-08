@@ -23,6 +23,12 @@ Parameters:
       - "true"
       - "false"
     Description: The flag to check if multi agent dev mode is enabled
+  RedshiftDatabaseName:
+    Type: String
+    Default: dev
+  RedshiftUserName:
+    Type: String
+    Default: admin
 Conditions:
   CreateAgentResources: !Equals [!Ref DevMode, "false"]
 
@@ -202,6 +208,8 @@ Resources:
       Environment:
         Variables:
           BUCKET_NAME: !Ref S3Bucket
+          REDSHIFT_DB_NAME: !Ref RedshiftDatabaseName
+          REDSHIFT_DB_USER: !Ref RedshiftUserName
       Code:
         S3Bucket: !Ref S3Bucket
         S3Key: querydatabaselambda.zip
@@ -243,8 +251,8 @@ Resources:
                 Action:
                   - redshift:GetClusterCredentials
                 Resource: 
-                  - !Sub arn:aws:redshift:${AWS::Region}:${AWS::AccountId}:dbuser:biomarker-redshift-cluster/admin
-                  - !Sub arn:aws:redshift:${AWS::Region}:${AWS::AccountId}:dbname:biomarker-redshift-cluster/dev
+                  - !Sub arn:aws:redshift:${AWS::Region}:${AWS::AccountId}:dbuser:biomarker-redshift-cluster/${RedshiftUserName}
+                  - !Sub arn:aws:redshift:${AWS::Region}:${AWS::AccountId}:dbname:biomarker-redshift-cluster/${RedshiftDatabaseName}
               - Sid: S3Access
                 Effect: Allow
                 Action:

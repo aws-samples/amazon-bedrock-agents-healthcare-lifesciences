@@ -113,7 +113,9 @@ def get_schema():
             AND NOT a.attisdropped;"""
     
     try:
-        result = redshift_client.execute_statement(Database='dev', DbUser='admin', Sql=sql, ClusterIdentifier='biomarker-redshift-cluster')
+        REDSHIFT_DB_NAME = os.environ['REDSHIFT_DB_NAME']
+        REDSHIFT_DB_USER = os.environ['REDSHIFT_DB_USER']
+        result = redshift_client.execute_statement(Database=REDSHIFT_DB_NAME, DbUser=REDSHIFT_DB_USER, Sql=sql, ClusterIdentifier='biomarker-redshift-cluster')
         print("SQL statement execution started. StatementId:", result['Id'])
     
         def wait_for_query_completion(statement_id):
@@ -139,7 +141,9 @@ def get_schema():
 
 def query_redshift(query):
     try:
-        result = redshift_client.execute_statement(Database='dev', DbUser='admin', Sql=query, ClusterIdentifier='biomarker-redshift-cluster')
+        REDSHIFT_DB_NAME = os.environ['REDSHIFT_DB_NAME']
+        REDSHIFT_DB_USER = os.environ['REDSHIFT_DB_USER']
+        result = redshift_client.execute_statement(Database=REDSHIFT_DB_NAME, DbUser=REDSHIFT_DB_USER, Sql=query, ClusterIdentifier='biomarker-redshift-cluster')
         print("SQL statement execution started. StatementId:", result['Id'])
     
         def wait_for_query_completion(statement_id):
