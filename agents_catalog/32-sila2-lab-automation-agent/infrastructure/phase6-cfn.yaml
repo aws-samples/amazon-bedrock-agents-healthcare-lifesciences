@@ -64,6 +64,7 @@ Resources:
                 Action:
                   - bedrock-agentcore:InvokeAgentRuntime
                   - bedrock-agentcore:InvokeAgent
+                  - bedrock-agentcore:CreateEvent
                 Resource: '*'
 
   InvokerFunction:
@@ -71,14 +72,16 @@ Resources:
     Properties:
       FunctionName: sila2-agentcore-invoker
       Runtime: python3.11
-      Handler: index.lambda_handler
+      Handler: lambda_function.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
-      Timeout: 60
+      Timeout: 300
       Environment:
         Variables:
-          BRIDGE_URL: !Ref BridgeURL
+          BRIDGE_URL: http://bridge.sila2.local:8080
           AGENTCORE_AGENT_ID: !Ref AgentCoreAgentId
           AGENTCORE_ALIAS_ID: !Ref AgentCoreAliasId
+          AGENTCORE_MEMORY_ID: ''
+          AGENTCORE_RUNTIME_ARN: ''
           SNS_TOPIC_ARN: !Ref SNSTopic
       VpcConfig:
         SubnetIds: !Ref PrivateSubnetIds
@@ -106,7 +109,7 @@ Resources:
       Principal: sns.amazonaws.com
       SourceArn: !Ref SNSTopic
 
-  EventBridgeSchedulerRole:
+  EventBridgeRuleRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -114,7 +117,7 @@ Resources:
         Statement:
           - Effect: Allow
             Principal:
-              Service: scheduler.amazonaws.com
+              Service: events.amazonaws.com
             Action: sts:AssumeRole
       Policies:
         - PolicyName: InvokeLambda
@@ -125,21 +128,29 @@ Resources:
                 Action: lambda:InvokeFunction
                 Resource: !GetAtt InvokerFunction.Arn
 
-  PeriodicSchedule:
-    Type: AWS::Scheduler::Schedule
+  PeriodicCollectionRule:
+    Type: AWS::Events::Rule
     Properties:
       Name: sila2-periodic-data-collection
-      ScheduleExpression: rate(5 minutes)
-      FlexibleTimeWindow:
-        Mode: 'OFF'
-      Target:
-        Arn: !GetAtt InvokerFunction.Arn
-        RoleArn: !GetAtt EventBridgeSchedulerRole.Arn
-        Input: !Sub |
-          {
-            "action": "periodic",
-            "devices": ["hplc_001", "hplc_002"]
-          }
+      Description: Periodic data collection from SiLA2 devices
+      ScheduleExpression: rate(1 minute)
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt InvokerFunction.Arn
+          Id: PeriodicCollectionTarget
+          Input: !Sub |
+            {
+              "action": "periodic",
+              "devices": ["hplc_001", "hplc_002"]
+            }
+
+  EventBridgeInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref InvokerFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt PeriodicCollectionRule.Arn
 
 Outputs:
   SNSTopicArn:
@@ -152,6 +163,6 @@ Outputs:
     Description: Lambda Function ARN
     Value: !GetAtt InvokerFunction.Arn
   
-  ScheduleName:
-    Description: EventBridge Schedule Name
-    Value: !Ref PeriodicSchedule
+  EventBridgeRuleName:
+    Description: EventBridge Rule Name
+    Value: !Ref PeriodicCollectionRule

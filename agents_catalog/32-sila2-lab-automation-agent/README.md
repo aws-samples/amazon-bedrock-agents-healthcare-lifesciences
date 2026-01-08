@@ -1,155 +1,204 @@
 # SiLA2 Lab Automation Agent
 
-**Phase 4 Complete** ✅ - Amazon Bedrock AgentCore + MCP Gateway + ECS Fargate integration for laboratory automation using SiLA2 protocols.
+**Phase 7 Complete** ✅ - AI自律制御 + Memory統合による完全自動化実現
 
-## 🚀 Quick Deploy
+## 🎯 Current Status: Phase 7
+
+- ✅ **2 Targets構成**: Container (SiLA2変換) + Lambda (計算)
+- ✅ **6 Tools統合**: Phase 4 (4個) + Phase 7 (2個)
+- ✅ **Memory管理**: 温度設定時の初期化 + 手動制御記録
+- ✅ **AI自律判断**: scenario情報なしで自己判断
+- ✅ **Streamlit UI**: Memory表示 + AI判断履歴可視化
+- 🔄 **ドキュメント整備中**: Step 3進行中
+- ⬜ **統合テスト**: Step 4未着手
+
+## 🚀 Quick Deploy (Phase 7)
 
 ```bash
-# Deploy step by step
+# Phase 7デプロイ (Phase 6完了後)
 cd scripts
 export AWS_REGION=us-west-2
 
-./01_setup_infrastructure.sh  # Create ECR repositories
-./02_build_containers.sh      # Build and push Docker containers
-./03_deploy_ecs.sh           # Deploy ECS + Lambda Proxy
-./04_create_gateway.sh       # Create MCP Gateway
-./05_create_mcp_target.sh    # Create MCP Target
-./06_deploy_agentcore.sh     # Deploy AgentCore Runtime
-./07_run_tests.sh            # Run integration tests
-./08_setup_ui.sh             # Setup Streamlit UI
+# VPCエンドポイント作成 (必須)
+./00_setup_vpc_endpoint.sh
 
-# Test AgentCore
-agentcore invoke "List all available SiLA2 devices"
+# Phase 4-6インフラ (既存)
+./01_setup_infrastructure.sh
+./02_build_containers.sh
+./03_deploy_ecs.sh
+./04_create_gateway.sh
 
-# Launch UI
+# Phase 7: 2 Targets構成
+./05_create_mcp_target.sh  # Target 1 (Container) + Target 2 (Lambda)
+
+# AgentCore + Memory
+./06_deploy_agentcore.sh
+
+# テスト
+./07_run_tests.sh
+
+# UI起動
+./08_setup_ui.sh
 ./run_streamlit.sh
 ```
 
-## 🏗️ Architecture (Phase 4)
+## 🏗️ Architecture (Phase 7)
 
 ```
-User → AgentCore Runtime → MCP Gateway → Lambda Proxy → ECS Bridge → Mock Devices (Container)
+User/Lambda Invoker → AgentCore Runtime → MCP Gateway (2 Targets)
+                                           ├─ Target 1: Bridge Container (5 tools)
+                                           │   └─ Mock Devices (ECS)
+                                           └─ Target 2: Lambda (1 tool)
 ```
 
 - **Framework**: Amazon Bedrock AgentCore
 - **Model**: Anthropic Claude 3.5 Sonnet v2
-- **Gateway**: MCP Gateway + Lambda Target
-- **Infrastructure**: ECS Fargate + Lambda Proxy + CloudFormation
-- **Mock Devices**: HPLC, Centrifuge, Pipette (ECS Container)
-- **UI**: Streamlit (Local)
+- **Gateway**: MCP Gateway (2 Targets構成)
+- **Memory**: Built-in Session Memory
+- **Infrastructure**: ECS Fargate + Lambda + VPC Endpoint
+- **Mock Devices**: HPLC (scenario切り替え対応)
+- **UI**: Streamlit (Memory表示 + AI判断履歴)
 
-## 🔧 Available SiLA2 Tools
+## 🔧 Available Tools (Phase 7)
 
-- `list_available_devices()`: List all laboratory devices
-- `get_device_status(device_name)`: Check specific device status
-- `execute_device_command(device_name, command)`: Execute device commands
-- `get_device_capabilities(device_name)`: Get device capabilities
-- `start_measurement(device_name, parameters)`: Start measurements
-- `stop_measurement(device_name)`: Stop ongoing measurements
+### Target 1: Bridge Container (5 tools)
+- `list_devices()`: デバイス一覧取得
+- `get_device_status(device_id)`: デバイス状態確認
+- `get_task_status(device_id, task_id)`: タスク状態確認
+- `get_property(device_id, property_name)`: プロパティ取得
+- `execute_control(device_id, command, parameters)`: SiLA2制御実行
+  - set_temperature: 温度設定
+  - abort_experiment: 実験中止
 
-## 📁 Key Files (Phase 4)
+### Target 2: Lambda (1 tool)
+- `analyze_heating_rate(device_id, history)`: 温度上昇率計算
+
+## 📁 Key Files (Phase 7)
 
 ### Deployment Scripts
-- `scripts/01_setup_infrastructure.sh` - Create ECR repositories
-- `scripts/02_build_containers.sh` - Build and push Docker containers
-- `scripts/03_deploy_ecs.sh` - Deploy ECS + Lambda Proxy stacks
-- `scripts/04_create_gateway.sh` - Create MCP Gateway
-- `scripts/05_create_mcp_target.sh` - Create Lambda MCP Target
-- `scripts/06_deploy_agentcore.sh` - Deploy AgentCore Runtime
-- `scripts/07_run_tests.sh` - Run integration tests
-- `scripts/08_setup_ui.sh` - Setup Streamlit UI
+- `scripts/00_setup_vpc_endpoint.sh` - VPCエンドポイント作成 (Phase 7新規)
+- `scripts/01_setup_infrastructure.sh` - ECRリポジトリ作成
+- `scripts/02_build_containers.sh` - Containerビルド
+- `scripts/03_deploy_ecs.sh` - ECS + Lambda Proxy
+- `scripts/04_create_gateway.sh` - MCP Gateway作成
+- `scripts/05_create_mcp_target.sh` - 2 Targets作成 (Phase 7更新)
+- `scripts/06_deploy_agentcore.sh` - AgentCore + Memory (Phase 7更新)
+- `scripts/07_run_tests.sh` - 統合テスト
+- `scripts/08_setup_ui.sh` - Streamlit UI
 
 ### Infrastructure
-- `infrastructure/bridge_container_ecs_no_alb.yaml` - ECS Fargate stack
-- `infrastructure/lambda_proxy.yaml` - Lambda Proxy stack
-- `lambda_proxy/index.py` - Lambda Proxy implementation
-- `bridge_container/main.py` - MCP Bridge container
-- `mock_devices_container/server.py` - Mock devices gRPC server
+- `infrastructure/bridge_container_ecs_no_alb.yaml` - ECS Fargate
+- `infrastructure/lambda_proxy.yaml` - Lambda Proxy
+- `bridge_container/mcp_server.py` - MCP Bridge (execute_control追加)
+- `lambda/tools/analyze_heating_rate/` - 温度上昇率計算Lambda
+- `lambda/invoker/lambda_function.py` - Lambda Invoker (Memory管理)
 
 ### Application
-- `main_agentcore_phase3.py` - AgentCore agent definition
-- `.bedrock_agentcore.yaml` - AgentCore configuration
-- `streamlit_mcp_tools.py` - Streamlit UI
-- `test_phase4_integration.py` - Integration tests
+- `agentcore/agent_instructions.txt` - AI自律判断版Instructions
+- `.bedrock_agentcore.yaml` - AgentCore設定
+- `streamlit_app/phase7_app.py` - Streamlit UI (Memory表示)
+- `PHASE7_OVERVIEW.md` - Phase 7概要
+- `PHASE7_ARCHITECTURE.md` - Phase 7アーキテクチャ
 
-## 🎯 Phase 4 Achievements
+## 🎯 Phase 7 Achievements
 
-- ✅ **ECS Fargate Architecture**: Container-based deployment for scalability
-- ✅ **Lambda Proxy**: VPC-enabled Lambda for ECS Bridge communication
-- ✅ **MCP Gateway + Target**: Bedrock AgentCore Gateway integration
-- ✅ **Service Discovery**: ECS Service Discovery for internal communication
-- ✅ **Mock Device Container**: HPLC, Centrifuge, Pipette in single container
-- ✅ **8-Step Deployment**: Modular infrastructure setup
-- ✅ **AgentCore Integration**: End-to-end working pipeline
-- ✅ **Integration Tests**: Automated testing with agentcore invoke
-- ✅ **Streamlit UI**: Interactive device control interface
+- ✅ **2 Targets構成**: Container (SiLA2変換) + Lambda (計算) の責任分離
+- ✅ **execute_control統合**: 手動・自律制御を単一ツールで実現
+- ✅ **Memory管理**: 温度設定時の初期化 + 手動制御記録
+- ✅ **AI自律判断**: scenario情報なしで自己判断
+- ✅ **制御競合回避**: 手動制御後5分は自律制御を抑制
+- ✅ **Streamlit UI拡張**: Memory表示 + AI判断履歴可視化
+- ✅ **VPCエンドポイント**: Bedrock AgentCore API用
+- ✅ **不要Lambda削除**: Gateway統一により個別Lambda不要
+- 🔄 **ドキュメント整備**: Step 3進行中
+- ⬜ **統合テスト**: Step 4未着手
 
-## 🧪 Example Usage
+## 🧪 Example Usage (Phase 7)
 
+### 手動制御
 ```bash
-# List all devices
-agentcore invoke '{"prompt": "List all available SiLA2 devices"}'
+# 温度設定 (Memory初期化 + 実験ルール注入)
+agentcore invoke '{"prompt": "HPLC_001の温度を80度に設定"}'
 
-# Check specific device
-agentcore invoke '{"prompt": "What is the status of HPLC-01?"}'
+# デバイス状態確認
+agentcore invoke '{"prompt": "HPLC_001の現在の状態は?"}'
+```
 
-# Execute device command
-agentcore invoke '{"prompt": "Start a measurement on PIPETTE-01"}'
+### 自律分析 (Lambda Invoker経由)
+```bash
+# 定期分析 (5分毎)
+aws lambda invoke \
+  --function-name phase6-invoker \
+  --payload '{"action": "periodic", "devices": ["hplc_001"]}' \
+  response.json
+
+# 結果確認
+cat response.json
 ```
 
 **Expected Response**:
-```
-There are three SiLA2 devices currently available in the laboratory:
-1. An HPLC system (HPLC-01) which is ready for use
-2. A Centrifuge (CENTRIFUGE-01) which is currently busy  
-3. A Pipette (PIPETTE-01) which is ready for use
+```json
+{
+  "analysis": {
+    "heating_rate": 2.0,
+    "expected_rate": 10.0,
+    "is_anomaly": true,
+    "scenario_mode": "scenario_2"
+  },
+  "decision": "温度上昇が遅いため、温度再設定で復帰",
+  "action_taken": "set_temperature",
+  "reasoning": "scenario_2検知、scenario_1への復帰が必要"
+}
 ```
 
-## 📋 Prerequisites
+## 📋 Prerequisites (Phase 7)
 
 - AWS CLI configured with appropriate permissions
 - Python 3.9+
 - Docker (for AgentCore Runtime)
 - Required AWS services access:
-  - Amazon Bedrock
+  - Amazon Bedrock AgentCore
   - AWS Lambda
   - Amazon ECR
-  - AWS CodeBuild
-  - Amazon API Gateway
+  - Amazon ECS
+  - Amazon VPC (VPCエンドポイント必須)
   - AWS CloudFormation
 
-### Additional Prerequisites for Local Streamlit UI
+### VPC Requirements (Phase 7新規)
 
-To run the Streamlit UI locally, your AWS credentials must have the following permissions:
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [{
-    "Effect": "Allow",
-    "Action": [
-      "bedrock-agentcore:InvokeAgent",
-      "bedrock-agentcore:InvokeAgentStream"
-    ],
-    "Resource": "*"
-  }]
-}
-```
-
-Add this policy to your IAM user/role:
+Lambda InvokerがVPC内に配置されるため、Bedrock AgentCore APIへのアクセスにVPCエンドポイントが必要:
 
 ```bash
-aws iam put-role-policy --role-name YOUR_ROLE_NAME --policy-name BedrockAgentCoreInvokePolicy --policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["bedrock-agentcore:InvokeAgent","bedrock-agentcore:InvokeAgentStream"],"Resource":"*"}]}'
+# VPCエンドポイント作成
+./scripts/00_setup_vpc_endpoint.sh
 ```
+
+**または** NAT Gateway (非推奨、コスト高):
+- 追加コスト: ~$32/月
+- VPCエンドポイント推奨: ~$7/月
 
 ## 🔄 Next Steps
 
+### Step 3: ドキュメント整備 (進行中)
+- ✅ PHASE7_OVERVIEW.md更新
+- ✅ PHASE7_ARCHITECTURE.md更新
+- ✅ README.md更新
+
+### Step 4: 統合テスト (未着手)
+- ⬜ Gateway経由ツール動作確認
+- ⬜ Memory動作確認
+- ⬜ AI自律制御E2Eテスト
+
+### Future Enhancements
 - Real SiLA2 gRPC protocol implementation
 - Physical device integration
 - Production deployment optimization
 - Advanced error handling and monitoring
-- Auto-scaling configuration for ECS tasks
 
 ## 📚 Documentation
 
-See `DEPLOYMENT_VALIDATION.md` for deployment troubleshooting and validation details.
+- `PHASE7_OVERVIEW.md` - Phase 7概要と実装状況
+- `PHASE7_ARCHITECTURE.md` - 詳細アーキテクチャ設計
+- `PHASE7_DEPLOYMENT_PLAN.md` - デプロイ手順
+- `HANDOVER_NOTES.md` - 実装タスク一覧と進捗
+- `DEPLOYMENT_VALIDATION.md` - デプロイ検証手順

@@ -141,6 +141,67 @@ EOF
     rm -f /tmp/s3-policy.json
     log_info "✅ S3 permissions added"
     
+    # Add Lambda Invoke permissions for Gateway Tools
+    log_info "Adding Lambda Invoke permissions for Gateway Tools..."
+    local lambda_policy_name="LambdaInvokePolicy"
+    
+    cat > /tmp/lambda-policy.json << EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": "lambda:InvokeFunction",
+      "Resource": [
+        "arn:aws:lambda:$REGION:$ACCOUNT_ID:function:sila2-mcp-proxy",
+        "arn:aws:lambda:$REGION:$ACCOUNT_ID:function:analyze-heating-rate",
+        "arn:aws:lambda:$REGION:$ACCOUNT_ID:function:execute-autonomous-control"
+      ]
+    }
+  ]
+}
+EOF
+    
+    /usr/local/bin/aws iam put-role-policy \
+        --role-name "$role_name" \
+        --policy-name "$lambda_policy_name" \
+        --policy-document file:///tmp/lambda-policy.json \
+        --region "$REGION" || log_warn "Failed to add Lambda Invoke policy"
+    
+    rm -f /tmp/lambda-policy.json
+    log_info "✅ Lambda Invoke permissions added"
+    
+    # Add Bedrock AgentCore Memory permissions
+    log_info "Adding Bedrock AgentCore Memory permissions..."
+    local memory_policy_name="BedrockAgentCoreMemoryPolicy"
+    
+    cat > /tmp/memory-policy.json << EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "bedrock-agentcore:CreateEvent",
+        "bedrock-agentcore:GetMemory",
+        "bedrock-agentcore:ListMemories",
+        "bedrock-agentcore:RetrieveMemory"
+      ],
+      "Resource": "arn:aws:bedrock-agentcore:$REGION:$ACCOUNT_ID:memory/*"
+    }
+  ]
+}
+EOF
+    
+    /usr/local/bin/aws iam put-role-policy \
+        --role-name "$role_name" \
+        --policy-name "$memory_policy_name" \
+        --policy-document file:///tmp/memory-policy.json \
+        --region "$REGION" || log_warn "Failed to add Memory policy"
+    
+    rm -f /tmp/memory-policy.json
+    log_info "✅ Bedrock AgentCore Memory permissions added"
+    
     ~/.pyenv/versions/3.10.*/bin/agentcore configure \
         --name "$agent_name" \
         --entrypoint main_agentcore_phase3.py \
@@ -209,6 +270,7 @@ EOF
     
     # ========================================
     # Phase 7: Create Memory BEFORE deployment
+    # Memory provides long-term persistence for AI decisions
     # ========================================
     log_info "[Phase 7] Creating AgentCore Memory with Summary Strategy..."
     
@@ -218,7 +280,7 @@ EOF
         memory_id=$(grep "MEMORY_ID=" .gateway-config | cut -d'=' -f2)
         log_info "[Phase 7] Using existing Memory ID: $memory_id"
     else
-        # Check for existing memory with same name
+        # Check for existing memory with same name to avoid duplicates
         log_info "[Phase 7] Checking for existing memory..."
         local existing_memory=$(~/.pyenv/versions/3.10.12/bin/agentcore memory list --region "$REGION" 2>/dev/null | grep "sila2_phase7_memory" || echo "")
         
@@ -233,33 +295,33 @@ EOF
         # Create new memory only if none exists
         if [[ -z "$memory_id" ]]; then
             log_info "[Phase 7] Creating new Memory with Summary Strategy for long-term persistence..."
-            local memory_output=$(~/.pyenv/versions/3.10.12/bin/agentcore memory create sila2_phase7_memory \
+            ~/.pyenv/versions/3.10.12/bin/agentcore memory create sila2_phase7_memory \
                 --region "$REGION" \
                 --description "Phase 7 memory with Summary Strategy for AI decision persistence" \
                 --strategies '[{"summaryMemoryStrategy": {"name": "DeviceControlSummary", "description": "Summarizes AI decisions for device control and heating analysis", "namespaces": ["/summaries/{actorId}/{sessionId}"]}}]' \
-                --wait 2>&1)
+                --wait
             
-            log_info "[Phase 7] Memory output: $memory_output"
+            # Wait for memory creation to complete
+            sleep 5
             
-            # Extract Memory ID from output
-            memory_id=$(echo "$memory_output" | grep -oP 'Memory ID: \K[^\s]+' || echo "")
-            
-            if [[ -z "$memory_id" ]]; then
-                # Try alternative extraction from ARN
-                memory_id=$(echo "$memory_output" | grep -oP 'arn:aws:bedrock-agentcore:[^:]+:[^:]+:memory/\K[^\s]+' || echo "")
-            fi
+            # Extract Memory ID using AWS API
+            memory_id=$(/usr/local/bin/aws bedrock-agentcore-control list-memories \
+                --region "$REGION" \
+                --query "memories[?starts_with(id, 'sila2_phase7_memory')].id | [0]" \
+                --output text)
             
             if [[ -n "$memory_id" ]]; then
                 log_info "[Phase 7] New Memory ID: $memory_id"
                 echo "MEMORY_ID=$memory_id" >> .gateway-config
             else
-                log_error "[Phase 7] Memory creation failed"
+                log_error "[Phase 7] Memory creation failed - could not retrieve Memory ID"
                 return 1
             fi
         fi
     fi
     
-    # Update YAML config to use Phase 7 memory with LTM mode
+    # Update YAML config to use Phase 7 memory with STM_AND_LTM mode
+    # This enables both short-term and long-term memory for the agent
     if [[ -n "$memory_id" ]]; then
         log_info "[Phase 7] Updating YAML config with Memory ID: $memory_id"
         python3 << PYEOF
@@ -359,12 +421,64 @@ PYEOF
         log_warn "[Phase 7] Skipping runtime config - missing agent_id or memory_id"
     fi
     
-    # Update Lambda Invoker with Memory management
+    # Update Lambda Invoker with Memory management capabilities
+    # Lambda will use Memory ID, Runtime ARN, and Session ID for persistence
     if [[ -d "lambda/invoker" ]]; then
-        log_info "[Phase 7] Updating Lambda Invoker..."
-        cd lambda/invoker
-        zip -r ../../build/invoker.zip . -x "*.pyc" -x "__pycache__/*" >/dev/null 2>&1
-        cd ../..
+        log_info "[Phase 7] Updating Lambda Invoker with Memory management..."
+        
+        # Add Memory permissions to Lambda Execution Role
+        log_info "[Phase 7] Adding Memory permissions to Lambda Execution Role..."
+        local lambda_role_name="sila2-phase6-stack-LambdaExecutionRole-TAJCXBJSYaKz"
+        
+        cat > /tmp/lambda-memory-policy.json << EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "bedrock-agentcore:CreateEvent",
+        "bedrock-agentcore:GetMemory",
+        "bedrock-agentcore:ListMemories",
+        "bedrock-agentcore:RetrieveMemory"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+EOF
+        
+        /usr/local/bin/aws iam put-role-policy \
+            --role-name "$lambda_role_name" \
+            --policy-name "BedrockAgentCoreMemory" \
+            --policy-document file:///tmp/lambda-memory-policy.json \
+            --region "$REGION" && log_info "✅ Lambda Memory permissions added" || log_warn "Failed to add Lambda Memory policy"
+        
+        rm -f /tmp/lambda-memory-policy.json
+        
+        # Build Lambda Layer with Python 3.10 dependencies
+        log_info "[Phase 7] Building Lambda Layer with Python 3.10..."
+        rm -rf /tmp/lambda-layer /tmp/lambda-layer.zip
+        mkdir -p /tmp/lambda-layer/python
+        ~/.pyenv/versions/3.10.12/bin/pip install --target /tmp/lambda-layer/python \
+            requests==2.31.0 'bedrock-agentcore[memory]==1.1.3' pydantic >/dev/null 2>&1
+        (cd /tmp/lambda-layer && zip -r /tmp/lambda-layer.zip python/ -q)
+        
+        # Publish Lambda Layer
+        log_info "[Phase 7] Publishing Lambda Layer..."
+        local layer_arn=$(/usr/local/bin/aws lambda publish-layer-version \
+            --layer-name sila2-agentcore-dependencies \
+            --zip-file fileb:///tmp/lambda-layer.zip \
+            --compatible-runtimes python3.10 python3.11 \
+            --region "$REGION" \
+            --query 'LayerVersionArn' --output text)
+        log_info "[Phase 7] Layer ARN: $layer_arn"
+        
+        local base_dir="$(pwd)"
+        cd "$base_dir/lambda/invoker"
+        mkdir -p "$base_dir/build"
+        zip -r "$base_dir/build/invoker.zip" . -x "*.pyc" -x "__pycache__/*" -x "test_*.py" -x "layer/*" >/dev/null 2>&1
+        cd "$base_dir"
         
         # Update Lambda function code
         /usr/local/bin/aws lambda update-function-code \
@@ -372,26 +486,84 @@ PYEOF
             --zip-file fileb://build/invoker.zip \
             --region "$REGION" >/dev/null 2>&1 || log_warn "Lambda Invoker code update failed"
         
-        # Get Runtime ARN from AgentCore status
-        local runtime_arn=$(~/.pyenv/versions/3.10.*/bin/agentcore status 2>/dev/null | grep "Runtime ARN:" | awk '{print $NF}')
+        # Wait for code update to complete
+        log_info "[Phase 7] Waiting for Lambda code update to complete..."
+        /usr/local/bin/aws lambda wait function-updated \
+            --function-name sila2-agentcore-invoker \
+            --region "$REGION" 2>/dev/null || sleep 10
+        
+        # Get Runtime ARN from YAML config file
+        local runtime_arn=$(grep "agent_arn:" .bedrock_agentcore.yaml | awk '{print $2}')
         if [[ -z "$runtime_arn" ]]; then
-            # Fallback: construct from agent ARN
-            runtime_arn=$(echo "$agent_arn" | sed 's|agent/|runtime/|')
+            log_error "Failed to get Runtime ARN from config"
+            return 1
         fi
         
-        # Update Lambda environment variables with Runtime ARN and Session ID
+        # Update Lambda configuration with Layer, runtime, and environment variables in ONE call
         if [[ -n "$memory_id" && -n "$runtime_arn" ]]; then
-            log_info "[Phase 7] Setting Lambda environment variables..."
+            log_info "[Phase 7] Updating Lambda with Layer and environment variables..."
+            log_info "[Phase 7] Layer ARN: $layer_arn"
             log_info "[Phase 7] MEMORY_ID=$memory_id"
             log_info "[Phase 7] RUNTIME_ARN=$runtime_arn"
-            log_info "[Phase 7] SESSION_ID=hplc_001"
-            /usr/local/bin/aws lambda update-function-configuration \
+            
+            # Get existing requests layer ARN
+            local requests_layer_arn=$(/usr/local/bin/aws lambda get-function \
                 --function-name sila2-agentcore-invoker \
-                --environment "Variables={MEMORY_ID=$memory_id,RUNTIME_ARN=$runtime_arn,SESSION_ID=hplc_001,BRIDGE_URL=http://172.31.44.121:8080,AWS_REGION=$REGION}" \
-                --region "$REGION" && log_info "✅ Lambda environment updated" || log_warn "Lambda environment update failed"
+                --region "$REGION" \
+                --query 'Configuration.Layers[?contains(Arn, `sila2-requests-layer`)].Arn' \
+                --output text)
+            
+            # Retry logic for Lambda configuration update
+            local max_retries=5
+            local retry_count=0
+            local update_success=false
+            
+            while [[ $retry_count -lt $max_retries ]]; do
+                if [[ -n "$requests_layer_arn" ]]; then
+                    log_info "[Phase 7] Keeping existing requests layer: $requests_layer_arn (attempt $((retry_count + 1))/$max_retries)"
+                    if /usr/local/bin/aws lambda update-function-configuration \
+                        --function-name sila2-agentcore-invoker \
+                        --handler lambda_function.lambda_handler \
+                        --runtime python3.10 \
+                        --layers "$requests_layer_arn" "$layer_arn" \
+                        --environment "Variables={AGENTCORE_MEMORY_ID=$memory_id,AGENTCORE_RUNTIME_ARN=$runtime_arn,SESSION_ID=hplc_001,BRIDGE_SERVER_URL=http://bridge.sila2.local:8080,SNS_TOPIC_ARN=arn:aws:sns:$REGION:$ACCOUNT_ID:sila2-events-topic}" \
+                        --timeout 300 \
+                        --region "$REGION" 2>&1 | grep -q "ResourceConflictException"; then
+                        log_warn "[Phase 7] Lambda update in progress, waiting 15 seconds..."
+                        sleep 15
+                        retry_count=$((retry_count + 1))
+                    else
+                        update_success=true
+                        log_info "✅ Lambda configuration updated"
+                        break
+                    fi
+                else
+                    log_warn "[Phase 7] Requests layer not found, using only agentcore layer (attempt $((retry_count + 1))/$max_retries)"
+                    if /usr/local/bin/aws lambda update-function-configuration \
+                        --function-name sila2-agentcore-invoker \
+                        --handler lambda_function.lambda_handler \
+                        --runtime python3.10 \
+                        --layers "$layer_arn" \
+                        --environment "Variables={AGENTCORE_MEMORY_ID=$memory_id,AGENTCORE_RUNTIME_ARN=$runtime_arn,SESSION_ID=hplc_001,BRIDGE_SERVER_URL=http://bridge.sila2.local:8080,SNS_TOPIC_ARN=arn:aws:sns:$REGION:$ACCOUNT_ID:sila2-events-topic}" \
+                        --timeout 300 \
+                        --region "$REGION" 2>&1 | grep -q "ResourceConflictException"; then
+                        log_warn "[Phase 7] Lambda update in progress, waiting 15 seconds..."
+                        sleep 15
+                        retry_count=$((retry_count + 1))
+                    else
+                        update_success=true
+                        log_info "✅ Lambda configuration updated"
+                        break
+                    fi
+                fi
+            done
+            
+            if [[ "$update_success" != "true" ]]; then
+                log_warn "Lambda configuration update failed after $max_retries attempts"
+            fi
         fi
         
-        log_info "[Phase 7] Lambda Invoker updated"
+        log_info "[Phase 7] Lambda Invoker updated with Memory management"
     fi
     
     # Verify Setup

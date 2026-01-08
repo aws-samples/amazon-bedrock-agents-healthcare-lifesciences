@@ -36,7 +36,7 @@ aws cloudformation deploy \
     SubnetIds=$SUBNET_IDS \
     EnvironmentName=$ENV_NAME \
   --capabilities CAPABILITY_IAM \
-  --region $REGION
+  --region $REGION || true
 
 # Lambda Proxyデプロイ
 print_step "Deploying Lambda Proxy"
@@ -54,7 +54,7 @@ aws cloudformation deploy \
     PrivateSubnets=$SUBNET_IDS \
     BridgeSecurityGroup=$BRIDGE_SG \
   --capabilities CAPABILITY_IAM \
-  --region $REGION
+  --region $REGION || true
 
 # Lambda Proxyコードを更新
 print_step "Updating Lambda Proxy code with latest implementation"
@@ -139,7 +139,7 @@ if [[ -f "$PROJECT_ROOT/infrastructure/phase6-cfn.yaml" ]]; then
         PrivateSubnetIds="$SUBNET_IDS" \
         BridgeSecurityGroupId="$BRIDGE_SG" \
       --capabilities CAPABILITY_IAM \
-      --region $REGION
+      --region $REGION || true
     
     # Get SNS Topic ARN
     SNS_TOPIC_ARN=$(aws cloudformation describe-stacks \
@@ -159,7 +159,7 @@ if [[ -f "$PROJECT_ROOT/infrastructure/phase6-cfn.yaml" ]]; then
         LAYER_DIR="/tmp/lambda-layer-requests"
         rm -rf "$LAYER_DIR"
         mkdir -p "$LAYER_DIR/python"
-        pip3 install requests -t "$LAYER_DIR/python" --quiet 2>/dev/null
+        pip3 install requests -t "$LAYER_DIR/python" --quiet
         
         cd "$LAYER_DIR"
         zip -r /tmp/requests-layer.zip python/ >/dev/null 2>&1
@@ -167,16 +167,12 @@ if [[ -f "$PROJECT_ROOT/infrastructure/phase6-cfn.yaml" ]]; then
         LAYER_ARN=$(aws lambda publish-layer-version \
           --layer-name sila2-requests-layer \
           --zip-file fileb:///tmp/requests-layer.zip \
-          --compatible-runtimes python3.10 python3.11 \
+          --compatible-runtimes python3.11 \
           --region $REGION \
           --query 'LayerVersionArn' \
-          --output text 2>/dev/null || echo "")
+          --output text)
         
-        if [ -n "$LAYER_ARN" ]; then
-            print_info "Lambda Layer created: $LAYER_ARN"
-        else
-            print_warning "Lambda Layer creation failed, will retry later"
-        fi
+        print_info "Lambda Layer created: $LAYER_ARN"
         
         rm -rf "$LAYER_DIR" /tmp/requests-layer.zip
         
@@ -184,27 +180,63 @@ if [[ -f "$PROJECT_ROOT/infrastructure/phase6-cfn.yaml" ]]; then
         cd "$PROJECT_ROOT/lambda/invoker"
         zip -r /tmp/phase6-lambda.zip . -x "*.pyc" "__pycache__/*" >/dev/null 2>&1
         
-        # Update Lambda function with Layer and DNS-based BRIDGE_URL
-        if [ -n "$LAYER_ARN" ]; then
-            aws lambda update-function-code \
-              --function-name sila2-agentcore-invoker \
-              --zip-file fileb:///tmp/phase6-lambda.zip \
-              --region $REGION >/dev/null 2>&1 || print_warning "Lambda code update skipped"
-            
-            aws lambda update-function-configuration \
-              --function-name sila2-agentcore-invoker \
-              --layers "$LAYER_ARN" \
-              --environment "Variables={BRIDGE_URL=$BRIDGE_DNS}" \
-              --region $REGION >/dev/null 2>&1 || print_warning "Lambda layer attachment skipped"
-            
-            print_info "Lambda Layer attached to function"
-            print_info "Lambda BRIDGE_URL set to: $BRIDGE_DNS"
-        else
-            aws lambda update-function-code \
-              --function-name sila2-agentcore-invoker \
-              --zip-file fileb:///tmp/phase6-lambda.zip \
-              --region $REGION >/dev/null 2>&1 || print_warning "Lambda update skipped (will update after AgentCore deployment)"
+        # Get Memory ID and Runtime ARN from gateway-config if available
+        MEMORY_ID=""
+        RUNTIME_ARN=""
+        if [[ -f "$PROJECT_ROOT/agentcore/.gateway-config" ]]; then
+            MEMORY_ID=$(grep "MEMORY_ID=" "$PROJECT_ROOT/agentcore/.gateway-config" | cut -d'=' -f2 || echo "")
+            RUNTIME_ARN=$(grep "RUNTIME_ARN=" "$PROJECT_ROOT/agentcore/.gateway-config" | cut -d'=' -f2 || echo "")
         fi
+        
+        # Build environment variables JSON
+        ENV_VARS='{"Variables":{"BRIDGE_URL":"'"$BRIDGE_DNS"'","SNS_TOPIC_ARN":"'"$SNS_TOPIC_ARN"'"}}'
+        if [[ -n "$MEMORY_ID" ]]; then
+            ENV_VARS='{"Variables":{"BRIDGE_URL":"'"$BRIDGE_DNS"'","SNS_TOPIC_ARN":"'"$SNS_TOPIC_ARN"'","AGENTCORE_MEMORY_ID":"'"$MEMORY_ID"'"}}'
+        fi
+        if [[ -n "$RUNTIME_ARN" ]]; then
+            if [[ -n "$MEMORY_ID" ]]; then
+                ENV_VARS='{"Variables":{"BRIDGE_URL":"'"$BRIDGE_DNS"'","SNS_TOPIC_ARN":"'"$SNS_TOPIC_ARN"'","AGENTCORE_MEMORY_ID":"'"$MEMORY_ID"'","AGENTCORE_RUNTIME_ARN":"'"$RUNTIME_ARN"'"}}'
+            else
+                ENV_VARS='{"Variables":{"BRIDGE_URL":"'"$BRIDGE_DNS"'","SNS_TOPIC_ARN":"'"$SNS_TOPIC_ARN"'","AGENTCORE_RUNTIME_ARN":"'"$RUNTIME_ARN"'"}}'
+            fi
+        fi
+        
+        # Update Lambda function with Layer and DNS-based BRIDGE_URL
+        aws lambda update-function-code \
+          --function-name sila2-agentcore-invoker \
+          --zip-file fileb:///tmp/phase6-lambda.zip \
+          --region $REGION >/dev/null
+        
+        print_info "Waiting for Lambda function update to complete..."
+        aws lambda wait function-updated \
+          --function-name sila2-agentcore-invoker \
+          --region $REGION
+        
+        # Get existing agentcore layer if present
+        agentcore_layer_arn=$(aws lambda get-function-configuration \
+          --function-name sila2-agentcore-invoker \
+          --region $REGION \
+          --query 'Layers[?contains(LayerArn, `sila2-agentcore-dependencies`)].LayerArn | [0]' \
+          --output text 2>/dev/null || echo "")
+        
+        # Build layers list (filter out empty/None values)
+        LAYERS_TO_UPDATE=""
+        if [[ -n "$agentcore_layer_arn" && "$agentcore_layer_arn" != "None" ]]; then
+            LAYERS_TO_UPDATE="--layers $LAYER_ARN $agentcore_layer_arn"
+            print_info "Preserving agentcore layer: $agentcore_layer_arn"
+        else
+            LAYERS_TO_UPDATE="--layers $LAYER_ARN"
+            print_info "No existing agentcore layer found"
+        fi
+        
+        aws lambda update-function-configuration \
+          --function-name sila2-agentcore-invoker \
+          $LAYERS_TO_UPDATE \
+          --environment "$ENV_VARS" \
+          --region $REGION >/dev/null
+        
+        print_info "Lambda Layer attached to function"
+        print_info "Lambda BRIDGE_URL set to: $BRIDGE_DNS"
         
         # Cleanup
         rm /tmp/phase6-lambda.zip
@@ -214,27 +246,18 @@ if [[ -f "$PROJECT_ROOT/infrastructure/phase6-cfn.yaml" ]]; then
     
     print_success "Phase 6 infrastructure deployed"
     
-    # Deploy EventBridge Scheduler
-    print_step "Deploying EventBridge Scheduler"
-    if [[ -f "$PROJECT_ROOT/infrastructure/eventbridge-scheduler.yaml" ]]; then
-        LAMBDA_ARN=$(aws lambda get-function \
-          --function-name sila2-agentcore-invoker \
-          --region $REGION \
-          --query 'Configuration.FunctionArn' \
-          --output text 2>/dev/null)
-        
-        if [ -n "$LAMBDA_ARN" ]; then
-            aws cloudformation deploy \
-              --template-file "$PROJECT_ROOT/infrastructure/eventbridge-scheduler.yaml" \
-              --stack-name sila2-eventbridge-scheduler \
-              --parameter-overrides \
-                LambdaFunctionArn=$LAMBDA_ARN \
-                ScheduleInterval=5 \
-              --region $REGION
-            print_success "EventBridge Scheduler deployed (5 minute interval)"
-        else
-            print_warning "Lambda function not found, skipping EventBridge Scheduler"
-        fi
+    # Verify SNS Subscription
+    print_step "Verifying SNS Subscription to Lambda Invoker"
+    SUBSCRIPTION_ARN=$(aws sns list-subscriptions-by-topic \
+      --topic-arn "$SNS_TOPIC_ARN" \
+      --region $REGION \
+      --query "Subscriptions[?Protocol=='lambda'].SubscriptionArn" \
+      --output text 2>/dev/null || echo "")
+    
+    if [[ -n "$SUBSCRIPTION_ARN" && "$SUBSCRIPTION_ARN" != "PendingConfirmation" ]]; then
+        print_success "SNS Subscription verified: $SUBSCRIPTION_ARN"
+    else
+        print_warning "SNS Subscription not found or pending confirmation"
     fi
 else
     print_warning "Phase 6 CloudFormation not found, skipping"

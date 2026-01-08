@@ -28,6 +28,18 @@ export STACK_NAME=sila2-bridge-ecs
 
 ## 🚀 Deployment Steps
 
+### Step 0: VPC Endpoint Setup (Phase 7 Required)
+```bash
+./scripts/00_setup_vpc_endpoint.sh
+```
+**内容**: 
+- Bedrock Agent Runtime用VPCエンドポイント作成
+- Lambda VPC設定から自動取得
+- セキュリティグループ設定確認
+- **Phase 7必須**: Lambda→AgentCore通信に必要
+
+**実行タイミング**: AgentCoreデプロイ前 (Step 6の前)
+
 ### Step 1: Infrastructure Setup
 ```bash
 ./scripts/01_setup_infrastructure.sh

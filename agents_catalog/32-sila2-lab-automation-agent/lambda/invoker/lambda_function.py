@@ -7,45 +7,44 @@ import requests
 import time
 import uuid
 from datetime import datetime, timedelta
+from bedrock_agentcore.memory import MemoryClient
 
 # Disable boto3 debug logging for production
 logging.basicConfig(level=logging.INFO)
 
 RUNTIME_ARN = os.environ.get('AGENTCORE_RUNTIME_ARN')
 MEMORY_ID = os.environ.get('AGENTCORE_MEMORY_ID')
+SESSION_ID = os.environ.get('SESSION_ID', 'hplc_001')
 BRIDGE_SERVER_URL = os.environ.get('BRIDGE_SERVER_URL', 'http://sila2-bridge-mcp.sila2-cluster.local:8080')
 
 agent_core_client = boto3.client('bedrock-agentcore', region_name='us-west-2')
 
-# Memory management using bedrock_agentcore.memory
-try:
-    from bedrock_agentcore.memory import MemoryClient
-    MEMORY_SDK_AVAILABLE = True
-except ImportError:
-    print("[WARN] bedrock_agentcore.memory not available, memory features disabled")
-    MEMORY_SDK_AVAILABLE = False
-    MemoryClient = None
+# Memory management using bedrock_agentcore SDK
+MEMORY_SDK_AVAILABLE = True
+memory_client = MemoryClient(region_name='us-west-2')
 
-def record_to_memory(device_id, user_message, agent_response):
+def record_to_memory(device_id, user_message, agent_response, session_id=None):
     """Memory記録の共通関数"""
     if not MEMORY_ID or not MEMORY_SDK_AVAILABLE:
         print(f"[WARN] Memory recording skipped: MEMORY_ID={MEMORY_ID}, SDK_AVAILABLE={MEMORY_SDK_AVAILABLE}")
         return
     
-    session_id = f"device-{device_id}-session-{device_id}-00000000"
+    if not session_id:
+        session_id = f"{device_id}-{int(time.time())}-{uuid.uuid4().hex[:8]}"
+    
+    actor_id = device_id[:50] if len(device_id) > 50 else device_id
     
     try:
-        memory_client = MemoryClient(region_name='us-west-2')
         memory_client.create_event(
             memory_id=MEMORY_ID,
-            actor_id=device_id[:50],
+            actor_id=actor_id,
             session_id=session_id,
             messages=[
                 (user_message, "USER"),
                 (agent_response, "ASSISTANT")
             ]
         )
-        print(f"[INFO] Memory recorded for {device_id}")
+        print(f"[INFO] Memory recorded for session={session_id}")
     except Exception as e:
         print(f"[ERROR] Memory recording failed: {e}")
         import traceback
@@ -87,10 +86,19 @@ def handle_sns_event(event):
         
         if event_type == 'TEMPERATURE_REACHED':
             # 目標温度到達をAgentCoreに通知
-            device_session_id = f"device-{device_id}-session-{device_id}-00000000"
+            current_temp = sns_message.get('value', 'N/A')
             
-            target_temp = sns_message.get('target_temperature')
-            current_temp = sns_message.get('current_temperature')
+            # Bridge APIから現在の状態を取得して目標温度を確認
+            try:
+                status_response = requests.get(
+                    f"{BRIDGE_SERVER_URL}/api/status/{device_id}",
+                    timeout=5
+                )
+                status_response.raise_for_status()
+                status = status_response.json()
+                target_temp = status.get('target_temperature', current_temp)
+            except:
+                target_temp = current_temp
             
             prompt = f"""Target temperature reached!
 Device: {device_id}
@@ -113,9 +121,10 @@ Please acknowledge this milestone."""
                 
                 print(f"[INFO] Invoking AgentCore for event: {event_type}")
                 
+                session_id = f"{device_id}-{int(time.time())}-{uuid.uuid4().hex}"
                 response = agentcore_client.invoke_agent_runtime(
                     agentRuntimeArn=RUNTIME_ARN,
-                    runtimeSessionId=device_session_id,
+                    runtimeSessionId=session_id,
                     payload=payload,
                     qualifier="DEFAULT"
                 )
@@ -135,7 +144,8 @@ Please acknowledge this milestone."""
                 record_to_memory(
                     device_id=device_id,
                     user_message=f"Event: {event_type} - Target: {target_temp}°C, Current: {current_temp}°C",
-                    agent_response=agent_response
+                    agent_response=agent_response,
+                    session_id=session_id
                 )
                 
                 return {"statusCode": 200, "body": json.dumps({
@@ -153,7 +163,7 @@ Please acknowledge this milestone."""
 def handle_periodic(event):
     """定期チェック: 状態+履歴データを渡し、判断はAIに完全委譲"""
     device_id = event.get('device_id', 'hplc')
-    device_session_id = f"device-{device_id}-{int(time.time())}-{uuid.uuid4().hex}"
+    device_session_id = f"{device_id}-{int(time.time())}-{uuid.uuid4().hex}"
     
     # 1. 現在の状態取得
     try:
@@ -237,7 +247,8 @@ Please assess the situation and decide:
         record_to_memory(
             device_id=device_id,
             user_message=prompt,
-            agent_response=agent_response
+            agent_response=agent_response,
+            session_id=device_session_id
         )
         
         return {"statusCode": 200, "body": json.dumps({
@@ -302,7 +313,8 @@ def handle_manual_control(event):
         record_to_memory(
             device_id=device_id,
             user_message=query,
-            agent_response=agent_response
+            agent_response=agent_response,
+            session_id=device_session_id
         )
         
         return {"statusCode": 200, "body": json.dumps({"response": agent_response})}

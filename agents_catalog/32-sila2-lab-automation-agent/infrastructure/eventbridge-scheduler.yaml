@@ -1,5 +1,12 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: EventBridge Rule for SiLA2 Periodic Data Collection
+Description: |
+  [DEPRECATED] EventBridge Rule for SiLA2 Periodic Data Collection
+  
+  This template is deprecated as of Phase 7.
+  EventBridge Rule is now integrated into phase6-cfn.yaml to avoid duplication.
+  
+  Use phase6-cfn.yaml instead for new deployments.
+  This file is kept for reference only.
 
 Parameters:
   LambdaFunctionArn:

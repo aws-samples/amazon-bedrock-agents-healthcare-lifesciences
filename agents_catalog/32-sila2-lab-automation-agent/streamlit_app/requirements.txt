@@ -3,3 +3,6 @@ grpcio>=1.50.0
 grpcio-tools>=1.50.0
 plotly>=5.15.0
 pandas>=2.0.0
+boto3>=1.34.0
+bedrock-agentcore>=0.1.0
+requests>=2.31.0
