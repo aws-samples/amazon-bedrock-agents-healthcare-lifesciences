@@ -10,8 +10,8 @@ def verify_lambda_functions():
     lambda_client = boto3.client('lambda', region_name=region)
     
     required_functions = [
-        'phase7-analyze_heating_rate',
-        'phase7-execute_autonomous_control',
+        'sila2-analyze-heating-rate',
+        'sila2-execute-autonomous-control',
         'sila2-agentcore-invoker'
     ]
     
