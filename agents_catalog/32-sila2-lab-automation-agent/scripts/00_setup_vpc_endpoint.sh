@@ -9,7 +9,7 @@ main() {
     log_info "=== Step 00: VPC Endpoint Setup for Bedrock Agent Runtime ==="
     
     REGION=${AWS_REGION:-us-west-2}
-    PHASE6_STACK="sila2-phase6-stack"
+    PHASE6_STACK="sila2-events-stack"
     ECS_STACK="sila2-bridge-ecs"
     
     # Try to get VPC info from Phase 6 CloudFormation stack

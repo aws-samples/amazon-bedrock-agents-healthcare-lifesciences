@@ -27,7 +27,7 @@ main() {
     
     # AgentCore統合テスト
     log_info "Running Phase 4 AgentCore integration tests..."
-    python3 test_phase4_integration.py || {
+    python3 test_integration.py || {
         log_warn "Integration tests failed, but continuing..."
     }
     

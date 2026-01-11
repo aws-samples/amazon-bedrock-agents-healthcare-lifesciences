@@ -100,7 +100,7 @@ fi
 # Phase 6: Deploy SNS + Lambda + EventBridge
 print_step "Deploying Phase 6 infrastructure (SNS + Lambda + EventBridge)"
 
-if [[ -f "$PROJECT_ROOT/infrastructure/phase6-cfn.yaml" ]]; then
+if [[ -f "$PROJECT_ROOT/infrastructure/events_sns.yaml" ]]; then
     # Get Agent IDs if available
     AGENT_ID=${AGENTCORE_AGENT_ID:-"placeholder-agent-id"}
     ALIAS_ID=${AGENTCORE_ALIAS_ID:-"placeholder-alias-id"}
@@ -129,8 +129,8 @@ if [[ -f "$PROJECT_ROOT/infrastructure/phase6-cfn.yaml" ]]; then
     print_info "Bridge SG: $BRIDGE_SG"
     
     aws cloudformation deploy \
-      --template-file "$PROJECT_ROOT/infrastructure/phase6-cfn.yaml" \
-      --stack-name sila2-phase6-stack \
+      --template-file "$PROJECT_ROOT/infrastructure/events_sns.yaml" \
+      --stack-name sila2-events-stack \
       --parameter-overrides \
         BridgeURL="$BRIDGE_DNS" \
         AgentCoreAgentId="$AGENT_ID" \
@@ -143,7 +143,7 @@ if [[ -f "$PROJECT_ROOT/infrastructure/phase6-cfn.yaml" ]]; then
     
     # Get SNS Topic ARN
     SNS_TOPIC_ARN=$(aws cloudformation describe-stacks \
-      --stack-name sila2-phase6-stack \
+      --stack-name sila2-events-stack \
       --query 'Stacks[0].Outputs[?OutputKey==`SNSTopicArn`].OutputValue' \
       --output text \
       --region $REGION)
@@ -178,7 +178,7 @@ if [[ -f "$PROJECT_ROOT/infrastructure/phase6-cfn.yaml" ]]; then
         
         # Create deployment package (without requests)
         cd "$PROJECT_ROOT/lambda/invoker"
-        zip -r /tmp/phase6-lambda.zip . -x "*.pyc" "__pycache__/*" >/dev/null 2>&1
+        zip -r /tmp/events-lambda.zip . -x "*.pyc" "__pycache__/*" >/dev/null 2>&1
         
         # Get Memory ID and Runtime ARN from gateway-config if available
         MEMORY_ID=""
@@ -204,7 +204,7 @@ if [[ -f "$PROJECT_ROOT/infrastructure/phase6-cfn.yaml" ]]; then
         # Update Lambda function with Layer and DNS-based BRIDGE_URL
         aws lambda update-function-code \
           --function-name sila2-agentcore-invoker \
-          --zip-file fileb:///tmp/phase6-lambda.zip \
+          --zip-file fileb:///tmp/events-lambda.zip \
           --region $REGION >/dev/null
         
         print_info "Waiting for Lambda function update to complete..."
@@ -239,7 +239,7 @@ if [[ -f "$PROJECT_ROOT/infrastructure/phase6-cfn.yaml" ]]; then
         print_info "Lambda BRIDGE_URL set to: $BRIDGE_DNS"
         
         # Cleanup
-        rm /tmp/phase6-lambda.zip
+        rm /tmp/events-lambda.zip
         
         cd "$PROJECT_ROOT"
     fi

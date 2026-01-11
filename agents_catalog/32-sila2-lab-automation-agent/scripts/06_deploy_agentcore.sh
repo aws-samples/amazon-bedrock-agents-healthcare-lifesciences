@@ -21,7 +21,7 @@ main() {
     log_info "Gateway ARN: $GATEWAY_ARN"
     log_info "Target ID: $TARGET_ID"
     
-    local agent_name="sila2_phase3_agent"
+    local agent_name="sila2_agent"
     
     # Create AgentCore ECR repository if it doesn't exist
     log_info "Creating AgentCore ECR repository..."
@@ -30,9 +30,9 @@ main() {
         --image-scanning-configuration scanOnPush=true
     log_info "✅ ECR repository ready"
     
-    # Update main_agentcore_phase3.py with correct Gateway URL
-    log_info "Updating Gateway URL in main_agentcore_phase3.py..."
-    sed -i "s|GATEWAY_URL = os.getenv('GATEWAY_URL', '.*')|GATEWAY_URL = os.getenv('GATEWAY_URL', '$GATEWAY_URL')|" main_agentcore_phase3.py
+    # Update main_agentcore.py with correct Gateway URL
+    log_info "Updating Gateway URL in main_agentcore.py..."
+    sed -i "s|GATEWAY_URL = os.getenv('GATEWAY_URL', '.*')|GATEWAY_URL = os.getenv('GATEWAY_URL', '$GATEWAY_URL')|" main_agentcore.py
     log_info "✅ Gateway URL updated: $GATEWAY_URL"
     
     # Clear existing AgentCore configuration
@@ -204,7 +204,7 @@ EOF
     
     ~/.pyenv/versions/3.10.*/bin/agentcore configure \
         --name "$agent_name" \
-        --entrypoint main_agentcore_phase3.py \
+        --entrypoint main_agentcore.py \
         --execution-role "$EXECUTION_ROLE_ARN" \
         --code-build-execution-role "$EXECUTION_ROLE_ARN" \
         --ecr "$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/bedrock-agentcore-$agent_name" \
@@ -227,8 +227,8 @@ try:
     with open('.bedrock_agentcore.yaml', 'r') as f:
         config = yaml.safe_load(f)
     
-    if 'agents' in config and 'sila2_phase3_agent' in config['agents']:
-        config['agents']['sila2_phase3_agent']['gateway'] = {
+    if 'agents' in config and 'sila2_agent' in config['agents']:
+        config['agents']['sila2_agent']['gateway'] = {
             'name': sys.argv[1],
             'gateway_arn': sys.argv[2],
             'target_id': sys.argv[3]
@@ -282,7 +282,7 @@ EOF
     else
         # Check for existing memory with same name to avoid duplicates
         log_info "[Phase 7] Checking for existing memory..."
-        local existing_memory=$(~/.pyenv/versions/3.10.12/bin/agentcore memory list --region "$REGION" 2>/dev/null | grep "sila2_phase7_memory" || echo "")
+        local existing_memory=$(~/.pyenv/versions/3.10.12/bin/agentcore memory list --region "$REGION" 2>/dev/null | grep "sila2_memory" || echo "")
         
         if [[ -n "$existing_memory" ]]; then
             memory_id=$(echo "$existing_memory" | grep -oP 'Memory ID: \K[^\s]+' || echo "")
@@ -295,7 +295,7 @@ EOF
         # Create new memory only if none exists
         if [[ -z "$memory_id" ]]; then
             log_info "[Phase 7] Creating new Memory with Summary Strategy for long-term persistence..."
-            ~/.pyenv/versions/3.10.12/bin/agentcore memory create sila2_phase7_memory \
+            ~/.pyenv/versions/3.10.12/bin/agentcore memory create sila2_memory \
                 --region "$REGION" \
                 --description "Phase 7 memory with Summary Strategy for AI decision persistence" \
                 --strategies '[{"summaryMemoryStrategy": {"name": "DeviceControlSummary", "description": "Summarizes AI decisions for device control and heating analysis", "namespaces": ["/summaries/{actorId}/{sessionId}"]}}]' \
@@ -307,7 +307,7 @@ EOF
             # Extract Memory ID using AWS API
             memory_id=$(/usr/local/bin/aws bedrock-agentcore-control list-memories \
                 --region "$REGION" \
-                --query "memories[?starts_with(id, 'sila2_phase7_memory')].id | [0]" \
+                --query "memories[?starts_with(id, 'sila2_memory')].id | [0]" \
                 --output text)
             
             if [[ -n "$memory_id" ]]; then
@@ -330,13 +330,13 @@ import yaml
 with open('.bedrock_agentcore.yaml', 'r') as f:
     config = yaml.safe_load(f)
 
-if 'agents' in config and 'sila2_phase3_agent' in config['agents']:
+if 'agents' in config and 'sila2_agent' in config['agents']:
     # Add complete memory configuration
-    config['agents']['sila2_phase3_agent']['memory'] = {
+    config['agents']['sila2_agent']['memory'] = {
         'mode': 'STM_AND_LTM',
         'memory_id': '$memory_id',
         'memory_arn': 'arn:aws:bedrock-agentcore:$REGION:$ACCOUNT_ID:memory/$memory_id',
-        'memory_name': 'sila2_phase7_memory',
+        'memory_name': 'sila2_memory',
         'event_expiry_days': 30,
         'first_invoke_memory_check_done': False,
         'was_created_by_toolkit': False
@@ -428,7 +428,7 @@ PYEOF
         
         # Add Memory permissions to Lambda Execution Role
         log_info "[Phase 7] Adding Memory permissions to Lambda Execution Role..."
-        local lambda_role_name="sila2-phase6-stack-LambdaExecutionRole-TAJCXBJSYaKz"
+        local lambda_role_name="sila2-events-stack-LambdaExecutionRole-TAJCXBJSYaKz"
         
         cat > /tmp/lambda-memory-policy.json << EOF
 {
