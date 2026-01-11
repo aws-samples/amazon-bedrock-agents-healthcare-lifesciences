@@ -1,8 +1,8 @@
-default_agent: sila2_phase3_agent
+default_agent: sila2_agent
 agents:
-  sila2_phase3_agent:
-    name: sila2_phase3_agent
-    entrypoint: /local/home/tetsutm/dev/amazon-bedrock-agents-healthcare-lifesciences/agents_catalog/32-sila2-lab-automation-agent/main_agentcore_phase3.py
+  sila2_agent:
+    name: sila2_agent
+    entrypoint: /local/home/tetsutm/dev/amazon-bedrock-agents-healthcare-lifesciences/agents_catalog/32-sila2-lab-automation-agent/main_agentcore.py
     deployment_type: container
     runtime_type: null
     platform: linux/arm64
@@ -13,7 +13,7 @@ agents:
       execution_role_auto_create: true
       account: '590183741681'
       region: us-west-2
-      ecr_repository: 590183741681.dkr.ecr.us-west-2.amazonaws.com/bedrock-agentcore-sila2_phase3_agent
+      ecr_repository: 590183741681.dkr.ecr.us-west-2.amazonaws.com/bedrock-agentcore-sila2_agent
       ecr_auto_create: false
       s3_path: null
       s3_auto_create: false
@@ -28,18 +28,18 @@ agents:
         idle_runtime_session_timeout: null
         max_lifetime: null
     bedrock_agentcore:
-      agent_id: sila2_phase3_agent-SCeDJuB5TX
-      agent_arn: arn:aws:bedrock-agentcore:us-west-2:590183741681:runtime/sila2_phase3_agent-SCeDJuB5TX
+      agent_id: sila2_agent-SCeDJuB5TX
+      agent_arn: arn:aws:bedrock-agentcore:us-west-2:590183741681:runtime/sila2_agent-SCeDJuB5TX
       agent_session_id: edbd7778-9345-4b91-9c6e-5876cecb21db
     codebuild:
-      project_name: bedrock-agentcore-sila2_phase3_agent-builder
+      project_name: bedrock-agentcore-sila2_agent-builder
       execution_role: arn:aws:iam::590183741681:role/sila2-lambda-proxy-LambdaExecutionRole-cnL2pfkhvoNt
       source_bucket: bedrock-agentcore-codebuild-sources-590183741681-us-west-2
     memory:
       mode: STM_AND_LTM
-      memory_id: sila2_phase7_memory-DEfNuxAOF4
-      memory_arn: arn:aws:bedrock-agentcore:us-west-2:590183741681:memory/sila2_phase7_memory-DEfNuxAOF4
-      memory_name: sila2_phase7_memory
+      memory_id: sila2_memory-DEfNuxAOF4
+      memory_arn: arn:aws:bedrock-agentcore:us-west-2:590183741681:memory/sila2_memory-DEfNuxAOF4
+      memory_name: sila2_memory
       event_expiry_days: 30
       first_invoke_memory_check_done: false
       was_created_by_toolkit: false
