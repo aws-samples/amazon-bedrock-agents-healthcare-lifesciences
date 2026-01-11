@@ -91,7 +91,7 @@ agentcore/verify_setup.py
 
 ## メインアプリケーション
 ```
-main_agentcore_phase3.py
+main_agentcore.py
 requirements.txt
 ```
 
@@ -109,7 +109,7 @@ requirements.txt
 
 ## オプション（Streamlit UI）
 ```
-streamlit_app/phase7_final.py
+streamlit_app/app.py
 streamlit_app/requirements.txt
 streamlit_app/Dockerfile
 streamlit_app/QUICKSTART.md

@@ -91,7 +91,7 @@ Phase 3 scripts moved to `archive/old-deploy-scripts/`:
 - `04_create_device_gateway.sh` (no longer needed)
 - `05_create_gateway.sh` (integrated into 07)
 - `06_create_gateway_target.sh` (replaced by MCP target)
-- `08_integrate_phase3.sh` (no longer needed)
+- `08_integrate_agentcore.sh` (no longer needed)
 
 ## Environment Variables
 

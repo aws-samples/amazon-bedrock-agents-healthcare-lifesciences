@@ -96,7 +96,7 @@ User/Lambda Invoker → AgentCore Runtime → MCP Gateway (2 Targets)
 ### Application
 - `agentcore/agent_instructions.txt` - AI自律判断版Instructions
 - `.bedrock_agentcore.yaml` - AgentCore設定
-- `streamlit_app/phase7_app.py` - Streamlit UI (Memory表示)
+- `streamlit_app/app.py` - Streamlit UI (Memory表示)
 - `PHASE7_OVERVIEW.md` - Phase 7概要
 - `PHASE7_ARCHITECTURE.md` - Phase 7アーキテクチャ
 
@@ -128,7 +128,7 @@ agentcore invoke '{"prompt": "HPLC_001の現在の状態は?"}'
 ```bash
 # 定期分析 (5分毎)
 aws lambda invoke \
-  --function-name phase6-invoker \
+  --function-name sila2-agentcore-invoker \
   --payload '{"action": "periodic", "devices": ["hplc_001"]}' \
   response.json
 

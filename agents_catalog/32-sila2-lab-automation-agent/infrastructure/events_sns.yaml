@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Phase 6 - EventBridge + SNS + Lambda for SiLA2 Agent'
+Description: 'EventBridge + SNS + Lambda for SiLA2 Agent'
 
 Parameters:
   BridgeURL:
@@ -36,7 +36,7 @@ Resources:
   LambdaSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Security group for Phase 6 Lambda function
+      GroupDescription: Security group for Lambda function
       VpcId: !Ref VpcId
       SecurityGroupEgress:
         - IpProtocol: -1
