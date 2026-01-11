@@ -38,4 +38,4 @@ COPY . .
 
 # Use the full module path
 
-CMD ["opentelemetry-instrument", "python", "-m", "main_agentcore_phase3"]
+CMD ["opentelemetry-instrument", "python", "-m", "main_agentcore"]

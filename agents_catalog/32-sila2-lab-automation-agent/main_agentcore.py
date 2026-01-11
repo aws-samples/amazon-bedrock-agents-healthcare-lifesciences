@@ -10,7 +10,7 @@ from bedrock_agentcore import BedrockAgentCoreApp
 app = BedrockAgentCoreApp()
 
 LAMBDA_FUNCTION = os.getenv('LAMBDA_FUNCTION', 'sila2-mcp-proxy')
-ANALYZE_LAMBDA_FUNCTION = os.getenv('ANALYZE_LAMBDA_FUNCTION', 'analyze-heating-rate')
+ANALYZE_LAMBDA_FUNCTION = os.getenv('ANALYZE_LAMBDA_FUNCTION', 'sila2-analyze-heating-rate')
 REGION = os.getenv('AWS_REGION', 'us-west-2')
 MODEL_ID = "anthropic.claude-3-5-sonnet-20241022-v2:0"
 

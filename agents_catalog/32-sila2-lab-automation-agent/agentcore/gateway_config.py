@@ -14,11 +14,6 @@ def register_gateway_tools():
             'name': 'analyze_heating_rate',
             'description': 'Calculate heating rate from device history data',
             'lambda_arn': f'arn:aws:lambda:{region}:{account_id}:function:sila2-analyze-heating-rate'
-        },
-        {
-            'name': 'execute_autonomous_control',
-            'description': 'Execute autonomous control action via MCP',
-            'lambda_arn': f'arn:aws:lambda:{region}:{account_id}:function:sila2-execute-autonomous-control'
         }
     ]
     

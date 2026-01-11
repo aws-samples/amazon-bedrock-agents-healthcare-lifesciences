@@ -145,9 +145,9 @@ else
 fi
 
 # ========================================
-# Target 2: analyze-heating-rate Lambda
+# Target 2: sila2-analyze-heating-rate Lambda
 # ========================================
-print_step "Target 2: analyze-heating-rate Lambda作成"
+print_step "Target 2: sila2-analyze-heating-rate Lambda作成"
 
 # Lambda Role取得
 LAMBDA_ROLE_ARN=$($AWS cloudformation describe-stacks \
@@ -173,16 +173,16 @@ zip -r "../../../$BUILD_DIR/analyze-heating-rate.zip" . -x "*.pyc" -x "__pycache
 cd "../../.."
 
 # Lambda関数デプロイ
-print_info "Deploying analyze-heating-rate Lambda..."
-if $AWS lambda get-function --function-name "analyze-heating-rate" --region "$REGION" >/dev/null 2>&1; then
+print_info "Deploying sila2-analyze-heating-rate Lambda..."
+if $AWS lambda get-function --function-name "sila2-analyze-heating-rate" --region "$REGION" >/dev/null 2>&1; then
     $AWS lambda update-function-code \
-        --function-name "analyze-heating-rate" \
+        --function-name "sila2-analyze-heating-rate" \
         --zip-file "fileb://$BUILD_DIR/analyze-heating-rate.zip" \
         --region "$REGION" >/dev/null
     print_info "Updated analyze-heating-rate"
 else
     $AWS lambda create-function \
-        --function-name "analyze-heating-rate" \
+        --function-name "sila2-analyze-heating-rate" \
         --runtime python3.11 \
         --handler index.lambda_handler \
         --role "$LAMBDA_ROLE_ARN" \
@@ -194,7 +194,7 @@ else
 fi
 
 ANALYZE_LAMBDA_ARN=$($AWS lambda get-function \
-  --function-name "analyze-heating-rate" \
+  --function-name "sila2-analyze-heating-rate" \
   --region "$REGION" \
   --query 'Configuration.FunctionArn' \
   --output text)

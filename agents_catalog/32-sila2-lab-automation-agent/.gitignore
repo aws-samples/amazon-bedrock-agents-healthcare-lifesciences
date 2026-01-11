@@ -26,3 +26,7 @@ venv/
 # Config files with secrets
 .gateway-config
 .phase3-*-config
+
+# Bedrock AgentCore build artifacts (keep Dockerfile)
+.bedrock_agentcore/*/
+!.bedrock_agentcore/*/Dockerfile

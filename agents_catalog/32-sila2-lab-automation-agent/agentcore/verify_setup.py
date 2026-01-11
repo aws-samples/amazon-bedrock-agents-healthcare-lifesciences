@@ -11,7 +11,6 @@ def verify_lambda_functions():
     
     required_functions = [
         'sila2-analyze-heating-rate',
-        'sila2-execute-autonomous-control',
         'sila2-agentcore-invoker'
     ]
     

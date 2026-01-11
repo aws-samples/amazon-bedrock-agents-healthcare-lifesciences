@@ -154,8 +154,7 @@ EOF
       "Action": "lambda:InvokeFunction",
       "Resource": [
         "arn:aws:lambda:$REGION:$ACCOUNT_ID:function:sila2-mcp-proxy",
-        "arn:aws:lambda:$REGION:$ACCOUNT_ID:function:analyze-heating-rate",
-        "arn:aws:lambda:$REGION:$ACCOUNT_ID:function:execute-autonomous-control"
+        "arn:aws:lambda:$REGION:$ACCOUNT_ID:function:sila2-analyze-heating-rate"
       ]
     }
   ]
@@ -428,7 +427,11 @@ PYEOF
         
         # Add Memory permissions to Lambda Execution Role
         log_info "[Phase 7] Adding Memory permissions to Lambda Execution Role..."
-        local lambda_role_name="sila2-events-stack-LambdaExecutionRole-TAJCXBJSYaKz"
+        local lambda_role_name=$(/usr/local/bin/aws cloudformation describe-stack-resources \
+            --stack-name sila2-events-stack \
+            --region "$REGION" \
+            --query "StackResources[?ResourceType=='AWS::IAM::Role' && LogicalResourceId=='LambdaExecutionRole'].PhysicalResourceId" \
+            --output text)
         
         cat > /tmp/lambda-memory-policy.json << EOF
 {

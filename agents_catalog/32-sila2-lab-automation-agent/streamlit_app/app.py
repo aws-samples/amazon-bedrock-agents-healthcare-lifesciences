@@ -7,15 +7,15 @@ import boto3
 import json
 import os
 
-st.set_page_config(page_title="Phase 7 Demo", layout="wide")
-st.title("🧪 Phase 7: AI Autonomous Control Demo")
+st.set_page_config(page_title="SiLA2 Lab Automation", layout="wide")
+st.title("🧪 SiLA2 Lab Automation Demo")
 
 if 'temperature_data' not in st.session_state:
     st.session_state.temperature_data = []
 
 LAMBDA_FUNCTION = os.getenv('LAMBDA_FUNCTION_NAME', 'sila2-agentcore-invoker')
 AWS_REGION = os.getenv('AWS_REGION', 'us-west-2')
-MEMORY_ID = 'sila2_phase7_memory-DEfNuxAOF4'
+MEMORY_ID = 'sila2_memory-dW86eV42es'
 
 lambda_client = boto3.client('lambda', region_name=AWS_REGION)
 
@@ -167,7 +167,11 @@ with tab1:
     with col1:
         st.subheader("📈 Real-time Temperature")
         
-        latest_data = get_temperature_data()
+        latest_data = None
+        try:
+            latest_data = get_temperature_data()
+        except Exception as e:
+            st.error(f"⚠️ Failed to get temperature data: {e}")
         if latest_data:
             st.session_state.temperature_data.append(latest_data)
             
@@ -367,8 +371,8 @@ with tab3:
                 
                 if st.checkbox(f"Show raw data", key=f"raw_{i}"):
                     st.json(event['raw'])
-        else:
-            st.info("💡 No memory events found. The system will record events during periodic monitoring and manual control.")
+    else:
+        st.info("💡 No memory events found. The system will record events during periodic monitoring and manual control.")
 
 time.sleep(3)
 st.rerun()
