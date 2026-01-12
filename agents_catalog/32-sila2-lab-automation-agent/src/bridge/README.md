@@ -52,4 +52,4 @@ docker run -p 8080:8080 \
 3. `execute_command` - デバイスコマンド実行
 
 ## デプロイ
-ECS Fargateへのデプロイは `scripts/12_deploy_bridge_container.sh` を使用
+ECS Fargateへのデプロイは `../scripts/02_build_containers.sh` と `../scripts/03_deploy_ecs.sh` を使用

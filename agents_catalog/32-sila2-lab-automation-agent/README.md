@@ -89,9 +89,9 @@ User/Lambda Invoker → AgentCore Runtime → MCP Gateway (2 Targets)
 ### Infrastructure
 - `infrastructure/bridge_container_ecs_no_alb.yaml` - ECS Fargate
 - `infrastructure/lambda_proxy.yaml` - Lambda Proxy
-- `bridge_container/mcp_server.py` - MCP Bridge (execute_control追加)
-- `lambda/tools/analyze_heating_rate/` - 温度上昇率計算Lambda
-- `lambda/invoker/lambda_function.py` - Lambda Invoker (Memory管理)
+- `src/bridge/mcp_server.py` - MCP Bridge (execute_control追加)
+- `src/lambda/tools/analyze_heating_rate/` - 温度上昇率計算Lambda
+- `src/lambda/invoker/lambda_function.py` - Lambda Invoker (Memory管理)
 
 ### Application
 - `agentcore/agent_instructions.txt` - AI自律判断版Instructions

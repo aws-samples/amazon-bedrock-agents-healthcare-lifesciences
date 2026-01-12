@@ -14,6 +14,18 @@
 
 ## 統合アプローチ（推奨）
 
+### 前提条件
+**このデプロイ最適化計画は、FOLDER_STRUCTURE_PLAN.md実施後の新しいフォルダ構成を前提としています。**
+
+新フォルダ構成:
+```
+src/
+  bridge/          # 旧 bridge_container
+  devices/         # 旧 mock_devices
+  lambda/          # 旧 lambda
+  proto/           # 旧 proto
+```
+
 ### 最終目標
 ```
 現状: 7スクリプト（00-06）+ 3 CFnテンプレート
@@ -69,10 +81,12 @@ infrastructure/
    - VPC Endpoint for Bedrock AgentCore
    - Security Group設定
 2. `nested/ecr.yaml` 作成
-   - sila2-bridge リポジトリ
-   - sila2-mock-devices リポジトリ
+   - sila2-bridge リポジトリ（旧 bridge_container）
+   - sila2-mock-devices リポジトリ（旧 mock_devices）
 3. `main.yaml` に追加
 4. スクリプト00, 01を削除
+
+**注意**: ECRリポジトリ名は変更されていますが、イメージ参照は新しい名前を使用します。
 
 **削減スクリプト**: 2つ（00, 01）
 **期間**: 半日
@@ -83,10 +97,12 @@ infrastructure/
 
 **作業内容**:
 1. `nested/lambda.yaml` に追加
-   - analyze-heating-rate Lambda
+   - analyze-heating-rate Lambda（src/lambda/tools/から）
    - Lambda Layer管理
-2. S3バケットからコードデプロイ
+2. S3バケットからコードデプロイ（src/lambda/配下のzipファイル）
 3. スクリプト05を簡略化（Targetのみ残す）
+
+**パス参照**: Lambda関数コードは `src/lambda/` 配下から取得します。
 
 **削減スクリプト**: 0.5個（05の一部）
 **期間**: 半日
@@ -131,9 +147,9 @@ compile_proto
 # ECR login
 ecr_login
 
-# Build & Push
-build_and_push_image "bridge_container" "$ECR_BRIDGE"
-build_and_push_image "mock_devices" "$ECR_MOCK"
+# Build & Push（新フォルダ構成対応）
+build_and_push_image "src/bridge" "$ECR_BRIDGE"
+build_and_push_image "src/devices" "$ECR_MOCK"
 ```
 
 ### 02_package_lambdas.sh（必須）
@@ -141,10 +157,10 @@ build_and_push_image "mock_devices" "$ECR_MOCK"
 #!/bin/bash
 source scripts/utils/config.sh
 
-# Package Lambda functions
-package_lambda "lambda_proxy" "$DEPLOYMENT_BUCKET"
-package_lambda "lambda/invoker" "$DEPLOYMENT_BUCKET"
-package_lambda "lambda/tools/analyze_heating_rate" "$DEPLOYMENT_BUCKET"
+# Package Lambda functions（新フォルダ構成対応）
+package_lambda "src/lambda/proxy" "$DEPLOYMENT_BUCKET"
+package_lambda "src/lambda/invoker" "$DEPLOYMENT_BUCKET"
+package_lambda "src/lambda/tools/analyze_heating_rate" "$DEPLOYMENT_BUCKET"
 
 # Create Lambda Layers
 create_layer "requests" "$DEPLOYMENT_BUCKET"
@@ -224,23 +240,28 @@ ecr_login() {
     "$ACCOUNT_ID.dkr.ecr.$DEFAULT_REGION.amazonaws.com"
 }
 
-# Docker操作
+# Docker操作（新フォルダ構成対応）
 build_and_push_image() {
   local dir=$1
   local repo=$2
+  local original_dir=$(pwd)
   cd "$dir"
   docker build -t "$repo:latest" .
   docker tag "$repo:latest" "$ACCOUNT_ID.dkr.ecr.$DEFAULT_REGION.amazonaws.com/$repo:latest"
   docker push "$ACCOUNT_ID.dkr.ecr.$DEFAULT_REGION.amazonaws.com/$repo:latest"
+  cd "$original_dir"
 }
 
-# Lambda操作
+# Lambda操作（新フォルダ構成対応）
 package_lambda() {
   local dir=$1
   local bucket=$2
+  local original_dir=$(pwd)
   cd "$dir"
-  zip -r /tmp/$(basename "$dir").zip . -x "*.pyc" "__pycache__/*"
-  aws s3 cp /tmp/$(basename "$dir").zip "s3://$bucket/lambda/"
+  local zip_name=$(basename "$dir").zip
+  zip -r "/tmp/$zip_name" . -x "*.pyc" "__pycache__/*"
+  aws s3 cp "/tmp/$zip_name" "s3://$bucket/lambda/"
+  cd "$original_dir"
 }
 ```
 
@@ -281,8 +302,22 @@ package_lambda() {
 - Phase 1-4を段階的に実施
 - AgentCore（スクリプト06）のみ残す
 
+## 実施順序（重要）
+
+### ステップ1: フォルダ構成整理（必須・先行）
+```bash
+# FOLDER_STRUCTURE_PLAN.md を実施
+# 所要時間: 2.5時間
+```
+
+### ステップ2: デプロイ最適化（この計画）
+```bash
+# Phase 1-4を順次実施
+# 所要時間: 5-8日
+```
+
 ## 次のステップ
 
-1. ✅ この統合計画を承認
-2. ⬜ Phase 1開始（CFnネストスタック作成）
-3. ⬜ フォルダ整理実行（並行可能）
+1. ✅ FOLDER_STRUCTURE_PLAN.md を実施（必須）
+2. ✅ この統合計画を承認
+3. ⬜ Phase 1開始（CFnネストスタック作成）

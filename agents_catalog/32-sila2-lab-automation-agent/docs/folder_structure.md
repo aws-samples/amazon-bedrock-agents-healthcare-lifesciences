@@ -12,6 +12,7 @@
 ├── bridge_container/
 ├── infrastructure/
 ├── lambda/
+├── lambda_proxy/          # 独立したフォルダ
 ├── mock_devices/
 ├── proto/
 ├── scripts/
@@ -45,9 +46,10 @@
 │   │   ├── mock_server.py
 │   │   ├── Dockerfile
 │   │   └── proto/
-│   ├── lambda/                       # lambda/ → 移動
-│   │   ├── invoker/
-│   │   └── tools/
+│   ├── lambda/                       # lambda/ + lambda_proxy/ → 統合
+│   │   ├── proxy/                   # lambda_proxy/ → 移動
+│   │   ├── invoker/                 # lambda/invoker/ → 移動
+│   │   └── tools/                   # lambda/tools/ → 移動
 │   └── proto/                        # proto/ → 移動（共通定義）
 │       ├── sila2_basic.proto
 │       ├── sila2_streaming.proto
@@ -120,20 +122,21 @@ README.mdから詳細手順を移動
 ```bash
 # 計画ファイルをdocs/に移動（参考資料として）
 mv DEPLOYMENT_OPTIMIZATION_PLAN.md docs/future_optimization.md
-mv NAMING_REFACTORING_PLAN.md docs/naming_refactoring.md
 mv FOLDER_STRUCTURE_PLAN.md docs/folder_structure.md
 
 # 不要な計画ファイルは削除
 rm CLEANUP_PLAN.md
 rm MOVE_PLAN.md
 rm REQUIRED_FILES.md
+
+# NAMING_REFACTORING_COMPLETE_PLAN.mdはそのまま残す
 ```
 
 ### 2. ソースコード整理
 
 ```bash
 # src/ ディレクトリ作成
-mkdir -p src
+mkdir -p src/lambda
 
 # bridge_container → src/bridge
 mv bridge_container src/bridge
@@ -141,8 +144,13 @@ mv bridge_container src/bridge
 # mock_devices → src/devices
 mv mock_devices src/devices
 
-# lambda → src/lambda
-mv lambda src/lambda
+# lambda_proxy → src/lambda/proxy（統合）
+mv lambda_proxy src/lambda/proxy
+
+# lambda/配下を src/lambda/に移動
+mv lambda/invoker src/lambda/invoker
+mv lambda/tools src/lambda/tools
+rmdir lambda  # 空になったら削除
 
 # proto → src/proto
 mv proto src/proto
@@ -221,39 +229,53 @@ dockerfile: src/bridge/Dockerfile
 
 ### Phase 1: ドキュメント整理（30分）
 ```bash
-# 1. docs/ ディレクトリ作成
+# 1. docs/ ディレクトリ作成（既に存在）
 mkdir -p docs
 
 # 2. 新規ドキュメント作成
 touch docs/deployment.md
-touch docs/architecture.md
 touch docs/development.md
 touch docs/troubleshooting.md
+# docs/architecture.md は既に存在
 
 # 3. 既存計画ファイル移動
 mv DEPLOYMENT_OPTIMIZATION_PLAN.md docs/future_optimization.md
-mv NAMING_REFACTORING_PLAN.md docs/naming_refactoring.md
+mv FOLDER_STRUCTURE_PLAN.md docs/folder_structure.md
 
 # 4. 不要ファイル削除
 rm CLEANUP_PLAN.md MOVE_PLAN.md REQUIRED_FILES.md
+
+# NAMING_REFACTORING_COMPLETE_PLAN.md はそのまま残す
 ```
 
 ### Phase 2: ソースコード移動（20分）
 ```bash
 # 1. src/ ディレクトリ作成
-mkdir -p src
+mkdir -p src/lambda
 
 # 2. ディレクトリ移動（git mvを使用）
 git mv bridge_container src/bridge
 git mv mock_devices src/devices
-git mv lambda src/lambda
+git mv lambda_proxy src/lambda/proxy
+
+# 3. lambda/配下を移動
+git mv lambda/invoker src/lambda/invoker
+git mv lambda/tools src/lambda/tools
+# lambda/が空になったら削除
+rmdir lambda 2>/dev/null || true
+
+# 4. proto移動
 git mv proto src/proto
 ```
 
 ### Phase 3: パス参照更新（40分）
 ```bash
-# 1. 全ファイルで"bridge_container"を検索
+# 1. 全ファイルで旧パスを検索
 grep -r "bridge_container" --include="*.py" --include="*.yaml" --include="*.sh" --include="*.md" .
+grep -r "mock_devices" --include="*.py" --include="*.yaml" --include="*.sh" --include="*.md" .
+grep -r "lambda_proxy" --include="*.py" --include="*.yaml" --include="*.sh" --include="*.md" .
+grep -r "lambda/" --include="*.py" --include="*.yaml" --include="*.sh" --include="*.md" .
+grep -r "proto/" --include="*.py" --include="*.yaml" --include="*.sh" --include="*.md" .
 
 # 2. 各ファイルを手動で更新
 # - agentcore/runtime_config.py
@@ -261,8 +283,7 @@ grep -r "bridge_container" --include="*.py" --include="*.yaml" --include="*.sh" 
 # - scripts/*.sh
 # - README.md
 # - .bedrock_agentcore.yaml
-
-# 3. 同様に"mock_devices", "lambda/", "proto/"も検索・更新
+# - streamlit_app/ 内のファイル
 ```
 
 ### Phase 4: インフラ整理（10分）
@@ -297,7 +318,9 @@ aws cloudformation validate-template --template-body file://infrastructure/bridg
 - [ ] `src/` ディレクトリ作成
 - [ ] `bridge_container` → `src/bridge` 移動
 - [ ] `mock_devices` → `src/devices` 移動
-- [ ] `lambda` → `src/lambda` 移動
+- [ ] `lambda_proxy` → `src/lambda/proxy` 移動
+- [ ] `lambda/invoker` → `src/lambda/invoker` 移動
+- [ ] `lambda/tools` → `src/lambda/tools` 移動
 - [ ] `proto` → `src/proto` 移動
 
 ### パス参照更新
@@ -337,6 +360,15 @@ aws cloudformation validate-template --template-body file://infrastructure/bridg
 ## 次のステップ
 
 1. この計画を確認・承認
-2. 命名修正計画（NAMING_REFACTORING_PLAN.md）を先に実行
-3. このフォルダ構成計画を実行
-4. デプロイ最適化（DEPLOYMENT_OPTIMIZATION_PLAN.md）は公開後に実施
+2. このフォルダ構成計画を実行
+3. デプロイ最適化（DEPLOYMENT_OPTIMIZATION_PLAN.md）は公開後に実施
+
+## 補足
+
+### lambda_proxy/ の統合について
+- `lambda_proxy/` は `src/lambda/proxy/` に統合されます
+- これにより全てのLambda関数が `src/lambda/` 配下に集約されます
+
+### NAMING_REFACTORING_COMPLETE_PLAN.md について
+- このファイルはルートディレクトリにそのまま残します
+- 将来的に不要になった時点で削除を検討します

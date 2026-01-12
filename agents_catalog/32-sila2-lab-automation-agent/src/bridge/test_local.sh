@@ -10,8 +10,8 @@ pip install -q -r requirements.txt
 # gRPCコード生成
 echo "Generating gRPC code..."
 cd ..
-python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. proto/sila2_basic.proto
-cd bridge_container
+python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. src/proto/sila2_basic.proto
+cd src/bridge
 
 # モックgRPCサーバー起動
 echo "Starting mock gRPC servers..."

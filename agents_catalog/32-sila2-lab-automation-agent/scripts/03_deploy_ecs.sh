@@ -29,7 +29,7 @@ print_info "Subnets: $SUBNET_IDS"
 # CloudFormationデプロイ (ECS)
 print_step "Deploying ECS CloudFormation stack"
 aws cloudformation deploy \
-  --template-file "$PROJECT_ROOT/infrastructure/bridge_container_ecs_no_alb.yaml" \
+  --template-file "$PROJECT_ROOT/infrastructure/bridge_container_ecs.yaml" \
   --stack-name $STACK_NAME \
   --parameter-overrides \
     VpcId=$VPC_ID \
@@ -58,7 +58,7 @@ aws cloudformation deploy \
 
 # Lambda Proxyコードを更新
 print_step "Updating Lambda Proxy code with latest implementation"
-cd "$PROJECT_ROOT/lambda_proxy"
+cd "$PROJECT_ROOT/src/lambda/proxy"
 zip -r /tmp/lambda-proxy.zip . >/dev/null 2>&1
 aws lambda update-function-code \
   --function-name sila2-mcp-proxy \
@@ -151,8 +151,8 @@ if [[ -f "$PROJECT_ROOT/infrastructure/events_sns.yaml" ]]; then
     print_info "SNS Topic ARN: $SNS_TOPIC_ARN"
     
     # Update Lambda code
-    if [[ -d "$PROJECT_ROOT/lambda/invoker" ]]; then
-        cd "$PROJECT_ROOT/lambda/invoker"
+    if [[ -d "$PROJECT_ROOT/src/lambda/invoker" ]]; then
+        cd "$PROJECT_ROOT/src/lambda/invoker"
         
         # Create Lambda Layer for requests library
         print_info "Creating Lambda Layer for requests library..."
@@ -177,7 +177,7 @@ if [[ -f "$PROJECT_ROOT/infrastructure/events_sns.yaml" ]]; then
         rm -rf "$LAYER_DIR" /tmp/requests-layer.zip
         
         # Create deployment package (without requests)
-        cd "$PROJECT_ROOT/lambda/invoker"
+        cd "$PROJECT_ROOT/src/lambda/invoker"
         zip -r /tmp/events-lambda.zip . -x "*.pyc" "__pycache__/*" >/dev/null 2>&1
         
         # Get Memory ID and Runtime ARN from gateway-config if available

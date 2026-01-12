@@ -17,12 +17,12 @@ print_info "Account: $ACCOUNT_ID"
 
 # Compile proto definitions (Phase 5)
 print_step "Compiling proto definitions"
-cd "$PROJECT_ROOT/proto"
+cd "$PROJECT_ROOT/src/proto"
 if [ -f "sila2_tasks.proto" ]; then
     python3 -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. sila2_tasks.proto 2>/dev/null || true
     if [ -f "sila2_tasks_pb2.py" ]; then
-        cp sila2_tasks_pb2*.py "$PROJECT_ROOT/bridge_container/proto/" 2>/dev/null || true
-        cp sila2_tasks_pb2*.py "$PROJECT_ROOT/mock_devices/proto/" 2>/dev/null || true
+        cp sila2_tasks_pb2*.py "$PROJECT_ROOT/src/bridge/proto/" 2>/dev/null || true
+        cp sila2_tasks_pb2*.py "$PROJECT_ROOT/src/devices/proto/" 2>/dev/null || true
         print_info "Proto compiled: sila2_tasks.proto"
     fi
 fi
@@ -39,7 +39,7 @@ aws ecr describe-repositories --repository-names $BRIDGE_REPO --region $REGION 2
   aws ecr create-repository --repository-name $BRIDGE_REPO --region $REGION \
     --image-scanning-configuration scanOnPush=true
 
-cd "$PROJECT_ROOT/bridge_container"
+cd "$PROJECT_ROOT/src/bridge"
 docker build -t $BRIDGE_REPO:$IMAGE_TAG .
 docker tag $BRIDGE_REPO:$IMAGE_TAG $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$BRIDGE_REPO:$IMAGE_TAG
 docker push $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$BRIDGE_REPO:$IMAGE_TAG
@@ -51,10 +51,10 @@ aws ecr describe-repositories --repository-names $MOCK_REPO --region $REGION 2>/
   aws ecr create-repository --repository-name $MOCK_REPO --region $REGION \
     --image-scanning-configuration scanOnPush=true
 
-mkdir -p "$PROJECT_ROOT/mock_devices/proto"
-cp "$PROJECT_ROOT/bridge_container/proto"/*.py "$PROJECT_ROOT/mock_devices/proto/"
+mkdir -p "$PROJECT_ROOT/src/devices/proto"
+cp "$PROJECT_ROOT/src/bridge/proto"/*.py "$PROJECT_ROOT/src/devices/proto/"
 
-cd "$PROJECT_ROOT/mock_devices"
+cd "$PROJECT_ROOT/src/devices"
 docker build -t $MOCK_REPO:$IMAGE_TAG .
 docker tag $MOCK_REPO:$IMAGE_TAG $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$MOCK_REPO:$IMAGE_TAG
 docker push $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$MOCK_REPO:$IMAGE_TAG
