@@ -15,7 +15,7 @@ if 'temperature_data' not in st.session_state:
 
 LAMBDA_FUNCTION = os.getenv('LAMBDA_FUNCTION_NAME', 'sila2-agentcore-invoker')
 AWS_REGION = os.getenv('AWS_REGION', 'us-west-2')
-MEMORY_ID = 'sila2_memory-dW86eV42es'
+MEMORY_ID = 'sila2_memory-l1cdvZ3d40'
 
 lambda_client = boto3.client('lambda', region_name=AWS_REGION)
 
@@ -88,6 +88,36 @@ def get_temperature_data():
         st.error(f"⚠️ Error: {e}")
     return None
 
+def get_recent_session_ids_from_logs():
+    """CloudWatch Logsから最近のセッションIDを取得"""
+    try:
+        logs_client = boto3.client('logs', region_name=AWS_REGION)
+        
+        # 過去10分間のログを検索
+        import time
+        start_time = int((time.time() - 600) * 1000)  # 10分前
+        
+        response = logs_client.filter_log_events(
+            logGroupName='/aws/lambda/' + LAMBDA_FUNCTION,
+            startTime=start_time,
+            filterPattern='"Memory recorded successfully: session="'
+        )
+        
+        session_ids = []
+        for event in response.get('events', []):
+            message = event.get('message', '')
+            # "Memory recorded successfully: session=hplc-1768278064-..."から抽出
+            if 'session=' in message:
+                parts = message.split('session=')
+                if len(parts) > 1:
+                    session_id = parts[1].split(',')[0].strip()
+                    if session_id and session_id not in session_ids:
+                        session_ids.append(session_id)
+        
+        return session_ids
+    except Exception as e:
+        return []
+
 def get_memory_events_with_id(memory_id):
     debug_info = {'status': 'starting'}
     
@@ -99,7 +129,16 @@ def get_memory_events_with_id(memory_id):
     try:
         actor_id = "hplc"
         debug_info['actor_id'] = actor_id
+        all_events = []
+        all_session_ids = set()
         
+        # 1. CloudWatch Logsから最近のセッションIDを取得
+        recent_session_ids = get_recent_session_ids_from_logs()
+        debug_info['log_sessions_count'] = len(recent_session_ids)
+        debug_info['log_session_ids'] = recent_session_ids[:5]
+        all_session_ids.update(recent_session_ids)
+        
+        # 2. list_sessionsで既知のセッションを取得
         sessions_response = bedrock_agentcore.list_sessions(
             memoryId=memory_id,
             actorId=actor_id,
@@ -107,50 +146,61 @@ def get_memory_events_with_id(memory_id):
         )
         
         sessions = sessions_response.get('sessionSummaries', [])
-        debug_info['session_count'] = len(sessions)
-        
-        if not sessions:
-            return [], debug_info
-        
-        all_events = []
-        
+        debug_info['list_sessions_count'] = len(sessions)
         for session in sessions:
-            session_id = session.get('sessionId')
+            all_session_ids.add(session.get('sessionId'))
+        
+        debug_info['total_unique_sessions'] = len(all_session_ids)
+        
+        # 3. すべてのセッションからイベント取得
+        for session_id in all_session_ids:
             if not session_id:
                 continue
             
-            events_response = bedrock_agentcore.list_events(
-                memoryId=memory_id,
-                actorId=actor_id,
-                sessionId=session_id,
-                maxResults=50
-            )
-            
-            for event in events_response.get('events', []):
-                content_text = ""
-                role = "unknown"
+            try:
+                events_response = bedrock_agentcore.list_events(
+                    memoryId=memory_id,
+                    actorId=actor_id,
+                    sessionId=session_id,
+                    maxResults=50
+                )
                 
-                if event.get('payload'):
-                    for payload in event['payload']:
-                        if 'conversational' in payload:
-                            conv = payload['conversational']
-                            role = conv.get('role', 'unknown')
-                            if 'content' in conv and 'text' in conv['content']:
-                                content_text = conv['content']['text']
-                                break
-                
-                all_events.append({
-                    'timestamp': event.get('eventTimestamp', datetime.now()),
-                    'eventId': event.get('eventId', 'unknown'),
-                    'actorId': actor_id,
-                    'sessionId': session_id,
-                    'role': role,
-                    'content': content_text,
-                    'raw': event
-                })
+                for event in events_response.get('events', []):
+                    content_text = ""
+                    role = "unknown"
+                    event_type = "unknown"
+                    
+                    if event.get('payload'):
+                        for payload in event['payload']:
+                            if 'conversational' in payload:
+                                conv = payload['conversational']
+                                role = conv.get('role', 'unknown')
+                                if 'content' in conv and 'text' in conv['content']:
+                                    content_text = conv['content']['text']
+                                    if 'Target temperature reached' in content_text or 'TEMPERATURE_REACHED' in content_text:
+                                        event_type = 'TEMPERATURE_REACHED'
+                                    elif 'Periodic status check' in content_text:
+                                        event_type = 'PERIODIC_STATUS'
+                                    elif 'Set temperature' in content_text:
+                                        event_type = 'MANUAL_CONTROL'
+                                    break
+                    
+                    all_events.append({
+                        'timestamp': event.get('eventTimestamp', datetime.now()),
+                        'eventId': event.get('eventId', 'unknown'),
+                        'actorId': actor_id,
+                        'sessionId': session_id,
+                        'role': role,
+                        'event_type': event_type,
+                        'content': content_text,
+                        'raw': event
+                    })
+            except Exception as e:
+                debug_info[f'session_{session_id[:20]}_error'] = str(e)
         
         all_events.sort(key=lambda x: x['timestamp'], reverse=True)
         debug_info['event_count'] = len(all_events)
+        debug_info['latest_event_time'] = all_events[0]['timestamp'].isoformat() if all_events else 'N/A'
         return all_events[:20], debug_info
         
     except Exception as e:
@@ -340,6 +390,8 @@ with tab3:
             st.json(debug_info)
     else:
         st.success(f"✅ Sessions: {debug_info.get('session_count', 0)} | Events: {debug_info.get('event_count', 0)}")
+        with st.expander("🔍 Debug Info"):
+            st.json(debug_info)
     
     if memory_events:
         for i, event in enumerate(memory_events):
@@ -349,8 +401,18 @@ with tab3:
             
             content = event['content']
             role = event.get('role', 'unknown')
+            evt_type = event.get('event_type', 'unknown')
             
-            if role == 'user':
+            if evt_type == 'TEMPERATURE_REACHED':
+                icon = "🔔"
+                event_type = "Temperature Reached"
+            elif evt_type == 'PERIODIC_STATUS':
+                icon = "📊"
+                event_type = "Periodic Status"
+            elif evt_type == 'MANUAL_CONTROL':
+                icon = "🎛️"
+                event_type = "Manual Control"
+            elif role == 'user':
                 icon = "👤"
                 event_type = "User"
             elif role == 'assistant':

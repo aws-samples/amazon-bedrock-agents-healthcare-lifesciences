@@ -108,7 +108,7 @@ Current: {current_temp}°C
 Please acknowledge this milestone."""
             
             try:
-                payload = json.dumps({"input": {"prompt": prompt}})
+                payload = json.dumps({"prompt": prompt}).encode('utf-8')
                 
                 import botocore.config
                 config = botocore.config.Config(
@@ -216,7 +216,7 @@ Please assess the situation and decide:
 2. Is any action needed?"""
     
     try:
-        payload = json.dumps({"input": {"prompt": prompt}})
+        payload = json.dumps({"prompt": prompt}).encode('utf-8')
         
         import botocore.config
         config = botocore.config.Config(
@@ -271,7 +271,7 @@ def handle_manual_control(event):
     device_session_id = f"device-{device_id}-session-{device_id}-00000000"
     
     try:
-        payload = json.dumps({"input": {"prompt": query}})
+        payload = json.dumps({"prompt": query}).encode("utf-8")
         
         import botocore.config
         config = botocore.config.Config(
@@ -376,7 +376,7 @@ def handle_get_history(event):
     device_session_id = f"device-{device_id}-session-{device_id}-00000000"
     
     try:
-        payload = json.dumps({"input": {"prompt": query}})
+        payload = json.dumps({"prompt": query}).encode("utf-8")
         
         import botocore.config
         config = botocore.config.Config(

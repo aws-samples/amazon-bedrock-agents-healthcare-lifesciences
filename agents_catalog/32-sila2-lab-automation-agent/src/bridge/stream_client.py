@@ -70,6 +70,7 @@ class GRPCStreamClient:
                     channel.close()
     
     def _event_stream_loop(self):
+        print(f"[Stream] Event stream thread started for {self.device_id}", flush=True)
         while self.running:
             channel = None
             try:
@@ -90,10 +91,12 @@ class GRPCStreamClient:
                         }
                     ))
             except grpc.RpcError as e:
-                print(f"[Stream] Event stream error: {e}, reconnecting in {self.reconnect_delay}s...", flush=True)
+                print(f"[Stream] Event stream RPC error: {e.__class__.__name__}: {e}, reconnecting in {self.reconnect_delay}s...", flush=True)
                 time.sleep(self.reconnect_delay)
             except Exception as e:
-                print(f"[Stream] Unexpected error: {e}, reconnecting in {self.reconnect_delay}s...", flush=True)
+                print(f"[Stream] Event stream unexpected error: {e.__class__.__name__}: {e}", flush=True)
+                import traceback
+                traceback.print_exc()
                 time.sleep(self.reconnect_delay)
             finally:
                 if channel:

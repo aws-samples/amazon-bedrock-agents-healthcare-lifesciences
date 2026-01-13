@@ -1,0 +1,180 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Lambda Functions for SiLA2 Agent'
+
+Parameters:
+  VpcId:
+    Type: String
+  PrivateSubnetIds:
+    Type: CommaDelimitedList
+  BridgeSecurityGroup:
+    Type: String
+  DeploymentBucket:
+    Type: String
+    Description: S3 bucket containing Lambda code
+  AgentCoreAgentId:
+    Type: String
+    Default: ''
+  AgentCoreAliasId:
+    Type: String
+    Default: ''
+
+Resources:
+  ProxySecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Lambda Proxy to ECS Bridge
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          DestinationSecurityGroupId: !Ref BridgeSecurityGroup
+        - IpProtocol: udp
+          FromPort: 53
+          ToPort: 53
+          CidrIp: 0.0.0.0/0
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: 
+                - lambda.amazonaws.com
+                - bedrock-agentcore.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      Policies:
+        - PolicyName: BedrockAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                  - bedrock-agentcore:InvokeAgentRuntime
+                  - bedrock-agentcore:InvokeAgent
+                  - bedrock-agentcore:CreateEvent
+                Resource: '*'
+        - PolicyName: LambdaInvoke
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:sila2-*'
+
+  LambdaProxyFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: sila2-mcp-proxy
+      Runtime: python3.12
+      Handler: index.lambda_handler
+      Timeout: 30
+      MemorySize: 256
+      Role: !GetAtt LambdaExecutionRole.Arn
+      VpcConfig:
+        SubnetIds: !Ref PrivateSubnetIds
+        SecurityGroupIds: [!Ref ProxySecurityGroup]
+      Environment:
+        Variables:
+          MCP_ENDPOINT: http://bridge.sila2.local:8080/mcp
+      Code:
+        ZipFile: |
+          import json
+          import urllib3
+          import os
+          import logging
+          
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+          
+          http = urllib3.PoolManager()
+          MCP_ENDPOINT = os.environ.get('MCP_ENDPOINT', 'http://bridge.sila2.local:8080')
+          
+          def lambda_handler(event, context):
+              logger.info(f"Received event: {json.dumps(event)}")
+              try:
+                  response = http.request(
+                      'POST',
+                      MCP_ENDPOINT,
+                      body=json.dumps(event),
+                      headers={'Content-Type': 'application/json'},
+                      timeout=30.0
+                  )
+                  result = json.loads(response.data.decode('utf-8'))
+                  logger.info(f"Bridge response: {response.status}")
+                  return result
+              except Exception as e:
+                  logger.error(f"Error: {str(e)}", exc_info=True)
+                  return {
+                      "jsonrpc": "2.0",
+                      "error": {"code": -32603, "message": str(e)},
+                      "id": event.get('id')
+                  }
+
+  RequestsLayer:
+    Type: AWS::Lambda::LayerVersion
+    Properties:
+      LayerName: sila2-requests-layer
+      Description: Requests library for Python 3.10
+      Content:
+        S3Bucket: !Ref DeploymentBucket
+        S3Key: lambda/requests_layer.zip
+      CompatibleRuntimes:
+        - python3.10
+
+  InvokerFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: sila2-agentcore-invoker
+      Runtime: python3.10
+      Handler: lambda_function.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 300
+      MemorySize: 256
+      Layers:
+        - !Ref RequestsLayer
+      Environment:
+        Variables:
+          BRIDGE_SERVER_URL: http://bridge.sila2.local:8080
+          AGENTCORE_RUNTIME_ARN: !Ref AgentCoreAgentId
+          AGENTCORE_MEMORY_ID: !Ref AgentCoreAliasId
+      VpcConfig:
+        SubnetIds: !Ref PrivateSubnetIds
+        SecurityGroupIds:
+          - !Ref ProxySecurityGroup
+          - !Ref BridgeSecurityGroup
+      Code:
+        S3Bucket: !Ref DeploymentBucket
+        S3Key: lambda/invoker.zip
+
+  AnalyzeHeatingRateFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: sila2-analyze-heating-rate
+      Runtime: python3.12
+      Handler: index.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 30
+      MemorySize: 128
+      Code:
+        S3Bucket: !Ref DeploymentBucket
+        S3Key: lambda/analyze_heating_rate.zip
+
+Outputs:
+  ProxyFunctionArn:
+    Value: !GetAtt LambdaProxyFunction.Arn
+  ProxyFunctionName:
+    Value: !Ref LambdaProxyFunction
+  InvokerFunctionArn:
+    Value: !GetAtt InvokerFunction.Arn
+  AnalyzeHeatingRateFunctionArn:
+    Value: !GetAtt AnalyzeHeatingRateFunction.Arn
+  LambdaRoleArn:
+    Value: !GetAtt LambdaExecutionRole.Arn

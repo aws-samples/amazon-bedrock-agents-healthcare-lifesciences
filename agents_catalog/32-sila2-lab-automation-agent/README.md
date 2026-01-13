@@ -12,35 +12,30 @@
 - 🔄 **ドキュメント整備中**: Step 3進行中
 - ⬜ **統合テスト**: Step 4未着手
 
-## 🚀 Quick Deploy (Phase 7)
+## 🚀 Quick Deploy
 
 ```bash
-# Phase 7デプロイ (Phase 6完了後)
 cd scripts
 export AWS_REGION=us-west-2
 
-# VPCエンドポイント作成 (必須)
-./00_setup_vpc_endpoint.sh
+# Phase 1: ECRとコンテナイメージ
+./01_setup_ecr_and_build.sh
 
-# Phase 4-6インフラ (既存)
-./01_setup_infrastructure.sh
-./02_build_containers.sh
-./03_deploy_ecs.sh
-./04_create_gateway.sh
+# Phase 2: Lambdaパッケージ
+./02_package_lambdas.sh
 
-# Phase 7: 2 Targets構成
-./05_create_mcp_target.sh  # Target 1 (Container) + Target 2 (Lambda)
+# Phase 3: メインスタックデプロイ
+./03_deploy_stack.sh --vpc-id vpc-xxxxx --subnet-ids subnet-xxxxx,subnet-yyyyy
 
-# AgentCore + Memory
-./06_deploy_agentcore.sh
-
-# テスト
-./07_run_tests.sh
+# Phase 4: AgentCore Runtime
+./04_deploy_agentcore.sh
 
 # UI起動
-./08_setup_ui.sh
-./run_streamlit.sh
+cd ../streamlit_app
+streamlit run app.py
 ```
+
+詳細は [DEPLOYMENT_GUIDE.md](scripts/DEPLOYMENT_GUIDE.md) を参照してください。
 
 ## 🏗️ Architecture (Phase 7)
 
@@ -76,15 +71,11 @@ User/Lambda Invoker → AgentCore Runtime → MCP Gateway (2 Targets)
 ## 📁 Key Files (Phase 7)
 
 ### Deployment Scripts
-- `scripts/00_setup_vpc_endpoint.sh` - VPCエンドポイント作成 (Phase 7新規)
-- `scripts/01_setup_infrastructure.sh` - ECRリポジトリ作成
-- `scripts/02_build_containers.sh` - Containerビルド
-- `scripts/03_deploy_ecs.sh` - ECS + Lambda Proxy
-- `scripts/04_create_gateway.sh` - MCP Gateway作成
-- `scripts/05_create_mcp_target.sh` - 2 Targets作成 (Phase 7更新)
-- `scripts/06_deploy_agentcore.sh` - AgentCore + Memory (Phase 7更新)
-- `scripts/07_run_tests.sh` - 統合テスト
-- `scripts/08_setup_ui.sh` - Streamlit UI
+- `scripts/01_setup_ecr_and_build.sh` - ECRリポジトリ作成 + コンテナビルド
+- `scripts/02_package_lambdas.sh` - Lambda関数パッケージ
+- `scripts/03_deploy_stack.sh` - メインスタック (ECS/Lambda/Gateway/SNS/EventBridge)
+- `scripts/04_deploy_agentcore.sh` - AgentCore Runtime + Memory
+- `scripts/DEPLOYMENT_GUIDE.md` - 詳細デプロイ手順
 
 ### Infrastructure
 - `infrastructure/bridge_container_ecs_no_alb.yaml` - ECS Fargate

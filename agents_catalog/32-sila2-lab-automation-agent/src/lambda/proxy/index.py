@@ -16,7 +16,7 @@ def lambda_handler(event, context):
         # Pure HTTP forwarding - Bridge Container handles all MCP logic
         response = http.request(
             'POST',
-            f"{MCP_ENDPOINT}/mcp",
+            MCP_ENDPOINT,
             body=json.dumps(event),
             headers={'Content-Type': 'application/json'},
             timeout=30.0

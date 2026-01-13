@@ -1,43 +1,90 @@
 #!/bin/bash
+# 共通関数
 
-export PROJECT_NAME="sila2-lab-automation"
-export AWS_REGION="${AWS_REGION:-us-west-2}"
-export STACK_PREFIX="sila2-phase3"
-
-log_info() { echo -e "\033[32m[INFO]\033[0m $1"; }
-log_warn() { echo -e "\033[33m[WARN]\033[0m $1"; }
-log_error() { echo -e "\033[31m[ERROR]\033[0m $1"; }
-print_header() { echo -e "\n\033[1;36m=== $1 ===\033[0m\n"; }
-print_step() { echo -e "\033[1;34m>>> $1\033[0m"; }
-print_info() { echo -e "\033[32m[INFO]\033[0m $1"; }
-print_success() { echo -e "\033[1;32m✓\033[0m $1"; }
-print_warning() { echo -e "\033[33m[WARN]\033[0m $1"; }
-print_error() { echo -e "\033[31m[ERROR]\033[0m $1"; }
-
-confirm_action() {
-    read -p "$1 (y/N): " -n 1 -r
-    echo
-    [[ $REPLY =~ ^[Yy]$ ]]
+# CloudFormation操作
+get_stack_output() {
+  aws cloudformation describe-stacks \
+    --stack-name "$1" \
+    --query "Stacks[0].Outputs[?OutputKey=='$2'].OutputValue" \
+    --output text \
+    --region "${DEFAULT_REGION}"
 }
 
-check_stack_exists() {
-    aws cloudformation describe-stacks --stack-name "$1" --region "$AWS_REGION" >/dev/null 2>&1
+# ECR操作
+ecr_login() {
+  aws ecr get-login-password --region "${DEFAULT_REGION}" | \
+    docker login --username AWS --password-stdin \
+    "${ACCOUNT_ID}.dkr.ecr.${DEFAULT_REGION}.amazonaws.com"
 }
 
-check_file_exists() {
-    if [[ ! -f "$1" ]]; then
-        log_warn "File not found: $1 (skipping)"
-        return 1
-    fi
-    return 0
+# Docker操作
+build_and_push_image() {
+  local dir=$1
+  local repo=$2
+  local original_dir=$(pwd)
+  
+  echo "Building image from ${dir}..."
+  cd "${dir}" || exit 1
+  
+  docker build -t "${repo}:latest" .
+  docker tag "${repo}:latest" "${ACCOUNT_ID}.dkr.ecr.${DEFAULT_REGION}.amazonaws.com/${repo}:latest"
+  docker push "${ACCOUNT_ID}.dkr.ecr.${DEFAULT_REGION}.amazonaws.com/${repo}:latest"
+  
+  cd "${original_dir}" || exit 1
 }
 
-wait_for_stack() {
-    local stack_name="$1"
-    local operation="$2"
-    
-    log_info "Waiting for stack $operation to complete..."
-    aws cloudformation wait "stack-${operation}-complete" \
-        --stack-name "$stack_name" \
-        --region "$AWS_REGION"
+# Lambda操作
+package_lambda() {
+  local dir=$1
+  local bucket=$2
+  local original_dir=$(pwd)
+  
+  echo "Packaging Lambda from ${dir}..."
+  cd "${dir}" || exit 1
+  
+  local zip_name=$(basename "${dir}").zip
+  zip -r "/tmp/${zip_name}" . -x "*.pyc" "__pycache__/*"
+  aws s3 cp "/tmp/${zip_name}" "s3://${bucket}/lambda/" --region "${DEFAULT_REGION}"
+  
+  cd "${original_dir}" || exit 1
+}
+
+package_custom_resource() {
+  local dir=$1
+  local bucket=$2
+  local zip_name=$3
+  local original_dir=$(pwd)
+  
+  echo "Packaging Custom Resource from ${dir}..."
+  cd "${dir}" || exit 1
+  
+  zip -r "/tmp/${zip_name}" . -x "*.pyc" "__pycache__/*"
+  aws s3 cp "/tmp/${zip_name}" "s3://${bucket}/lambda/" --region "${DEFAULT_REGION}"
+  
+  cd "${original_dir}" || exit 1
+}
+
+# S3バケット作成
+create_deployment_bucket() {
+  local bucket=$1
+  
+  if aws s3 ls "s3://${bucket}" 2>/dev/null; then
+    echo "Bucket ${bucket} already exists"
+  else
+    echo "Creating bucket ${bucket}..."
+    aws s3 mb "s3://${bucket}" --region "${DEFAULT_REGION}"
+  fi
+}
+
+# ECR作成
+create_ecr_if_not_exists() {
+  local repo=$1
+  
+  if aws ecr describe-repositories --repository-names "${repo}" --region "${DEFAULT_REGION}" 2>/dev/null >/dev/null; then
+    echo "✅ Repository ${repo} exists"
+  else
+    echo "Creating repository ${repo}..."
+    aws ecr create-repository --repository-name "${repo}" --region "${DEFAULT_REGION}" >/dev/null
+    echo "✅ Repository ${repo} created"
+  fi
 }
