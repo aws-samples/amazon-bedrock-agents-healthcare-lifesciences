@@ -44,13 +44,9 @@ Parameters:
     Type: String
     Description: (Optional) ID of an existing VPC to use. Leave empty to create a new VPC.
     Default: ''
-  ExistingPrivateSubnet1Id:
-    Type: String
-    Description: (Optional) ID of first existing private subnet. Required if using existing VPC.
-    Default: ''
-  ExistingPrivateSubnet2Id:
-    Type: String
-    Description: (Optional) ID of second existing private subnet. Required if using existing VPC.
+  ExistingPrivateSubnets:
+    Type: CommaDelimitedList
+    Description: (Optional) A list of 2 private subnet IDs in your AWS account and AWS region from two different AZs are required.
     Default: ''
 
 Conditions:
@@ -145,7 +141,7 @@ Resources:
           USERNAME: !Ref RedshiftUserName
           PASSWORD: !Ref RedshiftPassword
         PhysicalConnectionRequirements:
-          SubnetId: !If [CreateNewVpc, !Ref PrivateSubnet1, !Ref ExistingPrivateSubnet1Id]
+          SubnetId: !If [CreateNewVpc, !Ref PrivateSubnet1, !Select [0, !Ref ExistingPrivateSubnets]]
           SecurityGroupIdList: [!Ref SecurityGroup]
           AvailabilityZone: !Select 
             - 0
@@ -170,9 +166,11 @@ Resources:
     Type: AWS::Redshift::ClusterSubnetGroup
     Properties:
       Description: Subnet group for Redshift cluster
-      SubnetIds:
-        - !If [CreateNewVpc, !Ref PrivateSubnet1, !Ref ExistingPrivateSubnet1Id]
-        - !If [CreateNewVpc, !Ref PrivateSubnet2, !Ref ExistingPrivateSubnet2Id]
+      SubnetIds: !If
+        - CreateNewVpc
+        - - !Ref PrivateSubnet1
+          - !Ref PrivateSubnet2
+        - !Ref ExistingPrivateSubnets
       Tags:
         - Key: Name
           Value: !Sub ${AWS::StackName}-RedshiftSubnetGroup
@@ -687,11 +685,15 @@ Resources:
                   - !If
                     - CreateNewVpc
                     - !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:subnet/${PrivateSubnet1}'
-                    - !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:subnet/${ExistingPrivateSubnet1Id}'
+                    - !Sub
+                      - 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:subnet/${SubnetId}'
+                      - SubnetId: !Select [0, !Ref ExistingPrivateSubnets]
                   - !If
                     - CreateNewVpc
                     - !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:subnet/${PrivateSubnet2}'
-                    - !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:subnet/${ExistingPrivateSubnet2Id}'
+                    - !Sub
+                      - 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:subnet/${SubnetId}'
+                      - SubnetId: !Select [1, !Ref ExistingPrivateSubnets]
                   - !If
                     - CreateNewVpc
                     - !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:vpc/${VPC}'
@@ -2448,12 +2450,12 @@ Outputs:
       Name: !Sub ${AWS::StackName}-VpcId
   PrivateSubnet1Id:
     Description: Private Subnet 1 ID (created or provided)
-    Value: !If [CreateNewVpc, !Ref PrivateSubnet1, !Ref ExistingPrivateSubnet1Id]
+    Value: !If [CreateNewVpc, !Ref PrivateSubnet1, !Select [0, !Ref ExistingPrivateSubnets]]
     Export:
       Name: !Sub ${AWS::StackName}-PrivateSubnet1Id
   PrivateSubnet2Id:
     Description: Private Subnet 2 ID (created or provided)
-    Value: !If [CreateNewVpc, !Ref PrivateSubnet2, !Ref ExistingPrivateSubnet2Id]
+    Value: !If [CreateNewVpc, !Ref PrivateSubnet2, !Select [1, !Ref ExistingPrivateSubnets]]
     Export:
       Name: !Sub ${AWS::StackName}-PrivateSubnet2Id
   RedshiftClusterEndpoint:
