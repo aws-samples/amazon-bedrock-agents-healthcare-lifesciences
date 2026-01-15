@@ -1051,6 +1051,7 @@ Resources:
     Type: AWS::ECR::Repository
     Properties:
       RepositoryName: lifelines-lambda-sample
+      EmptyOnDelete: true
 
   EnsureECRImagePushed:
     Type: Custom::EnsureECRImagePushed
@@ -1336,6 +1337,7 @@ Resources:
     Type: AWS::ECR::Repository
     Properties:
       RepositoryName: medical-image-processing-smstudio
+      EmptyOnDelete: true
 
   ImagingDockerBuildProject:
     Type: AWS::CodeBuild::Project
