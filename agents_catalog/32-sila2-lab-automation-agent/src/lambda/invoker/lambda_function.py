@@ -24,7 +24,7 @@ MEMORY_SDK_AVAILABLE = True
 memory_client = MemoryClient(region_name='us-west-2')
 
 def record_to_memory(device_id, user_message, agent_response, session_id=None):
-    """Memory記録の共通関数"""
+    """Common function for Memory recording"""
     if not MEMORY_ID or not MEMORY_SDK_AVAILABLE:
         print(f"[WARN] Memory recording skipped: MEMORY_ID={MEMORY_ID}, SDK_AVAILABLE={MEMORY_SDK_AVAILABLE}")
         return
@@ -51,7 +51,7 @@ def record_to_memory(device_id, user_message, agent_response, session_id=None):
         print(f"[ERROR] Traceback: {traceback.format_exc()}")
 
 def lambda_handler(event, context):
-    # SNSイベントの検出
+    # Detect SNS events
     if 'Records' in event:
         for record in event['Records']:
             if record.get('EventSource') == 'aws:sns':
@@ -71,7 +71,7 @@ def lambda_handler(event, context):
     return {"statusCode": 400, "body": json.dumps({"error": "Unknown action"})}
 
 def handle_sns_event(event):
-    """SNS経由のeventメッセージ処理"""
+    """Process event messages via SNS"""
     print("[INFO] SNS event received")
     
     for record in event['Records']:
@@ -85,10 +85,10 @@ def handle_sns_event(event):
         print(f"[INFO] Event type: {event_type}, Device: {device_id}")
         
         if event_type == 'TEMPERATURE_REACHED':
-            # 目標温度到達をAgentCoreに通知
+            # Notify AgentCore of target temperature reached
             current_temp = sns_message.get('value', 'N/A')
             
-            # Bridge APIから現在の状態を取得して目標温度を確認
+            # Get current status from Bridge API to confirm target temperature
             try:
                 status_response = requests.get(
                     f"{BRIDGE_SERVER_URL}/api/status/{device_id}",
@@ -140,7 +140,7 @@ Please acknowledge this milestone."""
                 
                 print(f"[INFO] AgentCore response: {agent_response[:100]}...")
                 
-                # Memory記録
+                # Record to Memory
                 record_to_memory(
                     device_id=device_id,
                     user_message=f"Event: {event_type} - Target: {target_temp}°C, Current: {current_temp}°C",
@@ -161,11 +161,11 @@ Please acknowledge this milestone."""
     return {"statusCode": 200, "body": json.dumps({"message": "No events processed"})}
 
 def handle_periodic(event):
-    """定期チェック: 状態+履歴データを渡し、判断はAIに完全委譲"""
+    """Periodic check: pass status + history data, decision fully delegated to AI"""
     device_id = event.get('device_id', 'hplc')
     device_session_id = f"{device_id}-{int(time.time())}-{uuid.uuid4().hex}"
     
-    # 1. 現在の状態取得
+    # 1. Get current status
     try:
         response = requests.get(
             f"{BRIDGE_SERVER_URL}/api/status/{device_id}",
@@ -185,7 +185,7 @@ def handle_periodic(event):
             "scenario_mode": "unknown"
         }
     
-    # 2. 直近2つのデータポイント取得
+    # 2. Get recent 2 data points
     try:
         response = requests.get(
             f"{BRIDGE_SERVER_URL}/api/history/{device_id}?minutes=5",
@@ -199,7 +199,7 @@ def handle_periodic(event):
         print(f"[ERROR] Failed to get history: {e}")
         recent_two = []
     
-    # 3. AIに状況を伝える (判断指示なし、データのみ)
+    # 3. Inform AI of situation (no decision instructions, data only)
     prompt = f"""Periodic status check for device {device_id}:
 
 Current Status:
@@ -243,7 +243,7 @@ Please assess the situation and decide:
             if line.startswith('data: '):
                 agent_response += line[6:]
         
-        # Memory記録
+        # Record to Memory
         record_to_memory(
             device_id=device_id,
             user_message=prompt,
@@ -264,7 +264,7 @@ Please assess the situation and decide:
         return {"statusCode": 500, "body": json.dumps({"error": str(e)})}
 
 def handle_manual_control(event):
-    """手動制御 - AgentCore経由"""
+    """Manual control - via AgentCore"""
     device_id = event.get('device_id', 'hplc')
     query = event.get('query', '')
     
@@ -309,7 +309,7 @@ def handle_manual_control(event):
             if line.startswith('data: '):
                 agent_response += line[6:]
         
-        # Memory記録
+        # Record to Memory
         record_to_memory(
             device_id=device_id,
             user_message=query,
@@ -326,25 +326,25 @@ def handle_manual_control(event):
         return {"statusCode": 500, "body": json.dumps({"error": str(e)})}
 
 def clear_and_initialize_memory_DEPRECATED(device_id, target_temp):
-    """Memory初期化 + 実験ルール登録"""
+    """Memory initialization + experiment rule registration"""
     if not MEMORY_ID or not MEMORY_SDK_AVAILABLE:
         print(f"[WARN] MEMORY_ID not set or SDK not available")
         return
     
-    # Session IDを短縮 (100文字制限)
+    # Shorten Session ID (100 character limit)
     session_id = f"hplc-session-{device_id[-8:]}" if len(device_id) > 8 else f"hplc-session-{device_id}"
     
     try:
         memory_client = MemoryClient(region_name='us-west-2')
         
-        # 実験ルール登録
+        # Register experiment rules
         memory_client.create_event(
             memory_id=MEMORY_ID,
-            actor_id=device_id[:50],  # 50文字制限
+            actor_id=device_id[:50],  # 50 character limit
             session_id=session_id,
             messages=[
-                (f"実験開始: デバイス{device_id}の目標温度を{target_temp}°Cに設定", "USER"),
-                (f"実験ルールを記憶しました。目標温度{target_temp}°C、期待昇温速度1.0°C/分以上、0.5°C/分未満は異常と判断します。", "ASSISTANT")
+                (f"Experiment start: Set target temperature for device {device_id} to {target_temp}°C", "USER"),
+                (f"Experiment rules memorized. Target temperature {target_temp}°C, expected heating rate 1.0°C/min or higher, below 0.5°C/min is considered abnormal.", "ASSISTANT")
             ]
         )
         
@@ -356,19 +356,19 @@ def clear_and_initialize_memory_DEPRECATED(device_id, target_temp):
         print(f"[ERROR] Traceback: {traceback.format_exc()}")
 
 def ensure_experiment_rules_DEPRECATED(device_id):
-    """実験ルール確認 (DEPRECATED)"""
+    """Check experiment rules (DEPRECATED)"""
     return True
 
 def check_recent_manual_control_DEPRECATED(device_id, minutes=5):
-    """過去指定分以内の手動制御をチェック (DEPRECATED)"""
+    """Check manual control within specified minutes (DEPRECATED)"""
     return False
 
 def record_manual_control_DEPRECATED(device_id, command):
-    """手動制御をMemoryに記録 (DEPRECATED)"""
+    """Record manual control to Memory (DEPRECATED)"""
     pass
 
 def handle_get_history(event):
-    """履歴取得 - AgentCore経由"""
+    """Get history - via AgentCore"""
     device_id = event.get('device_id', 'hplc')
     minutes = event.get('minutes', 5)
     query = f"Get temperature history for {device_id} for the last {minutes} minutes"
@@ -410,7 +410,7 @@ def handle_get_history(event):
         return {"statusCode": 500, "body": json.dumps({"error": str(e)})}
 
 def handle_get_temperature_direct(event):
-    """Bridge Server APIから直接温度データを取得"""
+    """Get temperature data directly from Bridge Server API"""
     device_id = event.get('device_id', 'hplc')
     
     try:

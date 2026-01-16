@@ -15,7 +15,7 @@ if 'temperature_data' not in st.session_state:
 
 LAMBDA_FUNCTION = os.getenv('LAMBDA_FUNCTION_NAME', 'sila2-agentcore-invoker')
 AWS_REGION = os.getenv('AWS_REGION', 'us-west-2')
-MEMORY_ID = 'sila2_memory-l1cdvZ3d40'
+MEMORY_ID = 'sila2_memory-NP8yujB2Vs'
 
 lambda_client = boto3.client('lambda', region_name=AWS_REGION)
 
@@ -26,7 +26,7 @@ except:
     MEMORY_AVAILABLE = False
 
 def invoke_agentcore_with_temperature(device_id, temperature):
-    """温度設定付きでAgentCoreを呼び出し"""
+    """Invoke AgentCore with temperature setting"""
     try:
         payload = {
             "action": "manual_control",
@@ -89,30 +89,25 @@ def get_temperature_data():
     return None
 
 def get_recent_session_ids_from_logs():
-    """CloudWatch Logsから最近のセッションIDを取得"""
+    """Get recent session IDs from CloudWatch Logs"""
     try:
         logs_client = boto3.client('logs', region_name=AWS_REGION)
-        
-        # 過去10分間のログを検索
         import time
-        start_time = int((time.time() - 600) * 1000)  # 10分前
+        start_time = int((time.time() - 3600) * 1000)
         
         response = logs_client.filter_log_events(
             logGroupName='/aws/lambda/' + LAMBDA_FUNCTION,
             startTime=start_time,
-            filterPattern='"Memory recorded successfully: session="'
+            filterPattern='"Memory recorded"'
         )
         
         session_ids = []
         for event in response.get('events', []):
             message = event.get('message', '')
-            # "Memory recorded successfully: session=hplc-1768278064-..."から抽出
             if 'session=' in message:
-                parts = message.split('session=')
-                if len(parts) > 1:
-                    session_id = parts[1].split(',')[0].strip()
-                    if session_id and session_id not in session_ids:
-                        session_ids.append(session_id)
+                session_id = message.split('session=')[1].strip()
+                if session_id and session_id not in session_ids:
+                    session_ids.append(session_id)
         
         return session_ids
     except Exception as e:
@@ -132,13 +127,13 @@ def get_memory_events_with_id(memory_id):
         all_events = []
         all_session_ids = set()
         
-        # 1. CloudWatch Logsから最近のセッションIDを取得
+        # 1. Get recent session IDs from CloudWatch Logs
         recent_session_ids = get_recent_session_ids_from_logs()
         debug_info['log_sessions_count'] = len(recent_session_ids)
         debug_info['log_session_ids'] = recent_session_ids[:5]
         all_session_ids.update(recent_session_ids)
         
-        # 2. list_sessionsで既知のセッションを取得
+        # 2. Get known sessions with list_sessions
         sessions_response = bedrock_agentcore.list_sessions(
             memoryId=memory_id,
             actorId=actor_id,
@@ -152,7 +147,7 @@ def get_memory_events_with_id(memory_id):
         
         debug_info['total_unique_sessions'] = len(all_session_ids)
         
-        # 3. すべてのセッションからイベント取得
+        # 3. Get events from all sessions
         for session_id in all_session_ids:
             if not session_id:
                 continue
@@ -200,8 +195,9 @@ def get_memory_events_with_id(memory_id):
         
         all_events.sort(key=lambda x: x['timestamp'], reverse=True)
         debug_info['event_count'] = len(all_events)
+        debug_info['session_count'] = len(all_session_ids)
         debug_info['latest_event_time'] = all_events[0]['timestamp'].isoformat() if all_events else 'N/A'
-        return all_events[:20], debug_info
+        return all_events[:50], debug_info
         
     except Exception as e:
         return [], {'error': str(e), 'traceback': str(e)}

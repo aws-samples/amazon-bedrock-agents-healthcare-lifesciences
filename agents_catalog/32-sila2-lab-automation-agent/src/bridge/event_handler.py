@@ -7,7 +7,7 @@ sns_client = boto3.client('sns')
 SNS_TOPIC_ARN = os.environ.get('SNS_TOPIC_ARN')
 
 async def handle_sila2_event(device_id: str, event_data: dict):
-    """SiLA2イベントをSNSに送信"""
+    """Send SiLA2 event to SNS"""
     if not SNS_TOPIC_ARN:
         print("SNS_TOPIC_ARN not configured, skipping event publish")
         return

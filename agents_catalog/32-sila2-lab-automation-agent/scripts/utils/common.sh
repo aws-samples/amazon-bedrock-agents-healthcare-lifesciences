@@ -1,7 +1,7 @@
 #!/bin/bash
-# 共通関数
+# Common functions
 
-# CloudFormation操作
+# CloudFormation operations
 get_stack_output() {
   aws cloudformation describe-stacks \
     --stack-name "$1" \
@@ -10,14 +10,14 @@ get_stack_output() {
     --region "${DEFAULT_REGION}"
 }
 
-# ECR操作
+# ECR operations
 ecr_login() {
   aws ecr get-login-password --region "${DEFAULT_REGION}" | \
     docker login --username AWS --password-stdin \
     "${ACCOUNT_ID}.dkr.ecr.${DEFAULT_REGION}.amazonaws.com"
 }
 
-# Docker操作
+# Docker operations
 build_and_push_image() {
   local dir=$1
   local repo=$2
@@ -33,7 +33,7 @@ build_and_push_image() {
   cd "${original_dir}" || exit 1
 }
 
-# Lambda操作
+# Lambda operations
 package_lambda() {
   local dir=$1
   local bucket=$2
@@ -64,7 +64,7 @@ package_custom_resource() {
   cd "${original_dir}" || exit 1
 }
 
-# S3バケット作成
+# Create S3 bucket
 create_deployment_bucket() {
   local bucket=$1
   
@@ -76,7 +76,7 @@ create_deployment_bucket() {
   fi
 }
 
-# ECR作成
+# Create ECR
 create_ecr_if_not_exists() {
   local repo=$1
   

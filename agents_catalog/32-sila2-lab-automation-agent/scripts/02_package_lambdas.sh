@@ -6,6 +6,23 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/utils/config.sh"
 source "${SCRIPT_DIR}/utils/common.sh"
 
+# Check prerequisites
+if ! command -v aws &> /dev/null; then
+    echo "Error: AWS CLI is not installed. Please install it first."
+    echo "Visit: https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html"
+    exit 1
+fi
+
+if ! command -v python3 &> /dev/null; then
+    echo "Error: Python 3 is not installed. Please install Python 3.9 or higher."
+    exit 1
+fi
+
+if ! command -v zip &> /dev/null; then
+    echo "Error: zip command is not found. Please install zip utility."
+    exit 1
+fi
+
 echo "=== Lambda Function Packaging ==="
 echo "Deployment Bucket: ${DEPLOYMENT_BUCKET}"
 echo "Region: ${DEFAULT_REGION}"
@@ -39,9 +56,9 @@ mkdir -p "${TEMP_DIR}"
 # Copy Lambda code
 cp lambda_function.py "${TEMP_DIR}/"
 
-# Install bedrock-agentcore and boto3 using Python 3.10
-echo "Installing bedrock-agentcore and boto3 for Python 3.10..."
-~/.pyenv/versions/3.10.12/bin/pip install bedrock-agentcore boto3 botocore -t "${TEMP_DIR}" --upgrade
+# Install bedrock-agentcore and boto3
+echo "Installing bedrock-agentcore and boto3..."
+python3 -m pip install bedrock-agentcore boto3 botocore -t "${TEMP_DIR}" --upgrade --quiet
 
 # Create zip
 cd "${TEMP_DIR}"
@@ -58,9 +75,9 @@ LAYER_DIR="/tmp/requests_layer"
 rm -rf "${LAYER_DIR}"
 mkdir -p "${LAYER_DIR}/python"
 
-# Install requests from a stable directory
+# Install requests
 cd /tmp
-~/.pyenv/versions/3.10.12/bin/pip install requests -t "${LAYER_DIR}/python" --upgrade
+python3 -m pip install requests -t "${LAYER_DIR}/python" --upgrade --quiet
 
 # Create zip from the layer directory
 cd "${LAYER_DIR}"

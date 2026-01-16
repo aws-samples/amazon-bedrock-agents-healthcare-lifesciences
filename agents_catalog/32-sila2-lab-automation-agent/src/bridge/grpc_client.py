@@ -22,11 +22,11 @@ class GrpcClient:
     def __init__(self):
         self.channels = {}
         self.stubs = {}
-        self.reconnect_interval = 60  # 60秒ごとに再接続チェック
+        self.reconnect_interval = 60  # Reconnect check every 60 seconds
         self.last_reconnect = {}
         try:
             self._init_connections()
-            # バックグラウンドで定期再接続スレッド開始
+            # Start periodic reconnect thread in background
             self._start_reconnect_thread()
         except Exception as e:
             print(f"Warning: Failed to initialize gRPC connections: {e}")
@@ -43,7 +43,7 @@ class GrpcClient:
             self._connect_device(name, url)
     
     def _connect_device(self, name: str, url: str):
-        """個別デバイスへの接続"""
+        """Connect to individual device"""
         try:
             if name in self.channels:
                 try:
@@ -59,7 +59,7 @@ class GrpcClient:
             print(f"[gRPC] Failed to connect to {name} at {url}: {e}", flush=True)
     
     def _start_reconnect_thread(self):
-        """定期再接続スレッド開始"""
+        """Start periodic reconnect thread"""
         def reconnect_loop():
             devices = {
                 'hplc': os.getenv('HPLC_GRPC_URL', 'localhost:50051'),
@@ -72,7 +72,7 @@ class GrpcClient:
                 for name, url in devices.items():
                     if name in self.stubs:
                         try:
-                            # 接続テスト
+                            # Connection test
                             request = sila2_basic_pb2.DeviceInfoRequest(device_id=name)
                             self.stubs[name].GetDeviceInfo(request, timeout=2)
                         except Exception as e:

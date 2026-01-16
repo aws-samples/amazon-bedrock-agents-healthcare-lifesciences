@@ -5,9 +5,27 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/utils/config.sh"
 source "${SCRIPT_DIR}/utils/common.sh"
 
+# Check prerequisites
+if ! command -v aws &> /dev/null; then
+    echo "Error: AWS CLI is not installed. Please install it first."
+    echo "Visit: https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html"
+    exit 1
+fi
+
+if ! command -v python3 &> /dev/null; then
+    echo "Error: Python 3 is not installed. Please install Python 3.9 or higher."
+    exit 1
+fi
+
+if ! command -v agentcore &> /dev/null; then
+    echo "Error: AgentCore CLI is not installed. Please install it first."
+    echo "Visit: https://docs.aws.amazon.com/bedrock/latest/userguide/agentcore-cli.html"
+    exit 1
+fi
+
 echo "=== AgentCore Deployment (Gateway + Memory + Runtime) ==="
 
-# CFnから必要な情報を取得
+# Get required information from CFn
 EXECUTION_ROLE_ARN=$(get_stack_output "${MAIN_STACK_NAME}" "LambdaRoleArn")
 PROXY_LAMBDA_ARN=$(get_stack_output "${MAIN_STACK_NAME}" "ProxyFunctionArn")
 ANALYZE_LAMBDA_ARN=$(get_stack_output "${MAIN_STACK_NAME}" "AnalyzeHeatingRateFunctionArn")
@@ -25,11 +43,11 @@ echo "=== Part 1: Gateway & Targets ==="
 ROLE_NAME=$(echo $EXECUTION_ROLE_ARN | cut -d'/' -f2)
 echo "Adding IAM permissions..."
 
-/usr/local/bin/aws iam put-role-policy --role-name "$ROLE_NAME" --policy-name BedrockAgentCoreAccess \
+aws iam put-role-policy --role-name "$ROLE_NAME" --policy-name BedrockAgentCoreAccess \
   --policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":"bedrock-agentcore:*","Resource":"*"}]}' \
   --region "${DEFAULT_REGION}" 2>/dev/null || echo "Permission already exists"
 
-/usr/local/bin/aws iam update-assume-role-policy --role-name "$ROLE_NAME" \
+aws iam update-assume-role-policy --role-name "$ROLE_NAME" \
   --policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":["lambda.amazonaws.com","bedrock-agentcore.amazonaws.com","codebuild.amazonaws.com"]},"Action":"sts:AssumeRole"}]}' \
   --region "${DEFAULT_REGION}"
 
@@ -82,7 +100,7 @@ cat > /tmp/s3-policy.json << EOF
 }
 EOF
 
-/usr/local/bin/aws iam put-role-policy \
+aws iam put-role-policy \
     --role-name "$ROLE_NAME" \
     --policy-name "CodeBuildS3Access" \
     --policy-document file:///tmp/s3-policy.json \
@@ -93,10 +111,10 @@ echo "✅ S3 permissions added"
 
 # Add CodeBuild trust policy
 echo "Adding CodeBuild trust policy..."
-/usr/local/bin/aws iam get-role --role-name "$ROLE_NAME" --region "${DEFAULT_REGION}" --query 'Role.AssumeRolePolicyDocument' > /tmp/trust-policy.json
+aws iam get-role --role-name "$ROLE_NAME" --region "${DEFAULT_REGION}" --query 'Role.AssumeRolePolicyDocument' > /tmp/trust-policy.json
 
 if ! grep -q "codebuild.amazonaws.com" /tmp/trust-policy.json; then
-    ~/.pyenv/versions/3.10.12/bin/python3 << 'PYEOF'
+    python3 << 'PYEOF'
 import json
 with open('/tmp/trust-policy.json', 'r') as f:
     policy = json.load(f)
@@ -112,7 +130,7 @@ for statement in policy['Statement']:
 with open('/tmp/trust-policy-updated.json', 'w') as f:
     json.dump(policy, f, indent=2)
 PYEOF
-    /usr/local/bin/aws iam update-assume-role-policy --role-name "$ROLE_NAME" --policy-document file:///tmp/trust-policy-updated.json --region "${DEFAULT_REGION}"
+    aws iam update-assume-role-policy --role-name "$ROLE_NAME" --policy-document file:///tmp/trust-policy-updated.json --region "${DEFAULT_REGION}"
     rm -f /tmp/trust-policy.json /tmp/trust-policy-updated.json
     echo "✅ CodeBuild trust policy added"
 else
@@ -137,7 +155,7 @@ cat > /tmp/lambda-policy.json << EOF
   ]
 }
 EOF
-/usr/local/bin/aws iam put-role-policy --role-name "$ROLE_NAME" --policy-name "LambdaInvokePolicy" --policy-document file:///tmp/lambda-policy.json --region "${DEFAULT_REGION}" 2>/dev/null || echo "Lambda policy exists"
+aws iam put-role-policy --role-name "$ROLE_NAME" --policy-name "LambdaInvokePolicy" --policy-document file:///tmp/lambda-policy.json --region "${DEFAULT_REGION}" 2>/dev/null || echo "Lambda policy exists"
 rm -f /tmp/lambda-policy.json
 echo "✅ Lambda Invoke permissions added"
 
@@ -160,15 +178,15 @@ cat > /tmp/memory-policy.json << EOF
   ]
 }
 EOF
-/usr/local/bin/aws iam put-role-policy --role-name "$ROLE_NAME" --policy-name "BedrockAgentCoreMemoryPolicy" --policy-document file:///tmp/memory-policy.json --region "${DEFAULT_REGION}" 2>/dev/null || echo "Memory policy exists"
+aws iam put-role-policy --role-name "$ROLE_NAME" --policy-name "BedrockAgentCoreMemoryPolicy" --policy-document file:///tmp/memory-policy.json --region "${DEFAULT_REGION}" 2>/dev/null || echo "Memory policy exists"
 rm -f /tmp/memory-policy.json
 echo "✅ Memory permissions added"
 
-# Gateway作成
+# Create Gateway (using infrastructure/gateway.yaml)
 GATEWAY_NAME="sila2-gateway-$(date +%s)"
 echo "Creating Gateway: ${GATEWAY_NAME}..."
 
-GATEWAY_OUTPUT=$(~/.pyenv/versions/3.10.12/bin/python3 << PYEOF
+GATEWAY_OUTPUT=$(python3 << PYEOF
 import boto3
 client = boto3.client('bedrock-agentcore-control', region_name='${DEFAULT_REGION}')
 r = client.create_gateway(
@@ -188,16 +206,16 @@ echo "  ID: ${GATEWAY_ID}"
 echo "  ARN: ${GATEWAY_ARN}"
 echo "  URL: ${GATEWAY_URL}"
 
-# Lambda権限追加
+# Add Lambda permissions
 echo "Adding Lambda permissions..."
-/usr/local/bin/aws lambda add-permission --function-name sila2-mcp-proxy \
+aws lambda add-permission --function-name sila2-mcp-proxy \
   --statement-id "BedrockAgentCore-${GATEWAY_ID}" --action lambda:InvokeFunction \
   --principal bedrock-agentcore.amazonaws.com --source-arn "$GATEWAY_ARN" \
   --region "${DEFAULT_REGION}" 2>/dev/null || echo "Permission already exists"
 
 # Target 1: Bridge Container
 echo "Creating Target 1: Bridge Container..."
-TARGET1_ID=$(~/.pyenv/versions/3.10.12/bin/python3 << PYEOF
+TARGET1_ID=$(python3 << PYEOF
 import boto3
 client = boto3.client('bedrock-agentcore-control', region_name='${DEFAULT_REGION}')
 r = client.create_gateway_target(
@@ -221,12 +239,12 @@ echo "✅ Target 1 created: ${TARGET1_ID}"
 
 # Target 2: Analyze Heating Rate
 echo "Creating Target 2: Analyze Heating Rate..."
-/usr/local/bin/aws lambda add-permission --function-name sila2-analyze-heating-rate \
+aws lambda add-permission --function-name sila2-analyze-heating-rate \
   --statement-id "BedrockAgentCore-${GATEWAY_ID}" --action lambda:InvokeFunction \
   --principal bedrock-agentcore.amazonaws.com --source-arn "$GATEWAY_ARN" \
   --region "${DEFAULT_REGION}" 2>/dev/null || echo "Permission already exists"
 
-TARGET2_ID=$(~/.pyenv/versions/3.10.12/bin/python3 << PYEOF
+TARGET2_ID=$(python3 << PYEOF
 import boto3
 client = boto3.client('bedrock-agentcore-control', region_name='${DEFAULT_REGION}')
 r = client.create_gateway_target(
@@ -250,7 +268,7 @@ echo "✅ Target 2 created: ${TARGET2_ID}"
 echo ""
 echo "=== Part 2: Memory ==="
 
-MEMORY_ID=$(~/.pyenv/versions/3.10.12/bin/python3 << PYEOF
+MEMORY_ID=$(python3 << PYEOF
 import boto3
 client = boto3.client('bedrock-agentcore-control', region_name='${DEFAULT_REGION}')
 try:
@@ -267,7 +285,7 @@ PYEOF
 
 if [ -z "$MEMORY_ID" ]; then
     echo "Creating Memory..."
-    ~/.pyenv/versions/3.10.12/bin/agentcore memory create sila2_memory \
+    agentcore memory create sila2_memory \
         --region "${DEFAULT_REGION}" \
         --description "SiLA2 device control memory" \
         --strategies '[{"summaryMemoryStrategy":{"name":"DeviceControlSummary","description":"Summarizes device control decisions","namespaces":["/summaries/{actorId}/{sessionId}"]}}]' \
@@ -275,7 +293,7 @@ if [ -z "$MEMORY_ID" ]; then
     
     sleep 5
     
-    MEMORY_ID=$(/usr/local/bin/aws bedrock-agentcore-control list-memories \
+    MEMORY_ID=$(aws bedrock-agentcore-control list-memories \
         --region "${DEFAULT_REGION}" \
         --query "memories[?starts_with(id, 'sila2_memory')].id | [0]" \
         --output text)
@@ -291,16 +309,16 @@ echo "=== Part 3: Runtime ==="
 
 AGENT_NAME="sila2_agent"
 
-# ECR作成
+# Create ECR
 create_ecr_if_not_exists "bedrock-agentcore-${AGENT_NAME}"
 
-# Gateway URL更新
+# Update Gateway URL
 cd "$(dirname "$SCRIPT_DIR")"
 sed -i "s|GATEWAY_URL = os.getenv('GATEWAY_URL', '.*')|GATEWAY_URL = os.getenv('GATEWAY_URL', '$GATEWAY_URL')|" main_agentcore.py
 
 # Configure
 rm -f .bedrock_agentcore.yaml
-~/.pyenv/versions/3.10.12/bin/agentcore configure \
+agentcore configure \
     --name "${AGENT_NAME}" \
     --entrypoint main_agentcore.py \
     --execution-role "${EXECUTION_ROLE_ARN}" \
@@ -312,7 +330,7 @@ rm -f .bedrock_agentcore.yaml
     --non-interactive
 
 # Update config with Gateway and Memory
-~/.pyenv/versions/3.10.12/bin/python3 << PYEOF
+python3 << PYEOF
 import yaml
 with open('.bedrock_agentcore.yaml', 'r') as f:
     config = yaml.safe_load(f)
@@ -334,9 +352,9 @@ PYEOF
 
 # Deploy
 echo "Deploying Runtime..."
-~/.pyenv/versions/3.10.12/bin/agentcore deploy --auto-update-on-conflict
+agentcore deploy --auto-update-on-conflict
 
-AGENT_ARN=$(~/.pyenv/versions/3.10.12/bin/agentcore status 2>/dev/null | grep "Agent ARN:" | awk '{print $NF}')
+AGENT_ARN=$(agentcore status 2>/dev/null | grep -A 2 "Agent ARN:" | tail -2 | tr -d '│ ' | tr -d '\n')
 AGENT_ID=$(echo "$AGENT_ARN" | awk -F'/' '{print $NF}')
 
 echo "✅ Runtime deployed"
@@ -344,7 +362,7 @@ echo "  Agent ID: ${AGENT_ID}"
 echo "  Agent ARN: ${AGENT_ARN}"
 
 # Associate Gateway
-~/.pyenv/versions/3.10.12/bin/python3 << PYEOF
+python3 << PYEOF
 import boto3
 client = boto3.client('bedrock-agentcore-control', region_name='${DEFAULT_REGION}')
 try:
@@ -357,7 +375,7 @@ except Exception as e:
     print(f"Warning: {e}")
 PYEOF
 
-# 設定ファイル保存
+# Save configuration file
 cat > "${SCRIPT_DIR}/../.gateway-config" << EOF
 GATEWAY_ID="${GATEWAY_ID}"
 GATEWAY_ARN="${GATEWAY_ARN}"
@@ -369,14 +387,14 @@ AGENT_ID="${AGENT_ID}"
 AGENT_ARN="${AGENT_ARN}"
 EOF
 
-# Lambda環境変数を更新
+# Update Lambda environment variables
 echo ""
 echo "=== Updating Lambda Environment Variables ==="
 
-RUNTIME_ARN=$(~/.pyenv/versions/3.10.12/bin/agentcore status 2>/dev/null | grep "Runtime ARN:" | awk '{print $NF}')
+RUNTIME_ARN=$(agentcore status 2>/dev/null | grep -A 2 "Agent ARN:" | tail -2 | tr -d '│ ' | tr -d '\n')
 
 echo "Updating sila2-agentcore-invoker..."
-/usr/local/bin/aws lambda update-function-configuration \
+aws lambda update-function-configuration \
   --function-name sila2-agentcore-invoker \
   --environment "Variables={BRIDGE_SERVER_URL=http://bridge.sila2.local:8080,AGENTCORE_RUNTIME_ARN=${RUNTIME_ARN},AGENTCORE_MEMORY_ID=${MEMORY_ID}}" \
   --region "${DEFAULT_REGION}" \
@@ -385,6 +403,17 @@ echo "Updating sila2-agentcore-invoker..."
 
 echo "Waiting for Lambda configuration to propagate..."
 sleep 5
+
+# Update Streamlit app.py MEMORY_ID
+echo ""
+echo "=== Updating Streamlit app.py ==="
+STREAMLIT_APP="${SCRIPT_DIR}/../streamlit_app/app.py"
+if [ -f "$STREAMLIT_APP" ]; then
+    sed -i "s/MEMORY_ID = 'sila2_memory-[^']*'/MEMORY_ID = '${MEMORY_ID}'/" "$STREAMLIT_APP"
+    echo "✅ Streamlit app.py updated with Memory ID: ${MEMORY_ID}"
+else
+    echo "⚠️  Streamlit app.py not found at ${STREAMLIT_APP}"
+fi
 
 echo ""
 echo "=== Deployment Complete ==="

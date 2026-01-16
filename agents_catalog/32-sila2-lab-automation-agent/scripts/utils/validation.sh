@@ -18,7 +18,7 @@ validate_aws_cli() {
 }
 
 validate_agentcore_cli() {
-    # .pyenv環境のagentcoreをチェック
+    # Check agentcore in .pyenv environment
     local agentcore_path="$HOME/.pyenv/shims/agentcore"
     if [[ -f "$agentcore_path" ]]; then
         export PATH="$HOME/.pyenv/shims:$PATH"
@@ -68,7 +68,7 @@ validate_environment() {
     
     validate_aws_cli
     
-    # AgentCore CLIは警告のみ、デプロイは続行
+    # AgentCore CLI is warning only, deployment continues
     if ! validate_agentcore_cli; then
         log_warn "AgentCore CLI not found - some features may be limited"
     fi

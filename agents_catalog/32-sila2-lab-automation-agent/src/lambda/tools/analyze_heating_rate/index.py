@@ -2,7 +2,7 @@ import json
 from datetime import datetime
 
 def lambda_handler(event, context):
-    """温度上昇率を計算 - 純粋な計算のみ、判断はAIに委譲"""
+    """Calculate temperature rise rate - pure calculation only, decision delegated to AI"""
     
     # MCP format handling
     if 'jsonrpc' in event:
@@ -14,7 +14,7 @@ def lambda_handler(event, context):
         device_id = event.get('device_id')
         history = event.get('history', [])
     
-    # 最低2点必要
+    # Need at least 2 points
     if len(history) < 2:
         result = {
             "error": "Need at least 2 data points",
@@ -22,14 +22,14 @@ def lambda_handler(event, context):
             "message": f"Only {len(history)} point(s) provided"
         }
     else:
-        # 最新2点を使用
+        # Use latest 2 points
         first_point = history[0]
         last_point = history[-1]
         
-        # 温度差を計算
+        # Calculate temperature difference
         temp_diff = last_point['temperature'] - first_point['temperature']
         
-        # 時間差を計算（秒 → 分）
+        # Calculate time difference (seconds → minutes)
         try:
             time_diff_seconds = (
                 datetime.fromisoformat(last_point['timestamp'].replace('Z', '+00:00')) -
@@ -44,7 +44,7 @@ def lambda_handler(event, context):
         
         time_diff_minutes = time_diff_seconds / 60.0
         
-        # 加熱速度を計算
+        # Calculate heating rate
         if time_diff_minutes > 0:
             heating_rate = temp_diff / time_diff_minutes
         else:
@@ -62,7 +62,7 @@ def lambda_handler(event, context):
     return _format_response(event, result)
 
 def _format_response(event, result):
-    """MCP形式またはDirect形式でレスポンスを返す"""
+    """Return response in MCP format or Direct format"""
     if 'jsonrpc' in event:
         return {
             "jsonrpc": "2.0",

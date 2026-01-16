@@ -7,7 +7,7 @@ buffer = DataBuffer(max_minutes=5)
 
 @app.get("/api/status/{device_id}")
 async def get_device_status(device_id: str):
-    """デバイス状態取得 (heating_status含む)"""
+    """Get device status (including heating_status)"""
     latest = buffer.get_latest(device_id)
     if not latest:
         return {"error": "Device not found or no data"}
