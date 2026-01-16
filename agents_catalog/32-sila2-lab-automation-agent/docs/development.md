@@ -1,43 +1,43 @@
-# 開発者ガイド
+# Developer Guide
 
-このドキュメントでは、SiLA2 Lab Automation Agentの開発環境セットアップと開発方法を説明します。
+This document explains the development environment setup and development methods for the SiLA2 Lab Automation Agent.
 
-## 開発環境セットアップ
+## Development Environment Setup
 
-### ローカル開発
+### Local Development
 
-1. リポジトリのクローン
-2. 依存関係のインストール
-3. 環境変数の設定
+1. Clone the repository
+2. Install dependencies
+3. Configure environment variables
 
-### 必要なツール
+### Required Tools
 
-- Python 3.11以上
+- Python 3.11 or higher
 - Docker Desktop
 - AWS CLI
 - Git
 
-## テスト方法
+## Testing Methods
 
-### ユニットテスト
+### Unit Tests
 
-### 統合テスト
+### Integration Tests
 
-### ローカルでのテスト
+### Local Testing
 
-## コントリビューション
+## Contributing
 
-プロジェクトへの貢献を歓迎します。
+We welcome contributions to the project.
 
-### プルリクエストの手順
+### Pull Request Process
 
-1. フォークを作成
-2. フィーチャーブランチを作成
-3. 変更をコミット
-4. プルリクエストを作成
+1. Create a fork
+2. Create a feature branch
+3. Commit your changes
+4. Create a pull request
 
-### コーディング規約
+### Coding Standards
 
-- PEP 8に準拠
-- 型ヒントの使用を推奨
-- ドキュメント文字列の記述
+- Follow PEP 8
+- Use type hints (recommended)
+- Write docstrings

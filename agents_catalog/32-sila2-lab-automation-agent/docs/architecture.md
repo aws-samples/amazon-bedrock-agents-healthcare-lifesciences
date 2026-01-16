@@ -1,6 +1,6 @@
-# SiLA2 Lab Automation Agent - Phase 4 アーキテクチャ
+# SiLA2 Lab Automation Agent - Phase 4 Architecture
 
-## システム全体図
+## System Overview
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -8,7 +8,7 @@
 │                                                                           │
 │  ┌────────────────────────────────────────────────────────────────────┐ │
 │  │                      Streamlit UI (Port 8501)                      │ │
-│  │                    ユーザーインターフェース                          │ │
+│  │                       User Interface                               │ │
 │  └────────────────────────────────┬───────────────────────────────────┘ │
 │                                   │ HTTP                                 │
 │                                   ↓                                      │
@@ -29,10 +29,10 @@
 │  │                  Application Load Balancer                         │ │
 │  │                        (Internal ALB)                              │ │
 │  │                                                                    │ │
-│  │  ┌──────────────────────────────────────────────────────────┐    │ │
-│  │  │  Listener: Port 8080 (HTTP)                              │    │ │
-│  │  │  Health Check: /health (30s interval)                    │    │ │
-│  │  └──────────────────────────────────────────────────────────┘    │ │
+│  │  ┌──────────────────────────────────────────────────────────────┐ │ │
+│  │  │  Listener: Port 8080 (HTTP)                                  │ │ │
+│  │  │  Health Check: /health (30s interval)                        │ │ │
+│  │  └──────────────────────────────────────────────────────────────┘ │ │
 │  └────────────────────────────────┬───────────────────────────────────┘ │
 │                                   │                                      │
 │                                   ↓                                      │
@@ -79,7 +79,7 @@
 │                                   ↓                                      │
 │  ┌────────────────────────────────────────────────────────────────────┐ │
 │  │                    Mock Device Lambdas                             │ │
-│  │                    (開発・テスト用)                                  │ │
+│  │                    (Development/Testing)                           │ │
 │  │                                                                    │ │
 │  │  ┌──────────────────┐  ┌──────────────────┐  ┌─────────────────┐ │ │
 │  │  │  HPLC Device     │  │ Centrifuge Device│  │ Pipette Device  │ │ │
@@ -94,8 +94,8 @@
 │  │                    Supporting Services                             │ │
 │  │                                                                    │ │
 │  │  • Amazon ECR: sila2-bridge (Container Registry)                  │ │
-│  │  • CloudWatch Logs: /ecs/sila2-bridge-dev (7日保持)                │ │
-│  │  • VPC: Private Subnets (最低2つ)                                  │ │
+│  │  • CloudWatch Logs: /ecs/sila2-bridge-dev (7-day retention)       │ │
+│  │  • VPC: Private Subnets (minimum 2)                                │ │
 │  │  • Security Groups: Port 8080 (Inbound), 443 (Outbound)           │ │
 │  │  • IAM Roles: TaskExecutionRole, TaskRole                         │ │
 │  └────────────────────────────────────────────────────────────────────┘ │
@@ -107,17 +107,17 @@
 │  ┌────────────────────────────────────────────────────────────────────┐ │
 │  │              Laboratory Edge Environment                           │ │
 │  │                                                                    │ │
-│  │  Bridge Container (同一イメージ) --[gRPC]--> 実機器                 │ │
+│  │  Bridge Container (same image) --[gRPC]--> Physical Devices       │ │
 │  │  - AWS IoT Greengrass                                              │ │
-│  │  - ローカルネットワーク最適化                                         │ │
-│  │  - オフライン動作対応                                                │ │
+│  │  - Local network optimization                                      │ │
+│  │  - Offline operation support                                       │ │
 │  └────────────────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-## 通信フロー詳細
+## Communication Flow Details
 
-### 1. ユーザーリクエスト → デバイス実行
+### 1. User Request → Device Execution
 ```
 User (Streamlit UI)
   │
@@ -163,9 +163,9 @@ Mock Device Lambda (HPLC/Centrifuge/Pipette)
 [Response flows back through the same path]
 ```
 
-### 2. ヘルスチェックフロー
+### 2. Health Check Flow
 ```
-ALB Health Check (30秒間隔)
+ALB Health Check (30-second interval)
   │
   │ HTTP GET /health
   ↓
@@ -182,7 +182,7 @@ Response: 200 OK
 Target Group Status Update
 ```
 
-## ネットワーク構成
+## Network Configuration
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -216,7 +216,7 @@ Target Group Status Update
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## コンポーネント詳細
+## Component Details
 
 ### ECS Fargate Task
 - **Launch Type**: FARGATE
@@ -229,7 +229,7 @@ Target Group Status Update
 - **Type**: Application Load Balancer
 - **Scheme**: Internal
 - **Port**: 8080 (HTTP)
-- **Health Check**: /health (30秒間隔)
+- **Health Check**: /health (30-second interval)
 
 ### Target Group
 - **Target Type**: IP
@@ -252,21 +252,21 @@ Target Group Status Update
 - **HPLC Device**: Port 50051
 - **Centrifuge Device**: Port 50052
 - **Pipette Device**: Port 50053
-- **Memory**: 512 MB (gRPC対応)
+- **Memory**: 512 MB (gRPC support)
 - **Environment**: GRPC_ENABLED=true
 
-## デプロイフロー
+## Deployment Flow
 
 ```
 Step 01: Infrastructure Setup
-  ├─ VPC作成
-  ├─ Subnets作成 (最低2つ)
-  └─ Security Groups作成
+  ├─ Create VPC
+  ├─ Create Subnets (minimum 2)
+  └─ Create Security Groups
 
 Step 02: Mock Devices
-  ├─ HPLC Lambda作成
-  ├─ Centrifuge Lambda作成
-  └─ Pipette Lambda作成
+  ├─ Create HPLC Lambda
+  ├─ Create Centrifuge Lambda
+  └─ Create Pipette Lambda
 
 Step 03: Build Bridge Container
   ├─ Docker build
@@ -274,76 +274,76 @@ Step 03: Build Bridge Container
   └─ ECR push
 
 Step 04: Deploy Bridge Container
-  ├─ ECS Cluster作成
-  ├─ Task Definition作成
-  ├─ ALB作成
-  ├─ Target Group作成
-  └─ ECS Service作成
+  ├─ Create ECS Cluster
+  ├─ Create Task Definition
+  ├─ Create ALB
+  ├─ Create Target Group
+  └─ Create ECS Service
 
 Step 05: Enable Device gRPC
-  ├─ Lambda環境変数更新 (GRPC_ENABLED=true)
-  └─ 3デバイス一括更新
+  ├─ Update Lambda environment variables (GRPC_ENABLED=true)
+  └─ Batch update 3 devices
 
 Step 06: Update Gateway Target
-  ├─ 既存Lambda Target削除
-  └─ 新規MCP Target作成
+  ├─ Remove existing Lambda Target
+  └─ Create new MCP Target
 
 Step 07: Deploy AgentCore Runtime
-  └─ Runtime + Gateway設定
+  └─ Configure Runtime + Gateway
 
 Step 09: Setup UI
-  └─ Streamlit UI起動
+  └─ Launch Streamlit UI
 
 Step 10: Run Tests
-  └─ 統合テスト実行
+  └─ Execute integration tests
 ```
 
-## コスト構成
+## Cost Structure
 
-### 月額コスト (24時間稼働)
-- **ECS Fargate**: $24/月
+### Monthly Cost (24/7 operation)
+- **ECS Fargate**: $24/month
   - CPU (0.25 vCPU): $0.04048/h × 730h = $29.55
   - Memory (0.5 GB): $0.004445/h × 730h = $3.24
-- **ALB**: $16/月
-  - 固定費: $0.0225/h × 730h = $16.43
-- **Mock Device Lambdas**: $15/月
-- **CloudWatch Logs**: $2/月
-- **ECR**: $1/月
+- **ALB**: $16/month
+  - Fixed cost: $0.0225/h × 730h = $16.43
+- **Mock Device Lambdas**: $15/month
+- **CloudWatch Logs**: $2/month
+- **ECR**: $1/month
 
-**合計**: 約 $58/月
+**Total**: Approximately $58/month
 
-### コスト最適化オプション
-- ECS Service停止時: $0/月 (Lambda + ECR のみ)
-- オンデマンド起動: 必要時のみECS起動
+### Cost Optimization Options
+- ECS Service stopped: $0/month (Lambda + ECR only)
+- On-demand startup: Start ECS only when needed
 
-## セキュリティ
+## Security
 
 ### IAM Roles
-- **TaskExecutionRole**: ECR/CloudWatch アクセス
-- **TaskRole**: Lambda呼び出し権限
+- **TaskExecutionRole**: ECR/CloudWatch access
+- **TaskRole**: Lambda invocation permissions
 
 ### Network Security
-- **Internal ALB**: VPC内部のみアクセス可能
-- **Security Group**: 最小権限の原則
-- **Private Subnets**: インターネット直接アクセス不可
+- **Internal ALB**: VPC-internal access only
+- **Security Group**: Principle of least privilege
+- **Private Subnets**: No direct internet access
 
 ### Container Security
-- **ECR Image Scanning**: 有効
-- **Read-only Root Filesystem**: 推奨
-- **Non-root User**: 実装済み
+- **ECR Image Scanning**: Enabled
+- **Read-only Root Filesystem**: Recommended
+- **Non-root User**: Implemented
 
-## モニタリング
+## Monitoring
 
 ### CloudWatch Metrics
-- ECS Service CPU/Memory使用率
+- ECS Service CPU/Memory utilization
 - ALB Request Count
 - Target Health Status
 - Container Insights
 
 ### CloudWatch Logs
 - ECS Task Logs: /ecs/sila2-bridge-dev
-- Retention: 7日間
+- Retention: 7 days
 
 ### Health Checks
-- ALB → Target Group: 30秒間隔
-- Container Health Check: /health エンドポイント
+- ALB → Target Group: 30-second interval
+- Container Health Check: /health endpoint

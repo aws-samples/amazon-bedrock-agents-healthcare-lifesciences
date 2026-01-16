@@ -1,50 +1,50 @@
-# トラブルシューティング
+# Troubleshooting
 
-このドキュメントでは、SiLA2 Lab Automation Agentの一般的な問題と解決方法を説明します。
+This document explains common issues and solutions for the SiLA2 Lab Automation Agent.
 
-## 一般的な問題
+## Common Issues
 
-### デプロイ関連
+### Deployment Related
 
-#### CloudFormationスタックの作成に失敗する
+#### CloudFormation Stack Creation Fails
 
-**症状**: スタック作成時にエラーが発生する
+**Symptoms**: Error occurs during stack creation
 
-**解決方法**:
-- IAM権限を確認
-- リソース制限を確認
-- エラーメッセージを確認
+**Solutions**:
+- Check IAM permissions
+- Check resource limits
+- Review error messages
 
-### 接続関連
+### Connection Related
 
-#### gRPC接続エラー
+#### gRPC Connection Error
 
-**症状**: Bridge ServerへのgRPC接続が失敗する
+**Symptoms**: gRPC connection to Bridge Server fails
 
-**解決方法**:
-- セキュリティグループの設定を確認
-- ECSタスクのステータスを確認
-- CloudWatch Logsでエラーを確認
+**Solutions**:
+- Check security group settings
+- Check ECS task status
+- Check CloudWatch Logs for errors
 
-### AgentCore関連
+### AgentCore Related
 
-#### Agentが応答しない
+#### Agent Not Responding
 
-**症状**: Agentからの応答がない
+**Symptoms**: No response from Agent
 
-**解決方法**:
-- AgentCoreのステータスを確認
-- Lambda関数のログを確認
-- タイムアウト設定を確認
+**Solutions**:
+- Check AgentCore status
+- Check Lambda function logs
+- Check timeout settings
 
-## ログの確認方法
+## How to Check Logs
 
 ### CloudWatch Logs
 
-### ECSタスクログ
+### ECS Task Logs
 
-### Lambda関数ログ
+### Lambda Function Logs
 
-## サポート
+## Support
 
-問題が解決しない場合は、GitHubのIssueを作成してください。
+If the issue persists, please create a GitHub Issue.

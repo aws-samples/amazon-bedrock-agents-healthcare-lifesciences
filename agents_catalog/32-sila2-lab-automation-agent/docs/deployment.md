@@ -1,26 +1,26 @@
-# デプロイ手順
+# Deployment Guide
 
-このドキュメントでは、SiLA2 Lab Automation Agentのデプロイ手順を説明します。
+This document explains the deployment procedure for the SiLA2 Lab Automation Agent.
 
-## 前提条件
+## Prerequisites
 
-- AWS CLIがインストールされ、設定されていること
-- Docker Desktop（ローカルテスト用）
-- Python 3.11以上
-- Amazon Bedrock AgentCoreへのアクセス権限
+- AWS CLI installed and configured
+- Docker Desktop (for local testing)
+- Python 3.11 or higher
+- Access permissions to Amazon Bedrock AgentCore
 
-## ステップバイステップ手順
+## Step-by-Step Instructions
 
-詳細な手順は、メインREADME.mdを参照してください。
+For detailed instructions, please refer to the main README.md.
 
-### 1. 環境準備
+### 1. Environment Preparation
 
-### 2. インフラストラクチャのデプロイ
+### 2. Infrastructure Deployment
 
-### 3. AgentCoreの設定
+### 3. AgentCore Configuration
 
-### 4. 動作確認
+### 4. Verification
 
-## トラブルシューティング
+## Troubleshooting
 
-一般的な問題と解決方法については、[troubleshooting.md](troubleshooting.md)を参照してください。
+For common issues and solutions, see [troubleshooting.md](troubleshooting.md).
