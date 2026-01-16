@@ -1,25 +1,210 @@
 """MCP Server for AgentCore Gateway"""
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Query
 from typing import Dict, Any, List, Optional
 import json
+import os
+from sila2_bridge import SiLA2Bridge
+from data_buffer import DataBuffer
+import logging
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
-# GrpcClientを遅延初期化
-_grpc_client = None
+# Initialize bridge with environment variable
+grpc_server = os.getenv('GRPC_SERVER', 'mock-devices.sila2.local:50051')
+host, port = grpc_server.rsplit(':', 1)
+bridge = SiLA2Bridge(host=host, port=int(port))
 
-def get_grpc_client():
-    global _grpc_client
-    if _grpc_client is None:
-        from grpc_client import GrpcClient
-        _grpc_client = GrpcClient()
-    return _grpc_client
+# Initialize data buffer
+buffer = DataBuffer(max_minutes=5)
+
+# REST API endpoints
+@app.get("/api/status/{device_id}")
+async def get_device_status_api(device_id: str):
+    """Get device status (including heating_status)"""
+    latest = buffer.get_latest(device_id)
+    if not latest:
+        return {"error": "Device not found or no data"}
+    return latest
+
+@app.get("/api/history/{device_id}")
+async def get_device_history_api(
+    device_id: str,
+    minutes: Optional[int] = Query(5, ge=1, le=60)
+):
+    history = buffer.get_history(device_id=device_id, minutes=minutes)
+    return {
+        "device_id": device_id,
+        "count": len(history),
+        "minutes": minutes,
+        "data": history
+    }
+
+@app.get("/api/devices")
+async def list_devices_api():
+    devices = buffer.get_devices()
+    return {"count": len(devices), "devices": devices}
+
+@app.get("/health")
+async def health_check():
+    return {
+        "status": "healthy",
+        "buffer_size": len(buffer.buffer),
+        "devices": len(buffer.get_devices())
+    }
+
+
+# MCP Tool definitions
+TOOLS = [
+    {
+        "name": "list_devices",
+        "description": "List all available lab devices",
+        "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "required": []
+        }
+    },
+    {
+        "name": "get_device_info",
+        "description": "Get information about a specific device",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "device_id": {"type": "string", "description": "Device identifier"}
+            },
+            "required": ["device_id"]
+        }
+    },
+    {
+        "name": "get_device_status",
+        "description": "Get current status of a device",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "device_id": {"type": "string", "description": "Device identifier"}
+            },
+            "required": ["device_id"]
+        }
+    },
+    {
+        "name": "set_temperature",
+        "description": "Set target temperature for a device",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "target_temperature": {"type": "number", "description": "Target temperature in Celsius"}
+            },
+            "required": ["target_temperature"]
+        }
+    },
+    {
+        "name": "get_temperature",
+        "description": "Get current temperature",
+        "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "required": []
+        }
+    },
+    {
+        "name": "subscribe_temperature",
+        "description": "Subscribe to real-time temperature updates",
+        "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "required": []
+        }
+    },
+    {
+        "name": "get_heating_status",
+        "description": "Get current heating status",
+        "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "required": []
+        }
+    },
+    {
+        "name": "abort_experiment",
+        "description": "Abort current temperature control operation",
+        "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "required": []
+        }
+    },
+    {
+        "name": "get_task_status",
+        "description": "Get status of an asynchronous task",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "task_id": {"type": "string", "description": "Task UUID"}
+            },
+            "required": ["task_id"]
+        }
+    },
+    {
+        "name": "get_task_info",
+        "description": "Get information about a task",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "task_id": {"type": "string", "description": "Task UUID"}
+            },
+            "required": ["task_id"]
+        }
+    }
+]
+
+async def handle_tool_call(tool_name, arguments):
+    """Handle MCP tool calls"""
+    try:
+        if tool_name == "list_devices":
+            return bridge.list_devices()
+        
+        elif tool_name == "get_device_info":
+            return bridge.get_device_info(arguments["device_id"])
+        
+        elif tool_name == "get_device_status":
+            return bridge.get_device_status(arguments["device_id"])
+        
+        elif tool_name == "set_temperature":
+            command_instance = bridge.set_temperature(arguments["target_temperature"])
+            # Get the execution UUID from the command instance
+            command_uuid = str(command_instance.execution_uuid)
+            return {"command_uuid": command_uuid, "status": "started"}
+        
+        elif tool_name == "get_temperature":
+            return bridge.get_current_temperature()
+        
+        elif tool_name == "subscribe_temperature":
+            return bridge.subscribe_temperature()
+        
+        elif tool_name == "get_heating_status":
+            return bridge.get_heating_status()
+        
+        elif tool_name == "abort_experiment":
+            return bridge.abort_experiment()
+        
+        elif tool_name == "get_task_status":
+            return bridge.get_task_status(arguments["task_id"])
+        
+        elif tool_name == "get_task_info":
+            return bridge.get_task_info(arguments["task_id"])
+        
+        else:
+            raise ValueError(f"Unknown tool: {tool_name}")
+    
+    except Exception as e:
+        logger.error(f"Tool call failed: {e}")
+        raise
 
 @app.post("/mcp")
 async def handle_mcp(request: Request):
     body = await request.json()
-    
-    grpc_client = get_grpc_client()
     
     if "jsonrpc" not in body:
         tool_name = body.get('name', '')
@@ -53,15 +238,7 @@ async def handle_mcp(request: Request):
         elif method == "tools/list":
             return {
                 "jsonrpc": "2.0",
-                "result": {
-                    "tools": [
-                        {"name": "list_devices", "description": "List all available SiLA2 devices", "inputSchema": {"type": "object", "properties": {}}},
-                        {"name": "get_device_status", "description": "Get status of a specific device", "inputSchema": {"type": "object", "properties": {"device_id": {"type": "string"}}, "required": ["device_id"]}},
-                        {"name": "get_task_status", "description": "Get status of a running task", "inputSchema": {"type": "object", "properties": {"task_id": {"type": "string"}}, "required": ["task_id"]}},
-                        {"name": "get_property", "description": "Get device property value", "inputSchema": {"type": "object", "properties": {"device_id": {"type": "string"}, "property_name": {"type": "string"}}, "required": ["device_id", "property_name"]}},
-                        {"name": "execute_control", "description": "Execute device control commands (set_temperature, abort_experiment)", "inputSchema": {"type": "object", "properties": {"device_id": {"type": "string"}, "command": {"type": "string", "enum": ["set_temperature", "abort_experiment"]}, "parameters": {"type": "object"}}, "required": ["device_id", "command"]}}
-                    ]
-                },
+                "result": {"tools": TOOLS},
                 "id": req_id
             }
         elif method == "tools/call":
@@ -70,32 +247,15 @@ async def handle_mcp(request: Request):
                 tool_name = tool_name.split('___', 1)[1]
             arguments = params.get("arguments", {})
             
-            if tool_name == "list_devices":
-                result = grpc_client.list_devices()
-            elif tool_name == "get_device_status":
-                result = grpc_client.get_device_status(arguments.get('device_id'))
-            elif tool_name == "get_task_status":
-                result = grpc_client.get_task_status(arguments.get('task_id'))
-            elif tool_name == "get_property":
-                result = grpc_client.get_property(arguments.get('device_id'), arguments.get('property_name'))
-            elif tool_name == "execute_control":
-                device_id = arguments.get('device_id')
-                command = arguments.get('command')
-                parameters = arguments.get('parameters', {})
-                print(f"[MCP] execute_control called: device={device_id}, command={command}, params={parameters}", flush=True)
-                if command == 'set_temperature':
-                    result = grpc_client.start_task(device_id, 'set_temperature', parameters)
-                elif command == 'abort_experiment':
-                    result = grpc_client.execute_command(device_id, 'abort_experiment', {})
-                else:
-                    result = {'error': f'Unknown command: {command}'}
-            else:
-                return {"jsonrpc": "2.0", "error": {"code": -32601, "message": f"Unknown tool: {tool_name}"}, "id": req_id}
+            result = await handle_tool_call(tool_name, arguments)
             
             return {"jsonrpc": "2.0", "result": {"content": [{"type": "text", "text": json.dumps(result)}]}, "id": req_id}
     
     return {"error": "Invalid request format"}
 
+
+
 @app.get("/health")
 async def health():
     return {'status': 'healthy'}
+

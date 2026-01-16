@@ -30,3 +30,10 @@ venv/
 # Bedrock AgentCore build artifacts (keep Dockerfile)
 .bedrock_agentcore/*/
 !.bedrock_agentcore/*/Dockerfile
+
+# Backup files
+*.bak
+
+# Test scripts
+test_*.py
+validate_*.sh

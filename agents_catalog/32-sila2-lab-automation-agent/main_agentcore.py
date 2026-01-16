@@ -5,6 +5,7 @@ SiLA2 Lab Automation Agent - AgentCore with Lambda Direct Call
 import os
 import boto3
 import json
+from typing import List, Dict, Any
 from bedrock_agentcore import BedrockAgentCoreApp
 
 app = BedrockAgentCoreApp()
@@ -49,44 +50,72 @@ def call_lambda_tool(tool_name: str, arguments: dict) -> dict:
 
 @tool
 def list_devices() -> str:
-    """List all available SiLA2 laboratory devices (HPLC, centrifuge, pipette)"""
+    """List all available SiLA2 laboratory devices"""
     result = call_lambda_tool("list_devices", {})
-    devices = result.get("devices", [])
-    return f"Found {len(devices)} devices: " + ", ".join([f"{d['id']} ({d['status']})" for d in devices])
+    return json.dumps(result)
+
+@tool
+def get_device_info(device_id: str) -> str:
+    """Get information about a specific device"""
+    result = call_lambda_tool("get_device_info", {"device_id": device_id})
+    return json.dumps(result)
 
 @tool
 def get_device_status(device_id: str) -> str:
-    """Get device status"""
+    """Get current status of a device"""
     result = call_lambda_tool("get_device_status", {"device_id": device_id})
-    return f"Device {result['device_id']}: {result['status']} ({result['type']})"
+    return json.dumps(result)
 
 @tool
-def execute_control(device_id: str, command: str, parameters: dict = None) -> str:
-    """Execute device control commands (set_temperature, abort_experiment)"""
-    if parameters is None:
-        parameters = {}
-    result = call_lambda_tool("execute_control", {"device_id": device_id, "command": command, "parameters": parameters})
-    if 'task_id' in result:
-        return f"Task {result['task_id']} started with status: {result.get('status', 'running')}"
-    elif 'error' in result:
-        return f"Error: {result['error']}"
-    return str(result)
+def set_temperature(target_temperature: float) -> str:
+    """Set target temperature for a device"""
+    result = call_lambda_tool("set_temperature", {"target_temperature": target_temperature})
+    return json.dumps(result)
+
+@tool
+def get_temperature() -> str:
+    """Get current temperature"""
+    result = call_lambda_tool("get_temperature", {})
+    return json.dumps(result)
+
+@tool
+def subscribe_temperature() -> str:
+    """Subscribe to real-time temperature updates"""
+    result = call_lambda_tool("subscribe_temperature", {})
+    return json.dumps(result)
+
+@tool
+def get_heating_status() -> str:
+    """Get current heating status"""
+    result = call_lambda_tool("get_heating_status", {})
+    return json.dumps(result)
+
+@tool
+def abort_experiment() -> str:
+    """Abort current temperature control operation"""
+    result = call_lambda_tool("abort_experiment", {})
+    return json.dumps(result)
 
 @tool
 def get_task_status(task_id: str) -> str:
-    """Get task status"""
+    """Get status of an asynchronous task"""
     result = call_lambda_tool("get_task_status", {"task_id": task_id})
-    return f"Task {task_id}: {result['status']} (Progress: {result['progress']}%)"
+    return json.dumps(result)
 
 @tool
-def get_property(device_id: str, property_name: str) -> str:
-    """Get device property"""
-    result = call_lambda_tool("get_property", {"device_id": device_id, "property_name": property_name})
-    return f"{result['property']}: {result['value']} {result.get('unit', '')}"
+def get_task_info(task_id: str) -> str:
+    """Get information about a task"""
+    result = call_lambda_tool("get_task_info", {"task_id": task_id})
+    return json.dumps(result)
 
 @tool
-def analyze_heating_rate(device_id: str, history: list) -> str:
-    """Calculate heating rate and detect anomalies from temperature history"""
+def analyze_heating_rate(device_id: str, history: List[Dict[str, Any]]) -> str:
+    """Calculate heating rate and detect anomalies from temperature history
+    
+    Args:
+        device_id: Device identifier
+        history: List of temperature readings with timestamps
+    """
     result = call_lambda_tool("analyze_heating_rate", {"device_id": device_id, "history": history})
     return json.dumps(result)
 
@@ -117,7 +146,13 @@ async def process_request(request_data):
                 streaming=True
             )
             
-            tools = [list_devices, get_device_status, execute_control, get_task_status, get_property, analyze_heating_rate]
+            tools = [
+                list_devices, get_device_info, get_device_status,
+                set_temperature, get_temperature, subscribe_temperature,
+                get_heating_status, abort_experiment,
+                get_task_status, get_task_info,
+                analyze_heating_rate
+            ]
             agent = Agent(
                 model=bedrock_model,
                 tools=tools,

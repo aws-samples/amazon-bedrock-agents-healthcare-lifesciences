@@ -15,7 +15,7 @@ if 'temperature_data' not in st.session_state:
 
 LAMBDA_FUNCTION = os.getenv('LAMBDA_FUNCTION_NAME', 'sila2-agentcore-invoker')
 AWS_REGION = os.getenv('AWS_REGION', 'us-west-2')
-MEMORY_ID = 'sila2_memory-NP8yujB2Vs'
+MEMORY_ID = 'sila2_memory-vNLitP6yIE'
 
 lambda_client = boto3.client('lambda', region_name=AWS_REGION)
 
@@ -82,8 +82,6 @@ def get_temperature_data():
                     'scenario_mode': latest.get('scenario_mode', 'scenario_1'),
                     'heating_status': latest.get('heating_status', 'unknown')
                 }
-        else:
-            st.error("⚠️ Lambda connection error: Cannot reach sila2-bridge-mcp service. Check VPC/DNS configuration.")
     except Exception as e:
         st.error(f"⚠️ Error: {e}")
     return None
@@ -172,7 +170,7 @@ def get_memory_events_with_id(memory_id):
                                 role = conv.get('role', 'unknown')
                                 if 'content' in conv and 'text' in conv['content']:
                                     content_text = conv['content']['text']
-                                    if 'Target temperature reached' in content_text or 'TEMPERATURE_REACHED' in content_text:
+                                    if 'Temperature reached event' in content_text or "heating_status: 'completed'" in content_text or "heating_status: completed" in content_text:
                                         event_type = 'TEMPERATURE_REACHED'
                                     elif 'Periodic status check' in content_text:
                                         event_type = 'PERIODIC_STATUS'

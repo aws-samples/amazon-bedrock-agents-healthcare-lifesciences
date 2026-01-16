@@ -84,7 +84,7 @@ def handle_sns_event(event):
         
         print(f"[INFO] Event type: {event_type}, Device: {device_id}")
         
-        if event_type == 'TEMPERATURE_REACHED':
+        if event_type in ['TemperatureReached', 'TEMPERATURE_REACHED']:
             # Notify AgentCore of target temperature reached
             current_temp = sns_message.get('value', 'N/A')
             
@@ -143,7 +143,7 @@ Please acknowledge this milestone."""
                 # Record to Memory
                 record_to_memory(
                     device_id=device_id,
-                    user_message=f"Event: {event_type} - Target: {target_temp}°C, Current: {current_temp}°C",
+                    user_message=f"Temperature reached event for device {device_id}: Target {target_temp}°C, Current {current_temp}°C",
                     agent_response=agent_response,
                     session_id=session_id
                 )

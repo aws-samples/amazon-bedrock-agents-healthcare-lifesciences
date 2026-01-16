@@ -16,6 +16,9 @@ class TemperatureController:
         return 5.0 if self.scenario_mode == "scenario_1" else 2.0
     
     def set_temperature(self, target: float):
+        # Toggle scenario on each temperature setting
+        self.toggle_scenario()
+        
         self.target_temp = target
         self.is_heating = True
         self.heating_status = "heating"

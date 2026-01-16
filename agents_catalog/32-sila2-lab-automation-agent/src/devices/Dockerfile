@@ -5,7 +5,8 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY proto/ ./proto/
+COPY features/ ./features/
+COPY generated/ ./generated/
 COPY server.py .
 COPY temperature_controller.py .
 

@@ -1,7 +1,4 @@
-grpcio==1.60.0
-grpcio-tools==1.60.0
-protobuf==4.25.1
+sila2>=0.14.0
 fastapi==0.115.0
 uvicorn==0.34.2
-pydantic==2.11.0
-boto3==1.34.0
+boto3>=1.34.0

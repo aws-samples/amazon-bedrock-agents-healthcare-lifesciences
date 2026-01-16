@@ -1,31 +1,45 @@
-"""Main - Phase 4 MCP Server + Phase 6 REST API"""
+"""Main - MCP Server with SiLA2 Bridge"""
 import uvicorn
 import os
-import threading
-from api import buffer
-from stream_client import GRPCStreamClient
+import logging
 
-# mcp_server.appにREST APIエンドポイントを追加
-from mcp_server import app
-from api import get_device_status, get_device_history, list_devices
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-app.get("/api/status/{device_id}")(get_device_status)
-app.get("/api/history/{device_id}")(get_device_history)
-app.get("/api/devices")(list_devices)
+from mcp_server import app, bridge, buffer
+from sila2_stream_client import SiLA2StreamClient
 
-def start_grpc_streaming():
-    grpc_server = os.getenv('GRPC_SERVER', 'mock-device:50051')
-    device_id = os.getenv('DEVICE_ID', 'hplc')
+def start_device_streams():
+    """Start streaming for all available devices"""
+    grpc_server = os.getenv('GRPC_SERVER', 'mock-devices.sila2.local:50051')
+    host, port = grpc_server.rsplit(':', 1)
     
     try:
-        client = GRPCStreamClient(grpc_server, device_id, buffer)
-        client.start_streaming()
+        devices = bridge.list_devices()
+        logger.info(f"Found {len(devices)} devices, starting streams...")
+        logger.info(f"Devices: {devices}")
+        
+        for device in devices:
+            # Handle both dict and list formats
+            if isinstance(device, dict):
+                device_id = device.get('device_id')
+            elif isinstance(device, list) and len(device) > 0:
+                device_id = device[0] if isinstance(device[0], str) else device[0].get('device_id')
+            else:
+                device_id = str(device)
+                
+            if device_id:
+                client = SiLA2StreamClient(host, int(port), device_id, buffer)
+                client.start_streaming()
+                logger.info(f"Started streaming for device: {device_id}")
+                
     except Exception as e:
-        print(f"ERROR in start_grpc_streaming: {e}", flush=True)
+        logger.error(f"Failed to start device streams: {e}")
         import traceback
         traceback.print_exc()
 
 if __name__ == "__main__":
-    stream_thread = threading.Thread(target=start_grpc_streaming, daemon=True)
-    stream_thread.start()
+    # Start device streams before starting server
+    start_device_streams()
+    
     uvicorn.run(app, host="0.0.0.0", port=8080, reload=False)
