@@ -1,0 +1,157 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "CloudFormation template for AgentCore Resources"
+
+Parameters:
+  GatewayName:
+    Description: Name for the AgentCore Gateway
+    Type: String
+    Default: "researchapp-gw"
+  
+  MemoryName:
+    Description: Name for the AgentCore Memory
+    Type: String
+    Default: "researchapp"
+  
+  S3Bucket:
+    Description: S3 bucket containing the API specifications
+    Type: String
+  
+  DatabaseApiS3Key:
+    Description: S3 key for the database API specification
+    Type: String
+    Default: "api-specs/database-api-spec.json"
+  
+  LiteratureApiS3Key:
+    Description: S3 key for the literature API specification
+    Type: String
+    Default: "api-specs/literature-api-spec.json"
+
+Resources:
+  AgentCoreMemory:
+    Type: AWS::BedrockAgentCore::Memory
+    Properties:
+      Name: !Ref MemoryName
+      Description: "Memory for ResearchApp Agent"
+      EventExpiryDuration: 30
+      MemoryStrategies:
+        - SemanticMemoryStrategy:
+            Name: "fact_extractor"
+            Description: "Extracts and stores factual information"
+            Namespaces:
+              - "support/user/{actorId}/facts"
+        - SummaryMemoryStrategy:
+            Name: "conversation_summary"
+            Description: "Captures summaries of conversations"
+            Namespaces:
+              - "support/user/{actorId}/{sessionId}"
+        - UserPreferenceMemoryStrategy:
+            Name: "user_preferences"
+            Description: "Captures user preferences and settings"
+            Namespaces:
+              - "support/user/{actorId}/preferences"
+      Tags:
+        Application: "ResearchApp"
+
+  MemoryIdParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /app/researchapp/agentcore/memory_id
+      Type: String
+      Value: !Ref AgentCoreMemory
+      Description: AgentCore Memory ID
+      Tags:
+        Application: ResearchApp
+
+  GatewayUrlParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /app/researchapp/agentcore/gateway_url
+      Type: String
+      Value: !GetAtt AgentCoreGateway.GatewayUrl
+      Description: AgentCore Gateway URL
+      Tags:
+        Application: ResearchApp
+
+  AgentCoreGateway:
+    Type: AWS::BedrockAgentCore::Gateway
+    Properties:
+      Name: !Ref GatewayName
+      Description: "Research App AgentCore Gateway"
+      AuthorizerType: "CUSTOM_JWT"
+      ProtocolType: "MCP"
+      RoleArn: "{{resolve:ssm:/app/researchapp/agentcore/gateway_iam_role}}"
+      AuthorizerConfiguration:
+        CustomJWTAuthorizer:
+          AllowedClients:
+            - "{{resolve:ssm:/app/researchapp/agentcore/machine_client_id}}"
+          DiscoveryUrl: "{{resolve:ssm:/app/researchapp/agentcore/cognito_discovery_url}}"
+      ProtocolConfiguration:
+        Mcp:
+          SearchType: "SEMANTIC"
+      Tags:
+        Application: "ResearchApp"
+
+  DatabaseGatewayTarget:
+    Type: AWS::BedrockAgentCore::GatewayTarget
+    Properties:
+      GatewayIdentifier: !Ref AgentCoreGateway
+      Name: "DatabaseLambda"
+      Description: "Database Lambda Target for biomedical database queries"
+      TargetConfiguration:
+        Mcp:
+          Lambda:
+            LambdaArn: "{{resolve:ssm:/app/researchapp/agentcore/database_lambda_arn}}"
+            ToolSchema:
+              S3:
+                Uri: !Sub "s3://${S3Bucket}/${DatabaseApiS3Key}"
+                BucketOwnerAccountId: !Ref "AWS::AccountId"
+      CredentialProviderConfigurations:
+        - CredentialProviderType: "GATEWAY_IAM_ROLE"
+
+  LiteratureGatewayTarget:
+    Type: AWS::BedrockAgentCore::GatewayTarget
+    Properties:
+      GatewayIdentifier: !Ref AgentCoreGateway
+      Name: "LiteratureLambda"
+      Description: "Literature Lambda Target for research and web search"
+      TargetConfiguration:
+        Mcp:
+          Lambda:
+            LambdaArn: "{{resolve:ssm:/app/researchapp/agentcore/literature_lambda_arn}}"
+            ToolSchema:
+              S3:
+                Uri: !Sub "s3://${S3Bucket}/${LiteratureApiS3Key}"
+                BucketOwnerAccountId: !Ref "AWS::AccountId"
+      CredentialProviderConfigurations:
+        - CredentialProviderType: "GATEWAY_IAM_ROLE"
+
+Outputs:
+  MemoryId:
+    Description: "AgentCore Memory ID"
+    Value: !Ref AgentCoreMemory
+    Export:
+      Name: !Sub "${AWS::StackName}-MemoryId"
+
+  MemoryArn:
+    Description: "AgentCore Memory ARN"
+    Value: !GetAtt AgentCoreMemory.MemoryArn
+    Export:
+      Name: !Sub "${AWS::StackName}-MemoryArn"
+
+  GatewayId:
+    Description: "AgentCore Gateway ID"
+    Value: !Ref AgentCoreGateway
+    Export:
+      Name: !Sub "${AWS::StackName}-GatewayId"
+
+  GatewayArn:
+    Description: "AgentCore Gateway ARN"
+    Value: !GetAtt AgentCoreGateway.GatewayArn
+    Export:
+      Name: !Sub "${AWS::StackName}-GatewayArn"
+
+  GatewayUrl:
+    Description: "AgentCore Gateway URL"
+    Value: !GetAtt AgentCoreGateway.GatewayUrl
+    Export:
+      Name: !Sub "${AWS::StackName}-GatewayUrl"

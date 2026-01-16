@@ -1,9 +1,9 @@
 from .context import TemplateContext
 from .memory_hook_provider import MemoryHook
 from .utils import get_ssm_parameter
-from agent.agent_config.agent import TemplateAgent
+from .agent import TemplateAgent
 from bedrock_agentcore.memory import MemoryClient
-from agent.agent_config.tools.sample_tools import get_system_info
+from .tools.sample_tools import get_system_info
 import logging
 
 # Logging setup

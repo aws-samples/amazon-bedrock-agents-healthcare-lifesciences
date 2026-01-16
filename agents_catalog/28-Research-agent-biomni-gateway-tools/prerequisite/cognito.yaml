@@ -219,6 +219,16 @@ Resources:
       Description: Machine Cognito client ID
       Tags:
         Application: researchapp
+
+  CognitoMachineClientSecretParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /app/researchapp/agentcore/cognito_secret
+      Type: String
+      Value: !GetAtt MachineUserPoolClient.ClientSecret
+      Description: Machine Cognito client secret
+      Tags:
+        Application: researchapp
   
   CognitoWebClientIdParameter:
     Type: AWS::SSM::Parameter
