@@ -1,6 +1,9 @@
 from sila2.client import SilaClient
 import logging
 import time
+import threading
+import asyncio
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +42,7 @@ class SiLA2Bridge:
         return self.client.DeviceManagement.GetDeviceStatus(DeviceId=device_id)
     
     def set_temperature(self, target_temperature):
-        """Set temperature (returns command instance)"""
+        """Set temperature and monitor progress (SiLA2 standard)"""
         command_instance = self.client.TemperatureController.SetTemperature(
             TargetTemperature=target_temperature
         )
@@ -47,7 +50,48 @@ class SiLA2Bridge:
         if not hasattr(self, '_command_instances'):
             self._command_instances = {}
         self._command_instances[str(command_instance.execution_uuid)] = command_instance
+        
+        # Monitor IntermediateResponse in background thread (SiLA2 standard)
+        thread = threading.Thread(
+            target=self._monitor_temperature_progress,
+            args=(command_instance, target_temperature),
+            daemon=True
+        )
+        thread.start()
+        
         return command_instance
+    
+    def _monitor_temperature_progress(self, command_instance, target_temperature):
+        """Monitor SetTemperature IntermediateResponse for PercentComplete (SiLA2 standard)"""
+        from event_handler import handle_sila2_event
+        
+        try:
+            # Subscribe to intermediate responses (SiLA2 standard)
+            subscription = command_instance.subscribe_to_intermediate_responses()
+            
+            for progress in subscription:
+                percent = progress.Progress.PercentComplete
+                current_temp = progress.Progress.CurrentTemperature
+                elapsed = progress.Progress.ElapsedSeconds
+                
+                logger.debug(f"Temperature progress: {percent}% ({current_temp:.1f}°C)")
+                
+                # Temperature reached when PercentComplete == 100 (SiLA2 standard)
+                if percent >= 100:
+                    logger.info(f"Temperature reached: {current_temp:.1f}°C (PercentComplete: 100%)")
+                    asyncio.run(handle_sila2_event('device-1', {
+                        'event_type': 'TemperatureReached',
+                        'value': {
+                            'CurrentTemperature': current_temp,
+                            'TargetTemperature': target_temperature,
+                            'ElapsedSeconds': elapsed,
+                            'PercentComplete': percent
+                        }
+                    }))
+                    break
+                    
+        except Exception as e:
+            logger.error(f"Failed to monitor temperature progress: {e}")
     
     def get_temperature_progress(self, command_uuid):
         """Get temperature setting progress (generator)"""
@@ -80,9 +124,44 @@ class SiLA2Bridge:
             return value.__dict__
         return value if isinstance(value, dict) else {'status': str(value)}
     
-    def abort_experiment(self):
-        """Abort current experiment"""
-        return self.client.TemperatureController.AbortExperiment()
+    def abort_experiment(self, reason="Manual abort"):
+        """Abort experiment (SiLA2 Unobservable command - returns immediately)"""
+        # AbortExperiment is Unobservable - returns result immediately
+        result = self.client.TemperatureController.AbortExperiment()
+        
+        # Send completion event immediately
+        thread = threading.Thread(
+            target=self._send_abort_event,
+            args=(reason,),
+            daemon=True
+        )
+        thread.start()
+        
+        return result
+    
+    def _send_abort_event(self, reason):
+        """Send abort completion event to SNS"""
+        from event_handler import handle_sila2_event
+        
+        try:
+            # Get current temperature as final temperature
+            final_temp = self.get_current_temperature()
+            
+            logger.info(f"Abort completed, FinalTemp={final_temp}°C")
+            
+            # Send completion event to SNS → Lambda → AgentCore Memory
+            asyncio.run(handle_sila2_event('device-1', {
+                'event_type': 'ExperimentAborted',
+                'value': {
+                    'Success': True,
+                    'FinalTemperature': final_temp,
+                    'Reason': reason,
+                    'Timestamp': datetime.now().isoformat()
+                }
+            }))
+            
+        except Exception as e:
+            logger.error(f"Failed to send abort event: {e}")
     
     def get_task_status(self, task_id):
         """Get task status from stored command instance"""

@@ -37,6 +37,7 @@ def configure_runtime():
             memoryIdentifier=memory_id
         )
         print("\n✓ Memory associated with runtime")
+        print("✓ Tool call recording enabled via Strands Agent config")
         
     except Exception as e:
         print(f"\n⚠ Warning: {e}")

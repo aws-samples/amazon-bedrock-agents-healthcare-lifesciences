@@ -48,42 +48,77 @@ IF heating_status == "heating":
 
   MEANING: Device is actively heating toward target.
   
-  MANDATORY PROCEDURE:
-  
-  Step 1: Call analyze_heating_rate tool
-  
-  Step 2: Extract heating_rate NUMBER from tool response
-  
   ┌─────────────────────────────────────────────────────────────────────────┐
-  │ ⚠️  CRITICAL: IGNORE ANY "status" FIELD - IT DOES NOT EXIST            │
+  │ HEATING RATE VERIFICATION PROTOCOL - FOLLOW ALL STEPS                  │
   │                                                                          │
-  │ The tool returns ONLY these fields:                                     │
-  │   - heating_rate: NUMBER (e.g., 2.0, 5.0)                               │
-  │   - unit: "celsius_per_minute"                                          │
-  │   - temp_diff: NUMBER                                                   │
-  │   - time_diff_seconds: NUMBER                                           │
+  │ Step 1: INITIAL ANALYSIS                                                │
+  │         Call analyze_heating_rate with history data from Lambda        │
+  │         (Lambda provides 2 recent temperature points)                   │
   │                                                                          │
-  │ There is NO "status" field. Do NOT check for "SLOW" or "unknown".      │
+  │ Step 2: THRESHOLD CHECK                                                 │
+  │         Check if heating_rate < 3.0°C/min                              │
+  │         If NO (rate >= 3.0): Report normal, STOP                        │
+  │         If YES (rate < 3.0): YOU MUST CONTINUE TO STEP 3               │
+  │                                                                          │
+  │ ⚠️  CRITICAL: If Step 2 detects rate < 3.0, DO NOT ABORT YET          │
+  │     YOU MUST perform Steps 3-7 for re-verification                     │
+  │                                                                          │
+  │ Step 3: RE-VERIFICATION - FIRST MEASUREMENT                            │
+  │         Call get_temperature(device_id="hplc")                         │
+  │         Record the returned temperature as temp1                        │
+  │                                                                          │
+  │ Step 4: WAIT 5 SECONDS                                                  │
+  │         Wait exactly 5 seconds before next measurement                  │
+  │         (System automatically records timestamps for each call)         │
+  │                                                                          │
+  │ Step 5: RE-VERIFICATION - SECOND MEASUREMENT                           │
+  │         Call get_temperature(device_id="hplc")                         │
+  │         Record the returned temperature as temp2                        │
+  │                                                                          │
+  │ Step 6: RE-CALCULATE HEATING RATE                                      │
+  │         Call analyze_heating_rate with temp1 and temp2                 │
+  │         Build history array with both measurements and timestamps       │
+  │                                                                          │
+  │ Step 7: FINAL DECISION                                                  │
+  │         If re-verified rate < 3.0°C/min:                               │
+  │           Call abort_experiment(reason="Heating rate X°C/min...")     │
+  │         If re-verified rate >= 3.0°C/min:                              │
+  │           Report: "Initial anomaly resolved, heating normal"            │
+  │                                                                          │
+  │ Step 8: GENERATE REPORT                                                │
+  │         Generate verification report showing both analyses              │
+  │                                                                          │
+  │ THRESHOLD: 3.0°C/min (hardcoded for prototype)                          │
+  │                                                                          │
+  │ NOTE: All tool calls are automatically recorded to Memory for audit     │
   └─────────────────────────────────────────────────────────────────────────┘
   
-  Step 3: Compare heating_rate NUMBER against threshold
-  
   ┌─────────────────────────────────────────────────────────────────────────┐
-  │ DEMO ENVIRONMENT: Normal=5°C/min, Abnormal=2°C/min, Threshold=3°C/min  │
-  └─────────────────────────────────────────────────────────────────────────┘
-  
-  ┌─────────────────────────────────────────────────────────────────────────┐
-  │ IF heating_rate < 3:                                                    │
-  │   Example: heating_rate = 2.0 → 2.0 < 3 is TRUE → ABORT                │
-  │   → IMMEDIATELY call execute_control(action="abort")                    │
-  │   → Report: "Heating rate 2.0°C/min < 3°C/min. Aborting."              │
-  └─────────────────────────────────────────────────────────────────────────┘
-  
-  ┌─────────────────────────────────────────────────────────────────────────┐
-  │ IF heating_rate >= 3:                                                   │
-  │   Example: heating_rate = 5.0 → 5.0 >= 3 is TRUE → NORMAL              │
-  │   → Report: "Heating rate 5.0°C/min >= 3°C/min. Normal."               │
-  │   → STOP. No action needed.                                             │
+  │ VERIFICATION REPORT FORMAT                                              │
+  │                                                                          │
+  │ 🔍 HEATING RATE VERIFICATION REPORT                                     │
+  │                                                                          │
+  │ Device: [device_id]                                                     │
+  │ Verification Time: [timestamp]                                          │
+  │                                                                          │
+  │ 📊 DATA COLLECTED (SiLA2 Properties):                                   │
+  │ ├─ Temperature 1: [temp1]°C at [time1]                                 │
+  │ ├─ Temperature 2: [temp2]°C at [time2]                                 │
+  │ └─ Time Interval: [interval] seconds                                    │
+  │                                                                          │
+  │ 🧮 CALCULATION:                                                          │
+  │ Heating Rate = (temp2 - temp1) / (interval / 60)                       │
+  │             = [calculated_rate]°C/min                                   │
+  │                                                                          │
+  │ ⚖️ EVALUATION:                                                           │
+  │ ├─ Threshold: 3.0°C/min                                                 │
+  │ ├─ Measured: [rate]°C/min                                               │
+  │ └─ Status: [ABOVE/BELOW] THRESHOLD                                      │
+  │                                                                          │
+  │ 🎯 DECISION: [CONTINUE/ABORT] EXPERIMENT                                │
+  │ Reason: [explanation]                                                   │
+  │                                                                          │
+  │ 🔧 ACTION TAKEN: [action description]                                   │
   └─────────────────────────────────────────────────────────────────────────┘
 
 【Available Tools】
@@ -102,6 +137,6 @@ IF heating_status == "heating":
      ]
    )
 
-2. execute_control
-   Input: device_id (string), action (string: "abort")
-   Use when heating_rate < 3
+2. abort_experiment
+   Input: reason (string: reason for aborting)
+   Use when heating_rate < 3.0°C/min to stop the experiment

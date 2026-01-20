@@ -58,7 +58,48 @@
     <Identifier>AbortExperiment</Identifier>
     <DisplayName>Abort Experiment</DisplayName>
     <Description>Abort current temperature control experiment</Description>
-    <Observable>No</Observable>
+    <Observable>Yes</Observable>
+    <Parameter>
+      <Identifier>Reason</Identifier>
+      <DisplayName>Reason</DisplayName>
+      <Description>Reason for aborting the experiment</Description>
+      <DataType>
+        <Basic>String</Basic>
+      </DataType>
+    </Parameter>
+    <Response>
+      <Identifier>AbortResult</Identifier>
+      <DisplayName>Abort Result</DisplayName>
+      <Description>Result of abort operation</Description>
+      <DataType>
+        <Structure>
+          <Element>
+            <Identifier>Success</Identifier>
+            <DisplayName>Success</DisplayName>
+            <Description>Whether abort was successful</Description>
+            <DataType>
+              <Basic>Boolean</Basic>
+            </DataType>
+          </Element>
+          <Element>
+            <Identifier>FinalTemperature</Identifier>
+            <DisplayName>Final Temperature</DisplayName>
+            <Description>Temperature at abort time in Celsius</Description>
+            <DataType>
+              <Basic>Real</Basic>
+            </DataType>
+          </Element>
+          <Element>
+            <Identifier>AbortReason</Identifier>
+            <DisplayName>Abort Reason</DisplayName>
+            <Description>Reason for abort</Description>
+            <DataType>
+              <Basic>String</Basic>
+            </DataType>
+          </Element>
+        </Structure>
+      </DataType>
+    </Response>
   </Command>
   
   <!-- CurrentTemperature Property -->

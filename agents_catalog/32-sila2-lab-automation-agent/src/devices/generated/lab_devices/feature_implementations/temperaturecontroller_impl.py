@@ -77,7 +77,7 @@ class TemperatureControllerImpl(TemperatureControllerBase):
             elapsed = int(time.time() - self.controller.start_time) if self.controller.start_time else 0
             percent = int((current - 25.0) / (TargetTemperature - 25.0) * 100) if TargetTemperature > 25.0 else 100
             
-            instance.emit_intermediate_response(
+            instance.send_intermediate_response(
                 SetTemperature_IntermediateResponses(
                     Progress={
                         'CurrentTemperature': current,

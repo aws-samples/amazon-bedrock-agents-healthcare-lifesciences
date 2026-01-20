@@ -131,7 +131,9 @@ TOOLS = [
         "description": "Abort current temperature control operation",
         "inputSchema": {
             "type": "object",
-            "properties": {},
+            "properties": {
+                "reason": {"type": "string", "description": "Reason for aborting the experiment"}
+            },
             "required": []
         }
     },
@@ -187,7 +189,8 @@ async def handle_tool_call(tool_name, arguments):
             return bridge.get_heating_status()
         
         elif tool_name == "abort_experiment":
-            return bridge.abort_experiment()
+            reason = arguments.get("reason", "Manual abort")
+            return bridge.abort_experiment(reason)
         
         elif tool_name == "get_task_status":
             return bridge.get_task_status(arguments["task_id"])

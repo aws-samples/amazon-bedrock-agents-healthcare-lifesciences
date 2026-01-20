@@ -8,6 +8,22 @@ import json
 import os
 
 st.set_page_config(page_title="SiLA2 Lab Automation", layout="wide")
+
+# Custom CSS for text wrapping
+st.markdown("""
+<style>
+    pre {
+        white-space: pre-wrap !important;
+        word-wrap: break-word !important;
+        overflow-wrap: break-word !important;
+    }
+    code {
+        white-space: pre-wrap !important;
+        word-wrap: break-word !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 st.title("🧪 SiLA2 Lab Automation Demo")
 
 if 'temperature_data' not in st.session_state:
@@ -15,7 +31,7 @@ if 'temperature_data' not in st.session_state:
 
 LAMBDA_FUNCTION = os.getenv('LAMBDA_FUNCTION_NAME', 'sila2-agentcore-invoker')
 AWS_REGION = os.getenv('AWS_REGION', 'us-west-2')
-MEMORY_ID = 'sila2_memory-vNLitP6yIE'
+MEMORY_ID = 'sila2_memory-GtKp0NHuqf'
 
 lambda_client = boto3.client('lambda', region_name=AWS_REGION)
 
@@ -170,13 +186,25 @@ def get_memory_events_with_id(memory_id):
                                 role = conv.get('role', 'unknown')
                                 if 'content' in conv and 'text' in conv['content']:
                                     content_text = conv['content']['text']
-                                    if 'Temperature reached event' in content_text or "heating_status: 'completed'" in content_text or "heating_status: completed" in content_text:
+                                    if '🎯 Target Temperature Reached' in content_text or 'Temperature reached event' in content_text or "heating_status: 'completed'" in content_text or "heating_status: completed" in content_text:
                                         event_type = 'TEMPERATURE_REACHED'
                                     elif 'Periodic status check' in content_text:
                                         event_type = 'PERIODIC_STATUS'
                                     elif 'Set temperature' in content_text:
                                         event_type = 'MANUAL_CONTROL'
                                     break
+                            elif 'toolUse' in payload:
+                                tool_use = payload['toolUse']
+                                role = 'tool_use'
+                                event_type = 'TOOL_USE'
+                                content_text = f"Tool: {tool_use.get('name', 'unknown')}\nInput: {json.dumps(tool_use.get('input', {}), indent=2)}"
+                                break
+                            elif 'toolResult' in payload:
+                                tool_result = payload['toolResult']
+                                role = 'tool_result'
+                                event_type = 'TOOL_RESULT'
+                                content_text = f"Tool: {tool_result.get('toolUseId', 'unknown')}\nStatus: {tool_result.get('status', 'unknown')}\nContent: {json.dumps(tool_result.get('content', []), indent=2)}"
+                                break
                     
                     all_events.append({
                         'timestamp': event.get('eventTimestamp', datetime.now()),
@@ -203,7 +231,7 @@ def get_memory_events_with_id(memory_id):
 def get_memory_events():
     return get_memory_events_with_id(MEMORY_ID)
 
-tab1, tab2, tab3 = st.tabs(["📊 Monitor", "🎛️ Control", "🧠 AI Memory"])
+tab1, tab2, tab3, tab4 = st.tabs(["📊 Monitor", "🎛️ Control", "🧠 AI Memory", "📋 CloudWatch Logs"])
 
 with tab1:
     col1, col2 = st.columns([2, 1])
@@ -397,7 +425,13 @@ with tab3:
             role = event.get('role', 'unknown')
             evt_type = event.get('event_type', 'unknown')
             
-            if evt_type == 'TEMPERATURE_REACHED':
+            if evt_type == 'TOOL_USE':
+                icon = "🔧"
+                event_type = "Tool Call"
+            elif evt_type == 'TOOL_RESULT':
+                icon = "📥"
+                event_type = "Tool Result"
+            elif evt_type == 'TEMPERATURE_REACHED':
                 icon = "🔔"
                 event_type = "Temperature Reached"
             elif evt_type == 'PERIODIC_STATUS':
@@ -406,6 +440,9 @@ with tab3:
             elif evt_type == 'MANUAL_CONTROL':
                 icon = "🎛️"
                 event_type = "Manual Control"
+            elif '🛑 Experiment Aborted' in content:
+                icon = "🛑"
+                event_type = "Experiment Aborted"
             elif role == 'user':
                 icon = "👤"
                 event_type = "User"
@@ -429,6 +466,94 @@ with tab3:
                     st.json(event['raw'])
     else:
         st.info("💡 No memory events found. The system will record events during periodic monitoring and manual control.")
+
+with tab4:
+    st.subheader("📋 CloudWatch Logs - Agent Execution Details")
+    
+    LOG_GROUP = '/aws/bedrock-agentcore/runtimes/sila2_agent-5o08mC3jJ0-DEFAULT'
+    LOG_STREAM = 'otel-rt-logs'
+    
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.write(f"**Log Group:** `{LOG_GROUP}`")
+        st.write(f"**Log Stream:** `{LOG_STREAM}`")
+    with col2:
+        if st.button("🔄 Refresh Logs", type="primary", key="refresh_logs"):
+            st.rerun()
+    
+    try:
+        logs_client = boto3.client('logs', region_name=AWS_REGION)
+        
+        # Get recent log events
+        import time
+        response = logs_client.get_log_events(
+            logGroupName=LOG_GROUP,
+            logStreamName=LOG_STREAM,
+            startFromHead=False,
+            limit=100
+        )
+        
+        events = response.get('events', [])
+        
+        if events:
+            st.success(f"✅ Found {len(events)} recent log entries")
+            
+            # Parse and display logs
+            for i, event in enumerate(reversed(events[-50:])):
+                timestamp = datetime.fromtimestamp(event['timestamp'] / 1000)
+                message = event['message']
+                
+                # Parse JSON if possible
+                try:
+                    log_data = json.loads(message)
+                    
+                    # Extract key information
+                    if 'body' in log_data:
+                        body = log_data['body']
+                        
+                        # Detect tool calls
+                        if 'get_temperature' in body:
+                            icon = "🌡️"
+                            title = "get_temperature()"
+                        elif 'analyze_heating_rate' in body:
+                            icon = "📈"
+                            title = "analyze_heating_rate()"
+                        elif 'abort_experiment' in body:
+                            icon = "🛑"
+                            title = "abort_experiment()"
+                        elif 'Tool' in body or 'tool' in body:
+                            icon = "🔧"
+                            title = "Tool Call"
+                        else:
+                            icon = "📝"
+                            title = "Log Entry"
+                        
+                        with st.expander(f"{icon} {timestamp.strftime('%H:%M:%S')} - {title}", expanded=(i<5)):
+                            st.write(f"**Timestamp:** {timestamp.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]}")
+                            
+                            # Try to parse as JSON for better formatting
+                            try:
+                                body_json = json.loads(body)
+                                st.json(body_json)
+                            except:
+                                # Display as wrapped text with line breaks
+                                st.text_area("Content", body, height=200, disabled=True)
+                    else:
+                        with st.expander(f"📝 {timestamp.strftime('%H:%M:%S')} - Log", expanded=False):
+                            st.json(log_data)
+                except:
+                    # Plain text log
+                    if message.strip():
+                        with st.expander(f"📝 {timestamp.strftime('%H:%M:%S')}", expanded=False):
+                            st.text_area("Content", message, height=150, disabled=True)
+        else:
+            st.info("💡 No recent logs found")
+            
+    except Exception as e:
+        st.error(f"❌ Error fetching logs: {e}")
+        st.write("**Troubleshooting:**")
+        st.write("- Verify the log group and stream names are correct")
+        st.write("- Check IAM permissions for CloudWatch Logs access")
 
 time.sleep(3)
 st.rerun()

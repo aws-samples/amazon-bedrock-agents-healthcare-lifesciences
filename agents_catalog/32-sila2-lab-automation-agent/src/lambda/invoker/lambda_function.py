@@ -23,7 +23,7 @@ agent_core_client = boto3.client('bedrock-agentcore', region_name='us-west-2')
 MEMORY_SDK_AVAILABLE = True
 memory_client = MemoryClient(region_name='us-west-2')
 
-def record_to_memory(device_id, user_message, agent_response, session_id=None):
+def record_to_memory(device_id, user_message, agent_response, session_id=None, session_title=None):
     """Common function for Memory recording"""
     if not MEMORY_ID or not MEMORY_SDK_AVAILABLE:
         print(f"[WARN] Memory recording skipped: MEMORY_ID={MEMORY_ID}, SDK_AVAILABLE={MEMORY_SDK_AVAILABLE}")
@@ -32,7 +32,8 @@ def record_to_memory(device_id, user_message, agent_response, session_id=None):
     if not session_id:
         session_id = f"{device_id}-{int(time.time())}-{uuid.uuid4().hex[:8]}"
     
-    actor_id = device_id[:50] if len(device_id) > 50 else device_id
+    # Always use "hplc" as actor_id for consistency
+    actor_id = "hplc"
     
     try:
         memory_client.create_event(
@@ -100,12 +101,13 @@ def handle_sns_event(event):
             except:
                 target_temp = current_temp
             
-            prompt = f"""Target temperature reached!
+            prompt = f"""🎯 Target Temperature Reached!
+
 Device: {device_id}
 Target: {target_temp}°C
 Current: {current_temp}°C
 
-Please acknowledge this milestone."""
+The heating process has completed successfully. Please acknowledge this milestone."""
             
             try:
                 payload = json.dumps({"prompt": prompt}).encode('utf-8')
@@ -121,7 +123,7 @@ Please acknowledge this milestone."""
                 
                 print(f"[INFO] Invoking AgentCore for event: {event_type}")
                 
-                session_id = f"{device_id}-{int(time.time())}-{uuid.uuid4().hex}"
+                session_id = f"{device_id}-temp-reached-{int(time.time())}-{uuid.uuid4().hex[:8]}"
                 response = agentcore_client.invoke_agent_runtime(
                     agentRuntimeArn=RUNTIME_ARN,
                     runtimeSessionId=session_id,
@@ -144,6 +146,72 @@ Please acknowledge this milestone."""
                 record_to_memory(
                     device_id=device_id,
                     user_message=f"Temperature reached event for device {device_id}: Target {target_temp}°C, Current {current_temp}°C",
+                    agent_response=agent_response,
+                    session_id=session_id,
+                    session_title=f"🎯 Temperature Reached: {device_id}"
+                )
+                
+                return {"statusCode": 200, "body": json.dumps({
+                    "event_type": event_type,
+                    "device_id": device_id,
+                    "response": agent_response
+                })}
+                
+            except Exception as e:
+                print(f"[ERROR] AgentCore error: {e}")
+                return {"statusCode": 500, "body": json.dumps({"error": str(e)})}
+        
+        elif event_type == 'ExperimentAborted':
+            # Handle experiment abort completion event
+            abort_info = sns_message.get('value', {})
+            
+            prompt = f"""🛑 Experiment Aborted!
+
+Device: {device_id}
+Final Temperature: {abort_info.get('FinalTemperature')}°C
+Reason: {abort_info.get('Reason')}
+Success: {abort_info.get('Success')}
+Timestamp: {abort_info.get('Timestamp')}
+
+Please record this abort event to memory."""
+            
+            try:
+                payload = json.dumps({"prompt": prompt}).encode('utf-8')
+                
+                import botocore.config
+                config = botocore.config.Config(
+                    read_timeout=300,
+                    connect_timeout=10,
+                    retries={'max_attempts': 0}
+                )
+                
+                agentcore_client = boto3.client('bedrock-agentcore', region_name='us-west-2', config=config)
+                
+                print(f"[INFO] Invoking AgentCore for abort event")
+                
+                session_id = f"{device_id}-aborted-{int(time.time())}-{uuid.uuid4().hex[:8]}"
+                response = agentcore_client.invoke_agent_runtime(
+                    agentRuntimeArn=RUNTIME_ARN,
+                    runtimeSessionId=session_id,
+                    payload=payload,
+                    qualifier="DEFAULT"
+                )
+                
+                response_body = response['response'].read()
+                response_text = response_body.decode('utf-8') if isinstance(response_body, bytes) else response_body
+                
+                lines = response_text.strip().split('\n')
+                agent_response = ""
+                for line in lines:
+                    if line.startswith('data: '):
+                        agent_response += line[6:]
+                
+                print(f"[INFO] AgentCore response: {agent_response[:100]}...")
+                
+                # Record to Memory
+                record_to_memory(
+                    device_id=device_id,
+                    user_message=f"🛑 Experiment Aborted: Device {device_id}, Reason: {abort_info.get('Reason')}, Final Temperature: {abort_info.get('FinalTemperature')}°C",
                     agent_response=agent_response,
                     session_id=session_id
                 )
@@ -211,9 +279,7 @@ Current Status:
 Recent History (last 2 data points for heating rate calculation):
 {json.dumps(recent_two, indent=2)}
 
-Please assess the situation and decide:
-1. Should you analyze the heating rate?
-2. Is any action needed?"""
+Please analyze the situation and take appropriate action if needed."""
     
     try:
         payload = json.dumps({"prompt": prompt}).encode('utf-8')
@@ -243,17 +309,15 @@ Please assess the situation and decide:
             if line.startswith('data: '):
                 agent_response += line[6:]
         
-        # Record to Memory
         record_to_memory(
             device_id=device_id,
             user_message=prompt,
             agent_response=agent_response,
-            session_id=device_session_id
+            session_id=device_session_id,
+            session_title=f"📊 Periodic Status: {device_id}"
         )
         
         return {"statusCode": 200, "body": json.dumps({
-            "status": status,
-            "history_count": len(recent_two),
             "response": agent_response
         })}
         
@@ -314,7 +378,8 @@ def handle_manual_control(event):
             device_id=device_id,
             user_message=query,
             agent_response=agent_response,
-            session_id=device_session_id
+            session_id=device_session_id,
+            session_title=f"🎮 Manual Control: {device_id}"
         )
         
         return {"statusCode": 200, "body": json.dumps({"response": agent_response})}

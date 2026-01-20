@@ -89,56 +89,12 @@ class SiLA2StreamClient:
                 time.sleep(5)
     
     def _event_stream_loop(self):
-        """HeatingStatus property monitoring loop (SiLA2 standard)"""
-        last_is_heating = None
-        
+        """Deprecated: Temperature reached detection now handled by sila2_bridge.py
+        via SetTemperature IntermediateResponse monitoring (SiLA2 standard)"""
+        logger.info(f"Event stream loop disabled for {self.device_id} - using IntermediateResponse monitoring")
+        # Keep thread alive but do nothing
         while self.running:
-            try:
-                if not self.client:
-                    time.sleep(1)
-                    continue
-                
-                # Subscribe to HeatingStatus property (SiLA2 standard)
-                status_subscription = self.client.TemperatureController.HeatingStatus.subscribe()
-                logger.info(f"Subscribed to HeatingStatus for {self.device_id}")
-                
-                for status_data in status_subscription:
-                    if not self.running:
-                        break
-                    
-                    is_heating = status_data.IsHeating
-                    
-                    # Detect heating→idle transition
-                    if last_is_heating and not is_heating:
-                        # Check if target temperature was reached
-                        try:
-                            current_temp = self.client.TemperatureController.CurrentTemperature.get()
-                            target_temp = self.client.TemperatureController.TargetTemperature.get()
-                            temp_diff = abs(current_temp - target_temp)
-                            
-                            # Only send TemperatureReached if within 0.5°C of target
-                            if temp_diff < 0.5:
-                                logger.info(f"[{self.device_id}] Temperature reached (IsHeating: true→false, {current_temp:.1f}°C ≈ {target_temp:.1f}°C)")
-                                asyncio.run(handle_sila2_event(self.device_id, {
-                                    'event_type': 'TemperatureReached',
-                                    'value': {
-                                        'IsHeating': status_data.IsHeating,
-                                        'ElapsedSeconds': status_data.ElapsedSeconds,
-                                        'ScenarioMode': status_data.ScenarioMode,
-                                        'CurrentTemperature': current_temp,
-                                        'TargetTemperature': target_temp
-                                    }
-                                }))
-                            else:
-                                logger.info(f"[{self.device_id}] Heating stopped but target not reached (IsHeating: true→false, {current_temp:.1f}°C vs {target_temp:.1f}°C)")
-                        except Exception as e:
-                            logger.error(f"Failed to check temperature: {e}")
-                    
-                    last_is_heating = is_heating
-                    
-            except Exception as e:
-                logger.error(f"HeatingStatus monitoring error for {self.device_id}: {e}")
-                time.sleep(5)
+            time.sleep(10)
                 
     def stop(self):
         """Stop streaming"""

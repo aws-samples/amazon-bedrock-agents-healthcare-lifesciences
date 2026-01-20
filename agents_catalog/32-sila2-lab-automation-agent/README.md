@@ -8,8 +8,43 @@ This agent demonstrates autonomous laboratory equipment control through:
 - **AI-Driven Decision Making**: Claude 3.5 Sonnet v2 analyzes device data and makes control decisions
 - **SiLA2 Protocol Integration**: Standard laboratory automation protocol support
 - **Multi-Target Architecture**: Separates device control (Container) from data analysis (Lambda)
-- **Memory Management**: Tracks experimental context and control history
+- **Memory Management**: Tracks experimental context and control history with automatic audit trail
 - **Real-time Monitoring**: Streamlit UI for visualization and manual intervention
+- **Intelligent Verification**: Re-confirms anomalies before taking critical actions
+
+## Key Features
+
+### Intelligent Heating Rate Verification
+
+When periodic monitoring detects a potentially slow heating rate, the agent:
+
+1. **Re-measures temperature** using SiLA2 standard tools (5-second interval)
+2. **Re-calculates heating rate** with fresh data
+3. **Makes informed decision** based on verified measurements
+4. **Records entire process** to Memory for audit trail
+
+This prevents false positives and ensures reliable anomaly detection.
+
+### Automatic Memory Recording
+
+All agent activities are automatically recorded to AgentCore Memory:
+- Tool calls and results
+- Temperature measurements and timestamps
+- Heating rate calculations
+- Control decisions and reasoning
+- Experiment abort events
+
+Memory provides complete audit trail for regulatory compliance and troubleshooting.
+
+### Experiment Abort Re-verification
+
+Before aborting an experiment due to slow heating:
+1. Agent receives alert from periodic monitoring
+2. Agent takes two fresh temperature measurements (5 seconds apart)
+3. Agent recalculates heating rate with verified data
+4. If rate < 3.0°C/min threshold: abort experiment
+5. If rate ≥ 3.0°C/min: continue heating
+6. All steps recorded to Memory with timestamps
 
 ## Architecture
 
@@ -120,6 +155,9 @@ For detailed deployment instructions, troubleshooting, and advanced configuratio
 ### Target 2: Analysis Lambda (1 tool)
 
 - **analyze_heating_rate(device_id, history)**: Calculate heating rate and detect anomalies
+  - Used for both initial detection and re-verification
+  - Ensures consistent calculation logic
+  - Returns rate in °C/min with threshold comparison (3.0°C/min)
 
 ## Usage
 
@@ -133,9 +171,18 @@ agentcore invoke '{"prompt": "Set HPLC_001 temperature to 80 degrees"}'
 agentcore invoke '{"prompt": "What is the current status of HPLC_001?"}'
 ```
 
-### Autonomous Analysis
+### Autonomous Analysis with Intelligent Verification
 
-The Lambda Invoker performs periodic analysis every 5 minutes:
+The Lambda Invoker performs periodic analysis every 5 minutes. When a potential anomaly is detected, the agent automatically performs intelligent verification:
+
+**Verification Protocol:**
+1. Receive heating rate alert from periodic monitoring
+2. Take first temperature measurement
+3. Wait 5 seconds
+4. Take second temperature measurement
+5. Calculate heating rate from verified measurements
+6. Make abort decision if rate < 3.0°C/min
+7. Record entire process to Memory
 
 ```bash
 # Trigger periodic analysis
@@ -188,8 +235,10 @@ Your web browser should automatically launch and navigate to <http://localhost:8
 
 3. **🧠 AI Memory**: AI decision history
    - Temperature target reached notifications
-   - AI anomaly detection reasoning
+   - AI anomaly detection reasoning with verification steps
    - Automatic abort decisions when heating is too slow
+   - Complete audit trail with timestamps
+   - Tool call history and results
    - Session and event tracking
 
 **Scenario Switching:**
