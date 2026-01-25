@@ -141,7 +141,7 @@ print(f"Created {len(medical_imaging_tools)} tools for the Strands agent")
 
 # Create Bedrock model for Strands
 model = BedrockModel(
-    model_id="anthropic.claude-3-5-sonnet-20241022-v2:0",
+    model_id="global.anthropic.claude-opus-4-5-20251101-v1:0",
     region_name=region,
     temperature=0.1,
     streaming=False
