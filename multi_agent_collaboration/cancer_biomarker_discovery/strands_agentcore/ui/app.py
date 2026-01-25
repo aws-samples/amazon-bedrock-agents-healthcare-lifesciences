@@ -10,6 +10,7 @@ import sys
 import traceback
 from typing import Iterator
 from streamlit.logger import get_logger
+from typing import Optional
 
 temp_dir = tempfile.mkdtemp()
 
@@ -28,6 +29,16 @@ def get_environment():
 
 environmentName = get_environment()
 
+def find_s3_bucket_name_by_suffix(name_suffix: str) -> Optional[str]:
+    """Find S3 bucket name by name suffix"""
+    client = boto3.client('s3')
+    
+    response = client.list_buckets()
+    for bucket in response['Buckets']:
+        if bucket['Name'].endswith(name_suffix):
+            return bucket['Name']
+    return None
+
 # Get AWS region
 session = boto3.Session()
 region = session.region_name
@@ -41,7 +52,10 @@ ssm_client = boto3.client('ssm')
 
 agent_arn = (ssm_client.get_parameter(Name=f"/streamlitapp/{environmentName}/AGENT_ARN", WithDecryption=True)["Parameter"]["Value"])
            
-s3_bucket_name = (ssm_client.get_parameter(Name=f"/streamlitapp/{environmentName}/S3_BUCKET_NAME",WithDecryption=True,)["Parameter"]["Value"])
+# Retrieve bucket information
+s3_bucket_name = find_s3_bucket_name_by_suffix('-agent-build-bucket')
+if not s3_bucket_name:
+    print("Error: S3 bucket with suffix '-agent-build-bucket' not found!")
 
 def list_png_files():
         try:
