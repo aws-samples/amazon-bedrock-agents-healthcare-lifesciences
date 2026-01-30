@@ -223,7 +223,7 @@ def refine_sql(sql: str, question: str) -> str:
     try:
         user_message = {"role": "user", "content": prompt}
         claude_response = {"role": "assistant", "content": "<efficientQuery>"}
-        model_Id = 'anthropic.claude-3-5-sonnet-20240620-v1:0'
+        model_Id = 'global.anthropic.claude-opus-4-5-20251101-v1:0'
         messages = [user_message, claude_response]
         system_prompt = "You are an extremely critical sql query evaluation assistant, your job is to look at the schema, sql query and question being asked to then evaluate the query to ensure it is efficient."
         max_tokens = 1000
@@ -256,7 +256,7 @@ print(f"Created {len(biomarker_agent_tools)} tools for the Strands agent")
 
 # Create Bedrock model for Strands
 model = BedrockModel(
-    model_id="anthropic.claude-3-5-sonnet-20241022-v2:0",
+    model_id="global.anthropic.claude-opus-4-5-20251101-v1:0",
     region_name=region,
     temperature=0.1,
     streaming=False
