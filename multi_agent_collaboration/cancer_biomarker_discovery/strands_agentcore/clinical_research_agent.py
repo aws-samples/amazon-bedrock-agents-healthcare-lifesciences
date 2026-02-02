@@ -1,10 +1,6 @@
 
 import os
 import boto3
-import json
-import uuid
-import requests
-from typing import Dict, Any, List
 from strands import Agent, tool
 from strands.models import BedrockModel
 from strands_tools import retrieve
@@ -18,6 +14,9 @@ kb_tool = None
 sts_client = boto3.client('sts')
 account_id = sts_client.get_caller_identity()['Account']
 region = boto3.Session().region_name
+
+# Define Bedrock model id
+MODEL_ID = "global.anthropic.claude-sonnet-4-20250514-v1:0"
 
 # Initialize AWS clients
 bedrock_client = boto3.client('bedrock-runtime', region_name=region)
@@ -96,8 +95,8 @@ print(f"Created {len(clinical_research_agent_tools)} custom tools for the Strand
 
 # Create Bedrock model for Strands
 model = BedrockModel(
-    model_id="global.anthropic.claude-opus-4-5-20251101-v1:0",
+    model_id=MODEL_ID,
     region_name=region,
     temperature=0.1,
-    streaming=False
+    streaming=True
 )

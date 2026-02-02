@@ -12,6 +12,9 @@ sts_client = boto3.client('sts')
 account_id = sts_client.get_caller_identity()['Account']
 region = boto3.Session().region_name
 
+# Define Bedrock model id
+MODEL_ID = "global.anthropic.claude-sonnet-4-20250514-v1:0"
+
 # Initialize AWS clients
 bedrock_client = boto3.client('bedrock-runtime', region_name=region)
 redshift_client = boto3.client('redshift-data')
@@ -215,15 +218,15 @@ def refine_sql(sql: str, question: str) -> str:
     
     This query uses COUNT(DISTINCT) and GROUP BY to aggregate and provide a summary of the data, reducing the SQL output size.
     
-    Provide your response within <efficientQuery> tags. If you suggest a new query, do not use line breaks in the generated SQL. Your response should be a single line of SQL or "no change needed" if the original query is already efficient.
+    If you suggest a new query, do not use line breaks in the generated SQL. Your response should be a single line of SQL or "no change needed" if the original query is already efficient.
     
     Remember to prioritize aggregation when possible to reduce SQL output size and provide more meaningful results.
     """
     
     try:
         user_message = {"role": "user", "content": prompt}
-        claude_response = {"role": "assistant", "content": "<efficientQuery>"}
-        model_Id = 'global.anthropic.claude-opus-4-5-20251101-v1:0'
+        claude_response = {"role": "assistant", "content": ""}
+        model_Id = MODEL_ID
         messages = [user_message, claude_response]
         system_prompt = "You are an extremely critical sql query evaluation assistant, your job is to look at the schema, sql query and question being asked to then evaluate the query to ensure it is efficient."
         max_tokens = 1000
@@ -256,8 +259,8 @@ print(f"Created {len(biomarker_agent_tools)} tools for the Strands agent")
 
 # Create Bedrock model for Strands
 model = BedrockModel(
-    model_id="global.anthropic.claude-opus-4-5-20251101-v1:0",
+    model_id=MODEL_ID,
     region_name=region,
     temperature=0.1,
-    streaming=False
+    streaming=True
 )
