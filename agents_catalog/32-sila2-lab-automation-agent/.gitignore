@@ -10,6 +10,7 @@ __pycache__/
 .env
 .venv/
 venv/
+.python-version
 
 # IDE
 .vscode/
@@ -25,6 +26,7 @@ venv/
 
 # Bedrock AgentCore build artifacts
 .bedrock_agentcore/
+.bedrock_agentcore/**
 .bedrock_agentcore.yaml
 .gateway-config
 .phase3-*-config
