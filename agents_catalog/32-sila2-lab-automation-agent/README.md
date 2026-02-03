@@ -2,7 +2,7 @@
 
 An AI-powered laboratory automation agent that controls SiLA2-compliant devices using Amazon Bedrock AgentCore. The agent autonomously monitors device status, analyzes experimental data, and makes intelligent control decisions.
 
-## Overview
+## 🌟 Overview
 
 This agent demonstrates autonomous laboratory equipment control through:
 - **AI-Driven Decision Making**: Claude 3.5 Sonnet v2 analyzes device data and makes control decisions
@@ -12,7 +12,26 @@ This agent demonstrates autonomous laboratory equipment control through:
 - **Real-time Monitoring**: Streamlit UI for visualization and manual intervention
 - **Intelligent Verification**: Re-confirms anomalies before taking critical actions
 
-## Key Features
+## 🏗️ Architecture
+
+```
+User/Lambda Invoker → AgentCore Runtime → MCP Gateway (2 Targets)
+                                           ├─ Target 1: Bridge Container (10 tools)
+                                           │   └─ Mock Devices (ECS)
+                                           └─ Target 2: Lambda (1 tool)
+```
+
+**Key Components:**
+- **AgentCore Runtime**: AI agent orchestration with Claude 3.5 Sonnet v2
+- **MCP Gateway**: Multi-target tool routing (Container + Lambda)
+- **Bridge Container**: SiLA2 protocol translation (ECS Fargate)
+- **Mock Devices**: HPLC simulator with scenario switching
+- **Analysis Lambda**: Temperature rate calculation and anomaly detection
+- **Streamlit UI**: Real-time monitoring and manual control interface
+
+For detailed architecture documentation, see [ARCHITECTURE.md](ARCHITECTURE.md).
+
+## ✨ Key Features
 
 ### Intelligent Heating Rate Verification
 
@@ -36,34 +55,7 @@ All agent activities are automatically recorded to AgentCore Memory:
 
 Memory provides complete audit trail for regulatory compliance and troubleshooting.
 
-### Experiment Abort Re-verification
-
-Before aborting an experiment due to slow heating:
-1. Agent receives alert from periodic monitoring
-2. Agent takes two fresh temperature measurements (5 seconds apart)
-3. Agent recalculates heating rate with verified data
-4. If rate < 3.0°C/min threshold: abort experiment
-5. If rate ≥ 3.0°C/min: continue heating
-6. All steps recorded to Memory with timestamps
-
-## Architecture
-
-```
-User/Lambda Invoker → AgentCore Runtime → MCP Gateway (2 Targets)
-                                           ├─ Target 1: Bridge Container (5 tools)
-                                           │   └─ Mock Devices (ECS)
-                                           └─ Target 2: Lambda (1 tool)
-```
-
-**Key Components:**
-- **AgentCore Runtime**: AI agent orchestration with Claude 3.5 Sonnet v2
-- **MCP Gateway**: Multi-target tool routing (Container + Lambda)
-- **Bridge Container**: SiLA2 protocol translation (ECS Fargate)
-- **Mock Devices**: HPLC simulator with scenario switching
-- **Analysis Lambda**: Temperature rate calculation and anomaly detection
-- **Streamlit UI**: Real-time monitoring and manual control interface
-
-## Getting Started
+## 🚀 Getting Started
 
 ### Prerequisites
 
@@ -80,20 +72,20 @@ User/Lambda Invoker → AgentCore Runtime → MCP Gateway (2 Targets)
 
 ### Installation
 
-1. Clone this repository
+1. **Clone this repository**
 
 ```bash
 git clone <repository-url>
-cd 32-sila2-lab-automation-agent
+cd agents_catalog/32-sila2-lab-automation-agent
 ```
 
-2. Install Python dependencies
+2. **Install Python dependencies**
 
 ```bash
 pip install -r requirements.txt
 ```
 
-3. Configure AWS credentials
+3. **Configure AWS credentials**
 
 ```bash
 aws configure
@@ -102,55 +94,112 @@ export AWS_REGION=us-west-2
 
 ### VPC Requirements
 
-The Lambda Invoker runs inside a VPC and requires a VPC Endpoint for Bedrock AgentCore API access:
+The Lambda Invoker runs inside a VPC and requires VPC Endpoints for AWS service access. The deployment script automatically creates the following VPC Endpoints:
 
-```bash
-# Create VPC Endpoint (recommended, ~$7/month)
-./scripts/00_setup_vpc_endpoint.sh
-```
+- **Bedrock AgentCore**: For AI agent invocation
+- **ECR API/DKR**: For container image pulls
+- **CloudWatch Logs**: For logging
+- **S3 Gateway**: For artifact storage
+- **SNS**: For event notifications
 
-Alternative: NAT Gateway (not recommended, ~$32/month)
+**Cost**: ~$7/month per Interface VPC Endpoint (5 endpoints = ~$35/month)
 
-## Deployment
+## 📦 Deployment
 
-1. Create ECR repositories and build container images
+### Quick Start
 
 ```bash
 cd scripts
+
+# 1. Create ECR repositories and build container images
 ./01_setup_ecr_and_build.sh
-```
 
-2. Package Lambda functions
-
-```bash
+# 2. Package Lambda functions
 ./02_package_lambdas.sh
-```
 
-3. Deploy main infrastructure stack
+# 3. Deploy main infrastructure stack
+./03_deploy_stack.sh \
+  --vpc-id <your-vpc-id> \
+  --subnet-ids <subnet-id-1>,<subnet-id-2>
 
-```bash
-./03_deploy_stack.sh
-```
-
-4. Deploy AgentCore Runtime with Gateway and Memory
-
-```bash
+# 4. Deploy AgentCore Runtime with Gateway and Memory
 ./04_deploy_agentcore.sh
 ```
 
-For detailed deployment instructions, troubleshooting, and advanced configuration options, see [scripts/DEPLOYMENT_GUIDE.md](scripts/DEPLOYMENT_GUIDE.md).
+### Detailed Deployment Steps
 
-## Available Tools
+#### Step 1: Setup ECR and Build Images
 
-### Target 1: Bridge Container (5 tools)
+```bash
+./scripts/01_setup_ecr_and_build.sh
+```
 
-- **list_devices()**: List all available SiLA2 devices
-- **get_device_status(device_id)**: Get current device status
-- **get_task_status(device_id, task_id)**: Check task execution status
-- **get_property(device_id, property_name)**: Read device property values
-- **execute_control(device_id, command, parameters)**: Execute control commands
-  - `set_temperature`: Set target temperature
-  - `abort_experiment`: Stop current experiment
+This script:
+- Creates ECR repositories for bridge and mock-devices containers
+- Builds Docker images
+- Pushes images to ECR
+
+#### Step 2: Package Lambda Functions
+
+```bash
+./scripts/02_package_lambdas.sh
+```
+
+This script:
+- Packages Lambda Invoker function
+- Packages Analysis Lambda function
+- Creates zip files in `build/` directory
+
+#### Step 3: Deploy Infrastructure
+
+```bash
+./scripts/03_deploy_stack.sh \
+  --vpc-id vpc-xxxxx \
+  --subnet-ids subnet-xxxxx,subnet-yyyyy
+```
+
+**Required Parameters:**
+- `--vpc-id`: Your VPC ID
+- `--subnet-ids`: Comma-separated list of private subnet IDs (minimum 2)
+
+**Optional Parameters:**
+- `--route-table-ids`: Comma-separated route table IDs (auto-detected if not provided)
+
+This script deploys:
+- VPC Endpoints (Bedrock AgentCore, ECR, CloudWatch Logs, S3, SNS)
+- ECS Cluster with Bridge and Mock Device containers
+- Lambda functions (Invoker and Analysis)
+- Service Discovery (sila2.local namespace)
+- Security Groups
+- EventBridge Scheduler (5-minute periodic analysis)
+- SNS Topic for events
+
+#### Step 4: Deploy AgentCore
+
+```bash
+./scripts/04_deploy_agentcore.sh
+```
+
+This script:
+- Creates AgentCore Runtime
+- Configures Gateway with 2 targets
+- Sets up Memory for audit trail
+- Deploys Runtime container to ECS
+
+## 🛠️ Available Tools
+
+### Target 1: Bridge Container (10 tools)
+
+1. **list_devices()**: List all available lab devices
+2. **get_device_info(device_id)**: Get information about a specific device
+3. **get_device_status(device_id)**: Get current status of a device
+4. **set_temperature(target_temperature)**: Set target temperature (returns task UUID)
+5. **get_temperature()**: Get current temperature reading
+6. **subscribe_temperature()**: Subscribe to real-time temperature updates
+7. **get_heating_status()**: Get current heating status
+8. **abort_experiment(reason)**: Abort current temperature control operation
+9. **get_task_status(task_id)**: Get status of an asynchronous task
+10. **get_task_info(task_id)**: Get information about a task
 
 ### Target 2: Analysis Lambda (1 tool)
 
@@ -159,60 +208,17 @@ For detailed deployment instructions, troubleshooting, and advanced configuratio
   - Ensures consistent calculation logic
   - Returns rate in °C/min with threshold comparison (3.0°C/min)
 
-## Usage
-
-### Manual Control
-
-```bash
-# Set device temperature
-agentcore invoke '{"prompt": "Set HPLC_001 temperature to 80 degrees"}'
-
-# Check device status
-agentcore invoke '{"prompt": "What is the current status of HPLC_001?"}'
-```
-
-### Autonomous Analysis with Intelligent Verification
-
-The Lambda Invoker performs periodic analysis every 5 minutes. When a potential anomaly is detected, the agent automatically performs intelligent verification:
-
-**Verification Protocol:**
-1. Receive heating rate alert from periodic monitoring
-2. Take first temperature measurement
-3. Wait 5 seconds
-4. Take second temperature measurement
-5. Calculate heating rate from verified measurements
-6. Make abort decision if rate < 3.0°C/min
-7. Record entire process to Memory
-
-```bash
-# Trigger periodic analysis
-aws lambda invoke \
-  --function-name sila2-agentcore-invoker \
-  --payload '{"action": "periodic", "devices": ["hplc_001"]}' \
-  response.json
-
-# View results
-cat response.json
-```
-
-**Example Response:**
-```json
-{
-  "analysis": {
-    "heating_rate": 2.0,
-    "expected_rate": 10.0,
-    "is_anomaly": true,
-    "scenario_mode": "scenario_2"
-  },
-  "decision": "Heating rate too slow, resetting temperature",
-  "action_taken": "set_temperature",
-  "reasoning": "Detected scenario_2, recovery to scenario_1 needed"
-}
-```
+## 💻 Usage
 
 ### Streamlit UI
 
-Launch the monitoring interface:
+First, install the required dependencies:
+
+```bash
+pip install -r streamlit_app/requirements.txt
+```
+
+Then launch the monitoring interface:
 
 ```bash
 streamlit run streamlit_app/app.py
@@ -244,7 +250,102 @@ Your web browser should automatically launch and navigate to <http://localhost:8
 **Scenario Switching:**
 The system alternates between normal (5°C/min) and slow (2°C/min) heating scenarios with each temperature setting, demonstrating AI's ability to detect and respond to anomalies.
 
-## Project Structure
+### Manual Control via CLI
+
+```bash
+# Set device temperature
+aws bedrock-agentcore-runtime invoke-agent \
+  --agent-id <agent-id> \
+  --agent-alias-id <alias-id> \
+  --session-id test-session \
+  --input-text "Set temperature to 80 degrees" \
+  --region us-west-2
+
+# Check device status
+aws bedrock-agentcore-runtime invoke-agent \
+  --agent-id <agent-id> \
+  --agent-alias-id <alias-id> \
+  --session-id test-session \
+  --input-text "What is the current status of the device?" \
+  --region us-west-2
+```
+
+### Autonomous Analysis with Intelligent Verification
+
+The Lambda Invoker performs periodic analysis every 5 minutes. When a potential anomaly is detected, the agent automatically performs intelligent verification:
+
+**Verification Protocol:**
+1. Receive heating rate alert from periodic monitoring
+2. Take first temperature measurement
+3. Wait 5 seconds
+4. Take second temperature measurement
+5. Calculate heating rate from verified measurements
+6. Make abort decision if rate < 3.0°C/min
+7. Record entire process to Memory
+
+```bash
+# Trigger periodic analysis manually
+aws lambda invoke \
+  --function-name sila2-agentcore-invoker \
+  --payload '{"action": "periodic", "device_id": "hplc"}' \
+  response.json
+
+# View results
+cat response.json
+```
+
+## 🎬 Demo Walkthrough
+
+### Streamlit UI Demo
+
+1. **Install Streamlit dependencies:**
+
+```bash
+pip install -r streamlit_app/requirements.txt
+```
+
+2. **Start the Streamlit monitoring interface:**
+
+```bash
+streamlit run streamlit_app/app.py
+```
+
+Your web browser should automatically launch and navigate to <http://localhost:8501>.
+
+3. **The UI displays three tabs:**
+   - **📊 Monitor**: Real-time temperature monitoring and status
+   - **🎛️ Control**: Manual device control interface
+   - **🧠 AI Memory**: AI decision history and reasoning
+
+4. **Test temperature control in the 🎛️ Control tab:**
+
+   a. Set target temperature to 35°C
+   - Temperature will gradually increase from 25°C to 35°C
+   - Monitor the temperature rise in the **📊 Monitor** tab
+
+   b. When temperature reaches 35°C:
+   - Heating automatically stops
+   - Check the **🧠 AI Memory** tab to see "Temperature target reached" notification
+
+5. **Observe AI autonomous control:**
+
+   The system alternates between two scenarios with each temperature setting:
+   
+   - **Normal heating (Scenario 1)**: Temperature rises at 5°C/min
+   - **Slow heating (Scenario 2)**: Temperature rises at 2°C/min (abnormally slow)
+
+   When slow heating is detected:
+   - AI automatically detects the anomaly
+   - AI aborts the experiment to prevent issues
+   - Check the **🧠 AI Memory** tab to see AI's reasoning: "Heating rate too slow, aborting experiment"
+
+5. **Repeat temperature settings to see scenario switching:**
+   - 1st setting: Normal heating (5°C/min) → reaches target
+   - 2nd setting: Slow heating (2°C/min) → AI aborts
+   - 3rd setting: Normal heating (5°C/min) → reaches target
+   - And so on...
+
+## 📁 Project Structure
 
 ```
 32-sila2-lab-automation-agent/
@@ -267,76 +368,12 @@ The system alternates between normal (5°C/min) and slow (2°C/min) heating scen
 │   ├── devices/                 # Mock device simulators
 │   └── lambda/                  # Lambda functions
 ├── streamlit_app/               # Monitoring UI
+├── ARCHITECTURE.md              # Detailed architecture documentation
 ├── main_agentcore.py            # AgentCore entrypoint
 └── README.md
 ```
 
-## Demo
-
-### Streamlit UI Walkthrough
-
-1. Start the Streamlit monitoring interface:
-
-```bash
-streamlit run streamlit_app/app.py
-```
-
-Your web browser should automatically launch and navigate to <http://localhost:8501>.
-
-2. The UI displays three tabs:
-   - **📊 Monitor**: Real-time temperature monitoring and status
-   - **🎛️ Control**: Manual device control interface
-   - **🧠 AI Memory**: AI decision history and reasoning
-
-3. Test temperature control in the **🎛️ Control** tab:
-
-   a. Set target temperature to 35°C
-   - Temperature will gradually increase from 25°C to 35°C
-   - Monitor the temperature rise in the **📊 Monitor** tab
-
-   b. When temperature reaches 35°C:
-   - Heating automatically stops
-   - Check the **🧠 AI Memory** tab to see "Temperature target reached" notification
-
-4. Observe AI autonomous control:
-
-   The system alternates between two scenarios with each temperature setting:
-   
-   - **Normal heating (Scenario 1)**: Temperature rises at 5°C/min
-   - **Slow heating (Scenario 2)**: Temperature rises at 2°C/min (abnormally slow)
-
-   When slow heating is detected:
-   - AI automatically detects the anomaly
-   - AI aborts the experiment to prevent issues
-   - Check the **🧠 AI Memory** tab to see AI's reasoning: "Heating rate too slow, aborting experiment"
-
-5. Repeat temperature settings to see scenario switching:
-   - 1st setting: Normal heating (5°C/min) → reaches target
-   - 2nd setting: Slow heating (2°C/min) → AI aborts
-   - 3rd setting: Normal heating (5°C/min) → reaches target
-   - And so on...
-
-### Command Line Testing
-
-Alternatively, test using command line:
-
-```bash
-# Set device temperature
-agentcore invoke '{"prompt": "Set HPLC_001 temperature to 35 degrees"}'
-
-# Check device status
-agentcore invoke '{"prompt": "What is the current status of HPLC_001?"}'
-
-# Trigger autonomous analysis
-aws lambda invoke \
-  --function-name sila2-agentcore-invoker \
-  --payload '{"action": "periodic", "devices": ["hplc_001"]}' \
-  response.json
-
-cat response.json
-```
-
-## Clean up
+## 🧹 Clean Up
 
 To destroy all deployed resources, run:
 
@@ -352,29 +389,34 @@ This will delete:
 - Lambda functions
 - ECS services
 
-## Troubleshooting
+## 🔧 Troubleshooting
 
 ### Common Issues
 
 **Issue**: Lambda Invoker cannot reach Bedrock AgentCore API
-- **Solution**: Ensure VPC Endpoint is created or NAT Gateway is configured
+- **Solution**: VPC Endpoints are automatically created by the deployment script
+- **Check**: Verify VPC Endpoints exist in EC2 Console → Endpoints
+- **Verify**: `com.amazonaws.<region>.bedrock-agentcore` endpoint is active
 
 **Issue**: Container fails to start in ECS
 - **Solution**: Check ECR image exists and ECS task role has proper permissions
+- **Check logs**: CloudWatch Logs `/ecs/sila2-bridge-dev` and `/ecs/sila2-mock-devices-dev`
 
 **Issue**: AgentCore deployment fails
 - **Solution**: Verify IAM role has `bedrock-agentcore:*` permissions
+- **Check**: Ensure Docker is running for local builds
 
-See [docs/troubleshooting.md](docs/troubleshooting.md) for detailed troubleshooting guide.
+**Issue**: Service Discovery not resolving
+- **Solution**: Verify ECS tasks are running and registered with Service Discovery
+- **Check**: `bridge.sila2.local:8080` and `mock-devices.sila2.local:50051` DNS resolution
 
-## Architecture Details
+**Issue**: EventBridge Scheduler not triggering
+- **Solution**: Check EventBridge Scheduler is enabled and Lambda has proper permissions
+- **Check**: CloudWatch Logs `/aws/lambda/sila2-agentcore-invoker`
 
-For detailed architecture documentation, see:
-- [docs/architecture.md](docs/architecture.md) - System architecture overview
-- [docs/deployment.md](docs/deployment.md) - Deployment architecture
-- [docs/development.md](docs/development.md) - Development guide
+For detailed troubleshooting, see the Troubleshooting section above.
 
-## Contributing
+## 🤝 Contributing
 
 Contributions are welcome! Please follow these guidelines:
 
@@ -384,12 +426,16 @@ Contributions are welcome! Please follow these guidelines:
 4. Test your changes thoroughly
 5. Submit a pull request
 
-## License
+## 📄 License
 
-This project is licensed under the MIT-0 License - see the LICENSE file for details.
+This project is licensed under the MIT-0 License - see the [LICENSE](../../LICENSE) file for details.
 
-## Acknowledgments
+## 🙏 Acknowledgments
 
 - Built with [Amazon Bedrock AgentCore](https://aws.amazon.com/bedrock/agentcore/)
 - Uses [SiLA2 Standard](https://sila-standard.com/) for laboratory automation
 - Powered by Anthropic Claude 3.5 Sonnet v2
+
+## 📚 Additional Resources
+
+- [Detailed Architecture Documentation](ARCHITECTURE.md)

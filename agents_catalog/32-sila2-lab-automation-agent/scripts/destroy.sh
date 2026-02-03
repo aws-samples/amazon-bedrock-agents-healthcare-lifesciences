@@ -74,8 +74,7 @@ if [ -n "$MEMORY_ID" ]; then
   if OUTPUT=$(aws bedrock-agentcore-control delete-memory \
     --memory-id "$MEMORY_ID" \
     --region "$DEFAULT_REGION" 2>&1); then
-    echo "  ✓ Memory deletion initiated"
-    sleep 5
+    echo "  ✓ Memory deletion initiated (will complete asynchronously)"
   else
     if echo "$OUTPUT" | grep -q "ResourceNotFoundException"; then
       echo "  ℹ Memory already deleted"
@@ -93,7 +92,7 @@ if [ -n "$AGENT_ID" ]; then
   if OUTPUT=$(aws bedrock-agentcore-control delete-agent-runtime \
     --agent-runtime-id "$AGENT_ID" \
     --region "$DEFAULT_REGION" 2>&1); then
-    echo "  ✓ Runtime deletion initiated"
+    echo "  ✓ Runtime deletion initiated (will complete asynchronously)"
   else
     if echo "$OUTPUT" | grep -q "ResourceNotFoundException"; then
       echo "  ℹ Runtime already deleted"
@@ -103,44 +102,33 @@ if [ -n "$AGENT_ID" ]; then
       ((ERROR_COUNT++))
     fi
   fi
-  echo "  Waiting for runtime deletion to complete..."
-  sleep 10
 fi
 
 # Verify AgentCore resources are deleted
 echo "Verifying AgentCore resources deletion..."
+AGENTCORE_DELETING=false
 if [ -n "$AGENT_ID" ]; then
-  MAX_RETRIES=6
-  RETRY_COUNT=0
-  while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-    if RUNTIME_STATUS=$(aws bedrock-agentcore-control get-agent-runtime \
-      --agent-runtime-id "$AGENT_ID" \
-      --region "$DEFAULT_REGION" \
-      --query 'status' \
-      --output text 2>/dev/null); then
-      if [ "$RUNTIME_STATUS" = "DELETING" ]; then
-        echo "  ⏳ Agent Runtime still deleting... (attempt $((RETRY_COUNT+1))/$MAX_RETRIES)"
-        sleep 10
-        ((RETRY_COUNT++))
-      else
-        echo "  ⚠ Agent Runtime in unexpected state: $RUNTIME_STATUS"
-        ((ERROR_COUNT++))
-        break
-      fi
+  # Check status once - if DELETING, that's good enough
+  if RUNTIME_STATUS=$(aws bedrock-agentcore-control get-agent-runtime \
+    --agent-runtime-id "$AGENT_ID" \
+    --region "$DEFAULT_REGION" \
+    --query 'status' \
+    --output text 2>/dev/null); then
+    if [ "$RUNTIME_STATUS" = "DELETING" ]; then
+      echo "  ✓ Agent Runtime is DELETING (will complete asynchronously)"
+      AGENTCORE_DELETING=true
     else
-      echo "  ✓ Agent Runtime confirmed deleted"
-      break
+      echo "  ⚠ Agent Runtime in unexpected state: $RUNTIME_STATUS"
+      ((ERROR_COUNT++))
     fi
-  done
-  
-  if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
-    echo "  ⚠ WARNING: Agent Runtime still exists after ${MAX_RETRIES} retries"
-    ((ERROR_COUNT++))
+  else
+    echo "  ✓ Agent Runtime confirmed deleted"
+    AGENTCORE_DELETING=true
   fi
 fi
 
 echo ""
-if [ $ERROR_COUNT -gt 0 ]; then
+if [ $ERROR_COUNT -gt 0 ] && [ "$AGENTCORE_DELETING" = false ]; then
   echo "⚠ WARNING: $ERROR_COUNT error(s) occurred during AgentCore deletion"
   echo "Do you want to continue with CloudFormation deletion? (yes/no)"
   read -r RESPONSE
@@ -149,9 +137,12 @@ if [ $ERROR_COUNT -gt 0 ]; then
     exit 1
   fi
 else
-  echo "✓ All AgentCore resources deleted successfully"
-  echo "Press ENTER to proceed with CloudFormation stack deletion, or Ctrl+C to abort..."
-  read -r
+  if [ "$AGENTCORE_DELETING" = true ]; then
+    echo "✓ AgentCore resources are deleting asynchronously"
+  else
+    echo "✓ All AgentCore resources deleted successfully"
+  fi
+  echo "Proceeding with CloudFormation stack deletion..."
 fi
 
 # Delete CloudFormation Stacks

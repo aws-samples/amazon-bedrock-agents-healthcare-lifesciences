@@ -23,17 +23,22 @@ venv/
 *.log
 .DS_Store
 
-# Config files with secrets
+# Bedrock AgentCore build artifacts
+.bedrock_agentcore/
+.bedrock_agentcore.yaml
 .gateway-config
 .phase3-*-config
 
-# Bedrock AgentCore build artifacts (keep Dockerfile)
-.bedrock_agentcore/*/
-!.bedrock_agentcore/*/Dockerfile
+# Build artifacts
+build/
 
 # Backup files
 *.bak
 
-# Test scripts
+# Test files and directories
 test_*.py
 validate_*.sh
+tests/
+
+# Internal documentation (development planning, not for public release)
+internal-docs/

@@ -31,7 +31,7 @@ if 'temperature_data' not in st.session_state:
 
 LAMBDA_FUNCTION = os.getenv('LAMBDA_FUNCTION_NAME', 'sila2-agentcore-invoker')
 AWS_REGION = os.getenv('AWS_REGION', 'us-west-2')
-MEMORY_ID = 'sila2_memory-GtKp0NHuqf'
+MEMORY_ID = 'sila2_memory-lcB3NTFNlq'
 
 lambda_client = boto3.client('lambda', region_name=AWS_REGION)
 
