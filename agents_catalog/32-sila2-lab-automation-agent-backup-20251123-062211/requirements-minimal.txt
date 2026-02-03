@@ -1,5 +1,0 @@
-boto3
-requests==2.31.0
-grpcio>=1.50.0
-protobuf>=4.21.0
-grpcio-tools>=1.50.0
