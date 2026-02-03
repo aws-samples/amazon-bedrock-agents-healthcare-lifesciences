@@ -1,5 +1,5 @@
 lifelines
 pandas
 plotly
-kaleido==0.2.1
+kaleido==0.2.0
 scipy==1.13.1
