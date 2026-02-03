@@ -9,4 +9,3 @@ node_modules
 __pycache__
 *-packaged.yaml
 tasks.md
-*-backup-*/
