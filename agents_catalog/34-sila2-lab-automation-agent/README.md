@@ -426,6 +426,53 @@ Contributions are welcome! Please follow these guidelines:
 4. Test your changes thoroughly
 5. Submit a pull request
 
+## ⚠️ Security Considerations for Production Use
+
+**This is a prototype/sample implementation for demonstration and learning purposes.**
+
+Before deploying to production environments, please address the following security considerations:
+
+### IAM Permissions
+- **Current**: Uses wildcard (`*`) resources for demo flexibility
+- **Production**: Replace with specific ARNs for all IAM policies
+- **Example**: `arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*`
+
+### Network Security
+- **Security Groups**: Egress rules default to allow-all for demo simplicity
+  - **Production**: Restrict egress to specific destinations and ports
+  - Add descriptions to all security group rules
+- **VPC Configuration**: Review and minimize network exposure
+
+### Input Validation
+- **Current**: Sample code demonstrates core functionality without extensive validation
+- **Production**: Implement comprehensive input validation and sanitization for:
+  - Device IDs and task IDs
+  - Temperature values and parameters
+  - All user-provided inputs
+
+### Encryption
+- **CloudWatch Logs**: Consider enabling KMS encryption
+- **SNS Topics**: Configure KMS encryption for sensitive notifications
+- **ECR Repositories**: Enable KMS encryption and image scanning
+
+### Lambda Configuration
+- **Concurrency**: Set reserved concurrent executions to prevent resource exhaustion
+- **Dead Letter Queue**: Configure DLQ for failed invocations
+- **VPC Deployment**: Evaluate if Lambda functions should run inside VPC
+
+### Dependency Management
+- **Current**: Uses version ranges for flexibility (e.g., `>=2.31.0,<3.0.0`)
+- **Production**: Pin to specific tested versions and regularly update for security patches
+- **Scanning**: Implement automated dependency vulnerability scanning
+
+### Monitoring and Auditing
+- Enable AWS CloudTrail for all API calls
+- Configure CloudWatch alarms for anomalous behavior
+- Review and export AgentCore Memory logs regularly
+
+### Compliance
+This sample code is provided "as-is" for educational purposes. Ensure compliance with your organization's security policies and regulatory requirements before production use.
+
 ## 📄 License
 
 This project is licensed under the MIT-0 License - see the [LICENSE](../../LICENSE) file for details.
