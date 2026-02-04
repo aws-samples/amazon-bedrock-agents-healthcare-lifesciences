@@ -1,0 +1,52 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'SiLA2 Lab Automation Agent - ECR Repositories Only'
+
+Resources:
+  BridgeRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: sila2-bridge
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [{
+              "rulePriority": 1,
+              "description": "Keep last 5 images",
+              "selection": {
+                "tagStatus": "any",
+                "countType": "imageCountMoreThan",
+                "countNumber": 5
+              },
+              "action": { "type": "expire" }
+            }]
+          }
+
+  MockDevicesRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: sila2-mock-devices
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [{
+              "rulePriority": 1,
+              "description": "Keep last 5 images",
+              "selection": {
+                "tagStatus": "any",
+                "countType": "imageCountMoreThan",
+                "countNumber": 5
+              },
+              "action": { "type": "expire" }
+            }]
+          }
+
+Outputs:
+  BridgeRepositoryUri:
+    Value: !GetAtt BridgeRepository.RepositoryUri
+  
+  MockDevicesRepositoryUri:
+    Value: !GetAtt MockDevicesRepository.RepositoryUri

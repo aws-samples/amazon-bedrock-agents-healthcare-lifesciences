@@ -1,0 +1,241 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'SiLA2 Bridge Container on ECS Fargate with Service Discovery'
+
+Parameters:
+  VpcId:
+    Type: String
+  SubnetIds:
+    Type: CommaDelimitedList
+  EnvironmentName:
+    Type: String
+    Default: dev
+
+Resources:
+  BridgeCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub sila2-bridge-${EnvironmentName}
+      ClusterSettings:
+        - Name: containerInsights
+          Value: enabled
+
+  BridgeLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /ecs/sila2-bridge-${EnvironmentName}
+      RetentionInDays: 7
+
+  MockDeviceLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /ecs/sila2-mock-devices-${EnvironmentName}
+      RetentionInDays: 7
+
+  ServiceDiscoveryNamespace:
+    Type: AWS::ServiceDiscovery::PrivateDnsNamespace
+    Properties:
+      Name: sila2.local
+      Vpc: !Ref VpcId
+
+  BridgeSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for SiLA2 Bridge Container
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 50051
+          ToPort: 50051
+          CidrIp: 0.0.0.0/0
+
+  MockDeviceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Mock Device Container
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 50051
+          ToPort: 50051
+          CidrIp: 0.0.0.0/0
+
+  TaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+  TaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: LambdaInvoke
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                  - lambda:InvokeFunctionUrl
+                Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:sila2-*
+        - PolicyName: SNSPublish
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: sns:Publish
+                Resource: !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:sila2-events-*
+
+  BridgeTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub sila2-bridge-${EnvironmentName}
+      NetworkMode: awsvpc
+      RequiresCompatibilities: [FARGATE]
+      Cpu: '256'
+      Memory: '512'
+      ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
+      TaskRoleArn: !GetAtt TaskRole.Arn
+      ContainerDefinitions:
+        - Name: bridge
+          Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/sila2-bridge:latest
+          Essential: true
+          PortMappings:
+            - ContainerPort: 8080
+          Environment:
+            - Name: ENVIRONMENT
+              Value: !Ref EnvironmentName
+            - Name: AWS_REGION
+              Value: !Ref AWS::Region
+            - Name: GRPC_SERVER
+              Value: mock-devices.sila2.local:50051
+            - Name: DEVICE_ID
+              Value: hplc
+            - Name: HPLC_GRPC_URL
+              Value: mock-devices.sila2.local:50051
+            - Name: SNS_TOPIC_ARN
+              Value: !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:sila2-events-topic
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref BridgeLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: bridge
+          HealthCheck:
+            Command: [CMD-SHELL, "curl -f http://localhost:8080/health || exit 1"]
+            Interval: 30
+            Timeout: 5
+            Retries: 3
+            StartPeriod: 60
+
+  BridgeServiceDiscovery:
+    Type: AWS::ServiceDiscovery::Service
+    Properties:
+      Name: bridge
+      DnsConfig:
+        DnsRecords:
+          - Type: A
+            TTL: 60
+        NamespaceId: !Ref ServiceDiscoveryNamespace
+      HealthCheckCustomConfig:
+        FailureThreshold: 1
+
+  BridgeService:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: !Sub sila2-bridge-${EnvironmentName}
+      Cluster: !Ref BridgeCluster
+      TaskDefinition: !Ref BridgeTaskDefinition
+      DesiredCount: 1
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          Subnets: !Ref SubnetIds
+          SecurityGroups: [!Ref BridgeSecurityGroup]
+      ServiceRegistries:
+        - RegistryArn: !GetAtt BridgeServiceDiscovery.Arn
+
+  MockDeviceTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub sila2-mock-devices-${EnvironmentName}
+      NetworkMode: awsvpc
+      RequiresCompatibilities: [FARGATE]
+      Cpu: '256'
+      Memory: '512'
+      ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
+      ContainerDefinitions:
+        - Name: mock-devices
+          Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/sila2-mock-devices:latest
+          Essential: true
+          PortMappings:
+            - ContainerPort: 50051
+          Environment:
+            - Name: ENVIRONMENT
+              Value: !Ref EnvironmentName
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref MockDeviceLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: mock-devices
+
+  MockDeviceServiceDiscovery:
+    Type: AWS::ServiceDiscovery::Service
+    Properties:
+      Name: mock-devices
+      DnsConfig:
+        DnsRecords:
+          - Type: A
+            TTL: 60
+        NamespaceId: !Ref ServiceDiscoveryNamespace
+
+  MockDeviceService:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: !Sub sila2-mock-devices-${EnvironmentName}
+      Cluster: !Ref BridgeCluster
+      TaskDefinition: !Ref MockDeviceTaskDefinition
+      DesiredCount: 1
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          Subnets: !Ref SubnetIds
+          SecurityGroups: [!Ref MockDeviceSecurityGroup]
+      ServiceRegistries:
+        - RegistryArn: !GetAtt MockDeviceServiceDiscovery.Arn
+
+Outputs:
+  ClusterName:
+    Value: !Ref BridgeCluster
+  BridgeServiceEndpoint:
+    Value: http://bridge.sila2.local:8080
+  BridgeSecurityGroup:
+    Value: !Ref BridgeSecurityGroup
+  ServiceDiscoveryNamespace:
+    Value: !Ref ServiceDiscoveryNamespace

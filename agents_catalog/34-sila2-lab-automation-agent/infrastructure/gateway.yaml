@@ -1,0 +1,188 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'SiLA2 AgentCore Gateway with mcp-grpc-bridge-dev Target'
+
+Parameters:
+  ExecutionRoleArn:
+    Type: String
+    Description: ARN of the execution role for AgentCore Gateway
+
+Resources:
+  GatewayCustomResourceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: BedrockAgentCoreAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock-agentcore:CreateGateway
+                  - bedrock-agentcore:DeleteGateway
+                  - bedrock-agentcore:CreateGatewayTarget
+                  - bedrock-agentcore:DeleteGatewayTarget
+                  - bedrock-agentcore:ListGatewayTargets
+                  - lambda:GetFunction
+                  - lambda:AddPermission
+                  - lambda:RemovePermission
+                  - iam:PassRole
+                Resource: '*'
+
+  GatewayCustomResourceFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-GatewayCustomResourceFunction'
+      Runtime: python3.10
+      Handler: index.handler
+      Role: !GetAtt GatewayCustomResourceRole.Arn
+      Timeout: 300
+      Environment:
+        Variables:
+          VERSION: 'v2'
+      Code:
+        ZipFile: |
+          import cfnresponse
+          import json
+          import time
+          import subprocess
+          import os
+          
+          def run_aws_cli(command):
+              result = subprocess.run(command, shell=True, capture_output=True, text=True)
+              if result.returncode != 0:
+                  raise Exception(f"AWS CLI error: {result.stderr}")
+              return json.loads(result.stdout) if result.stdout else {}
+          
+          region = os.environ.get('AWS_REGION', 'us-west-2')
+          
+          def handler(event, context):
+              response_data = {}
+              physical_id = event.get('PhysicalResourceId', '')
+              
+              try:
+                  request_type = event['RequestType']
+                  props = event['ResourceProperties']
+                  
+                  if request_type == 'Create':
+                      lambda_resp = run_aws_cli(f"aws lambda get-function --function-name mcp-grpc-bridge-dev --region {region}")
+                      lambda_arn = lambda_resp['Configuration']['FunctionArn']
+                      
+                      gateway_name = f"sila2-gateway-{int(time.time())}"
+                      gateway_cmd = f"""aws bedrock-agentcore create-gateway \
+                          --gateway-name {gateway_name} \
+                          --execution-role-arn {props['ExecutionRoleArn']} \
+                          --region {region}"""
+                      gateway_resp = run_aws_cli(gateway_cmd)
+                      gateway_arn = gateway_resp['gatewayArn']
+                      gateway_id = gateway_arn.split('/')[-1]
+                      gateway_url = f"https://{gateway_id}.gateway.bedrock-agentcore.{props['Region']}.amazonaws.com/mcp"
+                      
+                      try:
+                          perm_cmd = f"""aws lambda add-permission \
+                              --function-name mcp-grpc-bridge-dev \
+                              --statement-id BedrockAgentCore-{gateway_id} \
+                              --action lambda:InvokeFunction \
+                              --principal bedrock-agentcore.amazonaws.com \
+                              --source-arn {gateway_arn} \
+                              --region {region}"""
+                          run_aws_cli(perm_cmd)
+                      except:
+                          pass
+                      
+                      target_payload = {
+                          'lambda': {
+                              'lambdaArn': lambda_arn,
+                              'toolSchema': {'inlinePayload': []}
+                          },
+                          'credentialProviderConfigurations': [{
+                              'assumeRoleArn': props['ExecutionRoleArn']
+                          }]
+                      }
+                      
+                      target_cmd = f"""aws bedrock-agentcore create-gateway-target \
+                          --gateway-arn {gateway_arn} \
+                          --gateway-url {gateway_url} \
+                          --execution-role-arn {props['ExecutionRoleArn']} \
+                          --target-type lambda \
+                          --target-payload '{json.dumps(target_payload)}' \
+                          --region {region}"""
+                      target_resp = run_aws_cli(target_cmd)
+                      
+                      response_data = {
+                          'GatewayArn': gateway_arn,
+                          'GatewayId': gateway_id,
+                          'GatewayUrl': gateway_url,
+                          'TargetId': target_resp.get('targetId', ''),
+                          'LambdaArn': lambda_arn,
+                          'GatewayName': gateway_name
+                      }
+                      physical_id = gateway_arn
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data, physical_id)
+                      
+                  elif request_type == 'Delete':
+                      if physical_id:
+                          try:
+                              list_cmd = f"aws bedrock-agentcore list-gateway-targets --gateway-identifier {physical_id} --region {region}"
+                              targets = run_aws_cli(list_cmd)
+                              for target in targets.get('targets', []):
+                                  del_target_cmd = f"""aws bedrock-agentcore delete-gateway-target \
+                                      --gateway-arn {physical_id} \
+                                      --target-id {target['targetId']} \
+                                      --region {region}"""
+                                  run_aws_cli(del_target_cmd)
+                              
+                              del_gateway_cmd = f"aws bedrock-agentcore delete-gateway --gateway-arn {physical_id} --region {region}"
+                              run_aws_cli(del_gateway_cmd)
+                              
+                              gateway_id = physical_id.split('/')[-1]
+                              try:
+                                  rm_perm_cmd = f"""aws lambda remove-permission \
+                                      --function-name mcp-grpc-bridge-dev \
+                                      --statement-id BedrockAgentCore-{gateway_id} \
+                                      --region {region}"""
+                                  run_aws_cli(rm_perm_cmd)
+                              except:
+                                  pass
+                          except Exception as e:
+                              print(f"Delete error: {e}")
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+                  else:
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data, physical_id)
+                      
+              except Exception as e:
+                  print(f"Error: {str(e)}")
+                  import traceback
+                  traceback.print_exc()
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {'Error': str(e)}, physical_id)
+
+  BedrockAgentCoreGateway:
+    Type: Custom::BedrockAgentCoreGateway
+    Properties:
+      ServiceToken: !GetAtt GatewayCustomResourceFunction.Arn
+      ExecutionRoleArn: !Ref ExecutionRoleArn
+      Region: !Ref AWS::Region
+
+Outputs:
+  GatewayArn:
+    Value: !GetAtt BedrockAgentCoreGateway.GatewayArn
+    Export:
+      Name: !Sub '${AWS::StackName}-GatewayArn'
+  GatewayUrl:
+    Value: !GetAtt BedrockAgentCoreGateway.GatewayUrl
+    Export:
+      Name: !Sub '${AWS::StackName}-GatewayUrl'
+  GatewayId:
+    Value: !GetAtt BedrockAgentCoreGateway.GatewayId
+  TargetLambdaArn:
+    Value: !GetAtt BedrockAgentCoreGateway.LambdaArn
+  GatewayName:
+    Value: !GetAtt BedrockAgentCoreGateway.GatewayName

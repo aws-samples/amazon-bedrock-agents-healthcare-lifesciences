@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+import "SiLAFramework.proto";
+
+package sila2.aws.amazon.com.examples.taskmanagement.v1;
+
+/* Manages asynchronous task tracking and status monitoring */
+service TaskManagement {
+  /* Get current status of a task */
+  rpc GetTaskStatus (sila2.aws.amazon.com.examples.taskmanagement.v1.GetTaskStatus_Parameters) returns (sila2.aws.amazon.com.examples.taskmanagement.v1.GetTaskStatus_Responses) {}
+  /* Get detailed information about a task */
+  rpc GetTaskInfo (sila2.aws.amazon.com.examples.taskmanagement.v1.GetTaskInfo_Parameters) returns (sila2.aws.amazon.com.examples.taskmanagement.v1.GetTaskInfo_Responses) {}
+}
+
+/* Parameters for GetTaskStatus */
+message GetTaskStatus_Parameters {
+  sila2.org.silastandard.String TaskId = 1;  /* Unique task identifier */
+}
+
+/* Responses of GetTaskStatus */
+message GetTaskStatus_Responses {
+  message TaskStatus_Struct {
+    sila2.org.silastandard.String TaskId = 1;  /* Task identifier */
+    sila2.org.silastandard.String Status = 2;  /* Task status (pending, running, completed, failed) */
+    sila2.org.silastandard.Integer Progress = 3;  /* Progress percentage (0-100) */
+  }
+  sila2.aws.amazon.com.examples.taskmanagement.v1.GetTaskStatus_Responses.TaskStatus_Struct TaskStatus = 1;  /* Current task status */
+}
+
+/* Parameters for GetTaskInfo */
+message GetTaskInfo_Parameters {
+  sila2.org.silastandard.String TaskId = 1;  /* Unique task identifier */
+}
+
+/* Responses of GetTaskInfo */
+message GetTaskInfo_Responses {
+  message TaskInfo_Struct {
+    sila2.org.silastandard.String TaskId = 1;  /* Task identifier */
+    sila2.org.silastandard.String DeviceId = 2;  /* Associated device identifier */
+    sila2.org.silastandard.String StartTime = 3;  /* Task start timestamp */
+    sila2.org.silastandard.String Description = 4;  /* Task description */
+  }
+  sila2.aws.amazon.com.examples.taskmanagement.v1.GetTaskInfo_Responses.TaskInfo_Struct TaskInfo = 1;  /* Detailed task information */
+}
