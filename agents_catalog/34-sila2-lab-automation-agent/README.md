@@ -31,6 +31,28 @@ User/Lambda Invoker → AgentCore Runtime → MCP Gateway (2 Targets)
 
 For detailed architecture documentation, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
+## 🔄 SiLA2 to MCP Protocol Translation
+
+This agent bridges SiLA2 (Standard in Lab Automation) and MCP (Model Context Protocol) to enable AI-driven laboratory automation.
+
+**Key Translation Mechanisms:**
+
+1. **Command/Property-to-Tool Mapping (1:1)**: Each SiLA2 Command or Property maps to one MCP tool
+   - Commands: `SetTemperature` → `set_temperature`, `AbortExperiment` → `abort_experiment`
+   - Properties: `CurrentTemperature` → `get_temperature`, `HeatingStatus` → `get_heating_status`
+
+2. **Protocol Conversion**: Bridge Container translates between gRPC (SiLA2) and HTTP/JSON (MCP)
+   ```
+   AI Agent (MCP/JSON) ←→ Bridge Container ←→ SiLA2 Devices (gRPC)
+   ```
+
+3. **Command Type Handling**:
+   - **Observable Commands**: Returns task UUID, monitors progress asynchronously
+   - **Unobservable Commands**: Returns result immediately
+   - **Properties**: Get/Subscribe to real-time values
+
+For implementation details, see `src/bridge/` directory and [ARCHITECTURE.md](ARCHITECTURE.md).
+
 ## ✨ Key Features
 
 ### Intelligent Heating Rate Verification
