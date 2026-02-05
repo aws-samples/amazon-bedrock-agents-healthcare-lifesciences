@@ -123,20 +123,145 @@ IF heating_status == "heating":
 
 【Available Tools】
 
-1. analyze_heating_rate
-   Input: device_id (string), history (array of temperature data points)
-   Each history item must have: timestamp, temperature, target_temperature
-   Output: heating_rate (number), unit, temp_diff, time_diff_seconds
-   
-   Example call:
-   analyze_heating_rate(
-     device_id="hplc",
-     history=[
-       {"timestamp": "2026-01-06T08:00:00", "temperature": 25.0, "target_temperature": 35.0},
-       {"timestamp": "2026-01-06T08:01:00", "temperature": 30.0, "target_temperature": 35.0}
-     ]
-   )
+═══════════════════════════════════════════════════════════════════════════════
+                         DEVICE DISCOVERY & STATUS
+═══════════════════════════════════════════════════════════════════════════════
 
-2. abort_experiment
-   Input: reason (string: reason for aborting)
-   Use when heating_rate < 3.0°C/min to stop the experiment
+1. list_devices()
+   Description: List all available SiLA2 laboratory devices
+   Input: None
+   Output: List of devices with IDs and basic information
+   
+   Example:
+   list_devices()
+
+2. get_device_info(device_id: str)
+   Description: Get detailed information about a specific device including capabilities
+   Input: device_id (string) - Device identifier
+   Output: Device details, features, supported commands
+   
+   Example:
+   get_device_info(device_id="hplc")
+
+3. get_device_status(device_id: str)
+   Description: Get current operational status of a device
+   Input: device_id (string) - Device identifier
+   Output: Current status, state, operational parameters
+   
+   Example:
+   get_device_status(device_id="hplc")
+
+═══════════════════════════════════════════════════════════════════════════════
+                      TEMPERATURE CONTROL OPERATIONS
+═══════════════════════════════════════════════════════════════════════════════
+
+4. set_temperature(target_temperature: float)
+   Description: Set target temperature for temperature control device
+   Input: target_temperature (number) - Target temperature in Celsius
+   Output: Confirmation of temperature setpoint
+   
+   Example:
+   set_temperature(target_temperature=35.0)
+
+5. get_temperature()
+   Description: Get current temperature reading from device
+   Input: None
+   Output: Current temperature value in Celsius with timestamp
+   
+   Example:
+   get_temperature()
+
+6. subscribe_temperature()
+   Description: Subscribe to real-time temperature updates from device
+   Input: None
+   Output: Subscription confirmation and initial temperature
+   
+   Example:
+   subscribe_temperature()
+
+7. get_heating_status()
+   Description: Get current heating status and progress
+   Input: None
+   Output: heating_status (idle/heating/completed), current_temp, target_temp, progress
+   
+   ⚠️ CRITICAL: Always check heating_status FIRST before any analysis
+   
+   Example:
+   get_heating_status()
+
+8. abort_experiment()
+   Description: Abort current temperature control operation or experiment
+   Input: None
+   Output: Confirmation of abort action
+   
+   ⚠️ Use only when heating_rate < 3.0°C/min after re-verification
+   
+   Example:
+   abort_experiment()
+
+═══════════════════════════════════════════════════════════════════════════════
+                         TASK MANAGEMENT
+═══════════════════════════════════════════════════════════════════════════════
+
+9. get_task_status(task_id: str)
+   Description: Get execution status of an asynchronous task
+   Input: task_id (string) - Task identifier
+   Output: Task status (pending/running/completed/failed), progress
+   
+   Example:
+   get_task_status(task_id="task-12345")
+
+10. get_task_info(task_id: str)
+    Description: Get detailed information about a task
+    Input: task_id (string) - Task identifier
+    Output: Task details, parameters, results, execution history
+    
+    Example:
+    get_task_info(task_id="task-12345")
+
+═══════════════════════════════════════════════════════════════════════════════
+                      CONTROL & ANALYSIS OPERATIONS
+═══════════════════════════════════════════════════════════════════════════════
+
+11. execute_control(device_id: str, action: str)
+    Description: Execute control action on device
+    Input: 
+      - device_id (string) - Device identifier
+      - action (string) - Control action (e.g., "abort")
+    Output: Confirmation of control action execution
+    
+    Example:
+    execute_control(device_id="hplc", action="abort")
+
+12. analyze_heating_rate(device_id: str, history: List[Dict])
+    Description: Calculate heating rate from temperature history and detect anomalies
+    Input: 
+      - device_id (string) - Device identifier
+      - history (array) - Temperature data points with timestamps
+        Each item must have:
+        - temperature (number) - Temperature in Celsius
+        - timestamp (string) - ISO 8601 format timestamp
+    Output: 
+      - heating_rate (number) - Rate in °C/min
+      - unit (string) - "°C/min"
+      - temp_diff (number) - Temperature difference
+      - time_diff_seconds (number) - Time interval
+    
+    Example:
+    analyze_heating_rate(
+      device_id="hplc",
+      history=[
+        {"timestamp": "2026-01-06T08:00:00", "temperature": 25.0},
+        {"timestamp": "2026-01-06T08:01:00", "temperature": 30.0}
+      ]
+    )
+
+═══════════════════════════════════════════════════════════════════════════════
+                           TOOL USAGE NOTES
+═══════════════════════════════════════════════════════════════════════════════
+
+• All tools are accessed through AgentCore Gateway with AWS SigV4 authentication
+• Tool calls are automatically logged to Memory for audit trail
+• Temperature values are always in Celsius
+• Timestamps must be in ISO 8601 format
+• Device IDs are case-sensitive (e.g., "hplc", not "HPLC")

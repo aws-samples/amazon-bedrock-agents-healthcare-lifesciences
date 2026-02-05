@@ -213,29 +213,118 @@ aws lambda add-permission --function-name sila2-mcp-proxy \
   --principal bedrock-agentcore.amazonaws.com --source-arn "$GATEWAY_ARN" \
   --region "${DEFAULT_REGION}" 2>/dev/null || echo "Permission already exists"
 
-# Target 1: Bridge Container
-echo "Creating Target 1: Bridge Container..."
+# Target 1: Bridge Container (11 tools)
+echo "Creating Target 1: Bridge Container (11 tools)..."
 TARGET1_ID=$(python3 << PYEOF
 import boto3
+
 client = boto3.client('bedrock-agentcore-control', region_name='${DEFAULT_REGION}')
+
+# Define all 11 bridge tools matching main_agentcore.py
+tools = [
+    {
+        'name': 'list_devices',
+        'description': 'List all available SiLA2 laboratory devices',
+        'inputSchema': {'type': 'object', 'properties': {}}
+    },
+    {
+        'name': 'get_device_info',
+        'description': 'Get detailed information about a specific device including capabilities and features',
+        'inputSchema': {
+            'type': 'object',
+            'properties': {'device_id': {'type': 'string', 'description': 'Device identifier'}},
+            'required': ['device_id']
+        }
+    },
+    {
+        'name': 'get_device_status',
+        'description': 'Get current operational status of a device',
+        'inputSchema': {
+            'type': 'object',
+            'properties': {'device_id': {'type': 'string', 'description': 'Device identifier'}},
+            'required': ['device_id']
+        }
+    },
+    {
+        'name': 'set_temperature',
+        'description': 'Set target temperature for temperature control device',
+        'inputSchema': {
+            'type': 'object',
+            'properties': {'target_temperature': {'type': 'number', 'description': 'Target temperature in Celsius'}},
+            'required': ['target_temperature']
+        }
+    },
+    {
+        'name': 'get_temperature',
+        'description': 'Get current temperature reading from temperature control device',
+        'inputSchema': {'type': 'object', 'properties': {}}
+    },
+    {
+        'name': 'subscribe_temperature',
+        'description': 'Subscribe to real-time temperature updates from device',
+        'inputSchema': {'type': 'object', 'properties': {}}
+    },
+    {
+        'name': 'get_heating_status',
+        'description': 'Get current heating status (idle, heating, completed) and progress information',
+        'inputSchema': {'type': 'object', 'properties': {}}
+    },
+    {
+        'name': 'abort_experiment',
+        'description': 'Abort current temperature control operation or experiment',
+        'inputSchema': {'type': 'object', 'properties': {}}
+    },
+    {
+        'name': 'get_task_status',
+        'description': 'Get execution status of an asynchronous task',
+        'inputSchema': {
+            'type': 'object',
+            'properties': {'task_id': {'type': 'string', 'description': 'Task identifier'}},
+            'required': ['task_id']
+        }
+    },
+    {
+        'name': 'get_task_info',
+        'description': 'Get detailed information about a task including parameters and results',
+        'inputSchema': {
+            'type': 'object',
+            'properties': {'task_id': {'type': 'string', 'description': 'Task identifier'}},
+            'required': ['task_id']
+        }
+    },
+    {
+        'name': 'execute_control',
+        'description': 'Execute control action on device such as abort experiment',
+        'inputSchema': {
+            'type': 'object',
+            'properties': {
+                'device_id': {'type': 'string', 'description': 'Device identifier'},
+                'action': {'type': 'string', 'description': 'Control action to execute (e.g., abort)'}
+            },
+            'required': ['device_id', 'action']
+        }
+    }
+]
+
 r = client.create_gateway_target(
     gatewayIdentifier='${GATEWAY_ID}',
     name='sila2-bridge-container',
-    description='SiLA2 Bridge Container (5 tools)',
-    targetConfiguration={'mcp':{'lambda':{'lambdaArn':'${PROXY_LAMBDA_ARN}','toolSchema':{'inlinePayload':[
-        {'name':'list_devices','description':'List all SiLA2 devices','inputSchema':{'type':'object','properties':{'device_type':{'type':'string'}}}},
-        {'name':'get_device_status','description':'Get device status','inputSchema':{'type':'object','properties':{'device_id':{'type':'string'}},'required':['device_id']}},
-        {'name':'get_task_status','description':'Get task status','inputSchema':{'type':'object','properties':{'task_id':{'type':'string'}},'required':['task_id']}},
-        {'name':'get_property','description':'Get device property','inputSchema':{'type':'object','properties':{'device_id':{'type':'string'},'property_name':{'type':'string'}},'required':['device_id','property_name']}},
-        {'name':'execute_control','description':'Execute control command','inputSchema':{'type':'object','properties':{'device_id':{'type':'string'},'command':{'type':'string'},'parameters':{'type':'object'}},'required':['device_id','command']}}
-    ]}}}},
-    credentialProviderConfigurations=[{'credentialProviderType':'GATEWAY_IAM_ROLE'}]
+    description='SiLA2 Bridge Container with 11 device control tools',
+    targetConfiguration={
+        'mcp': {
+            'lambda': {
+                'lambdaArn': '${PROXY_LAMBDA_ARN}',
+                'toolSchema': {'inlinePayload': tools}
+            }
+        }
+    },
+    credentialProviderConfigurations=[{'credentialProviderType': 'GATEWAY_IAM_ROLE'}]
 )
 print(r['targetId'])
 PYEOF
 )
 
-echo "✅ Target 1 created: ${TARGET1_ID}"
+echo "✅ Target 1 created: ${TARGET1_ID} (11 tools)"
 
 # Target 2: Analyze Heating Rate
 echo "Creating Target 2: Analyze Heating Rate..."
@@ -250,11 +339,45 @@ client = boto3.client('bedrock-agentcore-control', region_name='${DEFAULT_REGION
 r = client.create_gateway_target(
     gatewayIdentifier='${GATEWAY_ID}',
     name='analyze-heating-rate',
-    description='Heating rate analysis Lambda',
-    targetConfiguration={'mcp':{'lambda':{'lambdaArn':'${ANALYZE_LAMBDA_ARN}','toolSchema':{'inlinePayload':[
-        {'name':'analyze_heating_rate','description':'Calculate heating rate and detect anomalies','inputSchema':{'type':'object','properties':{'device_id':{'type':'string'},'history':{'type':'array','items':{'type':'object','properties':{'temperature':{'type':'number'},'timestamp':{'type':'string'}}}}},'required':['device_id','history']}}
-    ]}}}},
-    credentialProviderConfigurations=[{'credentialProviderType':'GATEWAY_IAM_ROLE'}]
+    description='Heating rate analysis and anomaly detection tool',
+    targetConfiguration={
+        'mcp': {
+            'lambda': {
+                'lambdaArn': '${ANALYZE_LAMBDA_ARN}',
+                'toolSchema': {
+                    'inlinePayload': [
+                        {
+                            'name': 'analyze_heating_rate',
+                            'description': 'Calculate heating rate from temperature history and detect anomalies. Returns heating rate in degrees Celsius per minute.',
+                            'inputSchema': {
+                                'type': 'object',
+                                'properties': {
+                                    'device_id': {
+                                        'type': 'string',
+                                        'description': 'Device identifier'
+                                    },
+                                    'history': {
+                                        'type': 'array',
+                                        'description': 'List of temperature readings with timestamps',
+                                        'items': {
+                                            'type': 'object',
+                                            'properties': {
+                                                'temperature': {'type': 'number', 'description': 'Temperature in Celsius'},
+                                                'timestamp': {'type': 'string', 'description': 'ISO 8601 timestamp'}
+                                            },
+                                            'required': ['temperature', 'timestamp']
+                                        }
+                                    }
+                                },
+                                'required': ['device_id', 'history']
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+    },
+    credentialProviderConfigurations=[{'credentialProviderType': 'GATEWAY_IAM_ROLE'}]
 )
 print(r['targetId'])
 PYEOF
@@ -312,9 +435,10 @@ AGENT_NAME="sila2_agent"
 # Create ECR
 create_ecr_if_not_exists "bedrock-agentcore-${AGENT_NAME}"
 
-# Update Gateway URL
+# Update Gateway URL and Memory ID
 cd "$(dirname "$SCRIPT_DIR")"
 sed -i "s|GATEWAY_URL = os.getenv('GATEWAY_URL', '.*')|GATEWAY_URL = os.getenv('GATEWAY_URL', '$GATEWAY_URL')|" main_agentcore.py
+sed -i "s|MEMORY_ID = os.getenv('MEMORY_ID', '.*')|MEMORY_ID = os.getenv('MEMORY_ID', '$MEMORY_ID')|" main_agentcore.py
 
 # Configure
 rm -f .bedrock_agentcore.yaml
@@ -404,13 +528,15 @@ aws lambda update-function-configuration \
 echo "Waiting for Lambda configuration to propagate..."
 sleep 5
 
-# Update Streamlit app.py MEMORY_ID
+# Update Streamlit app.py MEMORY_ID and LOG_GROUP
 echo ""
 echo "=== Updating Streamlit app.py ==="
 STREAMLIT_APP="${SCRIPT_DIR}/../streamlit_app/app.py"
 if [ -f "$STREAMLIT_APP" ]; then
     sed -i "s/MEMORY_ID = 'sila2_memory-[^']*'/MEMORY_ID = '${MEMORY_ID}'/" "$STREAMLIT_APP"
+    sed -i "s|LOG_GROUP = '/aws/bedrock-agentcore/runtimes/sila2_agent-[^']*-DEFAULT'|LOG_GROUP = '/aws/bedrock-agentcore/runtimes/${AGENT_ID}-DEFAULT'|" "$STREAMLIT_APP"
     echo "✅ Streamlit app.py updated with Memory ID: ${MEMORY_ID}"
+    echo "✅ Streamlit app.py updated with Log Group: /aws/bedrock-agentcore/runtimes/${AGENT_ID}-DEFAULT"
 else
     echo "⚠️  Streamlit app.py not found at ${STREAMLIT_APP}"
 fi

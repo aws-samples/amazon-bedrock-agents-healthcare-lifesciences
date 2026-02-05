@@ -31,7 +31,7 @@ if 'temperature_data' not in st.session_state:
 
 LAMBDA_FUNCTION = os.getenv('LAMBDA_FUNCTION_NAME', 'sila2-agentcore-invoker')
 AWS_REGION = os.getenv('AWS_REGION', 'us-west-2')
-MEMORY_ID = 'sila2_memory-lcB3NTFNlq'
+MEMORY_ID = 'sila2_memory-NajlMR3ROI'
 
 lambda_client = boto3.client('lambda', region_name=AWS_REGION)
 
@@ -470,7 +470,7 @@ with tab3:
 with tab4:
     st.subheader("📋 CloudWatch Logs - Agent Execution Details")
     
-    LOG_GROUP = '/aws/bedrock-agentcore/runtimes/sila2_agent-5o08mC3jJ0-DEFAULT'
+    LOG_GROUP = '/aws/bedrock-agentcore/runtimes/sila2_agent-y70dj78T7A-DEFAULT'
     LOG_STREAM = 'otel-rt-logs'
     
     col1, col2 = st.columns([3, 1])

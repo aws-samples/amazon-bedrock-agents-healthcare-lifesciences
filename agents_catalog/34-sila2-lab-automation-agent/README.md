@@ -31,6 +31,49 @@ User/Lambda Invoker → AgentCore Runtime → MCP Gateway (2 Targets)
 
 For detailed architecture documentation, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
+### Tool Invocation Architecture
+
+The agent uses AgentCore Gateway for all tool invocations with AWS SigV4 authentication:
+
+```
+AI Agent → @tool decorator → Gateway (AWS SigV4) → Lambda/Container
+```
+
+**Invocation Flow:**
+1. Agent calls tool function (e.g., `list_devices()`)
+2. Tool function calls `call_gateway_tool()` with tool name and arguments
+3. Gateway authenticates request using AWS SigV4
+4. Gateway routes to appropriate target:
+   - **Bridge Container**: 10 SiLA2 device control tools
+   - **Analysis Lambda**: 1 data analysis tool
+5. Target processes request and returns result
+6. Gateway forwards result to agent
+
+**Benefits:**
+- Centralized authentication and authorization
+- Consistent tool invocation pattern
+- Gateway handles routing to multiple targets
+- Proper AWS IAM integration
+- No direct Lambda invocation from agent code
+
+**Multi-Target Gateway Design:**
+- **Target 1 (Bridge Container)**: 10 SiLA2 device control tools
+  - Translates SiLA2 protocol (gRPC) to MCP format
+  - Handles real-time device communication
+  - Deployed as ECS Fargate container for persistent connections
+
+- **Target 2 (Analysis Lambda)**: 1 data analysis tool
+  - Stateless computation (heating rate calculation)
+  - Serverless for cost efficiency
+  - No persistent device connections needed
+
+**Why This Design?**
+1. **Protocol Translation**: SiLA2 devices use gRPC, requiring persistent bridge
+2. **Separation of Concerns**: Device control (stateful) vs data analysis (stateless)
+3. **Scalability**: Lambda scales independently for analysis workload
+4. **Cost Optimization**: Container runs continuously for devices, Lambda only when needed
+5. **Architectural Consistency**: All tools invoked through Gateway (not direct Lambda calls)
+
 ## 🔄 SiLA2 to MCP Protocol Translation
 
 This agent bridges SiLA2 (Standard in Lab Automation) and MCP (Model Context Protocol) to enable AI-driven laboratory automation.
@@ -203,8 +246,16 @@ This script deploys:
 ```
 
 This script:
-- Creates AgentCore Runtime
-- Configures Gateway with 2 targets
+- Creates AgentCore Gateway and registers Lambda targets
+- Configures Memory for conversation history
+- Deploys Runtime with Gateway and Memory integration
+- Sets GATEWAY_URL environment variable for tool invocation
+
+**Gateway Configuration:**
+- Gateway URL is automatically configured during deployment
+- Agent uses AWS SigV4 authentication for Gateway requests
+- All tool invocations route through Gateway (not direct Lambda calls)
+- Multi-target routing: Bridge Container (10 tools) + Analysis Lambda (1 tool)
 - Sets up Memory for audit trail
 - Deploys Runtime container to ECS
 
