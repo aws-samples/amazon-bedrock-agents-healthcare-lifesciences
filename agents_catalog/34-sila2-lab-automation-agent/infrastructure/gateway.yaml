@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'SiLA2 AgentCore Gateway with mcp-grpc-bridge-dev Target'
+Description: 'SiLA2 AgentCore Gateway with sila2-mcp-proxy Target'
 
 Parameters:
   ExecutionRoleArn:
@@ -37,7 +37,7 @@ Resources:
                   - lambda:GetFunction
                   - lambda:AddPermission
                   - lambda:RemovePermission
-                Resource: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:mcp-grpc-bridge-dev'
+                Resource: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:sila2-mcp-proxy'
               - Effect: Allow
                 Action: iam:PassRole
                 Resource: !Ref ExecutionRoleArn
@@ -78,7 +78,7 @@ Resources:
                   props = event['ResourceProperties']
                   
                   if request_type == 'Create':
-                      lambda_resp = run_aws_cli(f"aws lambda get-function --function-name mcp-grpc-bridge-dev --region {region}")
+                      lambda_resp = run_aws_cli(f"aws lambda get-function --function-name sila2-mcp-proxy --region {region}")
                       lambda_arn = lambda_resp['Configuration']['FunctionArn']
                       
                       gateway_name = f"sila2-gateway-{int(time.time())}"
@@ -93,7 +93,7 @@ Resources:
                       
                       try:
                           perm_cmd = f"""aws lambda add-permission \
-                              --function-name mcp-grpc-bridge-dev \
+                              --function-name sila2-mcp-proxy \
                               --statement-id BedrockAgentCore-{gateway_id} \
                               --action lambda:InvokeFunction \
                               --principal bedrock-agentcore.amazonaws.com \
@@ -151,7 +151,7 @@ Resources:
                               gateway_id = physical_id.split('/')[-1]
                               try:
                                   rm_perm_cmd = f"""aws lambda remove-permission \
-                                      --function-name mcp-grpc-bridge-dev \
+                                      --function-name sila2-mcp-proxy \
                                       --statement-id BedrockAgentCore-{gateway_id} \
                                       --region {region}"""
                                   run_aws_cli(rm_perm_cmd)
