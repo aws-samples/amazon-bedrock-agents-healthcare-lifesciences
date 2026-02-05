@@ -1,0 +1,46 @@
+# Zip archives
+*.zip
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Environment
+.env
+.venv/
+venv/
+.python-version
+
+# IDE
+.vscode/
+.idea/
+
+# AWS
+.aws/
+
+# Temporary files
+*.tmp
+*.log
+.DS_Store
+
+# Bedrock AgentCore build artifacts
+.bedrock_agentcore/
+.bedrock_agentcore/**
+.bedrock_agentcore.yaml
+.gateway-config
+.phase3-*-config
+
+# Build artifacts
+build/
+
+# Backup files
+*.bak
+
+# Test files and directories
+test_*.py
+validate_*.sh
+tests/
+
+# Internal documentation (development planning, not for public release)
+internal-docs/

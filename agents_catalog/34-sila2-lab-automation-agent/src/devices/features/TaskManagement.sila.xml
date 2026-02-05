@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Feature SiLA2Version="1.0" FeatureVersion="1.0" Originator="aws.amazon.com" Category="examples" xmlns="http://www.sila-standard.org" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sila-standard.org https://gitlab.com/SiLA2/sila_base/raw/master/schema/FeatureDefinition.xsd">
+  <Identifier>TaskManagement</Identifier>
+  <DisplayName>Task Management</DisplayName>
+  <Description>Manages asynchronous task tracking and status monitoring</Description>
+  
+  <!-- GetTaskStatus Command -->
+  <Command>
+    <Identifier>GetTaskStatus</Identifier>
+    <DisplayName>Get Task Status</DisplayName>
+    <Description>Get current status of a task</Description>
+    <Observable>No</Observable>
+    <Parameter>
+      <Identifier>TaskId</Identifier>
+      <DisplayName>Task ID</DisplayName>
+      <Description>Unique task identifier</Description>
+      <DataType>
+        <Basic>String</Basic>
+      </DataType>
+    </Parameter>
+    <Response>
+      <Identifier>TaskStatus</Identifier>
+      <DisplayName>Task Status</DisplayName>
+      <Description>Current task status</Description>
+      <DataType>
+        <Structure>
+          <Element>
+            <Identifier>TaskId</Identifier>
+            <DisplayName>Task ID</DisplayName>
+            <Description>Task identifier</Description>
+            <DataType>
+              <Basic>String</Basic>
+            </DataType>
+          </Element>
+          <Element>
+            <Identifier>Status</Identifier>
+            <DisplayName>Status</DisplayName>
+            <Description>Task status (pending, running, completed, failed)</Description>
+            <DataType>
+              <Basic>String</Basic>
+            </DataType>
+          </Element>
+          <Element>
+            <Identifier>Progress</Identifier>
+            <DisplayName>Progress</DisplayName>
+            <Description>Progress percentage (0-100)</Description>
+            <DataType>
+              <Basic>Integer</Basic>
+            </DataType>
+          </Element>
+        </Structure>
+      </DataType>
+    </Response>
+  </Command>
+  
+  <!-- GetTaskInfo Command -->
+  <Command>
+    <Identifier>GetTaskInfo</Identifier>
+    <DisplayName>Get Task Info</DisplayName>
+    <Description>Get detailed information about a task</Description>
+    <Observable>No</Observable>
+    <Parameter>
+      <Identifier>TaskId</Identifier>
+      <DisplayName>Task ID</DisplayName>
+      <Description>Unique task identifier</Description>
+      <DataType>
+        <Basic>String</Basic>
+      </DataType>
+    </Parameter>
+    <Response>
+      <Identifier>TaskInfo</Identifier>
+      <DisplayName>Task Info</DisplayName>
+      <Description>Detailed task information</Description>
+      <DataType>
+        <Structure>
+          <Element>
+            <Identifier>TaskId</Identifier>
+            <DisplayName>Task ID</DisplayName>
+            <Description>Task identifier</Description>
+            <DataType>
+              <Basic>String</Basic>
+            </DataType>
+          </Element>
+          <Element>
+            <Identifier>DeviceId</Identifier>
+            <DisplayName>Device ID</DisplayName>
+            <Description>Associated device identifier</Description>
+            <DataType>
+              <Basic>String</Basic>
+            </DataType>
+          </Element>
+          <Element>
+            <Identifier>StartTime</Identifier>
+            <DisplayName>Start Time</DisplayName>
+            <Description>Task start timestamp</Description>
+            <DataType>
+              <Basic>String</Basic>
+            </DataType>
+          </Element>
+          <Element>
+            <Identifier>Description</Identifier>
+            <DisplayName>Description</DisplayName>
+            <Description>Task description</Description>
+            <DataType>
+              <Basic>String</Basic>
+            </DataType>
+          </Element>
+        </Structure>
+      </DataType>
+    </Response>
+  </Command>
+</Feature>

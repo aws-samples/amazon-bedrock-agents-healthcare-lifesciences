@@ -1,0 +1,9 @@
+{
+  "device_id": "hplc_001",
+  "action": {
+    "action": "increase_power",
+    "parameters": {
+      "power_level": 150
+    }
+  }
+}
