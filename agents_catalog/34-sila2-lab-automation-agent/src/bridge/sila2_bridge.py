@@ -24,6 +24,7 @@ class SiLA2Bridge:
             except Exception as e:
                 if attempt < 2:
                     logger.warning(f"Connection attempt {attempt+1} failed, retrying...")
+                    # nosemgrep: arbitrary-sleep - Retry backoff mechanism for gRPC connection
                     time.sleep(2)
                 else:
                     logger.error(f"Failed to connect: {e}")

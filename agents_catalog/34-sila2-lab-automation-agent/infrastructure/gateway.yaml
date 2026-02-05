@@ -31,11 +31,16 @@ Resources:
                   - bedrock-agentcore:CreateGatewayTarget
                   - bedrock-agentcore:DeleteGatewayTarget
                   - bedrock-agentcore:ListGatewayTargets
+                Resource: !Sub 'arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:*'
+              - Effect: Allow
+                Action:
                   - lambda:GetFunction
                   - lambda:AddPermission
                   - lambda:RemovePermission
-                  - iam:PassRole
-                Resource: '*'
+                Resource: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:mcp-grpc-bridge-dev'
+              - Effect: Allow
+                Action: iam:PassRole
+                Resource: !Ref ExecutionRoleArn
 
   GatewayCustomResourceFunction:
     Type: AWS::Lambda::Function

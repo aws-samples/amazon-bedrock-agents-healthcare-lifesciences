@@ -11,6 +11,7 @@ Resources:
     Properties:
       TopicName: sila2-events-topic
       DisplayName: SiLA2 Device Events
+      KmsMasterKeyId: alias/aws/sns
 
   SNSSubscription:
     Type: AWS::SNS::Subscription

@@ -21,6 +21,7 @@ Resources:
           FromPort: 443
           ToPort: 443
           CidrIp: 0.0.0.0/0
+          Description: HTTPS for VPC endpoint access from ECS tasks and Lambda
 
   EcrApiEndpoint:
     Type: AWS::EC2::VPCEndpoint

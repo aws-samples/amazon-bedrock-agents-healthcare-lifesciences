@@ -10,21 +10,25 @@ def test_bridge_container():
     
     # モックgRPCサーバー起動
     print("1. Starting mock gRPC servers...")
+    # nosemgrep: dangerous-subprocess-use-audit - Test-only code with controlled input
     mock_proc = subprocess.Popen(
         [sys.executable, "test_mock_grpc_server.py"],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE
     )
+    # nosemgrep: arbitrary-sleep - Test synchronization: wait for mock server startup
     time.sleep(2)
     print("   ✓ Mock servers started\n")
     
     # MCPサーバー起動
     print("2. Starting MCP server...")
+    # nosemgrep: dangerous-subprocess-use-audit - Test-only code with controlled input
     mcp_proc = subprocess.Popen(
         [sys.executable, "main.py"],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE
     )
+    # nosemgrep: arbitrary-sleep - Test synchronization: wait for MCP server startup
     time.sleep(3)
     print("   ✓ MCP server started\n")
     
@@ -87,6 +91,7 @@ def test_bridge_container():
         print("\n7. Cleaning up...")
         mcp_proc.terminate()
         mock_proc.terminate()
+        # nosemgrep: arbitrary-sleep - Test synchronization: wait for process termination
         time.sleep(1)
         print("   ✓ Cleanup complete")
     

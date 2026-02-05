@@ -555,5 +555,6 @@ with tab4:
         st.write("- Verify the log group and stream names are correct")
         st.write("- Check IAM permissions for CloudWatch Logs access")
 
+# nosemgrep: arbitrary-sleep - UI refresh interval: Streamlit auto-refresh delay
 time.sleep(3)
 st.rerun()

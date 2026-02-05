@@ -86,6 +86,7 @@ class TemperatureControllerImpl(TemperatureControllerBase):
                     }
                 )
             )
+            # nosemgrep: arbitrary-sleep - Device simulation timing: temperature ramp rate
             time.sleep(0.5)
         
         return SetTemperature_Responses()

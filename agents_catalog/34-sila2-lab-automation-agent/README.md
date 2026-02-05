@@ -185,7 +185,8 @@ cd scripts
 # 3. Deploy main infrastructure stack
 ./03_deploy_stack.sh \
   --vpc-id <your-vpc-id> \
-  --subnet-ids <subnet-id-1>,<subnet-id-2>
+  --subnet-ids <subnet-id-1>,<subnet-id-2> \
+  --allowed-cidr <your-ip-range>  # Optional: defaults to 0.0.0.0/0
 
 # 4. Deploy AgentCore Runtime with Gateway and Memory
 ./04_deploy_agentcore.sh
@@ -220,7 +221,8 @@ This script:
 ```bash
 ./scripts/03_deploy_stack.sh \
   --vpc-id vpc-xxxxx \
-  --subnet-ids subnet-xxxxx,subnet-yyyyy
+  --subnet-ids subnet-xxxxx,subnet-yyyyy \
+  --allowed-cidr 203.0.113.0/24  # Optional: restrict Streamlit access
 ```
 
 **Required Parameters:**
@@ -228,6 +230,10 @@ This script:
 - `--subnet-ids`: Comma-separated list of private subnet IDs (minimum 2)
 
 **Optional Parameters:**
+- `--allowed-cidr`: CIDR block for Streamlit app access (default: `0.0.0.0/0`)
+  - **Demo/Testing**: Use default `0.0.0.0/0` (allows access from anywhere)
+  - **Production**: Restrict to your IP range (e.g., `203.0.113.0/24`)
+  - **Warning**: Default setting allows public access - suitable for demo only
 - `--route-table-ids`: Comma-separated route table IDs (auto-detected if not provided)
 
 This script deploys:
@@ -506,15 +512,36 @@ Contributions are welcome! Please follow these guidelines:
 Before deploying to production environments, please address the following security considerations:
 
 ### IAM Permissions
-- **Current**: Uses wildcard (`*`) resources for demo flexibility
-- **Production**: Replace with specific ARNs for all IAM policies
-- **Example**: `arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*`
+- **Current**: Uses account-scoped resources (e.g., `arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:*`)
+- **Production**: Further restrict to specific resource ARNs where possible
+- **Example**: `arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:gateway/my-gateway-id`
+- **Note**: Gateway creation role scoped to deployment account only
 
 ### Network Security
-- **Security Groups**: Egress rules default to allow-all for demo simplicity
-  - **Production**: Restrict egress to specific destinations and ports
-  - Add descriptions to all security group rules
+- **Security Groups**: Egress rules explicitly defined with descriptions
+  - HTTPS (443) for AWS API calls
+  - gRPC (50051) for device communication
+  - **Production**: Further restrict source/destination as needed
+- **Streamlit Access**: Controlled via `AllowedCIDR` parameter
+  - **Default**: 0.0.0.0/0 (demo/testing only)
+  - **Production**: Restrict to specific IP ranges or use Cognito authentication
 - **VPC Configuration**: Review and minimize network exposure
+
+### ECS Authentication
+- **Streamlit App Access**: Controlled via CloudFormation parameter
+  - **Parameter**: `AllowedCIDR` (default: `0.0.0.0/0`)
+  - **Demo/Testing**: Default allows access from anywhere
+  - **Production Options**:
+    1. **IP Restriction**: Set `AllowedCIDR` to your organization's IP range
+       ```bash
+       ./scripts/03_deploy_stack.sh \
+         --vpc-id <vpc-id> \
+         --subnet-ids <subnet-ids> \
+         --allowed-cidr 203.0.113.0/24
+       ```
+    2. **Cognito Authentication**: Implement Amazon Cognito user pool
+    3. **VPN/Private Access**: Deploy in private subnet with VPN access
+- **Mock Devices**: Internal gRPC service, not publicly accessible
 
 ### Input Validation
 - **Current**: Sample code demonstrates core functionality without extensive validation
@@ -524,14 +551,45 @@ Before deploying to production environments, please address the following securi
   - All user-provided inputs
 
 ### Encryption
-- **CloudWatch Logs**: Consider enabling KMS encryption
-- **SNS Topics**: Configure KMS encryption for sensitive notifications
-- **ECR Repositories**: Enable KMS encryption and image scanning
+- **CloudWatch Logs**: Encrypted with AWS managed key (`alias/aws/logs`)
+- **SNS Topics**: Encrypted with AWS managed key (`alias/aws/sns`)
+- **ECR Repositories**: Encrypted with AWS managed key (`alias/aws/ecr`)
+- **Production Considerations**:
+  - Consider customer-managed KMS keys for additional control
+  - Enable key rotation policies
+  - Configure cross-account access if needed
+  - Lambda environment variables: Add KMS encryption for sensitive data
 
 ### Lambda Configuration
 - **Concurrency**: Set reserved concurrent executions to prevent resource exhaustion
+  - Recommended: 10-100 depending on expected load
 - **Dead Letter Queue**: Configure DLQ for failed invocations
+  - Create SQS queue with 14-day retention
+  - Add `DeadLetterConfig` to Lambda function
+- **Environment Variable Encryption**: Enable KMS encryption
+  - Add `KmsKeyArn` property to Lambda function
+  - Encrypt sensitive configuration values
 - **VPC Deployment**: Evaluate if Lambda functions should run inside VPC
+
+### Input Validation
+
+This sample uses mock devices with controlled inputs. For production:
+
+**Device IDs**: Validate format and existence
+- Pattern: `^[a-zA-Z0-9_-]+$`
+- Check against device registry
+
+**Task IDs**: Validate UUID format
+- Pattern: UUID v4 format
+- Verify task ownership and permissions
+
+**Temperature Values**: Validate range and type
+- Range: 25-100°C for this demo
+- Type: Numeric with 1 decimal precision
+
+**Command Parameters**: Sanitize all user inputs
+- Prevent injection attacks
+- Validate against schema
 
 ### Dependency Management
 - **Current**: Uses version ranges for flexibility (e.g., `>=2.31.0,<3.0.0`)
@@ -543,12 +601,58 @@ Before deploying to production environments, please address the following securi
 - Configure CloudWatch alarms for anomalous behavior
 - Review and export AgentCore Memory logs regularly
 
+### Deployment Approach
+
+**Current: Shell Script Deployment**
+
+The AgentCore Runtime is deployed using `scripts/04_deploy_agentcore.sh` for:
+
+**Advantages**:
+- Rapid iteration during development
+- Easier debugging and configuration changes
+- Clear separation between infrastructure (CloudFormation) and agent logic
+- Flexibility for testing different agent configurations
+
+**Process**:
+1. Infrastructure deployed via CloudFormation (VPC, ECS, Lambda)
+2. AgentCore Runtime deployed via CLI/SDK
+3. Gateway and Memory configured programmatically
+
+**Future: CloudFormation Custom Resource**
+
+For production deployments, consider:
+- CloudFormation Custom Resource for AgentCore deployment
+- Unified infrastructure-as-code
+- Automated rollback capabilities
+
+This sample demonstrates the manual approach for educational clarity. Production deployments may benefit from full CloudFormation integration.
+
+### Docker Security
+
+This sample uses simplified Docker configurations. For production:
+
+**Base Images**: Pin to specific SHA256 hashes
+- Example: `FROM python:3.9@sha256:abc123...`
+
+**Package Installation**: Use security flags
+- pip: `pip install --no-cache-dir`
+- apt-get: `apt-get install --no-install-recommends`
+
+**Health Checks**: Add HEALTHCHECK instructions
+- Example: `HEALTHCHECK CMD curl -f http://localhost:8080/health || exit 1`
+
+**User Permissions**: Run as non-root user
+- Create dedicated user in Dockerfile
+- Use `USER` instruction
+
 ### Compliance
 This sample code is provided "as-is" for educational purposes. Ensure compliance with your organization's security policies and regulatory requirements before production use.
 
 ## 📄 License
 
-This project is licensed under the MIT-0 License - see the [LICENSE](../../LICENSE) file for details.
+This project is licensed under the MIT-0 License. See the [LICENSE](../../LICENSE) file for details.
+
+All source files, including generated code, are covered by the project license unless otherwise noted.
 
 ## 🙏 Acknowledgments
 

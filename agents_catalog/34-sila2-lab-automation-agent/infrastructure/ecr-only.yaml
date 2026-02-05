@@ -6,6 +6,10 @@ Resources:
     Type: AWS::ECR::Repository
     Properties:
       RepositoryName: sila2-bridge
+      EncryptionConfiguration:
+        EncryptionType: KMS
+        KmsKey: alias/aws/ecr
+      ImageTagMutability: IMMUTABLE
       ImageScanningConfiguration:
         ScanOnPush: true
       LifecyclePolicy:
@@ -27,6 +31,10 @@ Resources:
     Type: AWS::ECR::Repository
     Properties:
       RepositoryName: sila2-mock-devices
+      EncryptionConfiguration:
+        EncryptionType: KMS
+        KmsKey: alias/aws/ecr
+      ImageTagMutability: IMMUTABLE
       ImageScanningConfiguration:
         ScanOnPush: true
       LifecyclePolicy:

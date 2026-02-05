@@ -86,6 +86,7 @@ class SiLA2StreamClient:
                 logger.error(f"Temperature stream error for {self.device_id}: {e}")
                 if self.client:
                     self.client = None
+                # nosemgrep: arbitrary-sleep - Device polling interval: reconnection delay
                 time.sleep(5)
     
     def _event_stream_loop(self):
@@ -94,6 +95,7 @@ class SiLA2StreamClient:
         logger.info(f"Event stream loop disabled for {self.device_id} - using IntermediateResponse monitoring")
         # Keep thread alive but do nothing
         while self.running:
+            # nosemgrep: arbitrary-sleep - Device polling interval: thread keep-alive
             time.sleep(10)
                 
     def stop(self):

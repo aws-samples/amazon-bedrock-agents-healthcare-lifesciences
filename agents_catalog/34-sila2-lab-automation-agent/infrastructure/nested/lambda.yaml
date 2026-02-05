@@ -29,10 +29,12 @@ Resources:
           FromPort: 8080
           ToPort: 8080
           DestinationSecurityGroupId: !Ref BridgeSecurityGroup
+          Description: HTTP to Bridge Container MCP server
         - IpProtocol: udp
           FromPort: 53
           ToPort: 53
           CidrIp: 0.0.0.0/0
+          Description: DNS resolution for service discovery
 
   LambdaExecutionRole:
     Type: AWS::IAM::Role
@@ -67,6 +69,7 @@ Resources:
             Statement:
               - Effect: Allow
                 Action: lambda:InvokeFunction
+                # Security: Resource scoped to sila2-* functions in deployment account only
                 Resource: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:sila2-*'
 
   LambdaProxyFunction:
