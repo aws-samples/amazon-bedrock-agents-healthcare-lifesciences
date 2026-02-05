@@ -29,14 +29,14 @@ Resources:
     Properties:
       LogGroupName: !Sub /ecs/sila2-bridge-${EnvironmentName}
       RetentionInDays: 7
-      KmsKeyId: alias/aws/logs
+      KmsKeyId: !Sub arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/aws/logs
 
   MockDeviceLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub /ecs/sila2-mock-devices-${EnvironmentName}
       RetentionInDays: 7
-      KmsKeyId: alias/aws/logs
+      KmsKeyId: !Sub arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/aws/logs
 
   ServiceDiscoveryNamespace:
     Type: AWS::ServiceDiscovery::PrivateDnsNamespace
