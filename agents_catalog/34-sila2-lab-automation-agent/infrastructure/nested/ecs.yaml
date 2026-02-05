@@ -21,6 +21,7 @@ Resources:
     Type: AWS::KMS::Key
     Properties:
       Description: KMS key for CloudWatch Logs encryption
+      EnableKeyRotation: true
       KeyPolicy:
         Version: '2012-10-17'
         Statement:
