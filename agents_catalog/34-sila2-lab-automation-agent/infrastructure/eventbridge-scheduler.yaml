@@ -1,0 +1,49 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: |
+  [DEPRECATED] EventBridge Rule for SiLA2 Periodic Data Collection
+  
+  This template is deprecated as of Phase 7.
+  EventBridge Rule is now integrated into events_sns.yaml to avoid duplication.
+  
+  Use events_sns.yaml instead for new deployments.
+  This file is kept for reference only.
+
+Parameters:
+  LambdaFunctionArn:
+    Type: String
+    Description: ARN of the Lambda function to invoke
+  ScheduleInterval:
+    Type: Number
+    Default: 5
+    Description: Interval in minutes for periodic collection
+
+Resources:
+  PeriodicCollectionRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: sila2-periodic-collection-dev
+      Description: Trigger Lambda every N minutes for data collection
+      ScheduleExpression: !Sub rate(${ScheduleInterval} minutes)
+      State: ENABLED
+      Targets:
+        - Arn: !Ref LambdaFunctionArn
+          Id: "1"
+          Input: |
+            {
+              "action": "periodic",
+              "devices": ["hplc_001", "hplc_002"]
+            }
+
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref LambdaFunctionArn
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt PeriodicCollectionRule.Arn
+
+Outputs:
+  RuleName:
+    Value: !Ref PeriodicCollectionRule
+  RuleArn:
+    Value: !GetAtt PeriodicCollectionRule.Arn

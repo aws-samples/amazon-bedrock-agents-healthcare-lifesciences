@@ -1,0 +1,2 @@
+sila2[cryptography]>=0.14.0
+sila2[codegen]
