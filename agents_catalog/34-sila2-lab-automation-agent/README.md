@@ -14,12 +14,7 @@ This agent demonstrates autonomous laboratory equipment control through:
 
 ## 🏗️ Architecture
 
-```
-User/Lambda Invoker → AgentCore Runtime → MCP Gateway (2 Targets)
-                                           ├─ Target 1: Bridge Container (10 tools)
-                                           │   └─ Mock Devices (ECS)
-                                           └─ Target 2: Lambda (1 tool)
-```
+![Architecture Diagram](architecture.png)
 
 **Key Components:**
 - **AgentCore Runtime**: AI agent orchestration with Claude 3.5 Sonnet v2
