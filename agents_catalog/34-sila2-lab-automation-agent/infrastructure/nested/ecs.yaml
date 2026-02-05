@@ -78,6 +78,12 @@ Resources:
           ToPort: 50051
           CidrIp: 0.0.0.0/0
           Description: gRPC port for SiLA2 device simulation
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: HTTPS for AWS API calls
 
   TaskExecutionRole:
     Type: AWS::IAM::Role

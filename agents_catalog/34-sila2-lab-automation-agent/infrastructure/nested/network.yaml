@@ -22,6 +22,12 @@ Resources:
           ToPort: 443
           CidrIp: 0.0.0.0/0
           Description: HTTPS for VPC endpoint access from ECS tasks and Lambda
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: HTTPS outbound for VPC endpoint responses
 
   EcrApiEndpoint:
     Type: AWS::EC2::VPCEndpoint
