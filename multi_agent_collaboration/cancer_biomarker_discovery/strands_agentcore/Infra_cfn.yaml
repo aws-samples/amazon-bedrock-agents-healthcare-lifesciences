@@ -1102,7 +1102,7 @@ Resources:
                       cfnresponse.send(event, context, cfnresponse.FAILED, {"Error": str(e)})
               else:
                   cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
-      Runtime: python3.8
+      Runtime: python3.12
       Timeout: 300
 
   CleanupLambdaRole:
