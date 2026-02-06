@@ -2142,7 +2142,9 @@ Resources:
                                   {'ParameterKey': 'EnvironmentName', 'ParameterValue': config['EnvironmentName']},
                                   {'ParameterKey': 'AgentRole', 'ParameterValue': config['AgentRole']},
                                   {'ParameterKey': 'S3Bucket', 'ParameterValue': config['AgentS3Bucket']},
-                                  {'ParameterKey': 'DevMode', 'ParameterValue': MultiAgentDevModeStatus} 
+                                  {'ParameterKey': 'DevMode', 'ParameterValue': MultiAgentDevModeStatus},
+                                  {'ParameterKey': 'RedshiftDatabaseName', 'ParameterValue': config['RedshiftDatabaseName']},
+                                  {'ParameterKey': 'RedshiftUserName', 'ParameterValue': config['RedshiftUserName']}  
                               ]
                               
                               try:
