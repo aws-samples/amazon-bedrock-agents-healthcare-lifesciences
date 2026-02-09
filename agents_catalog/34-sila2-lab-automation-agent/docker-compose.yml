@@ -1,0 +1,27 @@
+services:
+  devices:
+    build:
+      context: ./src/devices
+    ports:
+      - "50051:50051"
+    environment:
+      - LOG_LEVEL=INFO
+    networks:
+      - sila2-network
+
+  bridge:
+    build:
+      context: ./src/bridge
+    ports:
+      - "8080:8080"
+    environment:
+      - DEVICE_HOST=devices
+      - DEVICE_PORT=50051
+    depends_on:
+      - devices
+    networks:
+      - sila2-network
+
+networks:
+  sila2-network:
+    driver: bridge

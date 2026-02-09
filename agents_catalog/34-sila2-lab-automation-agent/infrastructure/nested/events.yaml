@@ -1,0 +1,78 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'EventBridge + SNS for SiLA2 Agent'
+
+Parameters:
+  InvokerFunctionArn:
+    Type: String
+
+Resources:
+  SNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: sila2-events-topic
+      DisplayName: SiLA2 Device Events
+      KmsMasterKeyId: alias/aws/sns
+
+  SNSSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: lambda
+      TopicArn: !Ref SNSTopic
+      Endpoint: !Ref InvokerFunctionArn
+
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref InvokerFunctionArn
+      Action: lambda:InvokeFunction
+      Principal: sns.amazonaws.com
+      SourceArn: !Ref SNSTopic
+
+  EventBridgeRuleRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeLambda
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !Ref InvokerFunctionArn
+
+  PeriodicCollectionRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: sila2-periodic-data-collection
+      Description: Periodic data collection from SiLA2 devices
+      ScheduleExpression: rate(1 minute)
+      State: ENABLED
+      Targets:
+        - Arn: !Ref InvokerFunctionArn
+          Id: PeriodicCollectionTarget
+          Input: |
+            {
+              "action": "periodic",
+              "device_id": "hplc"
+            }
+
+  EventBridgeInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref InvokerFunctionArn
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt PeriodicCollectionRule.Arn
+
+Outputs:
+  SNSTopicArn:
+    Value: !Ref SNSTopic
+  EventBridgeRuleName:
+    Value: !Ref PeriodicCollectionRule

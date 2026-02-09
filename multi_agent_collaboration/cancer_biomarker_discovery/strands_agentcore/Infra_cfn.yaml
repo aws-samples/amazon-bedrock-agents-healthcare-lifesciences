@@ -40,6 +40,18 @@ Parameters:
     Type: String
     Description: The name of the vector index
     Default: vector-index
+  ExistingVpcId:
+    Type: String
+    Description: (Optional) ID of an existing VPC to use. Leave empty to create a new VPC.
+    Default: ''
+  ExistingPrivateSubnets:
+    Type: CommaDelimitedList
+    Description: (Optional) A list of 2 private subnet IDs in your AWS account and AWS region from two different AZs are required.
+    Default: ''
+
+Conditions:
+  CreateNewVpc: !Equals [!Ref ExistingVpcId, '']
+  UseExistingVpc: !Not [!Equals [!Ref ExistingVpcId, '']]
 
 Mappings:
   RegionMap:
@@ -129,7 +141,7 @@ Resources:
           USERNAME: !Ref RedshiftUserName
           PASSWORD: !Ref RedshiftPassword
         PhysicalConnectionRequirements:
-          SubnetId: !Ref PrivateSubnet1
+          SubnetId: !If [CreateNewVpc, !Ref PrivateSubnet1, !Select [0, !Ref ExistingPrivateSubnets]]
           SecurityGroupIdList: [!Ref SecurityGroup]
           AvailabilityZone: !Select 
             - 0
@@ -140,7 +152,7 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Security group for Redshift cluster
-      VpcId: !Ref VPC
+      VpcId: !If [CreateNewVpc, !Ref VPC, !Ref ExistingVpcId]
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 5439
@@ -154,9 +166,11 @@ Resources:
     Type: AWS::Redshift::ClusterSubnetGroup
     Properties:
       Description: Subnet group for Redshift cluster
-      SubnetIds:
-        - !Ref PrivateSubnet1
-        - !Ref PrivateSubnet2
+      SubnetIds: !If
+        - CreateNewVpc
+        - - !Ref PrivateSubnet1
+          - !Ref PrivateSubnet2
+        - !Ref ExistingPrivateSubnets
       Tags:
         - Key: Name
           Value: !Sub ${AWS::StackName}-RedshiftSubnetGroup
@@ -245,6 +259,7 @@ Resources:
   # VPC
   VPC:
     Type: AWS::EC2::VPC
+    Condition: CreateNewVpc
     Properties:
       CidrBlock: 10.0.0.0/16
       EnableDnsHostnames: true
@@ -254,36 +269,39 @@ Resources:
           Value: !Sub ${AWS::StackName}-VPC
   PrivateSubnet1:
     Type: AWS::EC2::Subnet
+    Condition: CreateNewVpc
     Properties:
       VpcId: !Ref VPC
       CidrBlock: 10.0.1.0/24
-      AvailabilityZone: !Select 
+      AvailabilityZone: !Select
         - 0
-        - !GetAZs 
+        - !GetAZs
           Ref: 'AWS::Region'
       Tags:
         - Key: Name
           Value: !Sub ${AWS::StackName}-PrivateSubnet1
   PrivateSubnet2:
     Type: AWS::EC2::Subnet
+    Condition: CreateNewVpc
     Properties:
       VpcId: !Ref VPC
       CidrBlock: 10.0.2.0/24
-      AvailabilityZone: !Select 
+      AvailabilityZone: !Select
         - 1
-        - !GetAZs 
+        - !GetAZs
           Ref: 'AWS::Region'
       Tags:
         - Key: Name
           Value: !Sub ${AWS::StackName}-PrivateSubnet2
   PublicSubnet1:
     Type: AWS::EC2::Subnet
+    Condition: CreateNewVpc
     Properties:
       VpcId: !Ref VPC
       CidrBlock: 10.0.3.0/24
-      AvailabilityZone: !Select 
+      AvailabilityZone: !Select
         - 0
-        - !GetAZs 
+        - !GetAZs
           Ref: 'AWS::Region'
       MapPublicIpOnLaunch: true
       Tags:
@@ -291,15 +309,18 @@ Resources:
           Value: !Sub ${AWS::StackName}-PublicSubnet1
   NatGatewayEIP:
     Type: AWS::EC2::EIP
+    Condition: CreateNewVpc
     Properties:
       Domain: vpc
   NatGateway:
     Type: AWS::EC2::NatGateway
+    Condition: CreateNewVpc
     Properties:
       AllocationId: !GetAtt NatGatewayEIP.AllocationId
       SubnetId: !Ref PublicSubnet1
   PrivateRouteTable:
     Type: AWS::EC2::RouteTable
+    Condition: CreateNewVpc
     Properties:
       VpcId: !Ref VPC
       Tags:
@@ -308,6 +329,7 @@ Resources:
 
   PrivateRoute:
     Type: AWS::EC2::Route
+    Condition: CreateNewVpc
     Properties:
       RouteTableId: !Ref PrivateRouteTable
       DestinationCidrBlock: 0.0.0.0/0
@@ -315,18 +337,21 @@ Resources:
 
   PrivateSubnet1RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: CreateNewVpc
     Properties:
       SubnetId: !Ref PrivateSubnet1
       RouteTableId: !Ref PrivateRouteTable
 
   PrivateSubnet2RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: CreateNewVpc
     Properties:
       SubnetId: !Ref PrivateSubnet2
       RouteTableId: !Ref PrivateRouteTable
 
   PublicRouteTable:
     Type: AWS::EC2::RouteTable
+    Condition: CreateNewVpc
     Properties:
       VpcId: !Ref VPC
       Tags:
@@ -335,6 +360,7 @@ Resources:
 
   PublicRoute:
     Type: AWS::EC2::Route
+    Condition: CreateNewVpc
     DependsOn: VPCGatewayAttachment
     Properties:
       RouteTableId: !Ref PublicRouteTable
@@ -343,6 +369,7 @@ Resources:
 
   PublicSubnet1RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: CreateNewVpc
     Properties:
       SubnetId: !Ref PublicSubnet1
       RouteTableId: !Ref PublicRouteTable
@@ -351,10 +378,12 @@ Resources:
   # Internet Gateway
   InternetGateway:
     Type: AWS::EC2::InternetGateway
+    Condition: CreateNewVpc
 
   # VPC Gateway Attachment
   VPCGatewayAttachment:
     Type: AWS::EC2::VPCGatewayAttachment
+    Condition: CreateNewVpc
     Properties:
       VpcId: !Ref VPC
       InternetGatewayId: !Ref InternetGateway
@@ -653,9 +682,22 @@ Resources:
                   - 'ec2:DescribeVpcs'
                 Resource:
                   - !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:security-group/${SecurityGroup}'
-                  - !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:subnet/${PrivateSubnet1}'
-                  - !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:subnet/${PrivateSubnet2}'
-                  - !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:vpc/${VPC}'
+                  - !If
+                    - CreateNewVpc
+                    - !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:subnet/${PrivateSubnet1}'
+                    - !Sub
+                      - 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:subnet/${SubnetId}'
+                      - SubnetId: !Select [0, !Ref ExistingPrivateSubnets]
+                  - !If
+                    - CreateNewVpc
+                    - !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:subnet/${PrivateSubnet2}'
+                    - !Sub
+                      - 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:subnet/${SubnetId}'
+                      - SubnetId: !Select [1, !Ref ExistingPrivateSubnets]
+                  - !If
+                    - CreateNewVpc
+                    - !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:vpc/${VPC}'
+                    - !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:vpc/${ExistingVpcId}'
               - Effect: 'Allow'
                 Action: 
                   - 'redshift:*'
@@ -1009,6 +1051,7 @@ Resources:
     Type: AWS::ECR::Repository
     Properties:
       RepositoryName: lifelines-lambda-sample
+      EmptyOnDelete: true
 
   EnsureECRImagePushed:
     Type: Custom::EnsureECRImagePushed
@@ -1059,7 +1102,7 @@ Resources:
                       cfnresponse.send(event, context, cfnresponse.FAILED, {"Error": str(e)})
               else:
                   cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
-      Runtime: python3.8
+      Runtime: python3.12
       Timeout: 300
 
   CleanupLambdaRole:
@@ -1294,6 +1337,7 @@ Resources:
     Type: AWS::ECR::Repository
     Properties:
       RepositoryName: medical-image-processing-smstudio
+      EmptyOnDelete: true
 
   ImagingDockerBuildProject:
     Type: AWS::CodeBuild::Project
@@ -2401,6 +2445,22 @@ Resources:
           S3_BUCKET: !Ref S3Bucket
 
 Outputs:
+  VpcId:
+    Description: VPC ID (created or provided)
+    Value: !If [CreateNewVpc, !Ref VPC, !Ref ExistingVpcId]
+    Export:
+      Name: !Sub ${AWS::StackName}-VpcId
+  PrivateSubnet1Id:
+    Description: Private Subnet 1 ID (created or provided)
+    Value: !If [CreateNewVpc, !Ref PrivateSubnet1, !Select [0, !Ref ExistingPrivateSubnets]]
+    Export:
+      Name: !Sub ${AWS::StackName}-PrivateSubnet1Id
+  PrivateSubnet2Id:
+    Description: Private Subnet 2 ID (created or provided)
+    Value: !If [CreateNewVpc, !Ref PrivateSubnet2, !Select [1, !Ref ExistingPrivateSubnets]]
+    Export:
+      Name: !Sub ${AWS::StackName}-PrivateSubnet2Id
   RedshiftClusterEndpoint:
     Description: Redshift Cluster Endpoint
     Value: !GetAtt RedshiftCluster.Endpoint.Address
+

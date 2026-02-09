@@ -1,0 +1,21 @@
+[project]
+name = "lab_devices"
+version = "0.0.0"
+requires-python = ">=3.10"
+dependencies = [
+    "sila2",
+    "typer",
+]
+
+[build-system]
+requires = ["setuptools>=61.0.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["lab_devices*"]
+
+[tool.setuptools.package-data]
+"lab_devices.generated" = [
+    "*/*.sila.xml",
+    "*/*.proto",
+]
