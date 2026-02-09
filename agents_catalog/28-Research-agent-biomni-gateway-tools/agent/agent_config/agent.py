@@ -16,7 +16,20 @@ import json
 
 logger = logging.getLogger(__name__)
 
-async def agent_task(user_message: str, session_id: str, actor_id: str, use_semantic_search: bool = False):
+# Global agent instance for runtime updates
+_current_agent = None
+
+def update_agent_model(model_id: str, **model_config):
+    """Update the agent's model at runtime using Strands update_config"""
+    global _current_agent
+    if _current_agent and hasattr(_current_agent.model, 'update_config'):
+        config = {'model_id': model_id, **model_config}
+        _current_agent.model.update_config(**config)
+        logger.info(f"Updated agent model to: {model_id}")
+        return True
+    return False
+
+async def agent_task(user_message: str, session_id: str, actor_id: str, use_semantic_search: bool = False, model_id: str = "global.anthropic.claude-sonnet-4-20250514-v1:0"):
     """Create and run agent for each invocation"""
     
     # Get configuration
@@ -36,14 +49,25 @@ async def agent_task(user_message: str, session_id: str, actor_id: str, use_sema
         agentcore_memory_config=agentcore_memory_config
     )
     
-    # Create model
-    model = BedrockModel(
-        model_id="global.anthropic.claude-sonnet-4-20250514-v1:0",
-        additional_request_fields={
+    # Create model with provided model_id
+    # Only add thinking parameters for Claude models
+    if "anthropic.claude" in model_id.lower():
+        additional_fields = {
             "anthropic_beta": ["interleaved-thinking-2025-05-14"],
             "thinking": {"type": "enabled", "budget_tokens": 8000},
-        },
+        }
+    else:
+        # For non-Claude models (QWEN, etc.), don't add thinking parameters
+        additional_fields = {}
+    
+    model = BedrockModel(
+        model_id=model_id,
+        additional_request_fields=additional_fields,
     )
+    
+    # Log the model being used
+    logger.info(f"🤖 Creating agent with model: {model_id}")
+    print(f"🤖 Model selected: {model_id}")
     
     system_prompt = """
 You are a **Comprehensive Biomedical Research Agent** specialized in conducting systematic literature reviews and multi-database analyses to answer complex biomedical research questions. Your primary mission is to synthesize evidence from both published literature (PubMed) and real-time database queries to provide comprehensive, evidence-based insights for pharmaceutical research, drug discovery, and clinical decision-making.
@@ -92,17 +116,23 @@ You will ALWAYS follow the below guidelines and citation requirements when assis
         tools = [current_time] + gateway_client.list_tools_sync()
         logger.info(f"Using all tools: {len(tools)} total tools")
     
-    # Create agent
+    # Create agent with model_id passed to the hook
     agent = Agent(
         model=model,
         system_prompt=system_prompt,
         tools=tools,
         session_manager=session_manager,
-        hooks=[ToolLoggerHook()],
+        hooks=[ToolLoggerHook(model_id=model_id)],
     )
+    
+    # Store global reference for runtime updates
+    global _current_agent
+    _current_agent = agent
     
     # Stream response
     tool_name = None
+    is_claude_model = "anthropic.claude" in model_id.lower()
+    
     try:
         async for event in agent.stream_async(user_message):
             if (
@@ -115,7 +145,8 @@ You will ALWAYS follow the below guidelines and citation requirements when assis
                 for obj in event["message"]["content"]:
                     if "toolResult" in obj:
                         pass  # Skip tool result display
-                    elif "reasoningContent" in obj:
+                    elif "reasoningContent" in obj and is_claude_model:
+                        # Only display reasoning content for Claude models
                         reasoning_text = obj["reasoningContent"]["reasoningText"]["text"]
                         yield f"\n\n🔧 Reasoning: {reasoning_text}\n\n"
             if "data" in event:
@@ -180,5 +211,3 @@ def _get_relevant_tools(user_query: str, gateway_url: str, bearer_token: str, ga
         relevant_tools = _tools_to_strands_mcp_tools(tools_found, gateway_client)
         return [current_time] + relevant_tools
     return [current_time]
-    
-
