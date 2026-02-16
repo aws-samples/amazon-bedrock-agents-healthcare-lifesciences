@@ -19,10 +19,12 @@ from scripts.utils import get_ssm_parameter
 # Session & actor configuration
 ACTOR_ID = "default"
 SESSION_ID = str(uuid.uuid4())
-MEMORY_ID = get_ssm_parameter("/app/researchapp/agentcore/memory_id")
+MEMORY_ARN = get_ssm_parameter("/app/researchapp/agentcore/memory_id")
+# Extract memory ID from ARN (format: arn:aws:bedrock-agentcore:region:account:memory/memory-id)
+MEMORY_ID = MEMORY_ARN.split("/")[-1]
 
 model = BedrockModel(
-    model_id="us.anthropic.claude-3-5-haiku-20241022-v1:0",
+    model_id="global.anthropic.claude-sonnet-4-20250514-v1:0",
 )
 
 memory_client = boto3.client("bedrock-agentcore")

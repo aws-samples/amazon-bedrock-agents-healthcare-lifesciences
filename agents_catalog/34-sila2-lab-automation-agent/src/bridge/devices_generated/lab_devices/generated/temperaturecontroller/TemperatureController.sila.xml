@@ -1,0 +1,115 @@
+<Feature xmlns="http://www.sila-standard.org" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Category="examples" FeatureVersion="1.0" Originator="aws.amazon.com" SiLA2Version="1.0" xsi:schemaLocation="http://www.sila-standard.org https://gitlab.com/SiLA2/sila_base/raw/master/schema/FeatureDefinition.xsd">
+  <Identifier>TemperatureController</Identifier>
+  <DisplayName>Temperature Controller</DisplayName>
+  <Description>Controls temperature of laboratory devices with real-time monitoring and progress streaming</Description>
+  <!-- SetTemperature Command with Intermediate Responses -->
+  <Command>
+    <Identifier>SetTemperature</Identifier>
+    <DisplayName>Set Temperature</DisplayName>
+    <Description>Set target temperature with real-time progress updates</Description>
+    <Observable>Yes</Observable>
+    <Parameter>
+      <Identifier>TargetTemperature</Identifier>
+      <DisplayName>Target Temperature</DisplayName>
+      <Description>Target temperature in Celsius</Description>
+      <DataType>
+        <Basic>Real</Basic>
+      </DataType>
+    </Parameter>
+    <IntermediateResponse>
+      <Identifier>Progress</Identifier>
+      <DisplayName>Progress</DisplayName>
+      <Description>Real-time progress updates during temperature change</Description>
+      <DataType>
+        <Structure>
+          <Element>
+            <Identifier>CurrentTemperature</Identifier>
+            <DisplayName>Current Temperature</DisplayName>
+            <Description>Current temperature in Celsius</Description>
+            <DataType>
+              <Basic>Real</Basic>
+            </DataType>
+          </Element>
+          <Element>
+            <Identifier>PercentComplete</Identifier>
+            <DisplayName>Percent Complete</DisplayName>
+            <Description>Progress percentage (0-100)</Description>
+            <DataType>
+              <Basic>Integer</Basic>
+            </DataType>
+          </Element>
+          <Element>
+            <Identifier>ElapsedSeconds</Identifier>
+            <DisplayName>Elapsed Seconds</DisplayName>
+            <Description>Time elapsed since command started</Description>
+            <DataType>
+              <Basic>Integer</Basic>
+            </DataType>
+          </Element>
+        </Structure>
+      </DataType>
+    </IntermediateResponse>
+  </Command>
+  <!-- AbortExperiment Command -->
+  <Command>
+    <Identifier>AbortExperiment</Identifier>
+    <DisplayName>Abort Experiment</DisplayName>
+    <Description>Abort current temperature control experiment</Description>
+    <Observable>No</Observable>
+  </Command>
+  <!-- CurrentTemperature Property -->
+  <Property>
+    <Identifier>CurrentTemperature</Identifier>
+    <DisplayName>Current Temperature</DisplayName>
+    <Description>Current temperature reading in Celsius</Description>
+    <Observable>Yes</Observable>
+    <DataType>
+      <Basic>Real</Basic>
+    </DataType>
+  </Property>
+  <!-- TargetTemperature Property -->
+  <Property>
+    <Identifier>TargetTemperature</Identifier>
+    <DisplayName>Target Temperature</DisplayName>
+    <Description>Target temperature setting in Celsius</Description>
+    <Observable>Yes</Observable>
+    <DataType>
+      <Basic>Real</Basic>
+    </DataType>
+  </Property>
+  <!-- HeatingStatus Property -->
+  <Property>
+    <Identifier>HeatingStatus</Identifier>
+    <DisplayName>Heating Status</DisplayName>
+    <Description>Current heating status and scenario information</Description>
+    <Observable>Yes</Observable>
+    <DataType>
+      <Structure>
+        <Element>
+          <Identifier>IsHeating</Identifier>
+          <DisplayName>Is Heating</DisplayName>
+          <Description>Whether device is currently heating</Description>
+          <DataType>
+            <Basic>Boolean</Basic>
+          </DataType>
+        </Element>
+        <Element>
+          <Identifier>ElapsedSeconds</Identifier>
+          <DisplayName>Elapsed Seconds</DisplayName>
+          <Description>Time elapsed in current heating cycle</Description>
+          <DataType>
+            <Basic>Integer</Basic>
+          </DataType>
+        </Element>
+        <Element>
+          <Identifier>ScenarioMode</Identifier>
+          <DisplayName>Scenario Mode</DisplayName>
+          <Description>Current scenario mode (normal, fast, slow)</Description>
+          <DataType>
+            <Basic>String</Basic>
+          </DataType>
+        </Element>
+      </Structure>
+    </DataType>
+  </Property>
+</Feature>

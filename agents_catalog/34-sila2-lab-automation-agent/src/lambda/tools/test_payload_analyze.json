@@ -1,0 +1,41 @@
+{
+  "device_id": "hplc_001",
+  "history": [
+    {
+      "timestamp": "2025-01-20T10:00:00",
+      "temperature": 25.0,
+      "target_temperature": 80.0,
+      "scenario_mode": "scenario_1"
+    },
+    {
+      "timestamp": "2025-01-20T10:01:00",
+      "temperature": 30.0,
+      "target_temperature": 80.0,
+      "scenario_mode": "scenario_1"
+    },
+    {
+      "timestamp": "2025-01-20T10:02:00",
+      "temperature": 35.0,
+      "target_temperature": 80.0,
+      "scenario_mode": "scenario_1"
+    },
+    {
+      "timestamp": "2025-01-20T10:03:00",
+      "temperature": 40.0,
+      "target_temperature": 80.0,
+      "scenario_mode": "scenario_1"
+    },
+    {
+      "timestamp": "2025-01-20T10:04:00",
+      "temperature": 45.0,
+      "target_temperature": 80.0,
+      "scenario_mode": "scenario_1"
+    },
+    {
+      "timestamp": "2025-01-20T10:05:00",
+      "temperature": 50.0,
+      "target_temperature": 80.0,
+      "scenario_mode": "scenario_1"
+    }
+  ]
+}

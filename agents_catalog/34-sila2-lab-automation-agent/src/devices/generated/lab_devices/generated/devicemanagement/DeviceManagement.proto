@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+import "SiLAFramework.proto";
+
+package sila2.aws.amazon.com.examples.devicemanagement.v1;
+
+/* Manages laboratory device discovery and status monitoring */
+service DeviceManagement {
+  /* Get list of all available devices */
+  rpc ListDevices (sila2.aws.amazon.com.examples.devicemanagement.v1.ListDevices_Parameters) returns (sila2.aws.amazon.com.examples.devicemanagement.v1.ListDevices_Responses) {}
+  /* Get detailed information about a specific device */
+  rpc GetDeviceInfo (sila2.aws.amazon.com.examples.devicemanagement.v1.GetDeviceInfo_Parameters) returns (sila2.aws.amazon.com.examples.devicemanagement.v1.GetDeviceInfo_Responses) {}
+  /* Get current status of a specific device */
+  rpc GetDeviceStatus (sila2.aws.amazon.com.examples.devicemanagement.v1.GetDeviceStatus_Parameters) returns (sila2.aws.amazon.com.examples.devicemanagement.v1.GetDeviceStatus_Responses) {}
+}
+
+/* Parameters for ListDevices */
+message ListDevices_Parameters {
+}
+
+/* Responses of ListDevices */
+message ListDevices_Responses {
+  repeated sila2.org.silastandard.String Devices = 1;  /* List of device identifiers */
+}
+
+/* Parameters for GetDeviceInfo */
+message GetDeviceInfo_Parameters {
+  sila2.org.silastandard.String DeviceId = 1;  /* Unique device identifier */
+}
+
+/* Responses of GetDeviceInfo */
+message GetDeviceInfo_Responses {
+  message DeviceInfo_Struct {
+    sila2.org.silastandard.String DeviceId = 1;  /* Device identifier */
+    sila2.org.silastandard.String DeviceType = 2;  /* Type of device */
+    sila2.org.silastandard.String Manufacturer = 3;  /* Device manufacturer */
+  }
+  sila2.aws.amazon.com.examples.devicemanagement.v1.GetDeviceInfo_Responses.DeviceInfo_Struct DeviceInfo = 1;  /* Device information */
+}
+
+/* Parameters for GetDeviceStatus */
+message GetDeviceStatus_Parameters {
+  sila2.org.silastandard.String DeviceId = 1;  /* Unique device identifier */
+}
+
+/* Responses of GetDeviceStatus */
+message GetDeviceStatus_Responses {
+  message DeviceStatus_Struct {
+    sila2.org.silastandard.String Status = 1;  /* Device status (idle, running, error) */
+    sila2.org.silastandard.Real CurrentTemperature = 2;  /* Current temperature in Celsius */
+    sila2.org.silastandard.Boolean IsConnected = 3;  /* Whether device is connected */
+  }
+  sila2.aws.amazon.com.examples.devicemanagement.v1.GetDeviceStatus_Responses.DeviceStatus_Struct DeviceStatus = 1;  /* Current device status */
+}

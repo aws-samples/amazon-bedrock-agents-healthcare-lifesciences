@@ -1,0 +1,9 @@
+{
+  "device_id": "hplc_001",
+  "analysis": {
+    "heating_rate": 5.0,
+    "expected_rate": 26.7,
+    "is_anomaly": true,
+    "anomaly_type": "slow_heating"
+  }
+}

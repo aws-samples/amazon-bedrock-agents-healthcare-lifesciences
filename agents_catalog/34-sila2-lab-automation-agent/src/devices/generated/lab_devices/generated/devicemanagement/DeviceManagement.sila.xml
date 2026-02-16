@@ -1,0 +1,120 @@
+<Feature xmlns="http://www.sila-standard.org" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Category="examples" FeatureVersion="1.0" Originator="aws.amazon.com" SiLA2Version="1.0" xsi:schemaLocation="http://www.sila-standard.org https://gitlab.com/SiLA2/sila_base/raw/master/schema/FeatureDefinition.xsd">
+  <Identifier>DeviceManagement</Identifier>
+  <DisplayName>Device Management</DisplayName>
+  <Description>Manages laboratory device discovery and status monitoring</Description>
+  <!-- ListDevices Command -->
+  <Command>
+    <Identifier>ListDevices</Identifier>
+    <DisplayName>List Devices</DisplayName>
+    <Description>Get list of all available devices</Description>
+    <Observable>No</Observable>
+    <Response>
+      <Identifier>Devices</Identifier>
+      <DisplayName>Devices</DisplayName>
+      <Description>List of device identifiers</Description>
+      <DataType>
+        <List>
+          <DataType>
+            <Basic>String</Basic>
+          </DataType>
+        </List>
+      </DataType>
+    </Response>
+  </Command>
+  <!-- GetDeviceInfo Command -->
+  <Command>
+    <Identifier>GetDeviceInfo</Identifier>
+    <DisplayName>Get Device Info</DisplayName>
+    <Description>Get detailed information about a specific device</Description>
+    <Observable>No</Observable>
+    <Parameter>
+      <Identifier>DeviceId</Identifier>
+      <DisplayName>Device ID</DisplayName>
+      <Description>Unique device identifier</Description>
+      <DataType>
+        <Basic>String</Basic>
+      </DataType>
+    </Parameter>
+    <Response>
+      <Identifier>DeviceInfo</Identifier>
+      <DisplayName>Device Info</DisplayName>
+      <Description>Device information</Description>
+      <DataType>
+        <Structure>
+          <Element>
+            <Identifier>DeviceId</Identifier>
+            <DisplayName>Device ID</DisplayName>
+            <Description>Device identifier</Description>
+            <DataType>
+              <Basic>String</Basic>
+            </DataType>
+          </Element>
+          <Element>
+            <Identifier>DeviceType</Identifier>
+            <DisplayName>Device Type</DisplayName>
+            <Description>Type of device</Description>
+            <DataType>
+              <Basic>String</Basic>
+            </DataType>
+          </Element>
+          <Element>
+            <Identifier>Manufacturer</Identifier>
+            <DisplayName>Manufacturer</DisplayName>
+            <Description>Device manufacturer</Description>
+            <DataType>
+              <Basic>String</Basic>
+            </DataType>
+          </Element>
+        </Structure>
+      </DataType>
+    </Response>
+  </Command>
+  <!-- GetDeviceStatus Command -->
+  <Command>
+    <Identifier>GetDeviceStatus</Identifier>
+    <DisplayName>Get Device Status</DisplayName>
+    <Description>Get current status of a specific device</Description>
+    <Observable>No</Observable>
+    <Parameter>
+      <Identifier>DeviceId</Identifier>
+      <DisplayName>Device ID</DisplayName>
+      <Description>Unique device identifier</Description>
+      <DataType>
+        <Basic>String</Basic>
+      </DataType>
+    </Parameter>
+    <Response>
+      <Identifier>DeviceStatus</Identifier>
+      <DisplayName>Device Status</DisplayName>
+      <Description>Current device status</Description>
+      <DataType>
+        <Structure>
+          <Element>
+            <Identifier>Status</Identifier>
+            <DisplayName>Status</DisplayName>
+            <Description>Device status (idle, running, error)</Description>
+            <DataType>
+              <Basic>String</Basic>
+            </DataType>
+          </Element>
+          <Element>
+            <Identifier>CurrentTemperature</Identifier>
+            <DisplayName>Current Temperature</DisplayName>
+            <Description>Current temperature in Celsius</Description>
+            <DataType>
+              <Basic>Real</Basic>
+            </DataType>
+          </Element>
+          <Element>
+            <Identifier>IsConnected</Identifier>
+            <DisplayName>Is Connected</DisplayName>
+            <Description>Whether device is connected</Description>
+            <DataType>
+              <Basic>Boolean</Basic>
+            </DataType>
+          </Element>
+        </Structure>
+      </DataType>
+    </Response>
+  </Command>
+</Feature>

@@ -12,7 +12,7 @@ A lightweight Python library for semantic search over a list of strings using Am
 ## Installation
 
 ```bash
-pip install bedrock-ez-search
+pip install ./bedrock-ez-search
 ```
 
 ## Usage

@@ -1,0 +1,84 @@
+syntax = "proto3";
+
+import "SiLAFramework.proto";
+
+package sila2.aws.amazon.com.examples.temperaturecontroller.v1;
+
+/* Controls temperature of laboratory devices with real-time monitoring and progress streaming */
+service TemperatureController {
+  /* Set target temperature with real-time progress updates */
+  rpc SetTemperature (sila2.aws.amazon.com.examples.temperaturecontroller.v1.SetTemperature_Parameters) returns (sila2.org.silastandard.CommandConfirmation) {}
+  /* Monitor the state of SetTemperature */
+  rpc SetTemperature_Info (sila2.org.silastandard.CommandExecutionUUID) returns (stream sila2.org.silastandard.ExecutionInfo) {}
+  /* Retrieve intermediate responses of SetTemperature */
+  rpc SetTemperature_Intermediate (sila2.org.silastandard.CommandExecutionUUID) returns (stream sila2.aws.amazon.com.examples.temperaturecontroller.v1.SetTemperature_IntermediateResponses) {}
+  /* Retrieve result of SetTemperature */
+  rpc SetTemperature_Result(sila2.org.silastandard.CommandExecutionUUID) returns (sila2.aws.amazon.com.examples.temperaturecontroller.v1.SetTemperature_Responses) {}
+  /* Abort current temperature control experiment */
+  rpc AbortExperiment (sila2.aws.amazon.com.examples.temperaturecontroller.v1.AbortExperiment_Parameters) returns (sila2.aws.amazon.com.examples.temperaturecontroller.v1.AbortExperiment_Responses) {}
+  /* Current temperature reading in Celsius */
+  rpc Subscribe_CurrentTemperature (sila2.aws.amazon.com.examples.temperaturecontroller.v1.Subscribe_CurrentTemperature_Parameters) returns (stream sila2.aws.amazon.com.examples.temperaturecontroller.v1.Subscribe_CurrentTemperature_Responses) {}
+  /* Target temperature setting in Celsius */
+  rpc Subscribe_TargetTemperature (sila2.aws.amazon.com.examples.temperaturecontroller.v1.Subscribe_TargetTemperature_Parameters) returns (stream sila2.aws.amazon.com.examples.temperaturecontroller.v1.Subscribe_TargetTemperature_Responses) {}
+  /* Current heating status and scenario information */
+  rpc Subscribe_HeatingStatus (sila2.aws.amazon.com.examples.temperaturecontroller.v1.Subscribe_HeatingStatus_Parameters) returns (stream sila2.aws.amazon.com.examples.temperaturecontroller.v1.Subscribe_HeatingStatus_Responses) {}
+}
+
+/* Parameters for SetTemperature */
+message SetTemperature_Parameters {
+  sila2.org.silastandard.Real TargetTemperature = 1;  /* Target temperature in Celsius */
+}
+
+/* Responses of SetTemperature */
+message SetTemperature_Responses {
+}
+
+/* Intermediate responses of SetTemperature */
+message SetTemperature_IntermediateResponses {
+  message Progress_Struct {
+    sila2.org.silastandard.Real CurrentTemperature = 1;  /* Current temperature in Celsius */
+    sila2.org.silastandard.Integer PercentComplete = 2;  /* Progress percentage (0-100) */
+    sila2.org.silastandard.Integer ElapsedSeconds = 3;  /* Time elapsed since command started */
+  }
+  sila2.aws.amazon.com.examples.temperaturecontroller.v1.SetTemperature_IntermediateResponses.Progress_Struct Progress = 1;  /* Real-time progress updates during temperature change */
+}
+
+/* Parameters for AbortExperiment */
+message AbortExperiment_Parameters {
+}
+
+/* Responses of AbortExperiment */
+message AbortExperiment_Responses {
+}
+
+/* Parameters for CurrentTemperature */
+message Subscribe_CurrentTemperature_Parameters {
+}
+
+/* Responses of CurrentTemperature */
+message Subscribe_CurrentTemperature_Responses {
+  sila2.org.silastandard.Real CurrentTemperature = 1;  /* Current temperature reading in Celsius */
+}
+
+/* Parameters for TargetTemperature */
+message Subscribe_TargetTemperature_Parameters {
+}
+
+/* Responses of TargetTemperature */
+message Subscribe_TargetTemperature_Responses {
+  sila2.org.silastandard.Real TargetTemperature = 1;  /* Target temperature setting in Celsius */
+}
+
+/* Parameters for HeatingStatus */
+message Subscribe_HeatingStatus_Parameters {
+}
+
+/* Responses of HeatingStatus */
+message Subscribe_HeatingStatus_Responses {
+  message HeatingStatus_Struct {
+    sila2.org.silastandard.Boolean IsHeating = 1;  /* Whether device is currently heating */
+    sila2.org.silastandard.Integer ElapsedSeconds = 2;  /* Time elapsed in current heating cycle */
+    sila2.org.silastandard.String ScenarioMode = 3;  /* Current scenario mode (normal, fast, slow) */
+  }
+  sila2.aws.amazon.com.examples.temperaturecontroller.v1.Subscribe_HeatingStatus_Responses.HeatingStatus_Struct HeatingStatus = 1;  /* Current heating status and scenario information */
+}

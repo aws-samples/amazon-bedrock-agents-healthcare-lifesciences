@@ -1,0 +1,51 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Amazon Bedrock Automated Reasoning Guardrails stack"
+
+Parameters:
+  ProjectName:
+    Type: String
+    Description: "Name of the project for resource naming and tagging"
+    Default: "Default"
+    AllowedPattern: "^[a-zA-Z0-9-]+$"
+    ConstraintDescription: "Must contain only alphanumeric characters and hyphens"
+  BedrockAutomatedReasoningPolicyId:
+    Type: String
+    Description: "Automated reasoning policy id"
+    Default: "Default"
+    AllowedPattern: "^[a-zA-Z0-9-]+$"
+    ConstraintDescription: "Must contain only alphanumeric characters and hyphens"
+  ConfidenceThreshold:
+    Type: Number
+    Description: "The minimum confidence level required for Automated Reasoning policy violations to trigger guardrail actions. Values range from 0.0 to 1.0."
+    Default: 0.5
+
+Resources:
+  BedrockARGuardrail:
+    Type: AWS::Bedrock::Guardrail
+    Properties:
+      AutomatedReasoningPolicyConfig:
+        ConfidenceThreshold: !Ref ConfidenceThreshold
+        Policies:
+          - !Sub "arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:automated-reasoning-policy/${BedrockAutomatedReasoningPolicyId}"
+      BlockedInputMessaging: "I'm sorry, but this input violates one or more guardrails."
+      BlockedOutputsMessaging: "I'm sorry, but this output violates one or more guardrails."
+      CrossRegionConfig:
+        GuardrailProfileArn: !Sub "arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:guardrail-profile/us.guardrail.v1:0"
+      Description: Bedrock Automated Reasoning guardrail
+      Name: !Sub "${ProjectName}-ARGuardrail"
+      Tags:
+        - Key: Component
+          Value: BedrockAutomatedReasoningGuardrail
+
+  BedrockARGuardrailVersion:
+    Type: AWS::Bedrock::GuardrailVersion
+    Properties:
+      GuardrailIdentifier: !GetAtt BedrockARGuardrail.GuardrailId
+
+Outputs:
+  BedrockARGuardrailId:
+    Description: "AR guardrail ID"
+    Value: !GetAtt BedrockARGuardrail.GuardrailId
+  BedrockARGuardrailVersion:
+    Description: "AR guardrail Version"
+    Value: !GetAtt BedrockARGuardrail.Version

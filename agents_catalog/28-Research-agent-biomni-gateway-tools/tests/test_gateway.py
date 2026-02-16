@@ -1,179 +1,34 @@
 #!/usr/bin/python
 
-import asyncio
 import click
-from bedrock_agentcore.identity.auth import requires_access_token
-from strands.tools.mcp import MCPClient,MCPAgentTool
-from mcp.types import Tool as MCPTool
-from mcp.client.streamable_http import streamablehttp_client
-from strands import Agent
+import time
+import json
 import sys
 import os
 import boto3
 import requests
-from time import sleep
+from strands.tools.mcp import MCPClient, MCPAgentTool
+from mcp.types import Tool as MCPTool
+from mcp.client.streamable_http import streamablehttp_client
+from strands import Agent
+from strands.models import BedrockModel
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from scripts.utils import get_ssm_parameter
 
-gateway_access_token = None
+# Predefined prompts for testing
+PROMPTS = [
+    "Find information about human insulin protein",
+    "Find protein structures for insulin", 
+    "Find metabolic pathways related to insulin",
+    "Find protein domains in insulin",
+    "Find genetic variants in BRCA1 gene",
+    "Find drug targets for diabetes",
+    "Find insulin signaling pathways",
+    "Give me alphafold structure predictions for human insulin"
+]
 
-
-@requires_access_token(
-    provider_name=get_ssm_parameter("/app/researchapp/agentcore/cognito_provider"),
-    scopes=[],  # Optional unless required
-    auth_flow="M2M",
-)
-async def _get_access_token_manually(*, access_token: str):
-    
-    global gateway_access_token
-    gateway_access_token = access_token
-    
-    return access_token
-
-async def get_gateway_access_token():
-    """Get gateway access token using manual M2M flow."""
-    try:
-        # Get dentials from SSM
-        machine_client_id = get_ssm_parameter("/app/researchapp/agentcore/machine_client_id")
-        machine_client_secret = get_ssm_parameter("/app/researchapp/agentcore/cognito_secret")
-        cognito_domain = get_ssm_parameter("/app/researchapp/agentcore/cognito_domain")
-        user_pool_id = get_ssm_parameter("/app/researchapp/agentcore/userpool_id")
-        #print(user_pool_id)
-
-        # Remove https:// if it's already in the domain
-        # Clean the domain properly
-        cognito_domain = cognito_domain.strip()
-        if cognito_domain.startswith("https://"):
-            cognito_domain = cognito_domain[8:]  # Remove "https://"
-        #print(f"Cleaned domain: {repr(cognito_domain)}")
-        token_url = f"https://{cognito_domain}/oauth2/token"
-        #print(f"Token URL: {token_url}")  # Debug print
-        # nosemgrep sleep to wait for resources
-        sleep(2)
-        #print(f"Token URL: {repr(token_url)}")
-        
-        # Test URL 
-        from urllib.parse import urlparse
-        parsed = urlparse(token_url)
-        #print(f"Parsed - scheme: {parsed.scheme}, netloc: {parsed.netloc}")
-        
-        # Get resource server ID from machine client configuration
-        try:
-            cognito_client = boto3.client('cognito-idp')
-            
-            
-            # List resource servers to find the ID
-            response = cognito_client.list_resource_servers(UserPoolId=user_pool_id,MaxResults=1)
-            print(response)
-            if response['ResourceServers']:
-                resource_server_id = response['ResourceServers'][0]['Identifier']
-                #print(resource_server_id)
-                scopes = f"{resource_server_id}/read"
-            else:
-                scopes = "gateway:read gateway:write"
-        except Exception as e:
-            raise Exception(f"Error getting scopes: {str(e)}")
-
-        #print("Scope")
-        #print(scopes)
-        # Perform M2M OAuth flow
-        token_url = f"https://{cognito_domain}/oauth2/token"
-        token_data = {
-            "grant_type": "client_credentials",
-            "client_id": machine_client_id,
-            "client_secret": machine_client_secret,
-            "scope": scopes
-        }
-        
-        response = requests.post(
-            token_url, 
-            data=token_data, 
-            headers={"Content-Type": "application/x-www-form-urlencoded"}
-        )
-        
-        if response.status_code != 200:
-            raise Exception(f"Failed to get access token: {response.text}")
-        global gateway_access_token
-        access_token=response.json()["access_token"]
-        gateway_access_token = access_token
-        #print(f"Gateway Access Token: {access_token}")    
-        return access_token     
-        
-    except Exception as e:
-        raise Exception(f"Error getting gateway access token: {str(e)}")
-
-def tools_to_strands_mcp_tools(client, tools, top_n):
-    strands_mcp_tools = []
-    for tool in tools[:top_n]:
-        mcp_tool = MCPTool(
-            name=tool["name"],
-            description=tool["description"],
-            inputSchema=tool["inputSchema"],
-        )
-        strands_mcp_tools.append(MCPAgentTool(mcp_tool, client))
-    return strands_mcp_tools
-
-def tool_search(gateway_endpoint, jwt_token, query):
-    toolParams = {
-        "name": "x_amz_bedrock_agentcore_search",
-        "arguments": {"query": query},
-    }
-    toolResp = invoke_gateway_tool(
-        gateway_endpoint=gateway_endpoint, jwt_token=jwt_token, tool_params=toolParams
-    )
-    tools = toolResp["result"]["structuredContent"]["tools"]
-    return tools
-
-def invoke_gateway_tool(gateway_endpoint, jwt_token, tool_params):
-    # print(f"Invoking tool {tool_params['name']}")
-
-    requestBody = {
-        "jsonrpc": "2.0",
-        "id": 2,
-        "method": "tools/call",
-        "params": tool_params,
-    }
-    response = requests.post(
-        gateway_endpoint,
-        json=requestBody,
-        headers={
-            "Authorization": f"Bearer {jwt_token}",
-            "Content-Type": "application/json",
-        },
-    )
-
-    return response.json()
-
-
-@click.command()
-@click.option("--prompt", "-p", required=True, help="Prompt to send to the MCP agent")
-def main(prompt: str):
-    """CLI tool to interact with an MCP Agent using a prompt."""
-
-    # Fetch access token
-    #asyncio.run(_get_access_token_manually(access_token=""))
-    asyncio.run(get_gateway_access_token())
-    # Load gateway configuration from SSM parameters
-    try:
-        gateway_url = get_ssm_parameter("/app/researchapp/agentcore/gateway_url")
-    except Exception as e:
-        print(f"❌ Error reading gateway URL from SSM: {str(e)}")
-        sys.exit(1)
-
-    print(f"Gateway Endpoint - MCP URL: {gateway_url}")
-
-    prompts = [
-        "Find information about human insulin protein",
-        "Find protein structures for insulin", 
-        "Find metabolic pathways related to insulin",
-        "Find protein domains in insulin",
-        "Find genetic variants in BRCA1 gene",
-        "Find drug targets for diabetes",
-        "Find insulin signaling pathways",
-        "Give me alphafold structure predictions for human insulin"
-            ] 
-    tool_specific_prompts = [
+TOOL_SPECIFIC_PROMPTS = [
     # Protein and Structure Databases
     "Use uniprot tool to find information about human insulin protein",
     "Use alphafold tool for structure predictions for uniprot_id P01308",
@@ -215,43 +70,233 @@ def main(prompt: str):
     "Use mpd tool to find mouse strain phenotype data for diabetes",
     "Use worms tool to find marine species classification",
     "Use paleobiology tool to find fossil records of dinosaurs",
+]
+
+MAX_TOOLS=5
+
+def get_gateway_access_token():
+    """Get M2M bearer token for gateway authentication."""
+    try:
+        # Get credentials from SSM
+        machine_client_id = get_ssm_parameter("/app/researchapp/agentcore/machine_client_id")
+        machine_client_secret = get_ssm_parameter("/app/researchapp/agentcore/cognito_secret")
+        cognito_domain = get_ssm_parameter("/app/researchapp/agentcore/cognito_domain")
+        user_pool_id = get_ssm_parameter("/app/researchapp/agentcore/userpool_id")
+
+        # Clean the domain
+        cognito_domain = cognito_domain.strip()
+        if cognito_domain.startswith("https://"):
+            cognito_domain = cognito_domain[8:]
+
+        # Get resource server scopes
+        cognito_client = boto3.client('cognito-idp')
+        response = cognito_client.list_resource_servers(UserPoolId=user_pool_id, MaxResults=1)
+        
+        if response['ResourceServers']:
+            resource_server_id = response['ResourceServers'][0]['Identifier']
+            scopes = f"{resource_server_id}/read"
+        else:
+            scopes = "gateway:read gateway:write"
+
+        # M2M OAuth flow
+        token_url = f"https://{cognito_domain}/oauth2/token"
+        token_data = {
+            "grant_type": "client_credentials",
+            "client_id": machine_client_id,
+            "client_secret": machine_client_secret,
+            "scope": scopes
+        }
+        
+        response = requests.post(
+            token_url, 
+            data=token_data, 
+            headers={"Content-Type": "application/x-www-form-urlencoded"}
+        )
+        
+        if response.status_code != 200:
+            print(f"Failed to get access token: {response.text}")
+            return None
+            
+        access_token = response.json()["access_token"]
+        return access_token
+        
+    except Exception as e:
+        print(f"Error getting M2M bearer token: {str(e)}")
+        return None
+
+def tool_search(gateway_endpoint, jwt_token, query, max_tools=5):
+    """Search for tools using the gateway's semantic search."""
+    tool_params = {
+        "name": "x_amz_bedrock_agentcore_search",
+        "arguments": {"query": query},
+    }
     
-        ]
+    request_body = {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "method": "tools/call",
+        "params": tool_params,
+    }
     
+    response = requests.post(
+        gateway_endpoint,
+        json=request_body,
+        headers={
+            "Authorization": f"Bearer {jwt_token}",
+            "Content-Type": "application/json",
+        },
+    )
     
-    # Set up MCP client
+    if response.status_code == 200:
+        tool_resp = response.json()
+        tools = tool_resp["result"]["structuredContent"]["tools"]
+        tools = tools[:max_tools]
+        return tools
+    else:
+        print(f"Search failed: {response.text}")
+        return []
+
+def get_all_mcp_tools_from_mcp_client(client):
+    """Get all tools from MCP client with pagination."""
+    more_tools = True
+    tools = []
+    pagination_token = None
+    while more_tools:
+        tmp_tools = client.list_tools_sync(pagination_token=pagination_token)
+        tools.extend(tmp_tools)
+        if tmp_tools.pagination_token is None:
+            more_tools = False
+        else:
+            more_tools = True
+            pagination_token = tmp_tools.pagination_token
+    return tools
+
+def tools_to_strands_mcp_tools(tools, top_n, client):
+    """Convert search results to Strands MCPAgentTool objects."""
+    strands_mcp_tools = []
+    for tool in tools[:top_n]:
+        mcp_tool = MCPTool(
+            name=tool["name"],
+            description=tool["description"],
+            inputSchema=tool["inputSchema"],
+        )
+        strands_mcp_tools.append(MCPAgentTool(mcp_tool, client))
+    return strands_mcp_tools
+
+@click.command()
+@click.option("--prompt", "-p", help="Prompt to send to the agent")
+@click.option("--use-search", is_flag=True, help="Use semantic search to find relevant tools")
+@click.option("--search-query", help="Search query for finding relevant tools (defaults to prompt)")
+@click.option("--max-tools", default=5, help="Maximum number of tools to use from search results")
+@click.option("--test-prompts", is_flag=True, help="Test with predefined prompts")
+@click.option("--test-tool-prompts", is_flag=True, help="Test with tool-specific prompts")
+def main(prompt, use_search, search_query, max_tools, test_prompts, test_tool_prompts):
+    """Test the gateway with semantic search capabilities."""
+    
+    # Get gateway access token
+    jwt_token = get_gateway_access_token()
+    if not jwt_token:
+        print("❌ Failed to get gateway access token")
+        return
+    
+    # Get gateway endpoint
+    gateway_endpoint = get_ssm_parameter("/app/researchapp/agentcore/gateway_url")
+    print(f"Gateway Endpoint - MCP URL: {gateway_endpoint}")
+    
+    # Create MCP client
     client = MCPClient(
         lambda: streamablehttp_client(
-            gateway_url,
-            headers={"Authorization": f"Bearer {gateway_access_token}"},
+            gateway_endpoint, headers={"Authorization": f"Bearer {jwt_token}"}
         )
     )
-
+    
+    # Create Bedrock model
+    model = BedrockModel(
+        model_id="global.anthropic.claude-sonnet-4-20250514-v1:0",
+        temperature=0.7,
+        streaming=True,
+    )
+    
     with client:
+        # Determine which prompts to use
+        prompts_to_test = []
+        if test_prompts:
+            prompts_to_test = PROMPTS
+        elif test_tool_prompts:
+            prompts_to_test = TOOL_SPECIFIC_PROMPTS
+        elif prompt:
+            prompts_to_test = [prompt]
+        else:
+            print("❌ Please provide a prompt or use --test-prompts or --test-tool-prompts")
+            return    
         
-        agent1 = Agent(tools=client.list_tools_sync()) #agent that includes all the tools 
-        print(prompt)
-        response = agent1(prompt)
-        print("Agent 1 response without semantic search")
-        print(str(response))
-        for prompt in prompts:
-            print(prompt)
-            response = agent1(prompt)
-            print("Agent 1 response without semantic search")
-            print(str(response))
-            tools_found = tool_search(
-            gateway_endpoint=gateway_url,
-            jwt_token=gateway_access_token,
-            query=prompt,
-            )
-            print("Agent 2 response with semantic search with top 3 tools")
-            print('total tools found')
-            print(tools_found)
-            agent2 = Agent(tools=tools_to_strands_mcp_tools(client,tools_found, 3)) #agent that uses gateway search to filter tools 
-            response = agent2(prompt)
-            print(str(response))     
-            
+        # Process each prompt
+        for i, test_prompt in enumerate(prompts_to_test, 1):
+            print(f"\n{'='*60}")
+            print(f"Testing prompt {i}/{len(prompts_to_test)}")
+            print(f"💬 Prompt: {test_prompt}")
+            print('='*60)
+                    
+            if use_search:
+                # Use semantic search only
+                search_query_to_use = search_query or test_prompt
+                print(f"\n🔍 Searching for tools with query: '{search_query_to_use}'")
+                
+                start_time = time.time()
+                tools_found = tool_search(gateway_endpoint, jwt_token, search_query_to_use, max_tools=MAX_TOOLS)
+                search_time = time.time() - start_time
+                
+                if not tools_found:
+                    print("❌ No tools found from search")
+                    continue
+                    
+                print(f"✅ Found {len(tools_found)} relevant tools in {search_time:.2f}s")
+                print(f"Top tool: {tools_found[0]['name']}")
+                
+                agent_tools = tools_to_strands_mcp_tools(tools_found, max_tools, client)
+                agent = Agent(model=model, tools=agent_tools)
+                
+                start_time = time.time()
+                
+                try:
+                    result = agent(test_prompt)
+                    execution_time = time.time() - start_time
+                    
+                    print(f"\n⏱️  Total time: {execution_time + search_time:.2f}s (search: {search_time:.2f}s, execution: {execution_time:.2f}s)")
+                    print(f"🎯 Response: {result.message['content'][0]['text']}")
+                    
+                    if hasattr(result, 'metrics') and result.metrics:
+                        tokens = result.metrics.accumulated_usage.get("totalTokens", 0)
+                        print(f"🔢 Total tokens used: {tokens:,}")
+                        
+                except Exception as e:
+                    print(f"❌ Error executing agent: {str(e)}")
+                    
+            else:
+                # Use all tools (traditional approach)
+                print("📋 Getting all available tools...")
+                start_time = time.time()
+                all_tools = get_all_mcp_tools_from_mcp_client(client)
+                list_time = time.time() - start_time
+                print(f"✅ Found {len(all_tools)} total tools in {list_time:.2f}s\n")
 
+                agent = Agent(model=model, tools=all_tools)
+                
+                start_time = time.time()
+                
+                try:
+                    result = agent(test_prompt)
+                    execution_time = time.time() - start_time
+                    
+                    print(f"\n⏱️  Execution time: {execution_time:.2f}s")
+                    print(f"🎯 Response: {result.message['content'][0]['text']}")
+                    
+                    if hasattr(result, 'metrics') and result.metrics:
+                        tokens = result.metrics.accumulated_usage.get("totalTokens", 0)
+                        print(f"🔢 Total tokens used: {tokens:,}")
+                        
+                except Exception as e:
+                    print(f"❌ Error executing agent: {str(e)}")
 
 if __name__ == "__main__":
     main()
