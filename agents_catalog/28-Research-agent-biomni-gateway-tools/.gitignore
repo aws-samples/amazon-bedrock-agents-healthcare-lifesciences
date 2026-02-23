@@ -51,10 +51,11 @@ prerequisite/lambda-database/python/schema_db/
 agent/agent_config/tools/schema_db/
 
 # Evaluation data (contains runtime traces and credentials)
-evaluations/E2E-On-deman-Evaluations/evaluation_input/
-evaluations/E2E-On-deman-Evaluations/evaluation_input/*.json
-evaluations/E2E-On-deman-Evaluations/evaluation_output/
-evaluations/E2E-On-deman-Evaluations/evaluation_output/*.json
+# Allow example files for documentation
+evaluations/E2E-On-deman-Evaluations/evaluation_input/*
+!evaluations/E2E-On-deman-Evaluations/evaluation_input/example_input.json
+evaluations/E2E-On-deman-Evaluations/evaluation_output/*
+!evaluations/E2E-On-deman-Evaluations/evaluation_output/example_output.json
 evaluations/E2E-On-deman-Evaluations/dashboard_data.js
 
 # Environment variables
