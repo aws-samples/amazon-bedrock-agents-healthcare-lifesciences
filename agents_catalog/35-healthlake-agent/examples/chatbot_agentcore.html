@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HealthLake AI Assistant - AgentCore</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .chat-container {
+            width: 100%;
+            max-width: 900px;
+            height: 90vh;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .chat-header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .chat-header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .badge {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            background: #f8fafc;
+        }
+
+        .message {
+            margin-bottom: 16px;
+            display: flex;
+            gap: 12px;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.user {
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .message.user .message-avatar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .message.assistant .message-avatar {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 16px;
+            border-radius: 12px;
+            line-height: 1.6;
+            font-size: 15px;
+        }
+
+        .message.user .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .message.assistant .message-content {
+            background: white;
+            color: #1e293b;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .message-content pre {
+            background: rgba(0, 0, 0, 0.05);
+            padding: 12px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 8px 0;
+        }
+
+        .typing-indicator {
+            display: none;
+            padding: 16px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            width: fit-content;
+        }
+
+        .typing-indicator.active {
+            display: block;
+        }
+
+        .typing-indicator span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #94a3b8;
+            margin: 0 2px;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-10px); }
+        }
+
+        .chat-input-container {
+            padding: 24px;
+            background: white;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .chat-input-wrapper {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 14px 18px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 15px;
+            font-family: inherit;
+            resize: none;
+            min-height: 52px;
+            max-height: 120px;
+            transition: border-color 0.2s;
+        }
+
+        .chat-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .send-button {
+            padding: 14px 28px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .send-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .send-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .error-message {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin: 16px 24px;
+            font-size: 14px;
+        }
+
+        .config-section {
+            background: #f1f5f9;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+
+        .config-section label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 6px;
+        }
+
+        .config-section input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .quick-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        .quick-action-btn {
+            padding: 8px 16px;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .quick-action-btn:hover {
+            background: #f8fafc;
+            border-color: #667eea;
+            color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h1>🏥 HealthLake AI Assistant</h1>
+            <p>Powered by AWS Bedrock AgentCore</p>
+            <span class="badge">✓ Connected</span>
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+            <div class="message assistant">
+                <div class="message-avatar">AI</div>
+                <div class="message-content">
+                    Hello! I'm your HealthLake AI assistant. I can help you with:
+                    <br><br>
+                    • Search for patients and medical records<br>
+                    • Look up conditions, medications, and procedures<br>
+                    • Access lab results and observations<br>
+                    • Review insurance and claims information<br>
+                    <br>
+                    What would you like to know?
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-input-container">
+            <div class="config-section">
+                <label>Agent Name:</label>
+                <input type="text" id="agentName" value="healthlake_agent" />
+            </div>
+            
+            <div class="quick-actions">
+                <button class="quick-action-btn" onclick="sendQuickMessage('What is the HealthLake datastore information?')">
+                    📊 Datastore Info
+                </button>
+                <button class="quick-action-btn" onclick="sendQuickMessage('Search for patients with diabetes')">
+                    🔍 Search Diabetes
+                </button>
+                <button class="quick-action-btn" onclick="sendQuickMessage('List all patients')">
+                    👥 List Patients
+                </button>
+            </div>
+
+            <div class="chat-input-wrapper">
+                <textarea 
+                    id="userInput" 
+                    class="chat-input" 
+                    placeholder="Type your message here..."
+                    rows="1"
+                ></textarea>
+                <button id="sendButton" class="send-button" onclick="sendMessage()">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const chatMessages = document.getElementById('chatMessages');
+        const userInput = document.getElementById('userInput');
+        const sendButton = document.getElementById('sendButton');
+        const agentNameInput = document.getElementById('agentName');
+
+        // Auto-resize textarea
+        userInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+        });
+
+        // Send on Enter (Shift+Enter for new line)
+        userInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        function addMessage(content, isUser = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user' : 'assistant'}`;
+            
+            const avatar = document.createElement('div');
+            avatar.className = 'message-avatar';
+            avatar.textContent = isUser ? 'U' : 'AI';
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            
+            // Format content with line breaks
+            contentDiv.innerHTML = content.replace(/\n/g, '<br>');
+            
+            messageDiv.appendChild(avatar);
+            messageDiv.appendChild(contentDiv);
+            chatMessages.appendChild(messageDiv);
+            
+            // Scroll to bottom
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function showTypingIndicator() {
+            const indicator = document.createElement('div');
+            indicator.className = 'message assistant';
+            indicator.id = 'typingIndicator';
+            
+            const avatar = document.createElement('div');
+            avatar.className = 'message-avatar';
+            avatar.textContent = 'AI';
+            
+            const typing = document.createElement('div');
+            typing.className = 'typing-indicator active';
+            typing.innerHTML = '<span></span><span></span><span></span>';
+            
+            indicator.appendChild(avatar);
+            indicator.appendChild(typing);
+            chatMessages.appendChild(indicator);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function hideTypingIndicator() {
+            const indicator = document.getElementById('typingIndicator');
+            if (indicator) {
+                indicator.remove();
+            }
+        }
+
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.textContent = `Error: ${message}`;
+            chatMessages.appendChild(errorDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const message = userInput.value.trim();
+            if (!message) return;
+
+            const agentName = agentNameInput.value.trim() || 'healthlake_agent';
+
+            // Add user message
+            addMessage(message, true);
+            userInput.value = '';
+            userInput.style.height = 'auto';
+
+            // Disable input
+            sendButton.disabled = true;
+            userInput.disabled = true;
+            showTypingIndicator();
+
+            try {
+                // Call AgentCore CLI via a backend proxy or directly
+                // For this demo, we'll simulate the call
+                const response = await invokeAgentCore(agentName, message);
+                
+                hideTypingIndicator();
+                addMessage(response);
+            } catch (error) {
+                hideTypingIndicator();
+                showError(error.message);
+            } finally {
+                sendButton.disabled = false;
+                userInput.disabled = false;
+                userInput.focus();
+            }
+        }
+
+        async function invokeAgentCore(agentName, prompt) {
+            // Use the same FastAPI backend but with AgentCore mode
+            const response = await fetch('http://localhost:8000/chat/agentcore', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    message: prompt,
+                    agent_name: agentName,
+                    session_id: 'web-chat-' + Date.now(),
+                    user_id: 'web-user',
+                    user_role: 'admin'
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`API error: ${response.status}`);
+            }
+
+            const data = await response.json();
+            return data.response || data.result || JSON.stringify(data);
+        }
+
+        function sendQuickMessage(message) {
+            userInput.value = message;
+            sendMessage();
+        }
+    </script>
+</body>
+</html>

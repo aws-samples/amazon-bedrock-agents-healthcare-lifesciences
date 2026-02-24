@@ -1,0 +1,16 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "ECRAccess",
+            "Effect": "Allow",
+            "Action": [
+                "ecr:GetAuthorizationToken",
+                "ecr:BatchCheckLayerAvailability",
+                "ecr:GetDownloadUrlForLayer",
+                "ecr:BatchGetImage"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
