@@ -1,0 +1,42 @@
+# CDK outputs (causes recursive path issues)
+infra-cdk/cdk.out
+infra-cdk/cdk.context.json
+
+# Node modules
+infra-cdk/node_modules
+node_modules
+
+# Git
+.git
+.github
+
+# Python cache
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.venv
+venv
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test outputs
+test-scripts/results
+*.log
+
+# Deployment artifacts
+ols_mcp_deployment
+.claude
+
+# Documentation
+docs
+*.md
+!requirements.txt
