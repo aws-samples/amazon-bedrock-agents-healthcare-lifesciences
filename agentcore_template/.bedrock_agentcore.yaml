@@ -1,0 +1,66 @@
+default_agent: myappAgent
+agents:
+  myappAgent:
+    name: myappAgent
+    language: python
+    node_version: '20'
+    entrypoint: C:/Users/masingm/MyRepos/amazon-bedrock-agents-healthcare-lifesciences/agentcore_template/main.py
+    deployment_type: container
+    runtime_type: null
+    platform: linux/arm64
+    container_runtime: none
+    source_path: C:\Users\masingm\MyRepos\amazon-bedrock-agents-healthcare-lifesciences\agentcore_template
+    aws:
+      execution_role: arn:aws:iam::078323627405:role/MyAppStackInfra-RuntimeAgentCoreRole-vIHEHbR4Ee5n
+      execution_role_auto_create: true
+      account: 078323627405
+      region: us-east-1
+      ecr_repository: 078323627405.dkr.ecr.us-east-1.amazonaws.com/bedrock-agentcore-myappagent
+      ecr_auto_create: false
+      s3_path: null
+      s3_auto_create: false
+      network_configuration:
+        network_mode: PUBLIC
+        network_mode_config: null
+      protocol_configuration:
+        server_protocol: HTTP
+      observability:
+        enabled: true
+      lifecycle_configuration:
+        idle_runtime_session_timeout: null
+        max_lifetime: null
+    bedrock_agentcore:
+      agent_id: myappAgent-UHelHJDWgP
+      agent_arn: arn:aws:bedrock-agentcore:us-east-1:078323627405:runtime/myappAgent-UHelHJDWgP
+      agent_session_id: null
+    codebuild:
+      project_name: bedrock-agentcore-myappagent-builder
+      execution_role: arn:aws:iam::078323627405:role/AmazonBedrockAgentCoreSDKCodeBuild-us-east-1-24064c49d3
+      source_bucket: bedrock-agentcore-codebuild-sources-078323627405-us-east-1
+    memory:
+      mode: STM_ONLY
+      memory_id: myappAgent_mem-0x9UNn3Gnl
+      memory_arn: arn:aws:bedrock-agentcore:us-east-1:078323627405:memory/myappAgent_mem-0x9UNn3Gnl
+      memory_name: myappAgent_mem
+      event_expiry_days: 30
+      first_invoke_memory_check_done: true
+      was_created_by_toolkit: true
+    identity:
+      credential_providers: []
+      workload: null
+    aws_jwt:
+      enabled: false
+      audiences: []
+      signing_algorithm: ES384
+      issuer_url: null
+      duration_seconds: 300
+    authorizer_configuration:
+      customJWTAuthorizer:
+        discoveryUrl: https://cognito-idp.us-east-1.amazonaws.com/us-east-1_vJFYgFuH4/.well-known/openid-configuration
+        allowedClients:
+        - 27kbsqdkrdjkap68s2m7ea1mdc
+    request_header_configuration: null
+    oauth_configuration: null
+    api_key_env_var_name: null
+    api_key_credential_provider_name: null
+    is_generated_by_agentcore_create: false
