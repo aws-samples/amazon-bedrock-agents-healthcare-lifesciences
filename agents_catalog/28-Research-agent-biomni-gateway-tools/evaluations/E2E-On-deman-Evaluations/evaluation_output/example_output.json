@@ -1,0 +1,48 @@
+{
+  "session_id": "example-session-id-12345",
+  "results": [
+    {
+      "evaluator_id": "Builtin.Helpfulness",
+      "evaluator_name": "Helpfulness",
+      "evaluator_arn": "arn:aws:bedrock:us-east-1:123456789012:evaluator/builtin.helpfulness",
+      "value": 0.85,
+      "label": "HELPFUL",
+      "explanation": "The response provides relevant information about BRCA1 mutations and their clinical significance. It addresses the user's question directly and offers actionable insights.",
+      "context": {
+        "spanContext": {
+          "sessionId": "example-session-id-12345",
+          "traceId": "abcdef1234567890abcdef1234567890"
+        }
+      },
+      "token_usage": {
+        "inputTokens": 1250,
+        "outputTokens": 450
+      },
+      "error": null
+    },
+    {
+      "evaluator_id": "Builtin.Correctness",
+      "evaluator_name": "Correctness",
+      "evaluator_arn": "arn:aws:bedrock:us-east-1:123456789012:evaluator/builtin.correctness",
+      "value": 0.92,
+      "label": "CORRECT",
+      "explanation": "The response accurately describes BRCA1 mutations and their association with cancer risk. The information aligns with current medical understanding.",
+      "context": {
+        "spanContext": {
+          "sessionId": "example-session-id-12345",
+          "traceId": "abcdef1234567890abcdef1234567890"
+        }
+      },
+      "token_usage": {
+        "inputTokens": 1250,
+        "outputTokens": 450
+      },
+      "error": null
+    }
+  ],
+  "metadata": {
+    "experiment": "example_evaluation",
+    "description": "Example evaluation output with sanitized data",
+    "timestamp": "2024-02-13T13:27:00Z"
+  }
+}
