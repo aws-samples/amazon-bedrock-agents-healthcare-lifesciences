@@ -7,6 +7,7 @@ and invoking them with sample queries.
 """
 
 import asyncio
+import os
 import sys
 from datetime import timedelta
 from pathlib import Path
@@ -164,12 +165,11 @@ if __name__ == "__main__":
     try:
         import mcp
     except ImportError:
-        print("❌ mcp package not found")
-        print("📦 Installing required packages...")
-        import subprocess
-
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "mcp"])
-        print("✓ Packages installed. Please run the script again.")
-        sys.exit(0)
+        print("\n❌ ERROR: mcp package is not installed")
+        print("\n📦 Please install development dependencies:")
+        print("   pip install -r requirements-dev.txt")
+        print("\n   Or install mcp individually:")
+        print("   pip install mcp")
+        sys.exit(1)
 
     asyncio.run(test_mcp_server(args.stack_name))

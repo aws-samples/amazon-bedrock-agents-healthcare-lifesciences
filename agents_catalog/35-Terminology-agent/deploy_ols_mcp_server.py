@@ -24,22 +24,16 @@ from ols_utils import (
 )
 from check_ols_mcp_deployment import check_ols_mcp_deployment
 
-# Try to import bedrock_agentcore_starter_toolkit
+# Import bedrock_agentcore_starter_toolkit
 try:
     from bedrock_agentcore_starter_toolkit import Runtime
 except ImportError:
-    print("❌ bedrock_agentcore_starter_toolkit not found")
-    print("📦 Installing bedrock_agentcore_starter_toolkit...")
-    subprocess.check_call(
-        [
-            sys.executable,
-            "-m",
-            "pip",
-            "install",
-            "bedrock-agentcore-starter-toolkit",
-        ]
-    )
-    from bedrock_agentcore_starter_toolkit import Runtime
+    print("\n❌ ERROR: bedrock_agentcore_starter_toolkit is not installed")
+    print("\n📦 Please install development dependencies:")
+    print("   pip install -r requirements-dev.txt")
+    print("\n   Or install individually:")
+    print("   pip install bedrock-agentcore-starter-toolkit")
+    sys.exit(1)
 
 
 def check_ols_mcp_server(ols_source_path: Path) -> bool:
@@ -92,7 +86,7 @@ def patch_ols_for_agentcore(dest_path: Path) -> None:
 
     server_file = dest_path / "ols" / "src" / "ols_mcp_server" / "server.py"
 
-    with open(server_file, "r") as f:
+    with open(server_file, "r", encoding="utf-8") as f:
         content = f.read()
 
     # Patch 1: Update FastMCP initialization to use stateless HTTP
@@ -115,7 +109,7 @@ def patch_ols_for_agentcore(dest_path: Path) -> None:
     else:
         print("  ⚠️  mcp.run() pattern not found")
 
-    with open(server_file, "w") as f:
+    with open(server_file, "w", encoding="utf-8") as f:
         f.write(content)
 
     print("✓ AgentCore Runtime patches applied")
@@ -130,15 +124,19 @@ def generate_requirements_file(ols_source_path: Path, dest_path: Path) -> Path:
 
     # Check if uv is installed
     try:
-        subprocess.run(["uv", "--version"], capture_output=True, check=True)
+        subprocess.run(["uv", "--version"], capture_output=True, check=True, shell=False)
     except (subprocess.CalledProcessError, FileNotFoundError):
-        print("❌ uv not found. Installing uv...")
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "uv"])
+        print("\n❌ ERROR: uv is not installed")
+        print("\n📦 Please install development dependencies:")
+        print("   pip install -r requirements-dev.txt")
+        print("\n   Or install uv individually:")
+        print("   pip install uv")
+        sys.exit(1)
 
     # Create constraint file to pin fastmcp to 2.x during compilation
     # This ensures uv resolves compatible versions of all dependencies together
     constraint_file = dest_path / "constraints.txt"
-    with open(constraint_file, "w") as f:
+    with open(constraint_file, "w", encoding="utf-8") as f:
         f.write("# Constraint for AgentCore Runtime - FastMCP 2.x required for stateless HTTP\n")
         f.write("fastmcp>=2.10.5,<3.0.0\n")
 
@@ -157,7 +155,7 @@ def generate_requirements_file(ols_source_path: Path, dest_path: Path) -> Path:
     )
 
     # Add boto3 for OpenTelemetry instrumentation
-    with open(requirements_file, "a") as f:
+    with open(requirements_file, "a", encoding="utf-8") as f:
         f.write("\n# AWS SDK for OpenTelemetry instrumentation\n")
         f.write("boto3>=1.35.0\n")
 

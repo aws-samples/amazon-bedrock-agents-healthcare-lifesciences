@@ -1,4 +1,22 @@
+# Development and deployment dependencies for Terminology Agent
+# Install with: pip install -r requirements-dev.txt
+
+# Code quality and linting
 ruff==0.14.1
+
+# CDK infrastructure deployment
 aws-cdk-lib==2.220.0
 constructs==10.0.79
 pyyaml==6.0.1
+
+# AgentCore deployment
+bedrock-agentcore-starter-toolkit>=1.0.0
+
+# Python package management
+uv>=0.1.0
+
+# MCP server testing
+mcp>=1.0.0
+
+# AWS SDK (core dependency)
+boto3>=1.35.0

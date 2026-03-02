@@ -381,33 +381,52 @@ The agent automatically determines the appropriate workflow based on query chara
 
 ## Deployment Instructions
 
-### Step 1: Deploy OLS MCP Server
+### Prerequisites: Install Development Dependencies
 
-Deploy the Ontology Lookup Service MCP Server:
+Before deploying, install the required development and deployment tools:
 
 ```bash
-cd agents_catalog/34-Terminology-agent
-python deploy_ols_mcp_server.py --stack-name terminology-agent
-python test_ols_client.py  # Verify deployment
+cd agents_catalog/35-Terminology-agent
+pip install -r requirements-dev.txt
 ```
 
-This step is required before deploying the backend agent.
+This installs:
+- `bedrock-agentcore-starter-toolkit` - For deploying to AgentCore Runtime
+- `uv` - For building Python dependencies
+- `mcp` - For testing MCP server deployments
+- `boto3` - AWS SDK (if not already installed)
+- `aws-cdk-lib` - CDK infrastructure deployment
+- `ruff` - Code quality and linting
 
-### Step 2: Deploy Terminology Agent
+### Step 1: Deploy Backend Stack
 
-Deploy the full backend with the terminology agent:
+**IMPORTANT**: Deploy the backend FIRST to create Cognito resources needed by the OLS MCP Server.
 
 ```bash
 cd infra-cdk
 npm install
+cdk bootstrap  # Only needed once per AWS account/region
 cdk deploy
 ```
 
 This will deploy:
+- **Cognito User Pool** - Authentication for frontend and M2M (required by OLS)
 - AgentCore Runtime with `terminology_agent_with_ols.py`
 - Gateway with authentication
 - Memory and DynamoDB tables
 - API Gateway for frontend
+
+### Step 2: Deploy OLS MCP Server
+
+Deploy the Ontology Lookup Service MCP Server (uses Cognito from Step 1):
+
+```bash
+cd ..
+python deploy_ols_mcp_server.py --stack-name terminology-agent
+python test_ols_client.py  # Verify deployment
+```
+
+The OLS MCP Server configures OAuth2 M2M authentication using the Cognito resources created in Step 1.
 
 ### Step 3: Deploy Frontend
 

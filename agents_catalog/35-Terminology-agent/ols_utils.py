@@ -112,6 +112,7 @@ def get_access_token(stack_name: str = "terminology-agent") -> str:
             token_url,
             data=token_data,
             headers={"Content-Type": "application/x-www-form-urlencoded"},
+            timeout=30,  # 30 seconds timeout for OAuth token request
         )
 
         if response.status_code != 200:

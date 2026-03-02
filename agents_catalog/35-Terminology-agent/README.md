@@ -81,18 +81,23 @@ See [TERMINOLOGY_AGENT_GUIDE.md](TERMINOLOGY_AGENT_GUIDE.md#sample-queries) for 
 ### Quick Start
 
 ```bash
-# Deploy OLS MCP Server (prerequisite)
-python deploy_ols_mcp_server.py --stack-name terminology-agent
+# Install development dependencies
+pip install -r requirements-dev.txt
 
-# Deploy backend
+# Step 1: Deploy backend (creates Cognito resources)
 cd infra-cdk
+npm install
+cdk bootstrap  # Only needed once per AWS account/region
 cdk deploy
 
-# Deploy frontend
+# Step 2: Deploy OLS MCP Server (uses Cognito from backend)
 cd ..
+python deploy_ols_mcp_server.py --stack-name terminology-agent
+
+# Step 3: Deploy frontend
 python scripts/deploy-frontend.py
 
-# Test the agent
+# Step 4: Test the agent
 uv run test-scripts/test-agent.py --test-suite
 ```
 
@@ -126,7 +131,7 @@ The baseline FAST system provides:
 
 > **For Terminology Agent deployment**, see [TERMINOLOGY_AGENT_GUIDE.md](TERMINOLOGY_AGENT_GUIDE.md#deployment-instructions)
 >
-> The Terminology Agent requires deploying the OLS MCP Server **before** the backend stack.
+> **IMPORTANT**: Deploy the backend stack **first** (creates Cognito), then deploy the OLS MCP Server (uses Cognito).
 
 ## FAST User Setup (General FAST Template Instructions)
 
