@@ -284,10 +284,57 @@ export default function ChatInterface() {
           {/* Empty space above */}
           <div className="grow" />
 
-          {/* Centered welcome message */}
-          <div className="text-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-800">Search with 200+ ontologies</h2>
-            <p className="text-gray-600 mt-2">Ask me anything to get started</p>
+          {/* Centered welcome message with capabilities */}
+          <div className="text-center mb-8 px-4">
+            <h2 className="text-3xl font-bold text-gray-800 mb-3">Medical Terminology Standardization</h2>
+            <p className="text-lg text-gray-600 mb-6">Search and standardize across 200+ biomedical ontologies</p>
+
+            {/* Capabilities Grid */}
+            <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 text-left">
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <h3 className="font-semibold text-blue-900 mb-2">🔍 Ontology Search</h3>
+                <p className="text-sm text-gray-700">Search MONDO, ChEBI, HPO, GO, and 200+ ontologies from EBI OLS</p>
+              </div>
+              <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                <h3 className="font-semibold text-green-900 mb-2">🧬 Entity Extraction</h3>
+                <p className="text-sm text-gray-700">Automatically identify diseases, drugs, genes, proteins, and anatomy</p>
+              </div>
+              <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                <h3 className="font-semibold text-purple-900 mb-2">🔗 Multi-Ontology Mapping</h3>
+                <p className="text-sm text-gray-700">Map terms across MedDRA, SNOMED CT, ICD-10/11, RxNorm, and LOINC</p>
+              </div>
+            </div>
+
+            {/* Example Queries */}
+            <div className="max-w-3xl mx-auto mb-6">
+              <p className="text-sm text-gray-600 mb-3 font-medium">Try asking:</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                <button
+                  onClick={() => setInput("What is the MONDO ID for diabetes mellitus?")}
+                  className="text-left p-3 bg-white hover:bg-gray-50 border border-gray-200 rounded-lg transition-colors"
+                >
+                  💬 "What is the MONDO ID for diabetes mellitus?"
+                </button>
+                <button
+                  onClick={() => setInput("Search for insulin across ChEBI and GO ontologies")}
+                  className="text-left p-3 bg-white hover:bg-gray-50 border border-gray-200 rounded-lg transition-colors"
+                >
+                  💬 "Search for insulin across ChEBI and GO"
+                </button>
+                <button
+                  onClick={() => setInput("Show me parent and child terms for myocardial infarction")}
+                  className="text-left p-3 bg-white hover:bg-gray-50 border border-gray-200 rounded-lg transition-colors"
+                >
+                  💬 "Show parent and child terms for MI"
+                </button>
+                <button
+                  onClick={() => setInput("Map diabetes to all relevant ontologies")}
+                  className="text-left p-3 bg-white hover:bg-gray-50 border border-gray-200 rounded-lg transition-colors"
+                >
+                  💬 "Map diabetes to all ontologies"
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* Centered input */}
