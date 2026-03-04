@@ -1,200 +1,842 @@
 ---
-title: Quickstart
+title: Developer Guide
+description: Build your own AI agents for healthcare and life sciences using Amazon Bedrock AgentCore
 ---
-Welcome to the Sample agents for Healthcare & Life Sciences  contribution guide. This step-by-step tutorial will help you create your own domain-specific agent and contribute it to our growing catalog, as well as configure multiple agents to collaborate effectively.
+
+Welcome to the comprehensive developer guide for building AI agents in healthcare and life sciences. This guide will help you choose the right template and deploy your own specialized agents using Amazon Bedrock AgentCore.
 
 import { Tabs, TabItem } from '@astrojs/starlight/components';
+import { Card, CardGrid } from '@astrojs/starlight/components';
 
-Prerequisites
+## Prerequisites
 
 Before getting started, ensure you have:
 
-    - An AWS account with access to Amazon Bedrock
+- **AWS Account** with access to Amazon Bedrock
+- **Model Access** - Request access to foundation models (e.g., Claude 3.5 Sonnet, Haiku)
+- **AWS CLI** configured with appropriate permissions
+- **Python 3.10+** installed
+- **Node.js 18+** and npm (for FAST template)
+- **Git** and GitHub account
+- **Basic knowledge** of AWS services and JSON/YAML configuration
 
-    - Requested access to the foundation models you plan to use with your agent
+## Choosing Your Template
 
-    - AWS CLI configured with appropriate permissions
+We provide two approaches for building agents, each suited for different use cases:
 
-    - Basic knowledge of AWS services and JSON/YAML configuration
+<CardGrid>
+  <Card title="AgentCore Template" icon="laptop">
+    **Best for**: Backend-focused development, rapid prototyping, local testing
 
-    - Git and GitHub account (for contributing to the repository)
+    **Includes**:
+    - Backend deployment scripts
+    - Local Streamlit UI
+    - Gateway, Memory, Cognito setup
+    - IAM or OAuth authentication options
+    - Sample tools and observability
 
-## Creating Your Own Agent
+    **Deploy time**: ~15-20 minutes
+  </Card>
 
-<Tabs> <TabItem label="Using CloudFormation" icon="seti:aws" color="orange">
+  <Card title="FAST Template" icon="rocket">
+    **Best for**: Production deployments, full-stack applications, end-to-end solutions
 
-#### One-Click Deployment
+    **Includes**:
+    - Complete CDK infrastructure
+    - Production React frontend
+    - Amplify Hosting deployment
+    - Code Interpreter integration
+    - Local development support
 
-1. Use the agent example that most closely matches your use case from our catalog
-2. Wait for the stack deployment to complete (~5-10 minutes)
-3. Access your agent through the AWS Bedrock console
+    **Deploy time**: ~20-30 minutes
+  </Card>
+</CardGrid>
 
-</TabItem> <TabItem label="Using Jupyter Notebooks" icon="seti:jupyter" color="yellow">
+---
 
-#### Interactive Development
+## Option 1: AgentCore Template
 
-1. Clone the repository locally:
+<Tabs>
+<TabItem label="Overview" icon="information">
+
+### What is the AgentCore Template?
+
+The AgentCore Template provides a streamlined approach to deploying AI agents with:
+- **Backend Infrastructure**: Gateway, Memory, Cognito, and Runtime
+- **Local Development**: Streamlit UI for rapid testing
+- **Flexible Authentication**: Choose between IAM or OAuth
+- **Custom Tools**: Easily add Lambda functions or local Python tools
+
+**Architecture**:
+```
+┌─────────────────────────────────────────────┐
+│           Local Streamlit UI                │
+│         (port 8501)                         │
+└──────────────────┬──────────────────────────┘
+                   │
+┌──────────────────▼──────────────────────────┐
+│      AgentCore Runtime (AWS)                │
+│  ┌──────────┐  ┌────────┐  ┌────────────┐  │
+│  │ Gateway  │  │ Memory │  │  Cognito   │  │
+│  └──────────┘  └────────┘  └────────────┘  │
+└─────────────────────────────────────────────┘
+```
+
+**When to use**:
+- Rapid prototyping and experimentation
+- Backend-focused development
+- Internal tools and demos
+- Research and development workflows
+
+**Reference**: [`agentcore_template/`](https://github.com/aws-samples/amazon-bedrock-agents-healthcare-lifesciences/tree/main/agentcore_template)
+
+</TabItem>
+
+<TabItem label="Setup" icon="rocket">
+
+### Step-by-Step Deployment
+
+#### 1. Prepare Your Environment
+
 ```bash
+# Clone the repository
 git clone https://github.com/aws-samples/amazon-bedrock-agents-healthcare-lifesciences.git
-cd amazon-bedrock-agents-healthcare-lifesciences
+cd amazon-bedrock-agents-healthcare-lifesciences/agentcore_template
+
+# Create virtual environment
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# Install dependencies
+uv pip install -r dev-requirements.txt
 ```
 
-2. Open the agents catalog and navigate to the folder to create your own agent:
+#### 2. Customize Your Tools (Optional)
+
+Add your own tools before deployment:
+
+**Local Tools** (`agent_config/tools/sample_tools.py`):
+```python
+from strands.tools import tool
+
+@tool
+def my_custom_tool(query: str) -> str:
+    """Description of what your tool does."""
+    # Your tool logic here
+    return result
+```
+
+**Gateway Lambda Tools** (`prerequisite/lambda/`):
+- Add new Lambda function code
+- Update configurations as needed
+
+#### 3. Deploy Infrastructure
+
 ```bash
-cd create-your-own-agent
+# Deploy prerequisites (S3, Lambda, etc.)
+chmod +x scripts/prereq.sh
+./scripts/prereq.sh
+
+# List SSM parameters for reference
+chmod +x scripts/list_ssm_parameters.sh
+./scripts/list_ssm_parameters.sh
 ```
 
-3. Select from the list of options 
-   - Bring your own data - SQL database
-   - Bring your own data - RAG with documents
-   - Bring your own data - Knowledge graph
-   - Bring your own tool - lambda function
-   - Bring your own tool - custom container
-   - Bring your own tool - Foundation model inference with Amazon SageMaker
+> **Note**: Use a consistent prefix for all resources (e.g., `myapp`)
 
-4. Follow the notebook cells to:
-   - Configure your AWS credentials
-   - Setup the pre-requisities for data and tools
-   - Define your agent's purpose and behavior
-   - Create action groups for API functionality
-   - Connect knowledge bases for domain expertise
-   - Test and refine your agent's responses
+#### 4. Create AgentCore Components
 
-5. Save your configuration for later contribution. Provide agent description and documentation via Readme.md before submission.
+```bash
+# Create Gateway (connects to Lambda tools)
+python scripts/agentcore_gateway.py create --name myapp-gw
 
-</TabItem> </Tabs>
-### Agent Configuration Best Practices 
+# Create Cognito Identity Provider
+python scripts/cognito_credentials_provider.py create --name myapp-cp
 
-When creating agents for healthcare and life sciences applications, consider these best practices:
+# Test Gateway
+python tests/test_gateway.py --prompt "Hello, can you help me?"
 
-    **Instructions**: Be specific about the HCLS domain expertise your agent should have
-    Context window usage: Structure prompts efficiently to maximize available context
-    Knowledge base optimization: Index documents strategically for relevant retrieval
-    Action group design: Create focused, clear API schemas for  data operations
-    Security and compliance: Follow data handling best practices. Use public data sources with appropriate license. 
-    Testing: Validate responses with domain-specific test cases
+# Create Memory
+python scripts/agentcore_memory.py create --name myapp
 
-**Example agent instructions for a medical terminology agent**:
-You are a healthcare terminology expert specializing in standardized medical coding systems.
-Your primary expertise includes ICD-10, SNOMED CT, LOINC, RxNorm, and CPT codes.
+# Test Memory
+python tests/test_memory.py load-prompt "My preferred format is detailed explanations"
+python tests/test_memory.py list-memory
+```
 
-When responding to queries:
-- Provide accurate code lookups when a description is provided
-- Explain the meaning of codes when a code is provided
-- Suggest related codes when appropriate
-- Clarify ambiguities by asking follow-up questions
-- Note version differences in coding systems when relevant
-- Cite authoritative sources when possible
+#### 5. Deploy Agent Runtime
 
-Do not:
-- Provide medical advice or diagnosis
-- Make claims about insurance coverage
-- Guarantee coding accuracy for billing purposes
-- Share information about specific patients
+```bash
+# Configure runtime
+agentcore configure \
+  --entrypoint main.py \
+  -rf agent/requirements.txt \
+  -er arn:aws:iam::<ACCOUNT>:role/<ROLE> \
+  --name myapp-agent
+```
 
-Use your knowledge bases to reference official coding manuals and guidelines.
-Use API actions to look up specific codes when needed.
+When prompted:
+- **OAuth**: Choose 'yes' for OAuth or 'no' for IAM
+- **Discovery URL**: Use value from `/app/myapp/agentcore/cognito_discovery_url`
+- **Client ID**: Use value from `/app/myapp/agentcore/web_client_id`
 
-### Contributing Your Agent to the Catalog
+```bash
+# Remove old config and launch
+rm .agentcore.yaml
+agentcore launch
+```
 
-Once you've created and tested your agent, follow these steps to contribute to our catalog:
+#### 6. Run Local UI
 
-    1. Fork the repository on GitHub
+<Tabs syncKey="auth-type">
+<TabItem label="IAM Authentication" icon="seti:lock">
 
-    2. Clone your fork locally:
-   ```bash
-    git clone https://github.com/YOUR-USERNAME/amazon-bedrock-agents-healthcare-lifesciences.git
-    cd amazon-bedrock-agents-healthcare-lifesciences
+```bash
+# Run Streamlit UI (select agent from dropdown)
+streamlit run app.py --server.port 8501
+```
 
-    #Create a new branch:
+Access at: `http://localhost:8501`
 
-    git checkout -b add-my-agent-name
-   ```
-    3. Add your agent to the catalog:
-      - Create a new directory in agents_catalog/ with your agent's name
-      - Include the following files:
-         - README.md: Description, use cases, and setup instructions
-         - cloudformation/*.yaml: Templates for one-click deployment
-         - notebooks/: Jupyter notebooks for custom setup and test cases
-         - sample-prompts.md: Example interactions showing capabilities
-         - architecture.png: Visual diagram of your agent
+</TabItem>
+<TabItem label="OAuth Authentication" icon="seti:key">
 
-    Submit a pull request:
-        Go to the original repository
-        Click "Pull Requests" → "New Pull Request"
-        Select your fork and branch
-        Complete the PR template with details about your agent
-   
+```bash
+# Run Streamlit UI with OAuth
+streamlit run app_oauth.py --server.port 8501 -- --agent=myapp-agent
+```
 
-Our team will review your submission and provide feedback before merging.
+You'll be prompted to authenticate via Cognito.
 
-## Configuring Multiple Agents in Collaboration
-<Tabs> <TabItem label="Orchestration Setup" icon="seti:config" color="green"></TabItem>
+</TabItem>
 </Tabs>
 
-The Bedrock multi-agent collaboration framework allows multiple specialized agents to collaborate on complex queries.
-- Review Bedrock documentation to use multi-agent collaboration
+#### 7. Test Your Agent
 
-<Tabs> <TabItem label="Using Runtime initialization" icon="seti:aws" color="orange">
+Try these queries:
+- "Hello, can you help me with information?"
+- "What tools do you have available?"
+- "Can you remember my preferences?"
 
-#### Select agents and configure automatically
+</TabItem>
 
-1. Launch the Configure Multi-agent collaboration UI 
-2. Select agents and hit configure 
-3. Test orchestration with your queries
+<TabItem label="Observability" icon="star">
 
-</TabItem> <TabItem label="Using Jupyter Notebooks" icon="seti:jupyter" color="yellow">
+### Enable Observability
 
-#### Interactive Development
+Amazon Bedrock AgentCore provides built-in observability through CloudWatch:
 
-1. Clone the repository branch with multi-agent features:
+#### Setup Steps
+
+1. **Enable Transaction Search** in CloudWatch:
+   - Navigate to [CloudWatch Console](https://console.aws.amazon.com/cloudwatch/)
+   - Follow [Enable Transaction Search Guide](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Enable-TransactionSearch.html)
+
+2. **View Agent Metrics**:
+   - Filter by agent name and time frame
+   - Track latency, token usage, errors
+   - Analyze tool invocations
+
+**Reference**: [Build Trustworthy AI Agents with Observability](https://aws.amazon.com/blogs/machine-learning/build-trustworthy-ai-agents-with-amazon-bedrock-agentcore-observability/)
+
+</TabItem>
+
+<TabItem label="Cleanup" icon="trash">
+
+### Clean Up Resources
+
+To avoid ongoing charges, remove all deployed resources:
+
+```bash
+# Run cleanup script
+chmod +x scripts/cleanup.sh
+./scripts/cleanup.sh
+
+# Delete individual components
+python scripts/cognito_credentials_provider.py delete
+python scripts/agentcore_memory.py delete
+python scripts/agentcore_gateway.py delete
+python scripts/agentcore_agent_runtime.py myapp-agent
+
+# Remove config files
+rm .agentcore.yaml
+rm .bedrock_agentcore.yaml
+```
+
+</TabItem>
+</Tabs>
+
+---
+
+## Option 2: FAST Template (Fullstack Solution)
+
+<Tabs>
+<TabItem label="Overview" icon="information">
+
+### What is FAST?
+
+The **Fullstack AgentCore Solution Template (FAST)** is a production-ready framework for deploying complete AI agent applications with:
+- **End-to-End Infrastructure**: CDK deployment of backend and frontend
+- **Production React UI**: Modern, responsive web interface with authentication
+- **Amplify Hosting**: Automatic frontend deployment with CloudFront CDN
+- **Code Interpreter**: Built-in Python code execution capabilities
+- **Local Development**: Docker Compose for local testing
+
+**Architecture**:
+```
+┌───────────────────────────────────────────────────────┐
+│             CloudFront + Amplify                      │
+│              (React Frontend)                         │
+└────────────────────┬──────────────────────────────────┘
+                     │
+┌────────────────────▼──────────────────────────────────┐
+│            API Gateway + Cognito Auth                 │
+└────────────────────┬──────────────────────────────────┘
+                     │
+┌────────────────────▼──────────────────────────────────┐
+│          AgentCore Runtime (Container)                │
+│  ┌─────────────┐  ┌──────────┐  ┌─────────────────┐  │
+│  │   Gateway   │  │  Memory  │  │ Code Interpreter│  │
+│  │  (Lambda)   │  │ (DynamoDB│  │  (Sandboxed)    │  │
+│  └─────────────┘  └──────────┘  └─────────────────┘  │
+└───────────────────────────────────────────────────────┘
+```
+
+**When to use**:
+- Production deployments
+- Customer-facing applications
+- Full-stack solutions with frontend
+- Scalable, secure applications
+
+**Reference**:
+- [FAST Repository](https://github.com/awslabs/fullstack-solution-template-for-agentcore)
+- [Example: Terminology Agent](https://github.com/aws-samples/amazon-bedrock-agents-healthcare-lifesciences/tree/main/agents_catalog/35-Terminology-agent)
+
+</TabItem>
+
+<TabItem label="Setup" icon="rocket">
+
+### Step-by-Step Deployment
+
+#### 1. Get Started with FAST
+
+<Tabs syncKey="fast-start">
+<TabItem label="Use Example Agent" icon="document">
+
+**Option A**: Start with the Terminology Agent example
+
+```bash
+# Clone the repository
+git clone https://github.com/aws-samples/amazon-bedrock-agents-healthcare-lifesciences.git
+cd amazon-bedrock-agents-healthcare-lifesciences/agents_catalog/35-Terminology-agent
+
+# Install dependencies
+pip install -r requirements-dev.txt
+```
+
+</TabItem>
+<TabItem label="Fork FAST Template" icon="github">
+
+**Option B**: Fork the official FAST template
+
+```bash
+# Fork and clone FAST
+git clone https://github.com/YOUR-USERNAME/fullstack-solution-template-for-agentcore.git
+cd fullstack-solution-template-for-agentcore
+```
+
+</TabItem>
+</Tabs>
+
+#### 2. Configure Your Stack
+
+Edit `infra-cdk/config.yaml`:
+
+```yaml
+stack_name_base: "my-agent"  # Your stack name
+aws_region: "us-west-2"       # Your AWS region
+cognito_domain_prefix: "my-agent"  # Must be globally unique
+```
+
+#### 3. Deploy Backend (Creates Cognito)
+
+```bash
+cd infra-cdk
+
+# Install CDK dependencies
+npm install
+
+# Bootstrap CDK (once per account/region)
+cdk bootstrap
+
+# Deploy backend stack
+cdk deploy
+```
+
+**What gets deployed**:
+- ✅ Cognito User Pool (authentication)
+- ✅ AgentCore Runtime (Docker container)
+- ✅ AgentCore Gateway (Lambda tools)
+- ✅ AgentCore Memory (DynamoDB)
+- ✅ API Gateway (REST endpoints)
+- ✅ Code Interpreter (sandboxed Python)
+
+**Deploy time**: ~15-20 minutes
+
+#### 4. Deploy Frontend
+
+```bash
+cd ..
+
+# Deploy to Amplify Hosting
+python scripts/deploy-frontend.py
+```
+
+The script will:
+1. Build the React app
+2. Upload to S3
+3. Configure Amplify Hosting
+4. Set up CloudFront CDN
+
+**Frontend URL**: Check CloudFormation outputs or run:
+```bash
+aws cloudformation describe-stacks --stack-name my-agent \
+  --query 'Stacks[0].Outputs[?OutputKey==`FrontendURL`].OutputValue' \
+  --output text
+```
+
+#### 5. Create Test User
+
+```bash
+# Create a test user in Cognito
+aws cognito-idp admin-create-user \
+  --user-pool-id <USER_POOL_ID> \
+  --username testuser \
+  --user-attributes Name=email,Value=test@example.com \
+  --temporary-password "TempPass123!" \
+  --message-action SUPPRESS
+
+# Set permanent password
+aws cognito-idp admin-set-user-password \
+  --user-pool-id <USER_POOL_ID> \
+  --username testuser \
+  --password "MySecurePass123!" \
+  --permanent
+```
+
+#### 6. Access Your Agent
+
+1. Navigate to the Frontend URL
+2. Log in with your test user credentials
+3. Start interacting with your agent!
+
+</TabItem>
+
+<TabItem label="Customization" icon="pencil">
+
+### Customize Your Agent
+
+#### Update Agent Logic
+
+**File**: `patterns/strands-single-agent/basic_agent.py` (or create new file)
+
+```python
+from strands import Agent
+from strands.tools import tool
+
+# Define your system prompt
+SYSTEM_PROMPT = """
+You are a specialized agent for [YOUR DOMAIN].
+
+Your capabilities:
+- [Capability 1]
+- [Capability 2]
+
+Always:
+- [Guideline 1]
+- [Guideline 2]
+"""
+
+# Add custom tools
+@tool
+def my_domain_tool(query: str) -> str:
+    """Description of what this tool does."""
+    # Your tool logic
+    return result
+
+# Create agent
+agent = Agent(
+    model="anthropic.claude-3-5-sonnet-20241022-v2:0",
+    system_prompt=SYSTEM_PROMPT,
+    tools=[my_domain_tool],
+)
+```
+
+#### Update Frontend Branding
+
+**File**: `frontend/src/components/chat/ChatInterface.tsx`
+
+Change welcome message and title:
+```typescript
+<h2>Your Agent Name</h2>
+<p>Your agent description</p>
+```
+
+**File**: `frontend/index.html`
+
+Update page title:
+```html
+<title>Your Agent Name</title>
+```
+
+#### Add MCP Servers
+
+Add external MCP servers (like OLS for ontologies):
+
+```python
+# In your agent file
+from mcp import Client
+
+# Connect to MCP server
+mcp_client = Client(
+    url=os.getenv("MCP_SERVER_URL"),
+    auth_token=os.getenv("MCP_AUTH_TOKEN")
+)
+
+# Use MCP tools
+agent = Agent(
+    tools=[mcp_client, my_local_tools],
+)
+```
+
+See [`agents_catalog/35-Terminology-agent/`](https://github.com/aws-samples/amazon-bedrock-agents-healthcare-lifesciences/tree/main/agents_catalog/35-Terminology-agent) for complete MCP example.
+
+#### Update CDK Configuration
+
+**File**: `infra-cdk/lib/backend-stack.ts`
+
+Point to your custom agent:
+```typescript
+entrypoint: "patterns/strands-single-agent/my_custom_agent.py"
+```
+
+Redeploy:
+```bash
+cd infra-cdk
+cdk deploy
+```
+
+</TabItem>
+
+<TabItem label="Local Development" icon="laptop">
+
+### Local Development with Docker
+
+FAST supports local development while connecting to deployed AWS resources:
+
+#### Prerequisites
+
+You must deploy the stack first (Cognito, Memory, Gateway require AWS):
+
+```bash
+cd infra-cdk
+cdk deploy
+```
+
+#### Get Required Values
+
+```bash
+# Get Memory ID
+aws cloudformation describe-stacks --stack-name my-agent \
+  --query 'Stacks[0].Outputs[?OutputKey==`MemoryArn`].OutputValue' \
+  --output text
+# Extract ID from: arn:aws:bedrock-agentcore:region:account:memory/MEMORY_ID
+
+# Set environment variables
+export MEMORY_ID=your-memory-id
+export STACK_NAME=my-agent
+export AWS_DEFAULT_REGION=us-west-2
+```
+
+#### Run Locally
+
+```bash
+cd docker
+docker-compose up --build
+```
+
+**Access**:
+- **Frontend**: http://localhost:3000
+- **Backend**: http://localhost:8080
+
+**Benefits**:
+- Fast iteration on agent logic
+- No redeployment needed for code changes
+- Full integration with AWS services
+- Hot reload for frontend
+
+</TabItem>
+
+<TabItem label="Cleanup" icon="trash">
+
+### Clean Up Resources
+
+```bash
+# Delete CloudFormation stack (removes all resources)
+cdk destroy
+
+# Or via AWS CLI
+aws cloudformation delete-stack --stack-name my-agent
+```
+
+**What gets deleted**:
+- ✅ Frontend (Amplify Hosting, CloudFront, S3)
+- ✅ Backend (Lambda, API Gateway, AgentCore Runtime)
+- ✅ Cognito User Pool (including users)
+- ✅ Memory (DynamoDB tables)
+- ✅ Gateway resources
+
+**Preserved**:
+- CloudWatch Logs (for audit)
+- ECR images (for rollback)
+
+To delete logs and images:
+```bash
+# Delete log groups
+aws logs delete-log-group --log-group-name /aws/lambda/my-agent-*
+
+# Delete ECR repository
+aws ecr delete-repository --repository-name my-agent-runtime --force
+```
+
+</TabItem>
+</Tabs>
+
+---
+
+## Agent Development Best Practices
+
+### System Prompt Design
+
+Craft effective system prompts for HCLS agents:
+
+```python
+SYSTEM_PROMPT = """
+You are a [DOMAIN] expert agent specializing in [SPECIFIC AREA].
+
+## Core Capabilities
+- [Capability 1]: [Description]
+- [Capability 2]: [Description]
+- [Capability 3]: [Description]
+
+## Domain Expertise
+You have deep knowledge of:
+- [Knowledge area 1]
+- [Knowledge area 2]
+- [Knowledge area 3]
+
+## Response Guidelines
+ALWAYS:
+- Cite authoritative sources
+- Clarify ambiguities before responding
+- Use domain-specific terminology correctly
+- Provide confidence levels when uncertain
+
+NEVER:
+- Provide medical advice or diagnosis
+- Make claims about insurance or billing
+- Share patient-identifiable information
+- Guarantee outcomes or results
+
+## Tool Usage
+- Use [tool_name] when [condition]
+- Prefer [authoritative_source] over [secondary_source]
+- Always indicate data source in responses
+"""
+```
+
+### Tool Development
+
+**Best Practices**:
+- ✅ **Single Responsibility**: One tool, one clear purpose
+- ✅ **Descriptive Docstrings**: Help the LLM understand when to use
+- ✅ **Type Hints**: Enable better validation and documentation
+- ✅ **Error Handling**: Return meaningful error messages
+- ✅ **Logging**: Track usage and debug issues
+
+**Example**:
+```python
+from strands.tools import tool
+from typing import Optional
+
+@tool
+def search_medical_database(
+    query: str,
+    database: str = "pubmed",
+    max_results: int = 10
+) -> dict:
+    """
+    Search medical literature databases for research articles.
+
+    Use this tool when the user asks about:
+    - Recent research findings
+    - Clinical trial data
+    - Medical literature references
+
+    Args:
+        query: Search query using medical terminology
+        database: Which database to search (pubmed, clinicaltrials, etc.)
+        max_results: Maximum number of results to return
+
+    Returns:
+        Dictionary with search results and metadata
+    """
+    try:
+        # Implementation
+        results = perform_search(query, database, max_results)
+        return {
+            "success": True,
+            "results": results,
+            "source": database,
+            "query": query
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "query": query
+        }
+```
+
+### Security Considerations
+
+**Authentication**:
+- ✅ Use Cognito for user authentication
+- ✅ Implement M2M auth for service-to-service
+- ✅ Never hardcode credentials
+- ✅ Rotate secrets regularly
+
+**Data Protection**:
+- ✅ Use environment variables for sensitive data
+- ✅ Enable encryption at rest (DynamoDB, S3)
+- ✅ Use VPC endpoints for private connectivity
+- ✅ Implement least-privilege IAM roles
+
+**HIPAA Compliance** (if applicable):
+- ✅ Sign Business Associate Agreement (BAA) with AWS
+- ✅ Use HIPAA-eligible services only
+- ✅ Enable CloudTrail logging
+- ✅ Implement audit trails for PHI access
+
+### Testing Strategy
+
+**Unit Tests**:
+```python
+# test_tools.py
+def test_search_medical_database():
+    result = search_medical_database("diabetes treatment")
+    assert result["success"] == True
+    assert len(result["results"]) > 0
+```
+
+**Integration Tests**:
+```python
+# test_agent.py
+def test_agent_response():
+    agent = create_agent()
+    response = agent.invoke("What is the ICD-10 code for diabetes?")
+    assert "E11" in response
+```
+
+**End-to-End Tests**:
+```bash
+# Use test scripts
+python test-scripts/test-agent.py --test-suite
+```
+
+---
+
+## Contributing Your Agent
+
+Once you've built and tested your agent, contribute it to the catalog:
+
+### Contribution Checklist
+
+- [ ] **README.md**: Clear description, use cases, setup instructions
+- [ ] **Sample Queries**: 5-10 example interactions
+- [ ] **Architecture Diagram**: Visual representation
+- [ ] **Documentation**: Deployment guide, troubleshooting
+- [ ] **Tests**: Automated test suite
+- [ ] **License**: Apache-2.0 or compatible
+- [ ] **Public Data**: Only use appropriately licensed data sources
+
+### Submission Process
+
+1. **Fork the repository**:
    ```bash
-   git clone https://github.com/aws-samples/amazon-bedrock-agents-healthcare-lifesciences.git
-   cd amazon-bedrock-agents-healthcare-lifesciences/multi_agent_collaboration
+   git clone https://github.com/YOUR-USERNAME/amazon-bedrock-agents-healthcare-lifesciences.git
+   cd amazon-bedrock-agents-healthcare-lifesciences
    ```
 
-2. Review the directory structure to understand the components:
+2. **Create your agent directory**:
+   ```bash
+   mkdir -p agents_catalog/XX-YourAgentName
+   cd agents_catalog/XX-YourAgentName
    ```
-   multi_agent_collaboration/
-   ├── examples/             # Example implementations
-   └── README.md             # Documentation
+
+3. **Add required files**:
+   ```
+   XX-YourAgentName/
+   ├── README.md
+   ├── architecture.png
+   ├── requirements-dev.txt
+   ├── patterns/
+   │   └── strands-single-agent/
+   │       └── your_agent.py
+   ├── test-scripts/
+   │   └── test-agent.py
+   └── docs/
+       └── DEPLOYMENT.md
    ```
 
-4. Follow the notebook cells in the example notebook to:
-   - Configure your AWS credentials
-   - Setup the pre-requisities for sub-agents
-   - Define your supervisor agent's purpose and behavior 
-   - Select Supervisor mode or Supervisor with router mode 
-   - Associate the list of agents
-   - Test and refine your supervisor agent's responses
+4. **Create pull request**:
+   ```bash
+   git checkout -b add-your-agent-name
+   git add .
+   git commit -m "Add: YourAgentName for [use case]"
+   git push origin add-your-agent-name
+   ```
 
-5. Save your configuration for later contribution. Provide agent description and documentation via Readme.md before submission.
+5. **Fill out PR template** with:
+   - Agent description and use cases
+   - Key capabilities
+   - Sample queries
+   - Testing performed
+   - Screenshots/demo video (optional)
 
-</TabItem> <TabItem label="AWS Console" icon="seti:aws-console" color="blue">
+---
 
-#### Manual Configuration
+## Next Steps
 
-1. Log in to the [AWS Management Console](https://console.aws.amazon.com/)
-2. Navigate to Amazon Bedrock → Agents
-3. Create collaborator agents
-4. Create a new supervisor agent or assign supervisor role to an existing agent
-   - Choose between Supervisor or Supervsior with routing mode
-5. Add collaborator agents
-6. Test your agent in the console playground
-7. Deploy when satisfied with performance
+### Learn More
 
-</TabItem> </Tabs>
+- [Amazon Bedrock Documentation](https://docs.aws.amazon.com/bedrock/)
+- [AgentCore Developer Guide](https://docs.aws.amazon.com/bedrock/latest/userguide/agents.html)
+- [FAST Template Documentation](https://github.com/awslabs/fullstack-solution-template-for-agentcore)
+- [Sample Agents Catalog](https://github.com/aws-samples/amazon-bedrock-agents-healthcare-lifesciences/tree/main/agents_catalog)
 
-## Conclusion
+### Get Help
 
-Congratulations! You've learned how to:
+- [GitHub Issues](https://github.com/aws-samples/amazon-bedrock-agents-healthcare-lifesciences/issues)
+- [AWS Support](https://aws.amazon.com/support/)
+- [Community Forums](https://repost.aws/)
 
-    - Create a specialized agent for healthcare and life sciences
-    - Contribute your agent to the community catalog
-    - Configure multiple agents to collaborate on complex queries
+### Example Agents
 
-By following this guide, you've added valuable capabilities to the Sample agents for Healthcare & Life Sciences on AWS ecosystem. Your contribution will help healthcare and life sciences organizations leverage AI to improve patient care, streamline operations, and accelerate research.
+Explore production-ready examples:
+- [Terminology Agent](https://github.com/aws-samples/amazon-bedrock-agents-healthcare-lifesciences/tree/main/agents_catalog/35-Terminology-agent) - Medical terminology standardization with 200+ ontologies
+- [Research Agent](https://github.com/aws-samples/amazon-bedrock-agents-healthcare-lifesciences/tree/main/agents_catalog/28-Research-agent-biomni-gateway-tools) - Biomedical literature search and analysis
 
-### Next Steps
+---
 
-    Explore advanced agent customization options in the Amazon Bedrock [documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html)
+**Ready to build?** Choose your template and start deploying your AI agent today! 🚀
