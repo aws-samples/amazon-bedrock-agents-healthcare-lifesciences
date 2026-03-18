@@ -3,7 +3,7 @@ sagemaker
 termcolor
 xmltodict
 matplotlib
-strands-agents
+strands-agents[otel]
 strands-agents-tools
 uv
 bedrock-agentcore
