@@ -1,5 +1,5 @@
 boto3
-sagemaker
+pandas
 termcolor
 xmltodict
 matplotlib
