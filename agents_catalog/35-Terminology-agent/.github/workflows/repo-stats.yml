@@ -1,0 +1,23 @@
+# Collects daily repository traffic statistics using the github-repo-stats action.
+# Data snapshots and reports (HTML + PDF) are committed to the 'github-repo-stats' branch.
+# See: https://github.com/jgehrcke/github-repo-stats
+
+name: github-repo-stats
+
+on:
+    schedule:
+        # Run daily at 6:00 AM US Eastern (11:00 UTC).
+        - cron: "0 11 * * *"
+    workflow_dispatch: # Allow manual triggering from the Actions tab.
+
+jobs:
+    collect-stats:
+        name: collect-repo-stats
+        if: github.repository == 'awslabs/fullstack-solution-template-for-agentcore'
+        runs-on: ubuntu-latest
+        steps:
+            - name: run-ghrs
+              uses: jgehrcke/github-repo-stats@RELEASE
+              with:
+                  ghtoken: ${{ secrets.GHRS_GITHUB_API_TOKEN }}
+                  ghpagesprefix: "https://awslabs.github.io/fullstack-solution-template-for-agentcore"
