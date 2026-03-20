@@ -94,7 +94,7 @@ print(f"S3 bucket: {s3_bucket}")
 
 statistician_agent_name = 'Statistician-strands'
 statistician_agent_description = "scientific analysis for survival analysis using Strands framework"
-statistician_agent_instruction = """You are a medical research assistant AI specialized in survival analysis with biomarkers.
+statistician_agent_instruction = f"""You are a medical research assistant AI specialized in survival analysis with biomarkers.
 Your primary job is to interpret user queries, run scientific analysis tasks, and provide relevant medical insights
 with available visualization tools. Use only the appropriate tools as required by the specific question.
 Follow these instructions carefully:
@@ -109,10 +109,13 @@ Follow these instructions carefully:
    b. Use the fit_survival_regression tool to identify the best-performing biomarker based on the p-value summary.
    c. Ask for S3 data location if not provided, do not assume S3 bucket names or object names.
 
-3. When you need to create a bar chart or plot:
-   a. Always pass x_values and y_values in Array type to the function.
-   If the user says x values are apple,egg and y values are 3,4 or as [apple,egg] and [3,4] pass their value as
-   ['apple', 'egg'] and [3,4]
+3. When you need to create a bar chart or any visualization not covered by the specialized tools:
+   a. Use the run_code tool to write and execute Python code in the sandbox.
+   b. Use matplotlib to create the chart and save the image to S3.
+   c. The S3 bucket is: {s3_bucket}
+   d. Save charts under the 'graphs/' prefix in the bucket.
+   e. Use 'Agg' backend for matplotlib (matplotlib.use('Agg')).
+   f. Use boto3 to upload the image to S3.
 
 4. When providing your response:
    a. Start with a brief summary of your understanding of the user's query.
@@ -126,60 +129,32 @@ Follow these instructions carefully:
 
 
 @tool
-def create_bar_chart(title: str, x_label: str, x_values: List[str], y_label: str, y_values: List[float]) -> str:
+def run_code(code: str) -> str:
     """
-    Create a bar chart with the specified parameters.
+    Execute Python code in the CodeInterpreter sandbox.
+    Use this tool to write and run any Python code, including creating
+    charts, performing calculations, or processing data.
+
+    The sandbox has matplotlib, pandas, numpy, lifelines, and boto3 available.
+    To save charts to S3, use boto3 to upload to the bucket and prefix shown below.
+
+    S3 bucket: {s3_bucket}
+    S3 prefix: graphs/
 
     Args:
-        title (str): Title of the bar chart
-        x_label (str): Label for the x-axis
-        x_values (List[str]): Values for the x-axis (categories)
-        y_label (str): Label for the y-axis
-        y_values (List[float]): Values for the y-axis (numerical data)
+        code (str): Python code to execute in the sandbox
 
     Returns:
-        str: Result of the bar chart creation
+        str: Output from the code execution
     """
     ensure_sandbox()
 
-    code = f"""
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-import io
-import boto3
-
-title = {repr(title)}
-x_label = {repr(x_label)}
-x_values = {x_values}
-y_label = {repr(y_label)}
-y_values = {y_values}
-s3_bucket = {repr(s3_bucket)}
-
-fig, ax = plt.subplots(figsize=(10, 6))
-ax.bar(x_values, y_values, color='blue')
-ax.set_title(title)
-ax.set_xlabel(x_label)
-ax.set_ylabel(y_label)
-
-output_name = f"{{title}}.png"
-img_data = io.BytesIO()
-fig.savefig(img_data, format='png')
-img_data.seek(0)
-
-s3 = boto3.resource('s3')
-filepath = 'graphs/' + str(output_name)
-s3.Bucket(s3_bucket).put_object(Body=img_data, ContentType='image/png', Key=filepath)
-
-print(f"Bar chart saved to s3://{{s3_bucket}}/{{filepath}}")
-"""
-    print(f"\nCreating bar chart: {title}\n")
+    print(f"\nExecuting code in sandbox...\n")
     result = code_interpreter.execute_code(
         ExecuteCodeAction(type="executeCode", code=code, language="python")
     )
-    output = f"Your bar chart named '{title}' is saved to your s3 bucket as 'graphs/{title}.png'"
-    print(f"\nBar Chart Output: {output}\n")
-    return output
+    print(f"\nExecution result: {json.dumps(result, indent=2)}\n")
+    return json.dumps(result, indent=2)
 
 
 @tool
@@ -326,7 +301,7 @@ print(summary.to_string())
 
 
 # Create list of tools
-statistician_tools = [create_bar_chart, plot_kaplan_meier, fit_survival_regression]
+statistician_tools = [run_code, plot_kaplan_meier, fit_survival_regression]
 print(f"Created {len(statistician_tools)} tools for the Strands agent")
 
 # Create Bedrock model for Strands

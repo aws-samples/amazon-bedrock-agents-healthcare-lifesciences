@@ -1,11 +1,11 @@
 boto3
-sagemaker
+pandas
 termcolor
 xmltodict
 matplotlib
-strands-agents
+strands-agents[otel]
 strands-agents-tools
 uv
 bedrock-agentcore
 bedrock-agentcore-starter-toolkit
-aws-opentelemetry-distro==0.10.0
+aws-opentelemetry-distro==0.12.2

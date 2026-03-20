@@ -1046,27 +1046,9 @@ Resources:
       ClinicalGenomicKey: !GetAtt S3DataProcessingCustomResource.ClinicalGenomicKey
       ChemotherapySurvivalKey: !GetAtt S3DataProcessingCustomResource.ChemotherapySurvivalKey
   
-  # Create ECR repository
-  ECRRepository:
-    Type: AWS::ECR::Repository
-    Properties:
-      RepositoryName: lifelines-lambda-sample
-      EmptyOnDelete: true
-
-  EnsureECRImagePushed:
-    Type: Custom::EnsureECRImagePushed
-    DependsOn:
-      - TriggerBuildCustomResource
-      - TriggerImagingDockerBuild
-    Properties:
-      ServiceToken: !GetAtt TriggerBuildLambda.Arn
-      ECRRepository: !Ref ECRRepository
-      ImageTag: !Ref ImageTag
-
   EnsureImagingDockerImagePushed:
     Type: Custom::EnsureECRImagePushed
     DependsOn:
-      - TriggerBuildCustomResource
       - TriggerImagingDockerBuild
     Properties:
       ServiceToken: !GetAtt TriggerBuildLambda.Arn
@@ -1277,60 +1259,6 @@ Resources:
                 - zip -r9 ../lambda-layer.zip .
                 - aws s3 cp ../lambda-layer.zip s3://${S3Bucket}/lambda-layer.zip
 
-      TimeoutInMinutes: 10
-
-  # Log into ECR and push scientific-plots-with-lifelines Docker image
-  DockerPushLogic:
-    Type: AWS::CodeBuild::Project
-    Properties:
-      Name: DockerPushProject
-      ServiceRole: !GetAtt DockerPushRole.Arn
-      Artifacts:
-        Type: NO_ARTIFACTS
-      LogsConfig:
-        CloudWatchLogs:
-          Status: ENABLED
-          GroupName: !Ref CodeBuildLogGroup
-      Environment:
-        Type: LINUX_CONTAINER
-        ComputeType: BUILD_GENERAL1_SMALL
-        Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
-        PrivilegedMode: true
-      Source:
-        Type: GITHUB
-        Location: !Ref GithubLink
-        BuildSpec: !Sub |
-          version: 0.2
-          phases:
-            pre_build:
-              commands:
-                - yum install -y git-lfs
-                - git lfs install
-                - echo "Starting pre_build phase"
-                - echo "Logging into Amazon ECR..."
-                - aws ecr get-login-password --region ${AWS::Region} | docker login --username AWS --password-stdin ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com
-                - echo "ECR login complete"
-            build:
-              commands:
-                - echo "Starting build phase"
-                - echo "Cloning Git repository..."
-                - GIT_LFS_SKIP_SMUDGE=1 git clone -b main --single-branch ${GithubLink} repo
-                - cd repo/multi_agent_collaboration/cancer_biomarker_discovery/bedrock_agents/ActionGroups/scientific-plots-with-lifelines
-                - echo "Building Docker image..."
-                - docker build -t lifelines-python3.12-v2 .
-                - echo "Tagging Docker image..."
-                - docker tag lifelines-python3.12-v2:latest ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ECRRepository}:${ImageTag}
-                - echo "Docker image tagged"
-            post_build:
-              commands:
-                - echo "Starting post_build phase"
-                - echo "Pushing Docker image to ECR..."
-                - docker push ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ECRRepository}:${ImageTag}
-                - echo "Docker image pushed to ECR"
-                - echo "Displaying Docker images"
-                - docker images
-                - echo "Displaying ECR repository contents"
-                - aws ecr list-images --repository-name ${ECRRepository}
       TimeoutInMinutes: 10
 
   ImagingECRRepository:
@@ -1558,58 +1486,6 @@ Resources:
                 Resource:
                   - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*"
                   - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*:*"
-
-  DockerPushRole:
-      Type: AWS::IAM::Role
-      Properties:
-        AssumeRolePolicyDocument:
-          Version: "2012-10-17"
-          Statement:
-            - Effect: Allow
-              Principal:
-                Service: codebuild.amazonaws.com
-              Action: sts:AssumeRole
-        Policies:
-          - PolicyName: ECRAccess
-            PolicyDocument:
-              Version: "2012-10-17"
-              Statement:
-                - Effect: Allow
-                  Action:
-                    - ecr:GetAuthorizationToken
-                  Resource: "*" # This action requires resource '*'
-                - Effect: Allow
-                  Action:
-                    - ecr:ListImages
-                    - ecr:BatchCheckLayerAvailability
-                    - ecr:GetDownloadUrlForLayer
-                    - ecr:BatchGetImage
-                    - ecr:InitiateLayerUpload
-                    - ecr:UploadLayerPart
-                    - ecr:CompleteLayerUpload
-                    - ecr:PutImage
-                  Resource:
-                    - !Sub "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/${ECRRepository}"
-          - PolicyName: CloudWatchLogs
-            PolicyDocument:
-              Version: "2012-10-17"
-              Statement:
-                - Effect: Allow
-                  Action:
-                    - logs:CreateLogGroup
-                    - logs:CreateLogStream
-                    - logs:PutLogEvents
-                  Resource:
-                    - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*"
-                    - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*:*"
-          - PolicyName: GitCloneAccess
-            PolicyDocument:
-              Version: "2012-10-17"
-              Statement:
-                - Effect: Allow
-                  Action:
-                    - codecommit:GitPull
-                  Resource: !Sub "arn:aws:codecommit:${AWS::Region}:${AWS::AccountId}:${GithubLink}"
 
   ImagingDockerBuildRole:
     Type: AWS::IAM::Role
@@ -1939,7 +1815,6 @@ Resources:
                   - codebuild:StartBuild
                   - codebuild:BatchGetBuilds
                 Resource:
-                  - !GetAtt DockerPushLogic.Arn
                   - !GetAtt DataRetrievalLogic.Arn
                   - !Sub "arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:project/ImagingDockerBuildProject-*"
         - PolicyName: CloudWatchLogs
@@ -1960,15 +1835,7 @@ Resources:
               - Effect: Allow
                 Action: ecr:DescribeImages
                 Resource:
-                  - !Sub "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/${ECRRepository}"
                   - !Sub "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/medical-image-processing-smstudio"
-
-  TriggerBuildCustomResource:
-    Type: Custom::TriggerBuild
-    DependsOn: DockerPushLogic
-    Properties:
-      ServiceToken: !GetAtt TriggerBuildLambda.Arn
-      ProjectName: !Ref DockerPushLogic
 
   TriggerImagingDockerBuild:
     Type: Custom::TriggerBuild
@@ -2388,61 +2255,6 @@ Resources:
           FixedSizeChunkingConfiguration:
             MaxTokens: 300
             OverlapPercentage: 20
-
-  ScientificPlotLambdaExecutionRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: lambda.amazonaws.com
-            Action: 'sts:AssumeRole'
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-        - arn:aws:iam::aws:policy/AmazonBedrockFullAccess
-      Policies:
-        - PolicyName: S3ObjectPolicy
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - s3:PutObject
-                  - s3:GetObject
-                Resource: !Sub 'arn:aws:s3:::${S3Bucket}/*'
-        - PolicyName: ECRAccess
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - ecr:GetAuthorizationToken
-                Resource: '*'
-              - Effect: Allow
-                Action:
-                  - ecr:BatchGetImage
-                  - ecr:GetDownloadUrlForLayer
-                  - ecr:BatchCheckLayerAvailability
-                Resource:
-                  - !Sub 'arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/${ECRRepository}'
-
-  ScientificPlotLambdaFunction:
-    Type: AWS::Lambda::Function
-    DependsOn:
-      - EnsureECRImagePushed
-    Properties:
-      FunctionName: ScientificPlotLambda
-      PackageType: Image
-      Code:
-        ImageUri: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ECRRepository}:${ImageTag}
-      Role: !GetAtt ScientificPlotLambdaExecutionRole.Arn
-      MemorySize: 512
-      Timeout: 900
-      Environment:
-        Variables:
-          S3_BUCKET: !Ref S3Bucket
 
 Outputs:
   VpcId:
