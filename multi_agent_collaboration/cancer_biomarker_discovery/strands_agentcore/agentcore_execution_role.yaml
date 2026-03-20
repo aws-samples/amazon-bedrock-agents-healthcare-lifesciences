@@ -9,6 +9,7 @@ Resources:
             Principal:
               Service:
                 - bedrock-agentcore.amazonaws.com
+                - bedrock.amazonaws.com
             Action:
               - sts:AssumeRole
       Path: /
