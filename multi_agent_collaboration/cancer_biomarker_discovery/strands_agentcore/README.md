@@ -96,7 +96,7 @@ pip install -r ui/requirements.txt
 To run the Streamlit application, execute the following command from the same path:
 
 ```bash
-streamlit run ui/app.py -- --env env1
+streamlit run ui/app.py
 ```
 
 The Streamlit application will load on your default web browser and it typically runs on ```http://localhost:8501/```
