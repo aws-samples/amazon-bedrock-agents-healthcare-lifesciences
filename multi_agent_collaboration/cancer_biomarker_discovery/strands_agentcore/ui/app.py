@@ -17,18 +17,6 @@ temp_dir = tempfile.mkdtemp()
 logger = get_logger(__name__)
 logger.setLevel("INFO")
 
-def get_environment():
-    try:
-        # Get arguments after the '--' separator in the streamlit command
-        env_index = sys.argv.index('--env') + 1
-        if env_index < len(sys.argv):
-            return sys.argv[env_index]
-        raise ValueError("No value found after --env parameter")
-    except (ValueError, IndexError):
-        raise ValueError("Environment parameter not found. Please provide --env parameter.")
-
-environmentName = get_environment()
-
 def find_s3_bucket_name_by_suffix(name_suffix: str) -> Optional[str]:
     """Find S3 bucket name by name suffix"""
     client = boto3.client('s3')
@@ -50,8 +38,6 @@ latency = 0
 
 ssm_client = boto3.client('ssm')
 
-agent_arn = (ssm_client.get_parameter(Name=f"/streamlitapp/{environmentName}/AGENT_ARN", WithDecryption=True)["Parameter"]["Value"])
-           
 # Retrieve bucket information
 s3_bucket_name = find_s3_bucket_name_by_suffix('-agent-build-bucket')
 if not s3_bucket_name:
@@ -231,21 +217,19 @@ def invoke_agent_streaming(
                     if "data" in data:
                         yield { 'text': data.get("data") }
                     elif "current_tool_use" in data:
-                        print(f"TOOL NAME: {data["current_tool_use"]["name"]}")
-                        print(f"TOOL INPUT: {data["current_tool_use"]["input"]}")
-                        yield { 'tool': data["current_tool_use"] }
+                        # Yield as streaming tool — the UI will update in-place
+                        yield { 'tool_streaming': data["current_tool_use"] }
                     elif "event" in data:
-                        print(f"EVENT: {data.get('event')}")
+                        logger.debug(f"EVENT: {data.get('event')}")
                     elif "message" in data:
                         if "content" in data["message"]:
                             for obj in data["message"]["content"]:
                                 if "toolResult" in obj:
-                                    tool_result = obj["toolResult"]["content"][0]["text"]
                                     yield { 'tool': obj }
-                                    print(f"TOOL RESULT: {tool_result}")
-                        print(f"MESSAGE: {data.get('message')}")
+                                    logger.debug(f"TOOL RESULT: {obj['toolResult']['content'][0]['text']}")
+                        logger.debug(f"MESSAGE: {data.get('message')}")
                     elif "result" in data:
-                        print(f"RESULT: {data.get('result')}")
+                        logger.debug(f"RESULT: {data.get('result')}")
                         yield { 'metric': data }
                 else:
                     logger.debug(f"Line doesn't start with 'data: ', skipping: {line}")
@@ -352,18 +336,24 @@ st.markdown("""
 
 # Sidebar
 with st.sidebar:
-    # st.header("Agent Selection")
+    st.header("Agent Selection")
 
-    # # Fetch available agents
-    # with st.spinner("Loading available agents..."):
-    #     available_agents = fetch_agent_runtimes()
+    # Fetch available agents
+    with st.spinner("Loading available agents..."):
+        available_agents = fetch_agent_runtimes()
 
-    # if available_agents:
-    #     name_to_arn = {item['agentRuntimeName']: item['agentRuntimeArn'] for item in available_agents}
-    #     selected_agent_name = st.selectbox('Select an agent runtime:', list(name_to_arn.keys()))
-    #     selected_agent_arn = name_to_arn[selected_agent_name]
-    # else:
-    #     st.error("No agent runtimes found or error loading agents")
+    if available_agents:
+        name_to_arn = {item['agentRuntimeName']: item['agentRuntimeArn'] for item in available_agents}
+        selected_agent_name = st.selectbox('Select an agent runtime:', list(name_to_arn.keys()))
+        selected_agent_arn = name_to_arn[selected_agent_name]
+
+        # Clear chat when agent changes
+        if st.session_state.get("current_agent") != selected_agent_name:
+            st.session_state["current_agent"] = selected_agent_name
+            st.session_state["messages"] = []
+            new_session()
+    else:
+        st.error("No agent runtimes found or error loading agents")
 
     st.header('Image Controls')
     
@@ -385,7 +375,7 @@ with st.sidebar:
     )
     show_metrics = st.checkbox(
         "Show metrics",
-        value=True,
+        value=False,
         help="Display metrics used",
     )
 
@@ -438,23 +428,44 @@ for message in st.session_state.messages:
         else:
             content = message["content"]
             try:
+                # Pre-process: deduplicate consecutive tool chunks, keeping only the last per run
+                deduplicated = []
                 for chunk in content:
+                    if "tool" in chunk and "toolResult" not in chunk.get("tool", {}):
+                        # Replace previous consecutive tool chunk (streaming accumulation)
+                        if deduplicated and "tool" in deduplicated[-1] and "toolResult" not in deduplicated[-1].get("tool", {}):
+                            deduplicated[-1] = chunk
+                        else:
+                            deduplicated.append(chunk)
+                    else:
+                        deduplicated.append(chunk)
+
+                accumulated_text = ""
+                for chunk in deduplicated:
                     if "tool" in chunk and show_tools:
+                        if accumulated_text:
+                            st.markdown(accumulated_text)
+                            accumulated_text = ""
                         if "toolResult" in chunk["tool"]:
                             with st.container(border=True):
                                 tool_result = chunk["tool"]["toolResult"]["content"][0]["text"]
                                 st.markdown(f"🔧 Tool result: {tool_result}")
                         else:
                             with st.container(border=True):
-                                st.markdown(f"🔧 **{chunk["tool"]["name"]}**")
+                                st.markdown(f"🔧 **{chunk['tool']['name']}**")
                                 tool_input = chunk["tool"]["input"]
-                                try:
-                                    tool_input_json = json.loads(tool_input)
-                                    st.markdown(f"Tool input: {tool_input_json["query"]}")
-                                except Exception as e:
-                                    # if not a valid json, return the input as is
-                                    st.markdown(f"Tool input: {tool_input}")
+                                if isinstance(tool_input, dict):
+                                    st.markdown(f"Tool input: {json.dumps(tool_input, indent=2)}")
+                                else:
+                                    try:
+                                        tool_input_json = json.loads(tool_input)
+                                        st.markdown(f"Tool input: {json.dumps(tool_input_json, indent=2)}")
+                                    except Exception:
+                                        st.markdown(f"Tool input: {tool_input}")
                     elif "metric" in chunk and show_metrics:
+                        if accumulated_text:
+                            st.markdown(accumulated_text)
+                            accumulated_text = ""
                         input_tokens = chunk["metric"]["result"]["metrics"]["accumulated_usage"]["inputTokens"]
                         output_tokens = chunk["metric"]["result"]["metrics"]["accumulated_usage"]["outputTokens"]
                         latency = chunk["metric"]["result"]["metrics"]["accumulated_metrics"]["latencyMs"]
@@ -464,9 +475,11 @@ for message in st.session_state.messages:
                             st.markdown("Total Output Tokens: " + str(output_tokens))
                             st.markdown("Total Latency: " + str(latency) + "ms")
                     elif "text" in chunk:
-                        st.markdown(chunk["text"])
+                        accumulated_text += chunk["text"]
+                if accumulated_text:
+                    st.markdown(accumulated_text)
             except Exception:
-                print(f"RR: EXCEPTION")
+                print("Error rendering chat history")
                 traceback.print_exc()
                 st.markdown(message["content"])
 
@@ -489,30 +502,72 @@ if prompt := st.chat_input("How can I help?"):
 
         try:
             # Stream the response
+            full_text = ""
+            text_placeholder = st.empty()
+
+            tool_placeholder = None
+            tool_container = None
+
             for chunk in invoke_agent_streaming(prompt, selected_agent_arn, session_id, region):
                 logger.debug(f"received chunk ({type(chunk)}): {chunk}")
+
+                if "tool_streaming" in chunk:
+                    tool_data = chunk["tool_streaming"]
+                    # Save final version to buffer (replace previous streaming chunks)
+                    chunk_buffer = [c for c in chunk_buffer if "tool_streaming" not in c]
+                    chunk_buffer.append({"tool": tool_data})
+                    if show_tools:
+                        # Flush accumulated text before showing tool
+                        if full_text:
+                            text_placeholder.markdown(full_text)
+                            full_text = ""
+                            text_placeholder = st.empty()
+                        # Create container once, then update placeholder in-place
+                        if tool_container is None:
+                            tool_container = st.container(border=True)
+                            with tool_container:
+                                st.markdown(f"🔧 **{tool_data['name']}**")
+                                tool_placeholder = st.empty()
+                        tool_input = tool_data["input"]
+                        if isinstance(tool_input, dict):
+                            tool_placeholder.markdown(f"Tool input: {json.dumps(tool_input, indent=2)}")
+                        else:
+                            try:
+                                tool_input_json = json.loads(tool_input)
+                                tool_placeholder.markdown(f"Tool input: {json.dumps(tool_input_json, indent=2)}")
+                            except Exception:
+                                tool_placeholder.markdown(f"Tool input: {tool_input}")
+                    continue
+
+                # Non-tool chunk: reset tool placeholder for next tool
+                if tool_container is not None:
+                    tool_container = None
+                    tool_placeholder = None
+                    text_placeholder = st.empty()
 
                 # Add chunk to buffer
                 chunk_buffer.append(chunk)
 
                 if "text" in chunk:
-                    st.markdown(chunk["text"])
+                    full_text += chunk["text"]
+                    text_placeholder.markdown(full_text + "▌")
                 elif "tool" in chunk and show_tools:
+                    # Tool results (not streaming tool_use)
+                    if full_text:
+                        text_placeholder.markdown(full_text)
+                        full_text = ""
+                        text_placeholder = st.empty()
                     if "toolResult" in chunk["tool"]:
                         with st.container(border=True):
                             tool_result = chunk["tool"]["toolResult"]["content"][0]["text"]
                             st.markdown(f"🔧 Tool result: {tool_result}")
-                    else:
-                        with st.container(border=True):
-                            st.markdown(f"🔧 **{chunk["tool"]["name"]}**")
-                            tool_input = chunk["tool"]["input"]
-                            try:
-                                tool_input_json = json.loads(tool_input)
-                                st.markdown(f"Tool input: {tool_input_json["query"]}")
-                            except Exception as e:
-                                # if not a valid json, return the input as is
-                                st.markdown(f"Tool input: {tool_input}")
+                    text_placeholder = st.empty()
                 elif "metric" in chunk and show_metrics:
+                    # Flush accumulated text before showing metrics
+                    if full_text:
+                        text_placeholder.markdown(full_text)
+                        full_text = ""
+                        text_placeholder = st.empty()
                     input_tokens = chunk["metric"]["result"]["metrics"]["accumulated_usage"]["inputTokens"]
                     output_tokens = chunk["metric"]["result"]["metrics"]["accumulated_usage"]["outputTokens"]
                     latency = chunk["metric"]["result"]["metrics"]["accumulated_metrics"]["latencyMs"]
@@ -522,7 +577,9 @@ if prompt := st.chat_input("How can I help?"):
                         st.markdown("Total Output Tokens: " + str(output_tokens))
                         st.markdown("Total Latency: " + str(latency) + "ms")
 
-                time.sleep(0.01)  # Reduced delay since we're batching updates
+            # Render final text without cursor
+            if full_text:
+                text_placeholder.markdown(full_text)
 
             # Add assistant response to chat history
             st.session_state.messages.append({"role": "assistant", "content": chunk_buffer})
@@ -531,7 +588,7 @@ if prompt := st.chat_input("How can I help?"):
             error_response = "Sorry, I encountered an error. Please try again."
             message_placeholder.markdown(error_response)
             st.session_state.messages.append({"role": "assistant", "content": error_response})
-            print("Exception")
+            print("Error during agent streaming")
             traceback.print_exc()
             pass
 
