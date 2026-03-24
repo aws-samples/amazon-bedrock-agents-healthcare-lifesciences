@@ -2,15 +2,15 @@ import streamlit as st
 import time
 import boto3
 import uuid
+import re
 from botocore.exceptions import EventStreamError
 import json
 import os
 import tempfile
 import sys
 import traceback
-from typing import Iterator
+from typing import Iterator, Optional
 from streamlit.logger import get_logger
-from typing import Optional
 
 temp_dir = tempfile.mkdtemp()
 
@@ -73,113 +73,38 @@ def list_png_files():
             st.error(f"Error listing image: {str(e)}")
             return None
 
-def list_graph_files():
+
+def fetch_s3_image(bucket: str, key: str) -> Optional[bytes]:
+    """Download an image from S3 and return its bytes."""
     try:
         s3_client = boto3.client('s3')
-        prefix = 'graphs/'
-        response = s3_client.list_objects_v2(Bucket=s3_bucket_name, Prefix=prefix)
-        
-        # Get all PNG files with their LastModified timestamps
-        # Exclude files that contain 'invocationID' in their path
-        files = [(obj['Key'], obj['LastModified']) 
-                for obj in response.get('Contents', []) 
-                if obj['Key'].lower().endswith('.png') and 'invocationid' not in obj['Key'].lower()]
-        
-        # Sort by LastModified timestamp, most recent first
-        sorted_files = sorted(files, key=lambda x: x[1], reverse=True)
-        
-        # Return just the keys in sorted order
-        return [file[0] for file in sorted_files]
+        response = s3_client.get_object(Bucket=bucket, Key=key)
+        return response['Body'].read()
     except Exception as e:
-        st.error(f"Error listing image: {str(e)}")
+        logger.error(f"Error fetching image from S3: s3://{bucket}/{key} - {e}")
         return None
 
-def get_image_from_s3(file_key):
-    from io import BytesIO
-    from PIL import Image
-    try:
-        s3_client = boto3.client('s3')
-        response = s3_client.get_object(Bucket=s3_bucket_name, Key=file_key)
-        image_content = response['Body'].read()
-        image = Image.open(BytesIO(image_content))
-        return image
-    except Exception as e:
-        st.error(f"Error fetching image from S3: {str(e)}")
-        return None
+def display_s3_images_from_text(text: str):
+    """Extract S3 image paths from text and display them inline."""
+    for match in re.finditer(r's3://([^/\s]+)/(\S+\.(?:png|jpg|jpeg|gif))', text, re.IGNORECASE):
+        bucket, key = match.group(1), match.group(2)
+        image_data = fetch_s3_image(bucket, key)
+        if image_data:
+            st.image(image_data, caption=os.path.basename(key), width="stretch")
 
-def get_s3_image(isKMplot: bool = False, invocation_id: str = None):
-    
-    if isKMplot and invocation_id:
-        try:
-            s3_client = boto3.client('s3')
-            s3_key = f'graphs/invocationID/{invocation_id}/KMplot.png'
-
-            response = s3_client.get_object(Bucket=s3_bucket_name, Key=s3_key)
-            image_content = response['Body'].read()
-
-            temp_image_path = os.path.join(temp_dir, 'KMplot.png')
-            with open(temp_image_path, 'wb') as f:
-                f.write(image_content)
-
-            return {
-                'name': 'KMplot.png',
-                'type': 'image/png',
-                'path': temp_image_path
-            }
-        except s3_client.exceptions.NoSuchKey:
-            return {"error": "No KM plot graphs found for this invocation ID."}
-        except Exception as e:
-            return {"error": f"Error fetching KM plot from S3: {str(e)}"}
-    else:
-        try:
-            graph = list_graph_files()
-            
-            if not graph:  # If list_graph_files returns None or empty list
-                return {"error": "No graph files found in the graphs directory."}
-                
-            if len(graph) == 0:
-                return {"error": "No graph files available."}
-                
-            first_file = graph[0]
-            s3_client = boto3.client('s3')
-            
-            response = s3_client.get_object(Bucket=s3_bucket_name, Key=first_file)
-            image_content = response['Body'].read()
-
-            filename = os.path.basename(first_file)
-            temp_image_path = os.path.join(temp_dir, filename)
-            
-            with open(temp_image_path, 'wb') as f:
-                f.write(image_content)
-
-            return {
-                'name': filename,
-                'type': 'image/png',
-                'path': temp_image_path
-            }
-        except Exception as e:
-            return {"error": f"Error fetching graph from S3: {str(e)}"}
-
-def process_files(files_event):
-    files_list = files_event['files']
-    processed_files = []
-    for file in files_list:
-        file_name = file['name']
-        file_type = file['type']
-        file_bytes = file['bytes']
-
-        # Save the file
-        file_path = os.path.join(temp_dir, file_name)
-        with open(file_path, 'wb') as f:
-            f.write(file_bytes)
-
-        processed_files.append({
-            'name': file_name,
-            'type': file_type,
-            'path': file_path
-        })
-
-    return processed_files
+def display_subject_images(text: str):
+    """Extract subject IDs from tool results and display matching medical images inline."""
+    # Match R01-083 style IDs anywhere in the text (covers JSON, escaped quotes, plain text)
+    subject_ids = list(set(re.findall(r'R\d+-\d+', text)))
+    if not subject_ids:
+        return
+    png_files = list_png_files() or []
+    for subject_id in subject_ids:
+        matching = [f for f in png_files if subject_id in f]
+        for file_key in matching:
+            image_data = fetch_s3_image(s3_bucket_name, file_key)
+            if image_data:
+                st.image(image_data, caption=f"{subject_id} - {os.path.basename(file_key)}", width="stretch")
 
 def new_session():
     st.session_state["SESSION_ID"] = str(uuid.uuid1())
@@ -238,98 +163,13 @@ def invoke_agent_streaming(
         print(f"AgentCore error: {e}")
         raise e
     
-st.set_page_config(layout="wide", page_title="Biomarker Agent")
+st.set_page_config(layout="wide", page_title="Biomarker Agent", menu_items={"Get help": None, "Report a Bug": None, "About": None})
 
 # Custom CSS
 st.markdown("""
     <style>
     .main .block-container {
         padding-top: 2rem;
-    }
-    .stButton > button {
-        background-color: #4CAF50;
-        color: white;
-        border: none;
-        padding: 10px 20px;
-        text-align: center;
-        text-decoration: none;
-        display: inline-block;
-        font-size: 16px;
-        margin: 4px 2px;
-        cursor: pointer;
-        border-radius: 4px;
-    }
-    .stTextInput > div > div > input {
-        background-color: #f0f2f6;
-    }
-    
-    /* Trace styling */
-    .trace-header {
-        background-color: rgb(248, 249, 250);
-        border-radius: 8px;
-        padding: 10px 15px;
-        margin-bottom: 10px;
-    }
-    .trace-title {
-        color: rgb(49, 51, 63);
-        font-size: 1.2em;
-        font-weight: 600;
-        margin-bottom: 10px;
-    }
-    .stExpander {
-        background-color: white !important;
-        border: 1px solid #e6e6e6 !important;
-        border-radius: 8px !important;
-        margin-bottom: 8px !important;
-    }
-    .step-header {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        color: rgb(49, 51, 63);
-    }
-    .trace-content {
-        padding: 10px;
-        background-color: #f8f9fa;
-        border-radius: 4px;
-        margin-top: 8px;
-        white-space: pre-wrap;
-        font-family: monospace;
-    }
-    
-    /* Sample questions styling */
-    details {
-        border: 1px solid #aaa;
-        border-radius: 4px;
-        padding: .5em .5em 0;
-        margin-bottom: 1em;
-    }
-    summary {
-        font-weight: bold;
-        margin: -.5em -.5em 0;
-        padding: .5em;
-        cursor: pointer;
-    }
-    details[open] {
-        padding: .5em;
-    }
-    details[open] summary {
-        border-bottom: 1px solid #aaa;
-        margin-bottom: .5em;
-    }
-    .scrollable-content {
-        max-height: 200px;
-        overflow-y: auto;
-        padding-right: 10px;
-    }
-    /* Blinking cursor animation */
-    @keyframes blink {
-        0%, 50% { opacity: 1; }
-        51%, 100% { opacity: 0; }
-    }
-    .blinking-cursor::after {
-        content: '▌';
-        animation: blink 1s infinite;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -355,16 +195,10 @@ with st.sidebar:
     else:
         st.error("No agent runtimes found or error loading agents")
 
-    st.header('Image Controls')
-    
-    st.subheader("Biomarker Imaging Results")
-    png_files = list_png_files()
-    selected_file = st.selectbox('Select a file to view the imaging results:', png_files)
-    load_image = st.checkbox('Load and display selected image')
-
-    invocation_id = 1
-    fetch_image = st.button("Fetch Chart")
-    fetch_graph = st.button("Fetch Graphs")
+    if st.button("New Chat"):
+        st.session_state["messages"] = []
+        new_session()
+        st.rerun()
 
     # Response formatting options
     st.header("Display Options")
@@ -379,12 +213,11 @@ with st.sidebar:
         help="Display metrics used",
     )
 
+    st.divider()
+    st.link_button("GitHub", "https://github.com/aws-samples/amazon-bedrock-agents-cancer-biomarker-discovery")
+
 # Main content
 st.title("Biomarker Research Agent with Amazon Bedrock AgentCore")
-
-col1, col2 = st.columns([6, 1])
-with col2:
-    st.link_button("Github 😎", "https://github.com/aws-samples/amazon-bedrock-agents-cancer-biomarker-discovery")
 
 # Sample questions
 questions = [
@@ -400,16 +233,9 @@ questions = [
     "Can you highlight the elongation and sphericity of the tumor with these patients ? can you depict the images of them"
 ]
 
-st.markdown(f"""
-    <details>
-        <summary>Click to sample expand questions</summary>
-        <div class="scrollable-content">
-            <ol>
-                {"".join(f"<li>{q}</li>" for q in questions)}
-            </ol>
-        </div>
-    </details>
-""", unsafe_allow_html=True)
+with st.expander("Sample questions"):
+    for i, q in enumerate(questions, 1):
+        st.markdown(f"{i}. {q}")
 
 # Initialize chat history
 if "messages" not in st.session_state:
@@ -442,15 +268,18 @@ for message in st.session_state.messages:
 
                 accumulated_text = ""
                 for chunk in deduplicated:
-                    if "tool" in chunk and show_tools:
+                    if "tool" in chunk:
                         if accumulated_text:
                             st.markdown(accumulated_text)
                             accumulated_text = ""
                         if "toolResult" in chunk["tool"]:
-                            with st.container(border=True):
-                                tool_result = chunk["tool"]["toolResult"]["content"][0]["text"]
-                                st.markdown(f"🔧 Tool result: {tool_result}")
-                        else:
+                            tool_result = chunk["tool"]["toolResult"]["content"][0]["text"]
+                            if show_tools:
+                                with st.container(border=True):
+                                    st.markdown(f"🔧 Tool result: {tool_result}")
+                            display_s3_images_from_text(tool_result)
+                            display_subject_images(tool_result)
+                        elif show_tools:
                             with st.container(border=True):
                                 st.markdown(f"🔧 **{chunk['tool']['name']}**")
                                 tool_input = chunk["tool"]["input"]
@@ -551,16 +380,19 @@ if prompt := st.chat_input("How can I help?"):
                 if "text" in chunk:
                     full_text += chunk["text"]
                     text_placeholder.markdown(full_text + "▌")
-                elif "tool" in chunk and show_tools:
+                elif "tool" in chunk:
                     # Tool results (not streaming tool_use)
                     if full_text:
                         text_placeholder.markdown(full_text)
                         full_text = ""
                         text_placeholder = st.empty()
                     if "toolResult" in chunk["tool"]:
-                        with st.container(border=True):
-                            tool_result = chunk["tool"]["toolResult"]["content"][0]["text"]
-                            st.markdown(f"🔧 Tool result: {tool_result}")
+                        tool_result = chunk["tool"]["toolResult"]["content"][0]["text"]
+                        if show_tools:
+                            with st.container(border=True):
+                                st.markdown(f"🔧 Tool result: {tool_result}")
+                        display_s3_images_from_text(tool_result)
+                        display_subject_images(tool_result)
                     text_placeholder = st.empty()
                 elif "metric" in chunk and show_metrics:
                     # Flush accumulated text before showing metrics
@@ -591,36 +423,3 @@ if prompt := st.chat_input("How can I help?"):
             print("Error during agent streaming")
             traceback.print_exc()
             pass
-
-if 'selected_actions' in st.session_state:
-    st.write("Currently selected actions:", ', '.join(st.session_state.selected_actions))
-
-image_placeholder = st.empty()
-
-# Handle image display
-if selected_file and load_image:
-    try:
-        image = get_image_from_s3(selected_file)
-        image_placeholder.image(image, caption=selected_file, use_container_width=True)
-    except Exception as e:
-        st.error(f"Unable loading image: {str(e)}")
-elif fetch_image:
-    s3_image = get_s3_image(isKMplot=True, invocation_id=invocation_id) 
-    if s3_image and 'error' not in s3_image:  
-        try:
-            image_placeholder.image(s3_image['path'], caption=s3_image['name'], use_container_width=True)
-        except Exception as e:
-            st.error(f"Unable loading image: {str(e)}")
-    else:
-        error_msg = s3_image.get('error', "Failed to fetch image from S3.") if s3_image else "Failed to fetch image from S3."
-        image_placeholder.error(error_msg)
-elif fetch_graph:
-    s3_image = get_s3_image(isKMplot=False)  
-    if s3_image and 'error' not in s3_image: 
-        try:
-            image_placeholder.image(s3_image['path'], caption=s3_image['name'], use_container_width=True)
-        except Exception as e:
-            st.error(f"Unable loading image: {str(e)}")
-    else:
-        error_msg = s3_image.get('error', "Failed to fetch image from S3.") if s3_image else "Failed to fetch image from S3."
-        image_placeholder.error(error_msg)
