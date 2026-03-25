@@ -244,6 +244,9 @@ if "messages" not in st.session_state:
 if "SESSION_ID" not in st.session_state:
     new_session()
 
+if "agent_running" not in st.session_state:
+    st.session_state.agent_running = False
+
 session_id = st.session_state["SESSION_ID"]
 
 # Display chat messages from history on app rerun
@@ -314,7 +317,12 @@ for message in st.session_state.messages:
 
 
 # Accept user input
-if prompt := st.chat_input("How can I help?"):
+def on_submit():
+    st.session_state.agent_running = True
+
+prompt = st.chat_input("How can I help?", disabled=st.session_state.agent_running, on_submit=on_submit)
+
+if prompt:
     # Add user message to chat history
     st.session_state.messages.append(
         {"role": "user", "content": prompt}
@@ -323,8 +331,6 @@ if prompt := st.chat_input("How can I help?"):
     # Display user message in chat message container
     with st.chat_message("user"):
         st.markdown(prompt)
-
-    # Generate assistant response
     with st.chat_message("assistant"):
         message_placeholder = st.empty()
         chunk_buffer = []
@@ -337,8 +343,12 @@ if prompt := st.chat_input("How can I help?"):
             tool_placeholder = None
             tool_container = None
 
+            spinner_placeholder = st.empty()
+            spinner_placeholder.status("Thinking...", state="running")
+
             for chunk in invoke_agent_streaming(prompt, selected_agent_arn, session_id, region):
                 logger.debug(f"received chunk ({type(chunk)}): {chunk}")
+                spinner_placeholder.empty()
 
                 if "tool_streaming" in chunk:
                     tool_data = chunk["tool_streaming"]
@@ -422,4 +432,6 @@ if prompt := st.chat_input("How can I help?"):
             st.session_state.messages.append({"role": "assistant", "content": error_response})
             print("Error during agent streaming")
             traceback.print_exc()
-            pass
+        finally:
+            st.session_state.agent_running = False
+            st.rerun()
