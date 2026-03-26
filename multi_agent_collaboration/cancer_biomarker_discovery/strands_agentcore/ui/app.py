@@ -116,8 +116,13 @@ def invoke_agent_streaming(
     region: str
 ) -> Iterator[str]:   
     
-    # Retrieve agentcore client
-    client = boto3.client('bedrock-agentcore', region_name=region)
+    # Retrieve agentcore client with extended timeout for long-running agent calls
+    from botocore.config import Config
+    client = boto3.client(
+        'bedrock-agentcore',
+        region_name=region,
+        config=Config(read_timeout=300)
+    )
 
     try:
         response = client.invoke_agent_runtime(
