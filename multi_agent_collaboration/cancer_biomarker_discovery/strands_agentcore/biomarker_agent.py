@@ -2,10 +2,12 @@
 import boto3
 import json
 import time
+import uuid
 from collections import defaultdict
 from typing import Dict, Any
 from strands import Agent, tool
 from strands.models import BedrockModel
+from bedrock_agentcore.memory.client import MemoryClient
 
 # Get AWS account information
 sts_client = boto3.client('sts')
@@ -18,6 +20,18 @@ MODEL_ID = "global.anthropic.claude-sonnet-4-20250514-v1:0"
 # Initialize AWS clients
 bedrock_client = boto3.client('bedrock-runtime', region_name=region)
 redshift_client = boto3.client('redshift-data')
+
+# Initialize AgentCore Memory for sharing query results between agents
+memory_client = MemoryClient(region_name=region)
+memory_resource = memory_client.create_or_get_memory(
+    name="biomarker_agent_memory",
+    strategies=[],
+    description="Short-term memory for sharing query results between agents",
+    event_expiry_days=3
+)
+memory_id = memory_resource.get("memoryId") or memory_resource.get("id")
+memory_session_id = str(uuid.uuid4())
+print(f"Memory ID: {memory_id}, Session ID: {memory_session_id}")
 
 print(f"Region: {region}")
 print(f"Account ID: {account_id}")
@@ -143,6 +157,24 @@ def query_redshift(query: str) -> str:
         
         response = redshift_client.get_statement_result(Id=result['Id'])
         print(f"\nRedshift Output: {response}\n")
+
+        # Store query results in AgentCore Memory for cross-agent access
+        try:
+            result_data = json.dumps({
+                "ColumnMetadata": [{"name": col["name"]} for col in response.get("ColumnMetadata", [])],
+                "Records": response.get("Records", [])
+            }, default=str)
+            memory_client.create_event(
+                memory_id=memory_id,
+                actor_id="biomarker_agent",
+                session_id=memory_session_id,
+                messages=[(result_data, "TOOL")],
+                metadata={"type": {"stringValue": "query_results"}}
+            )
+            print(f"Query results stored in memory (session: {memory_session_id})")
+        except Exception as mem_error:
+            print(f"Warning: Failed to store results in memory: {mem_error}")
+
         return response
     except Exception as e:
         print("Error:", e)
