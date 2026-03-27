@@ -107,7 +107,7 @@ Follow these instructions carefully:
 2. If a survival regression analysis is needed:
    a. You need access to all records with columns start with survival status as first column, then survival duration, and the required biomarkers.
    b. Use the fit_survival_regression tool to identify the best-performing biomarker based on the p-value summary.
-   c. Ask for S3 data location if not provided, do not assume S3 bucket names or object names.
+   c. The tool automatically retrieves the latest query results from shared memory. No S3 path is needed.
 
 3. When you need to create a bar chart or any visualization not covered by the specialized tools:
    a. Use the run_code tool to write and execute Python code in the sandbox.
@@ -226,33 +226,53 @@ print(f"Kaplan-Meier plot saved to s3://{{s3_bucket}}/{{key}}")
 
 
 @tool
-def fit_survival_regression(bucket: str, key: str) -> str:
+def fit_survival_regression() -> str:
     """
-    Fit a survival regression model using data from an S3 object.
-
-    Args:
-        bucket (str): S3 bucket where the data is stored
-        key (str): JSON file name in the S3 bucket containing the data for model fitting
+    Fit a survival regression model using query results stored in AgentCore Memory.
+    This tool automatically retrieves the latest query results from memory that were
+    saved by the biomarker database analyst agent. No parameters are needed.
 
     Returns:
         str: Results of the survival regression analysis
     """
     ensure_sandbox()
 
+    # Retrieve query results from AgentCore Memory
+    from biomarker_agent import memory_client, memory_id, memory_session_id
+    events = memory_client.list_events(
+        memory_id=memory_id,
+        actor_id="biomarker_agent",
+        session_id=memory_session_id,
+        event_metadata=[{
+            "left": {"metadataKey": "type"},
+            "operator": "EQUALS_TO",
+            "right": {"metadataValue": {"stringValue": "query_results"}}
+        }],
+        max_results=10,
+        include_payload=True
+    )
+
+    if not events:
+        return json.dumps({"status": "error", "content": [{"text": "No query results found in memory. Please run the biomarker database query first."}]})
+
+    # Get the most recent query results
+    latest_event = events[-1]
+    data_text = latest_event["payload"][0]["conversational"]["content"]["text"]
+    print(f"Retrieved query results from memory (event: {latest_event['eventId']})")
+
+    # Pass the data directly to the sandbox as a JSON string
+    import base64
+    data_b64 = base64.b64encode(data_text.encode()).decode()
+
     code = f"""
 import json
-import boto3
+import base64
 import pandas as pd
 import numpy as np
 from lifelines import CoxPHFitter
 
-bucket = {repr(bucket)}
-key = {repr(key)}
-
-# Read data from S3
-s3 = boto3.client('s3')
-obj = s3.get_object(Bucket=bucket, Key=key)
-data = json.loads(obj['Body'].read().decode('utf-8'))
+# Read data from memory (passed as base64-encoded JSON)
+data = json.loads(base64.b64decode("{data_b64}").decode())
 
 # Process clinical genomic data
 columns = [col['name'] for col in data['ColumnMetadata']]
@@ -292,7 +312,7 @@ summary = cph.summary
 print("Cox Proportional Hazards Regression Summary:")
 print(summary.to_string())
 """
-    print(f"\nFitting survival regression with data from s3://{bucket}/{key}\n")
+    print(f"\nFitting survival regression with data from AgentCore Memory\n")
     result = code_interpreter.execute_code(
         ExecuteCodeAction(type="executeCode", code=code, language="python")
     )
