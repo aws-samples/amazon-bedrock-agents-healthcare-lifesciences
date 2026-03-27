@@ -315,6 +315,7 @@ for message in st.session_state.messages:
                         accumulated_text += chunk["text"]
                 if accumulated_text:
                     st.markdown(accumulated_text)
+                    display_subject_images(accumulated_text)
             except Exception:
                 print("Error rendering chat history")
                 traceback.print_exc()
@@ -427,6 +428,7 @@ if prompt:
             # Render final text without cursor
             if full_text:
                 text_placeholder.markdown(full_text)
+                display_subject_images(full_text)
 
             # Add assistant response to chat history
             st.session_state.messages.append({"role": "assistant", "content": chunk_buffer})
