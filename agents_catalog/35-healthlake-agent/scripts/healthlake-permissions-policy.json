@@ -1,0 +1,15 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "healthlake:DescribeFHIRDatastore",
+        "healthlake:ReadResource",
+        "healthlake:SearchWithGet",
+        "healthlake:SearchWithPost"
+      ],
+      "Resource": "arn:aws:healthlake:us-west-2:423881498839:datastore/fhir/1682549cd71dc2deb7937c768ae3c9fc"
+    }
+  ]
+}
