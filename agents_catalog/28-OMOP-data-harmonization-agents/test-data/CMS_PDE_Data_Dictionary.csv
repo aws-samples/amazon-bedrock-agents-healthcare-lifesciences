@@ -1,0 +1,9 @@
+Variable Name,Label,Table Description
+DESYNPUF_ID,Beneficiary Code,CMS Prescription Drug Events (PDE) DE-SynPUF
+PDE_ID,Part D Event Number,CMS Prescription Drug Events (PDE) DE-SynPUF
+SRVC_DT,RX Service Date,CMS Prescription Drug Events (PDE) DE-SynPUF
+PROD_SRVC_ID,Product Service ID,CMS Prescription Drug Events (PDE) DE-SynPUF
+QTY_DSPNSD_NUM,Quantity Dispensed,CMS Prescription Drug Events (PDE) DE-SynPUF
+DAYS_SUPLY_NUM,Days Supply,CMS Prescription Drug Events (PDE) DE-SynPUF
+PTNT_PAY_AMT,Patient Pay Amount,CMS Prescription Drug Events (PDE) DE-SynPUF
+TOT_RX_CST_AMT,Gross Drug Cost,CMS Prescription Drug Events (PDE) DE-SynPUF
