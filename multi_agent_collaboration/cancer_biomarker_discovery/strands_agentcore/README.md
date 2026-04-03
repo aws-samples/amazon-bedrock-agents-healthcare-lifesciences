@@ -22,8 +22,8 @@ The **Strands Orchestrator Agent** implements the [Agent as Tools](https://stran
 - **Tools**: `process_medical_images`
 - **Capabilities**: Image processing, radiomics analysis, biomarker extraction
 
-### 4. Statistician Agent  
-- **Tools**: `perform_survival_analysis`, `create_bar_chart`
+### 4. Statistician Agent
+- **Tools**: `run_code`, `plot_kaplan_meier`, `fit_survival_regression` (powered by [AgentCore Code Interpreter](https://docs.aws.amazon.com/bedrock/latest/userguide/agentcore-code-interpreter.html))
 - **Capabilities**: Survival analysis, statistical modeling, data visualization
 
 ## Prerequisites
@@ -33,6 +33,24 @@ The **Strands Orchestrator Agent** implements the [Agent as Tools](https://stran
 2. With the SageMaker domain created, you have to create a **JupyterLab space**. We recommend an instance size of **ml.t3.large** and at least **50 GB** of storage.
 
 3. If you are running the notebooks locally, make sure you have the [AWS CLI](https://aws.amazon.com/cli/) installed in your environment.
+
+4. The **Statistician Agent** (notebook 04) uses [AgentCore Code Interpreter](https://docs.aws.amazon.com/bedrock/latest/userguide/agentcore-code-interpreter.html) for sandboxed code execution. Your SageMaker execution role (or local IAM role) must have permissions to call AgentCore APIs. Add the following permissions to your role:
+   ```json
+   {
+     "Effect": "Allow",
+     "Action": [
+       "bedrock-agentcore:CreateCodeInterpreter",
+       "bedrock-agentcore:GetCodeInterpreter",
+       "bedrock-agentcore:ListCodeInterpreters",
+       "bedrock-agentcore:DeleteCodeInterpreter",
+       "bedrock-agentcore:StartCodeInterpreterSession",
+       "bedrock-agentcore:StopCodeInterpreterSession",
+       "bedrock-agentcore:ExecuteCodeInterpreterAction"
+     ],
+     "Resource": "*"
+   }
+   ```
+   You also need `iam:PassRole` permission for the AgentCore execution role created by the CloudFormation stack.
 
 ## Setup Instructions
 
@@ -78,7 +96,7 @@ pip install -r ui/requirements.txt
 To run the Streamlit application, execute the following command from the same path:
 
 ```bash
-streamlit run ui/app.py -- --env env1
+streamlit run ui/app.py
 ```
 
 The Streamlit application will load on your default web browser and it typically runs on ```http://localhost:8501/```
