@@ -1,0 +1,29 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "HealthLakeDatastoreAccess",
+            "Effect": "Allow",
+            "Action": [
+                "healthlake:DescribeFHIRDatastore",
+                "healthlake:ReadResource",
+                "healthlake:SearchWithGet",
+                "healthlake:SearchWithPost",
+                "healthlake:GetCapabilities"
+            ],
+            "Resource": "arn:aws:healthlake:*:078323627405:datastore/fhir/*"
+        },
+        {
+            "Sid": "S3DocumentAccess",
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetObject",
+                "s3:ListBucket"
+            ],
+            "Resource": [
+                "arn:aws:s3:::*-clinical-documents",
+                "arn:aws:s3:::*-clinical-documents/*"
+            ]
+        }
+    ]
+}
