@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Variant Interpreter Agent — Architecture</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f1117; color: #e0e0e0; padding: 40px 20px; }
+  .container { max-width: 1100px; margin: 0 auto; }
+  h1 { text-align: center; font-size: 1.6rem; font-weight: 600; margin-bottom: 6px; color: #fff; }
+  .subtitle { text-align: center; font-size: 0.9rem; color: #888; margin-bottom: 40px; }
+  .flow { display: flex; flex-direction: column; gap: 12px; }
+  .row { display: flex; gap: 12px; align-items: stretch; }
+  .card { border-radius: 12px; padding: 20px; position: relative; flex: 1; min-width: 0; }
+  .card.ingest { background: linear-gradient(135deg, #1a2332, #1e2d3d); border: 1px solid #2a4a6b; }
+  .card.annotate { background: linear-gradient(135deg, #1e2a1e, #243324); border: 1px solid #3a6b3a; }
+  .card.store { background: linear-gradient(135deg, #2a1e2e, #342438); border: 1px solid #6b3a7a; }
+  .card.query { background: linear-gradient(135deg, #2a2a1e, #383424); border: 1px solid #6b6a3a; }
+  .card.agent { background: linear-gradient(135deg, #1e2a2a, #1e3838); border: 1px solid #3a6b6b; }
+  .card.serve { background: linear-gradient(135deg, #2a1e1e, #382424); border: 1px solid #6b3a3a; }
+  .card.client { background: linear-gradient(135deg, #1a1a2e, #24243a); border: 1px solid #4a4a7a; }
+  .card.highlight { background: linear-gradient(135deg, #1a2a1a, #1e3a2a); border: 1px solid #3aaa6b; }
+  .card-icon { font-size: 1.8rem; margin-bottom: 8px; }
+  .card-title { font-size: 0.95rem; font-weight: 600; color: #fff; margin-bottom: 6px; }
+  .card-service { font-size: 0.75rem; color: #aaa; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .card-detail { font-size: 0.8rem; color: #bbb; line-height: 1.5; }
+  .card-detail code { background: rgba(255,255,255,0.08); padding: 1px 5px; border-radius: 3px; font-size: 0.75rem; color: #ddd; }
+  .tag { display: inline-block; font-size: 0.65rem; padding: 2px 8px; border-radius: 10px; margin: 2px 2px 0 0; }
+  .tag.blue { background: rgba(59,130,246,0.2); color: #93bbfc; }
+  .tag.green { background: rgba(34,197,94,0.2); color: #86efac; }
+  .tag.purple { background: rgba(168,85,247,0.2); color: #d8b4fe; }
+  .tag.amber { background: rgba(245,158,11,0.2); color: #fcd34d; }
+  .tag.red { background: rgba(239,68,68,0.2); color: #fca5a5; }
+  .tag.teal { background: rgba(20,184,166,0.2); color: #5eead4; }
+  .arrow { display: flex; justify-content: center; padding: 4px 0; }
+  .arrow svg { width: 24px; height: 24px; fill: #555; }
+  .arrow-h { display: flex; align-items: center; padding: 0 4px; }
+  .arrow-h svg { width: 24px; height: 24px; fill: #555; transform: rotate(-90deg); }
+  .section-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1.5px; color: #666; margin: 16px 0 8px 4px; font-weight: 600; }
+  .schema { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 8px; }
+  .schema-col { font-size: 0.7rem; padding: 3px 6px; background: rgba(255,255,255,0.05); border-radius: 4px; }
+  .schema-col .type { color: #888; font-size: 0.6rem; }
+  .tools { display: flex; gap: 8px; margin-top: 8px; }
+  .tool-box { flex: 1; background: rgba(255,255,255,0.06); border-radius: 8px; padding: 10px; text-align: center; }
+  .tool-box .name { font-size: 0.75rem; font-weight: 600; color: #ddd; }
+  .tool-box .desc { font-size: 0.65rem; color: #999; margin-top: 3px; }
+  /* Highlights */
+  .highlights { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 8px 0; }
+  .hl { background: rgba(255,255,255,0.04); border-radius: 10px; padding: 16px; border-left: 3px solid; }
+  .hl.s3t { border-color: #a78bfa; }
+  .hl.dyn { border-color: #34d399; }
+  .hl.a2a { border-color: #f87171; }
+  .hl-title { font-size: 0.85rem; font-weight: 600; color: #fff; margin-bottom: 6px; }
+  .hl-body { font-size: 0.78rem; color: #bbb; line-height: 1.5; }
+  .hl-body strong { color: #ddd; }
+  /* SQL flow */
+  .sql-flow { display: flex; gap: 6px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
+  .sql-step { background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.3); border-radius: 8px; padding: 8px 12px; font-size: 0.72rem; color: #86efac; text-align: center; }
+  .sql-step .label { font-weight: 600; font-size: 0.68rem; color: #5eead4; margin-bottom: 2px; }
+  .sql-arrow { color: #555; font-size: 1.2rem; }
+  @media (max-width: 768px) { .row { flex-direction: column; } .highlights { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🧬 Genomics Variant Interpretation Platform</h1>
+  <p class="subtitle">VCF → VEP Annotation → S3 Tables (Iceberg) → Dynamic SQL via Athena → AI Clinical Interpretation</p>
+
+  <!-- KEY HIGHLIGHTS -->
+  <div class="section-label">Key Differentiators</div>
+  <div class="highlights">
+    <div class="hl s3t">
+      <div class="hl-title">🗄️ S3 Tables (Apache Iceberg)</div>
+      <div class="hl-body">
+        <strong>Open-standard Apache Iceberg tables</strong> with automatic compaction,
+        partition pruning by sample + chromosome, and standard SQL via Athena.
+        Scales to <strong>billions of variants</strong> across thousands of patients.
+        Compatible with Spark, Trino, and pandas.
+      </div>
+    </div>
+    <div class="hl dyn">
+      <div class="hl-title">⚡ Dynamic SQL Generation</div>
+      <div class="hl-body">
+        Agent retrieves <strong>live schema from S3 Tables catalog</strong>, then generates SQL dynamically
+        for any question. No hardcoded queries — adapts automatically to schema changes.
+        Input validation blocks DDL/DML, enforces LIMIT.
+      </div>
+    </div>
+    <div class="hl a2a">
+      <div class="hl-title">🔗 A2A Agent Protocol</div>
+      <div class="hl-body">
+        Deployed on <strong>AgentCore Runtime</strong> with A2A protocol.
+        Discoverable via Agent Registry. Other agents can invoke variant interpretation
+        as a <strong>composable genomics service</strong>.
+      </div>
+    </div>
+  </div>
+
+  <div class="flow">
+
+    <!-- DATA PIPELINE -->
+    <div class="section-label">① Data Pipeline — Scales to N Patients</div>
+    <div class="row">
+      <div class="card ingest">
+        <div class="card-icon">📂</div>
+        <div class="card-title">Patient VCF Files</div>
+        <div class="card-service">S3 Input Bucket</div>
+        <div class="card-detail">
+          Upload <code>.vcf.gz</code> → auto-triggers pipeline<br>
+          Each file = independent workflow<br>
+          Supports 1 to 1000s of patients
+        </div>
+        <div style="margin-top:8px">
+          <span class="tag blue">1000 Genomes</span>
+          <span class="tag blue">GRCh38</span>
+        </div>
+      </div>
+      <div class="arrow-h"><svg viewBox="0 0 24 24"><path d="M12 2L12 22M12 22L6 16M12 22L18 16"/></svg></div>
+      <div class="card annotate">
+        <div class="card-icon">🔬</div>
+        <div class="card-title">VEP Annotation</div>
+        <div class="card-service">AWS HealthOmics · Nextflow</div>
+        <div class="card-detail">
+          Ensembl VEP v113.4 · GRCh38<br>
+          23 CSQ fields: Consequence, IMPACT,<br>
+          Gene Symbol, BIOTYPE, EXON, HGNC
+        </div>
+        <div style="margin-top:8px">
+          <span class="tag green">Parallel per patient</span>
+        </div>
+      </div>
+      <div class="arrow-h"><svg viewBox="0 0 24 24"><path d="M12 2L12 22M12 22L6 16M12 22L18 16"/></svg></div>
+      <div class="card store">
+        <div class="card-icon">🗄️</div>
+        <div class="card-title">S3 Tables (Iceberg)</div>
+        <div class="card-service">Container Lambda · pyiceberg · smart_open</div>
+        <div class="card-detail">
+          Streaming import, no intermediate files<br>
+          Concurrent writes from multiple Lambdas<br>
+          Auto-compaction by S3 Tables
+        </div>
+        <div style="margin-top:8px">
+          <span class="tag purple">Partitioned: sample + chrom</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCHEMA -->
+    <div class="section-label">② Unified Table — Patient Genotypes + VEP Annotations</div>
+    <div class="card store" style="padding: 16px 20px;">
+      <div class="card-detail" style="margin-bottom:8px"><code>variant_db_3.genomic_variants_fixed</code></div>
+      <div class="schema">
+        <div class="schema-col"><strong>sample_name</strong> ⚷ <span class="type">STRING</span></div>
+        <div class="schema-col"><strong>chrom</strong> ⚷ <span class="type">STRING</span></div>
+        <div class="schema-col"><strong>pos</strong> <span class="type">LONG</span></div>
+        <div class="schema-col"><strong>ref</strong> <span class="type">STRING</span></div>
+        <div class="schema-col"><strong>alt</strong> <span class="type">LIST&lt;STRING&gt;</span></div>
+        <div class="schema-col"><strong>qual</strong> <span class="type">DOUBLE</span></div>
+        <div class="schema-col"><strong>filter</strong> <span class="type">STRING</span></div>
+        <div class="schema-col"><strong>genotype</strong> <span class="type">STRING</span></div>
+        <div class="schema-col"><strong>info</strong> <span class="type">MAP — CSQ + pop freqs</span></div>
+        <div class="schema-col"><strong>attributes</strong> <span class="type">MAP — GT, DP, GQ</span></div>
+        <div class="schema-col"><strong>variant_name</strong> <span class="type">STRING</span></div>
+        <div class="schema-col"><strong>is_reference_block</strong> <span class="type">BOOLEAN</span></div>
+      </div>
+      <div style="margin-top:10px">
+        <span class="tag amber">info['CSQ'] — VEP annotations</span>
+        <span class="tag amber">info['AF']</span>
+        <span class="tag amber">info['EAS_AF']</span>
+        <span class="tag amber">info['EUR_AF']</span>
+        <span class="tag amber">info['AFR_AF']</span>
+        <span class="tag amber">info['SAS_AF']</span>
+      </div>
+    </div>
+
+    <!-- DYNAMIC SQL FLOW -->
+    <div class="arrow"><svg viewBox="0 0 24 24"><path d="M12 2L12 22M12 22L6 16M12 22L18 16"/></svg></div>
+    <div class="section-label">③ Dynamic SQL Generation — Schema-Aware Query Pipeline</div>
+
+    <div class="card agent" style="padding: 20px;">
+      <div class="card-detail" style="margin-bottom: 6px; color: #5eead4; font-weight: 600;">User asks: "Show me HIGH impact variants in BRCA1 for HG00096"</div>
+      <div class="sql-flow">
+        <div class="sql-step">
+          <div class="label">① Schema</div>
+          get_table_schema<br>→ 12 columns from<br>S3 Tables catalog
+        </div>
+        <div class="sql-arrow">→</div>
+        <div class="sql-step">
+          <div class="label">② Generate SQL</div>
+          Claude Opus 4.6<br>→ SELECT ... WHERE<br>info['CSQ'] LIKE '%|BRCA1|%'
+        </div>
+        <div class="sql-arrow">→</div>
+        <div class="sql-step">
+          <div class="label">③ Execute</div>
+          execute_query<br>→ Athena on Iceberg<br>via s3tablescatalog
+        </div>
+        <div class="sql-arrow">→</div>
+        <div class="sql-step">
+          <div class="label">④ Interpret</div>
+          Clinical analysis<br>→ "3 HIGH impact variants:<br>stop_gained at 41,244,000..."
+        </div>
+      </div>
+      <div style="margin-top: 12px;">
+        <span class="tag teal">No hardcoded queries</span>
+        <span class="tag teal">Adapts to schema changes</span>
+        <span class="tag teal">Input validation</span>
+        <span class="tag teal">Asks clarifying questions for broad queries</span>
+      </div>
+    </div>
+
+    <!-- AGENT + ATHENA -->
+    <div class="arrow"><svg viewBox="0 0 24 24"><path d="M12 2L12 22M12 22L6 16M12 22L18 16"/></svg></div>
+    <div class="section-label">④ Agent Tools</div>
+    <div class="row">
+      <div class="card query">
+        <div class="card-icon">⚡</div>
+        <div class="card-title">Amazon Athena</div>
+        <div class="card-service">S3 Tables Catalog · Lake Formation</div>
+        <div class="card-detail">
+          SQL on Iceberg at scale<br>
+          Partition pruning: sample + chrom<br>
+          <code>s3tablescatalog</code> via Glue
+        </div>
+      </div>
+      <div class="arrow-h"><svg viewBox="0 0 24 24"><path d="M12 2L12 22M12 22L6 16M12 22L18 16"/></svg></div>
+      <div class="card agent" style="flex: 2;">
+        <div class="card-icon">🤖</div>
+        <div class="card-title">AI Agent — Strands + Claude Opus 4.6</div>
+        <div class="card-service">Amazon Bedrock · 1M Token Context</div>
+        <div class="tools">
+          <div class="tool-box">
+            <div class="name">get_table_schema</div>
+            <div class="desc">S3 Tables catalog API<br>with hardcoded fallback</div>
+          </div>
+          <div class="tool-box">
+            <div class="name">execute_query</div>
+            <div class="desc">Dynamic SQL via Athena<br>DDL blocked, LIMIT enforced</div>
+          </div>
+          <div class="tool-box">
+            <div class="name">get_cohort_summary</div>
+            <div class="desc">Sample stats<br>fixed aggregation</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SERVING -->
+    <div class="arrow"><svg viewBox="0 0 24 24"><path d="M12 2L12 22M12 22L6 16M12 22L18 16"/></svg></div>
+    <div class="section-label">⑤ Serving — A2A Protocol on AgentCore Runtime</div>
+    <div class="row">
+      <div class="card serve">
+        <div class="card-icon">☁️</div>
+        <div class="card-title">AgentCore Runtime</div>
+        <div class="card-service">A2A Protocol · Agent Registry</div>
+        <div class="card-detail">
+          <code>/.well-known/agent-card.json</code><br>
+          <code>message/send</code> invocation<br>
+          Skills: Variant Query, Cohort Analysis
+        </div>
+        <div style="margin-top:8px">
+          <span class="tag red">A2A</span>
+          <span class="tag red">SigV4 Auth</span>
+          <span class="tag red">Discoverable</span>
+        </div>
+      </div>
+      <div class="arrow-h"><svg viewBox="0 0 24 24"><path d="M12 2L12 22M12 22L6 16M12 22L18 16"/></svg></div>
+      <div class="card client">
+        <div class="card-icon">💬</div>
+        <div class="card-title">Streamlit Chat UI</div>
+        <div class="card-service">app.py</div>
+        <div class="card-detail">Natural-language queries<br>Clinical interpretation<br>Sample questions sidebar</div>
+      </div>
+      <div class="card client">
+        <div class="card-icon">⌨️</div>
+        <div class="card-title">CLI Runner</div>
+        <div class="card-service">run-agent-local.py</div>
+        <div class="card-detail">Interactive terminal<br>Direct Strands agent<br>Local development</div>
+      </div>
+      <div class="card client">
+        <div class="card-icon">🔗</div>
+        <div class="card-title">Other A2A Agents</div>
+        <div class="card-service">Agent-to-Agent</div>
+        <div class="card-detail">Discoverable via Registry<br>Multi-agent workflows<br>Composable genomics</div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

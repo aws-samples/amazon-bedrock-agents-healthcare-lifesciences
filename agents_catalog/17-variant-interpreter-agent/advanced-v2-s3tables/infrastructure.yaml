@@ -1,0 +1,216 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Genomics VEP Pipeline Infrastructure - Creates S3 buckets, IAM roles, DynamoDB tables, and HealthOmics workflow'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: 'genomics-vep-pipeline'
+    Description: 'Name prefix for all resources'
+  
+  VcfInputBucketName:
+    Type: String
+    Default: 'genomics-vcf-input-bucket-v3'
+    Description: 'S3 bucket for input VCF files'
+    
+  VepOutputBucketName:
+    Type: String
+    Default: 'genomics-vep-output-bucket-v3'
+    Description: 'S3 bucket for VEP workflow outputs'
+    
+  BatchSize:
+    Type: Number
+    Default: 20
+    Description: 'Number of VCF files to process in each batch'
+
+Resources:
+  # S3 Input Bucket
+  VcfInputBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${VcfInputBucketName}-${AWS::AccountId}-${AWS::Region}'
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+
+  # S3 Output Bucket
+  VepOutputBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${VepOutputBucketName}-${AWS::AccountId}-${AWS::Region}'
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+
+  # DynamoDB Table for tracking
+  DynamoTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Delete
+    Properties:
+      TableName: !Sub '${ProjectName}-dynamotable'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: SampleID
+          AttributeType: S
+        - AttributeName: ProcessingStage
+          AttributeType: S
+      KeySchema:
+        - AttributeName: SampleID
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: ProcessingStageIndex
+          KeySchema:
+            - AttributeName: ProcessingStage
+              KeyType: HASH
+            - AttributeName: SampleID
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+
+  # IAM Role for Lambda Functions
+  GenomicsLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    DeletionPolicy: Delete
+    Properties:
+      RoleName: !Sub '${ProjectName}-lambda-execution-role-v3'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: GenomicsLambdaPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - omics:GetWorkflow
+                  - omics:ListWorkflows
+                  - omics:StartRun
+                  - omics:GetRun
+                  - omics:ListRuns
+                Resource: 
+                  - !Sub 'arn:aws:omics:${AWS::Region}:${AWS::AccountId}:*'
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:ListBucket
+                  - s3:DeleteObject
+                Resource:
+                  - !Sub '${VcfInputBucket.Arn}/*'
+                  - !Sub '${VepOutputBucket.Arn}/*'
+                  - !GetAtt VcfInputBucket.Arn
+                  - !GetAtt VepOutputBucket.Arn
+              - Effect: Allow
+                Action:
+                  - s3tables:GetTableBucket
+                  - s3tables:GetTable
+                  - s3tables:PutTableData
+                  - s3tables:GetTableData
+                  - s3tables:ListTables
+                  - s3tables:ListNamespaces
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                  - dynamodb:GetItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                Resource: !GetAtt DynamoTable.Arn
+              - Effect: Allow
+                Action:
+                  - iam:PassRole
+                Resource: !GetAtt HealthOmicsWorkflowRole.Arn
+
+  # IAM Role for HealthOmics Workflows (need to modify)
+  HealthOmicsWorkflowRole:
+    Type: AWS::IAM::Role
+    DeletionPolicy: Delete
+    Properties:
+      RoleName: !Sub '${ProjectName}-healthomics-workflow-role-v3'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: omics.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: HealthOmicsWorkflowPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:ListBucket
+                  - s3:DeleteObject
+                Resource:
+                  - !Sub '${VcfInputBucket.Arn}/*'
+                  - !Sub '${VepOutputBucket.Arn}/*'
+                  - !GetAtt VcfInputBucket.Arn
+                  - !GetAtt VepOutputBucket.Arn
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/omics/*'
+
+Outputs:
+  VcfInputBucketName:
+    Description: 'Name of the VCF input S3 bucket'
+    Value: !Ref VcfInputBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-VcfInputBucket'
+
+  VepOutputBucketName:
+    Description: 'Name of the VEP output S3 bucket'
+    Value: !Ref VepOutputBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-VepOutputBucket'
+
+  DynamoTableName:
+    Description: 'Name of the DynamoDB tracking table'
+    Value: !Ref DynamoTable
+    Export:
+      Name: !Sub '${AWS::StackName}-DynamoTable'
+
+  LambdaExecutionRoleArn:
+    Description: 'ARN of the Lambda execution role'
+    Value: !GetAtt GenomicsLambdaExecutionRole.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-LambdaExecutionRole'
+
+  HealthOmicsWorkflowRoleArn:
+    Description: 'ARN of the HealthOmics workflow role'
+    Value: !GetAtt HealthOmicsWorkflowRole.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-WorkflowRole'
