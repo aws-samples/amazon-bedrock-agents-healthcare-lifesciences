@@ -2,11 +2,19 @@
 
 import os
 import json
-import sys
+import importlib.util
 from strands import tool
 
-# Add project root to path for utils import
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+# Load utils from project root without sys.path manipulation
+_PROJECT_ROOT = os.path.join(os.path.dirname(__file__), '..', '..')
+
+
+def _load_utils():
+    """Lazy-load utils.py from project root."""
+    spec = importlib.util.spec_from_file_location("utils", os.path.join(_PROJECT_ROOT, "utils.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
 
 HARDCODED_SCHEMA = {
     "table": "genomic_variants_fixed",
@@ -32,7 +40,7 @@ HARDCODED_SCHEMA = {
 
 def _schema_from_catalog():
     """Retrieve schema from S3 Tables catalog via pyiceberg."""
-    from utils import load_s3_tables_catalog
+    utils = _load_utils()
 
     bucket_arn = os.environ.get('S3_TABLE_BUCKET_ARN',
         f"arn:aws:s3tables:{os.environ.get('AWS_REGION', 'us-west-2')}:"
@@ -41,7 +49,7 @@ def _schema_from_catalog():
     namespace = os.environ.get('ATHENA_DATABASE', 'variant_db_3')
     table_name = os.environ.get('ATHENA_TABLE', 'genomic_variants_fixed')
 
-    catalog = load_s3_tables_catalog(bucket_arn)
+    catalog = utils.load_s3_tables_catalog(bucket_arn)
     table = catalog.load_table(f"{namespace}.{table_name}")
     schema = table.schema()
 

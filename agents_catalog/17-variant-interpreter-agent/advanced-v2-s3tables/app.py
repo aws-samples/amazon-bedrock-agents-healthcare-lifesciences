@@ -16,7 +16,7 @@ st.set_page_config(page_title="Genomics Variant Analysis", page_icon="🧬", lay
 st.markdown("<style>.stAppDeployButton{display:none;}#MainMenu{visibility:hidden;}</style>", unsafe_allow_html=True)
 
 AWS_REGION = os.environ.get("AWS_REGION", "us-west-2")
-AGENT_ARN = os.environ.get("AGENT_ARN", "arn:aws:bedrock-agentcore:us-west-2:942514891246:runtime/variant_interpreter_a2a-sP4bf45k4k")
+AGENT_ARN = os.environ.get("AGENT_ARN", "")
 
 
 def _signed_request(method, url, data=None):
@@ -55,7 +55,12 @@ def send_message(text):
     if resp.status_code != 200:
         return f"❌ Error (HTTP {resp.status_code}): {resp.text[:200]}"
 
-    result = resp.json().get("result", {})
+    try:
+        body = resp.json()
+    except (json.JSONDecodeError, ValueError):
+        return f"❌ Invalid JSON response: {resp.text[:200]}"
+
+    result = body.get("result", {})
     parts = []
     for artifact in result.get("artifacts", []):
         for p in artifact.get("parts", []):

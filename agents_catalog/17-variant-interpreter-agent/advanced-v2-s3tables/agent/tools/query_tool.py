@@ -18,7 +18,10 @@ VEP_OUTPUT_BUCKET = os.environ.get('VEP_OUTPUT_BUCKET', '')
 BLOCKED_KEYWORDS = {'DROP', 'DELETE', 'UPDATE', 'INSERT', 'ALTER', 'CREATE', 'TRUNCATE', 'GRANT', 'REVOKE'}
 
 
-def _run_athena_query(query: str, max_results: int = 100) -> pd.DataFrame:
+ATHENA_POLL_MAX_SECONDS = int(os.environ.get('ATHENA_POLL_MAX_SECONDS', '120'))
+
+
+def _run_athena_query(query: str, max_results: int = 20) -> pd.DataFrame:
     """Execute Athena query and return DataFrame."""
     client = boto3.client('athena', region_name=AWS_REGION)
 
@@ -30,17 +33,23 @@ def _run_athena_query(query: str, max_results: int = 100) -> pd.DataFrame:
     )
     qid = response['QueryExecutionId']
 
-    for _ in range(60):
+    # Exponential backoff: 0.5s, 1s, 2s, 4s, ... capped at 10s per interval
+    elapsed, delay = 0, 0.5
+    while elapsed < ATHENA_POLL_MAX_SECONDS:
         status = client.get_query_execution(QueryExecutionId=qid)
         state = status['QueryExecution']['Status']['State']
         if state in ('SUCCEEDED', 'FAILED', 'CANCELLED'):
             break
-        time.sleep(1)
+        time.sleep(delay)
+        elapsed += delay
+        delay = min(delay * 2, 10)
 
     if state != 'SUCCEEDED':
         reason = status['QueryExecution']['Status'].get('StateChangeReason', 'Unknown')
         return pd.DataFrame({'error': [f'Query {state}: {reason}']})
 
+    # NOTE: No NextToken pagination — single page of results only.
+    # Sufficient for agent use (LIMIT-capped queries), but not for bulk export.
     results = client.get_query_results(QueryExecutionId=qid, MaxResults=max_results + 1)
     rows = results['ResultSet']['Rows']
     if not rows:
@@ -62,7 +71,7 @@ def _validate_query(sql: str) -> str | None:
     return None
 
 
-def _ensure_limit(sql: str, default_limit: int = 100) -> str:
+def _ensure_limit(sql: str, default_limit: int = 20) -> str:
     """Add LIMIT if not present."""
     if not re.search(r'\bLIMIT\b', sql, re.IGNORECASE):
         sql = sql.rstrip().rstrip(';') + f' LIMIT {default_limit}'

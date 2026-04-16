@@ -30,8 +30,6 @@ RUN useradd -m -u 1000 bedrock_agentcore
 USER bedrock_agentcore
 
 EXPOSE 9000
-EXPOSE 8000
-EXPOSE 8080
 
 # Copy entire project (respecting .dockerignore)
 COPY . .

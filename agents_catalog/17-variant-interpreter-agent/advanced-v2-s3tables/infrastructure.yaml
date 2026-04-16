@@ -22,6 +22,14 @@ Parameters:
     Default: 20
     Description: 'Number of VCF files to process in each batch'
 
+  TableBucketArn:
+    Type: String
+    Default: ''
+    Description: 'ARN of the S3 Tables bucket (e.g. arn:aws:s3tables:us-west-2:123456789012:bucket/my-bucket). If empty, s3tables permissions use wildcard.'
+
+Conditions:
+  HasTableBucketArn: !Not [!Equals [!Ref TableBucketArn, '']]
+
 Resources:
   # S3 Input Bucket
   VcfInputBucket:
@@ -69,6 +77,8 @@ Resources:
           AttributeType: S
         - AttributeName: ProcessingStage
           AttributeType: S
+        - AttributeName: RunID
+          AttributeType: S
       KeySchema:
         - AttributeName: SampleID
           KeyType: HASH
@@ -79,6 +89,12 @@ Resources:
               KeyType: HASH
             - AttributeName: SampleID
               KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: RunIDIndex
+          KeySchema:
+            - AttributeName: RunID
+              KeyType: HASH
           Projection:
             ProjectionType: ALL
       StreamSpecification:
@@ -134,15 +150,20 @@ Resources:
                   - s3tables:GetTableData
                   - s3tables:ListTables
                   - s3tables:ListNamespaces
-                Resource: '*'
+                Resource: !If
+                  - HasTableBucketArn
+                  - - !Ref TableBucketArn
+                    - !Sub '${TableBucketArn}/*'
+                  - '*'
               - Effect: Allow
                 Action:
                   - dynamodb:PutItem
                   - dynamodb:GetItem
                   - dynamodb:UpdateItem
                   - dynamodb:Query
-                  - dynamodb:Scan
-                Resource: !GetAtt DynamoTable.Arn
+                Resource:
+                  - !GetAtt DynamoTable.Arn
+                  - !Sub '${DynamoTable.Arn}/index/*'
               - Effect: Allow
                 Action:
                   - iam:PassRole

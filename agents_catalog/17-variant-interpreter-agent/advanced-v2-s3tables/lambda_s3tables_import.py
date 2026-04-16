@@ -88,8 +88,10 @@ def handler(event, context):
 
     sample_id = None
     try:
-        response = table.scan(
-            FilterExpression='RunID = :rid',
+        # Use RunIDIndex GSI instead of scan for O(1) lookup
+        response = table.query(
+            IndexName='RunIDIndex',
+            KeyConditionExpression='RunID = :rid',
             ExpressionAttributeValues={':rid': run_id}
         )
         if response.get('Items'):
