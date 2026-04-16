@@ -52,8 +52,7 @@ def send_message(text):
         },
     })
     resp = _signed_request("POST", url, payload)
-    if resp.status_code != 200:
-        return f"❌ Error (HTTP {resp.status_code}): {resp.text[:200]}"
+    resp.raise_for_status()
 
     try:
         body = resp.json()

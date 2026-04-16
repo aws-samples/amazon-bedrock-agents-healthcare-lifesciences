@@ -20,7 +20,7 @@ from agent.tools.query_tool import execute_query, get_cohort_summary
 from agent.prompts import SYSTEM_PROMPT
 
 runtime_url = os.environ.get("AGENTCORE_RUNTIME_URL", "http://127.0.0.1:9000/")
-host, port = "0.0.0.0", 9000
+host, port = "0.0.0.0", 9000  # nosec B104 — must bind all interfaces in container
 
 
 # Sonnet recommended for cost efficiency (~$3/M input vs ~$15/M for Opus).

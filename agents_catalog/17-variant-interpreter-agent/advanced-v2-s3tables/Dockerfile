@@ -35,5 +35,7 @@ EXPOSE 9000
 COPY . .
 
 # Use the full module path
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:9000/ping')" || exit 1
 
 CMD ["opentelemetry-instrument", "python", "-m", "agent.main"]

@@ -83,7 +83,7 @@ def open_vcf_file(file_path):
         if file_path.endswith('.gz'):
             return gzip.open(file_path, 'rt')
         else:
-            return open(file_path, 'r')
+            return open(file_path, 'r', encoding='utf-8')
 
 
 def parse_vcf_header(vcf_file):

@@ -132,7 +132,7 @@ def get_cohort_summary() -> str:
     GROUP BY sample_name
     ORDER BY sample_name
     LIMIT 100
-    """
+    """  # nosec B608 — table/db names from env vars, not user input
 
     df = _run_athena_query(query)
 
