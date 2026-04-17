@@ -106,8 +106,8 @@ aws s3 sync homo_sapiens_vep_111_GRCh38/ s3://YOUR_VEP_CACHE_BUCKET/cache/homo_s
 #### 2. Setup VEP Docker Container
 
 ```bash
-# Pull the official VEP Docker image
-docker pull ensemblorg/ensembl-vep:113.4
+# Pull the official VEP Docker image (IMPORTANT: force amd64 for HealthOmics)
+docker pull --platform linux/amd64 ensemblorg/ensembl-vep:113.4
 
 # Login to ECR (replace <account_id> and <region_info> with your values)
 aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <account_id>.dkr.ecr.<region_info>.amazonaws.com

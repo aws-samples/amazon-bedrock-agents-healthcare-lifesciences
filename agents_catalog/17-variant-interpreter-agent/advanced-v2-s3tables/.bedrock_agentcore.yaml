@@ -1,0 +1,62 @@
+default_agent: variant_interpreter_a2a
+agents:
+  variant_interpreter_a2a:
+    name: variant_interpreter_a2a
+    language: python
+    node_version: null
+    entrypoint: /Users/hpoonawa/Documents/Kiro/GitHub/amazon-bedrock-agents-healthcare-lifesciences/agents_catalog/17-variant-interpreter-agent/advanced-v2-s3tables/agent/main.py
+    deployment_type: container
+    runtime_type: null
+    platform: linux/arm64
+    container_runtime: none
+    source_path: null
+    aws:
+      execution_role: arn:aws:iam::942514891246:role/AmazonBedrockAgentCoreSDKRuntime-us-west-2-fd13106cc2
+      execution_role_auto_create: false
+      account: '942514891246'
+      region: us-west-2
+      ecr_repository: 942514891246.dkr.ecr.us-west-2.amazonaws.com/bedrock-agentcore-variant_interpreter_a2a
+      ecr_auto_create: false
+      s3_path: null
+      s3_auto_create: false
+      network_configuration:
+        network_mode: PUBLIC
+        network_mode_config: null
+      protocol_configuration:
+        server_protocol: A2A
+      observability:
+        enabled: true
+      lifecycle_configuration:
+        idle_runtime_session_timeout: null
+        max_lifetime: null
+    bedrock_agentcore:
+      agent_id: variant_interpreter_a2a-sP4bf45k4k
+      agent_arn: arn:aws:bedrock-agentcore:us-west-2:942514891246:runtime/variant_interpreter_a2a-sP4bf45k4k
+      agent_session_id: null
+    codebuild:
+      project_name: bedrock-agentcore-variant_interpreter_a2a-builder
+      execution_role: arn:aws:iam::942514891246:role/AmazonBedrockAgentCoreSDKCodeBuild-us-west-2-fd13106cc2
+      source_bucket: bedrock-agentcore-codebuild-sources-942514891246-us-west-2
+    memory:
+      mode: NO_MEMORY
+      memory_id: null
+      memory_arn: null
+      memory_name: null
+      event_expiry_days: 30
+      first_invoke_memory_check_done: false
+      was_created_by_toolkit: false
+    identity:
+      credential_providers: []
+      workload: null
+    aws_jwt:
+      enabled: false
+      audiences: []
+      signing_algorithm: ES384
+      issuer_url: null
+      duration_seconds: 300
+    authorizer_configuration: null
+    request_header_configuration: null
+    oauth_configuration: null
+    api_key_env_var_name: null
+    api_key_credential_provider_name: null
+    is_generated_by_agentcore_create: false
