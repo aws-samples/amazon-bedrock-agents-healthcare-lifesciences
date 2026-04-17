@@ -22,7 +22,7 @@ def main():
         return 1
 
     model = BedrockModel(
-        model_id=os.environ.get('BEDROCK_MODEL_ID', 'us.anthropic.claude-sonnet-4-20250514-v1:0'),
+        model_id=os.environ.get('BEDROCK_MODEL_ID', 'us.anthropic.claude-sonnet-4-5-20250929-v1:0'),
         region_name=os.environ.get('AWS_REGION', 'us-west-2'),
         streaming=True
     )

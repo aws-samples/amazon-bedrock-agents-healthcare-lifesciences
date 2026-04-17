@@ -63,7 +63,7 @@ See [docs/architecture.html](docs/architecture.html) for an interactive diagram.
                                                         ▼
                                               ┌────────────────────┐
                                               │ AI Agent (Strands) │
-                                              │ Claude Opus 4.6    │
+                                              │ Claude Sonnet 4.5  │
                                               │ 3 tools            │
                                               └─────────┬──────────┘
                                                         │ A2A Protocol
@@ -199,7 +199,7 @@ User: "Show me HIGH impact variants in the BRCA1 gene for HG00096"
         └───────────┬───────────┘
                     ▼
         ┌───────────────────────┐
-        │ 2. Claude Opus 4.6    │  → Generates SQL:
+        │ 2. Claude Sonnet 4.5  │  → Generates SQL:
         │    generates SQL      │    SELECT pos, ref, alt, genotype, info['CSQ']
         │                       │    FROM variant_db_3.genomic_variants_fixed
         │                       │    WHERE sample_name = 'HG00096'

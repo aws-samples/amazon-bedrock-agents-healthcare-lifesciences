@@ -23,10 +23,10 @@ runtime_url = os.environ.get("AGENTCORE_RUNTIME_URL", "http://127.0.0.1:9000/")
 host, port = "0.0.0.0", 9000  # nosec B104 — must bind all interfaces in container
 
 
-# Sonnet recommended for cost efficiency (~$3/M input vs ~$15/M for Opus).
+# Sonnet 4.5 recommended for best agent/coding performance at reasonable cost.
 # Override: BEDROCK_MODEL_ID=us.anthropic.claude-opus-4-6-v1
 model = BedrockModel(
-    model_id=os.environ.get('BEDROCK_MODEL_ID', 'us.anthropic.claude-sonnet-4-20250514-v1:0'),
+    model_id=os.environ.get('BEDROCK_MODEL_ID', 'us.anthropic.claude-sonnet-4-5-20250929-v1:0'),
     region_name=os.environ.get('AWS_REGION', 'us-west-2'),
     streaming=True
 )
