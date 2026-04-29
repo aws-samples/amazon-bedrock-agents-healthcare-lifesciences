@@ -106,10 +106,10 @@ This solution uses publicly available whole-genome sequencing data from the [100
 - **Population diversity** — 2,504 samples across 26 populations, enabling cohort and population frequency analysis
 - **Well-characterized** — extensively validated, with population allele frequencies (AF, EAS_AF, EUR_AF, AFR_AF, AMR_AF, SAS_AF) embedded in the VCF INFO field
 
-The current deployment includes chromosome 22 data for sample HG00096 (1,059,079 variants). VCF files are sourced from the 1000 Genomes public S3 bucket:
+    Upload a Test VCF File:
 
-```
-s3://1000genomes/release/20130502/ALL.chr22.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz
+# Example VCF files are located in 
+aws s3 cp s3://1000genomes-dragen/data/dragen-3.5.7b/hg38_altaware_nohla-cnv-anchored/NA*
 ```
 
 To load additional samples or chromosomes, upload VCF files to the S3 input bucket — the pipeline processes them automatically.
