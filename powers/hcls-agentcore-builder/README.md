@@ -86,7 +86,7 @@ Read steering file: tech.md (technology stack)
 
 Users of this power should have:
 - AWS account with Bedrock access
-- Python 3.10+
+- Python 3.11+
 - AWS CLI configured
 - Basic understanding of AWS services
 - Familiarity with Python and REST APIs
