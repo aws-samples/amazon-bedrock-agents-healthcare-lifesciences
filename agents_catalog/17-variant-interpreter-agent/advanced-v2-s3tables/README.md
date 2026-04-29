@@ -108,7 +108,7 @@ This solution uses publicly available whole-genome sequencing data from the [100
 
     Upload a Test VCF File:
 
-Example VCF files are located in: 
+### Example VCF files can be copied from the below path : 
 aws s3 cp s3://1000genomes-dragen/data/dragen-3.5.7b/hg38_altaware_nohla-cnv-anchored/NA*
 ```
 
