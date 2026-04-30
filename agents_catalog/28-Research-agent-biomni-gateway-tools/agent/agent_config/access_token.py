@@ -5,16 +5,18 @@ import requests
 gateway_access_token = None
 
 
-@requires_access_token(
-    provider_name=get_ssm_parameter("/app/researchapp/agentcore/cognito_provider"),
-    scopes=[],  # Optional unless required
-    auth_flow="M2M",
-)
-async def get_access_token(*, access_token: str):
-    
+# Decorator commented out - using manual M2M flow in get_gateway_access_token instead
+# @requires_access_token(
+#     provider_name=get_ssm_parameter("/app/researchapp/agentcore/cognito_provider"),
+#     scopes=[],  # Optional unless required
+#     auth_flow="M2M",
+# )
+async def get_access_token(*, access_token: str = None):
+    """Legacy function - not used. Using get_gateway_access_token instead."""
     global gateway_access_token
-    gateway_access_token = access_token
-    return access_token
+    if access_token:
+        gateway_access_token = access_token
+    return gateway_access_token
 
 async def get_gateway_access_token():
     """Get gateway access token using manual M2M flow."""
@@ -85,6 +87,3 @@ async def get_gateway_access_token():
         
     except Exception as e:
         raise Exception(f"Error getting gateway access token: {str(e)}")
-
-
-
