@@ -1,10 +1,10 @@
 __pycache__/
 *.pyc
 .venv/
-downloaded_files/
 *.egg-info/
 dist/
 build/
 .bedrock_agentcore/
 .bedrock_agentcore.yaml
 .dockerignore
+/tmp/
