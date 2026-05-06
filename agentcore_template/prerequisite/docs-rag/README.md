@@ -41,11 +41,11 @@ This is a template for creating AI agents using Amazon Bedrock AgentCore framewo
 3. **Bedrock Model Access**: Enable access to Amazon Bedrock Anthropic Claude models in your AWS region
    - Navigate to [Amazon Bedrock](https://console.aws.amazon.com/bedrock/)
    - Go to "Model access" and request access to:
-     - Anthropic Claude 3.5 Sonnet model
-     - Anthropic Claude 3.5 Haiku model
+     - Anthropic Claude 4.5 Sonnet model
+     - Anthropic Claude 4.5 Haiku model
    - [Bedrock Model Access Guide](https://docs.aws.amazon.com/bedrock/latest/userguide/model-access.html)
 
-4. **Python 3.10+**: Required for running the application
+4. **Python 3.11+**: Required for running the application
    - [Python Downloads](https://www.python.org/downloads/)
 
 ## Deploy
