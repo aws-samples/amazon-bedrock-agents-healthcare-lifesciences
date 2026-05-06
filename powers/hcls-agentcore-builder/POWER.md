@@ -71,11 +71,11 @@ These files provide comprehensive context about the repository structure, techno
 **AWS Setup:**
 - AWS account with appropriate permissions
 - AWS CLI configured with credentials
-- Access to Amazon Bedrock (Claude 3.7 Sonnet or later)
+- Access to Amazon Bedrock (Claude 4.5 Sonnet or later)
 - IAM roles for AgentCore services
 
 **Development Environment:**
-- Python 3.10+ installed
+- Python 3.11+ installed
 - `uv` package manager (preferred) or `pip`
 - Git for version control
 
@@ -89,7 +89,7 @@ These files provide comprehensive context about the repository structure, techno
 
 ```bash
 # Verify Python version
-python --version  # Should be 3.10+
+python --version  # Should be 3.11+
 
 # Verify AWS CLI
 aws --version

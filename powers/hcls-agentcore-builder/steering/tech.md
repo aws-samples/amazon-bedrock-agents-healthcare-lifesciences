@@ -18,7 +18,7 @@
 
 ## Languages & Runtimes
 
-- **Python 3.10+**: Primary language for agents and backend
+- **Python 3.11+**: Primary language for agents and backend
 - **Node.js/TypeScript**: For React UI components
 - **Shell Scripts**: Deployment and automation (bash/zsh)
 
