@@ -16,7 +16,7 @@ class FastPVQAgent:
 
         # Use faster model and minimal tools
         self.agent = Agent(
-            model="us.anthropic.claude-3-haiku-20240307-v1:0",  # Faster model
+            model=BedrockModel(model_id="us.anthropic.claude-haiku-4-5-20251001-v1:0"),
             system_prompt=system_prompt,
             tools=[
                 self.save_info,
