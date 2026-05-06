@@ -92,7 +92,7 @@ Ask questions like:
 
 - **Language**: Python 3.12
 - **Agent Framework**: Strands Agent SDK
-- **AI Model**: AWS Bedrock Claude 3.7 Sonnet
+- **AI Model**: AWS Bedrock Claude Sonnet 4.5
 - **Backend**: FastAPI
 - **Interface**: Lambda Function URLs
 - **Data Processing**: Pandas, Pydantic
@@ -102,7 +102,7 @@ Ask questions like:
 
 ### Architecture
 - **Backend**: FastAPI on AWS Lambda + Function URLs
-- **AI**: AWS Bedrock Claude 3.7 Sonnet
+- **AI**: AWS Bedrock Claude Sonnet 4.5
 - **Cost**: ~$33-140/month
 
 ### Quick Deploy

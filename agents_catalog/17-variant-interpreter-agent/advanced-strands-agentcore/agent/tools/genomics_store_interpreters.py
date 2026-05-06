@@ -247,7 +247,7 @@ genomics_store_agent_tools = [
 ]
 
 model = BedrockModel(
-        model_id="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+        model_id="us.anthropic.claude-sonnet-4-5-20250929-v1:0",
         region_name=region,
         temperature=0.1,
         streaming=False

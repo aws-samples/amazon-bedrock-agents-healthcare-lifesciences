@@ -9,7 +9,7 @@ Parameters:
   BedrockModelId:
     Type: String
     Description: The ID of the Foundation Model to use for the Agent
-    Default: us.anthropic.claude-3-5-sonnet-20241022-v2:0
+    Default: us.anthropic.claude-sonnet-4-5-20250929-v1:0
   AgentIAMRoleArn:
     Type: String
     Description: "Required. The ARN of an IAM role that grants Bedrock permissions to invoke Lambda functions and manage agents"

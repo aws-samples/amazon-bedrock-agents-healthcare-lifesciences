@@ -5,7 +5,7 @@ An AI-powered laboratory automation agent that controls SiLA2-compliant devices 
 ## 🌟 Overview
 
 This agent demonstrates autonomous laboratory equipment control through:
-- **AI-Driven Decision Making**: Claude 3.5 Sonnet v2 analyzes device data and makes control decisions
+- **AI-Driven Decision Making**: Claude Sonnet 4.5 analyzes device data and makes control decisions
 - **SiLA2 Protocol Integration**: Standard laboratory automation protocol support
 - **Multi-Target Architecture**: Separates device control (Container) from data analysis (Lambda)
 - **Memory Management**: Tracks experimental context and control history with automatic audit trail
@@ -17,7 +17,7 @@ This agent demonstrates autonomous laboratory equipment control through:
 ![Architecture Diagram](architecture.png)
 
 **Key Components:**
-- **AgentCore Runtime**: AI agent orchestration with Claude 3.5 Sonnet v2
+- **AgentCore Runtime**: AI agent orchestration with Claude Sonnet 4.5
 - **MCP Gateway**: Multi-target tool routing (Container + Lambda)
 - **Bridge Container**: SiLA2 protocol translation (ECS Fargate)
 - **Mock Devices**: HPLC simulator with scenario switching
@@ -653,7 +653,7 @@ All source files, including generated code, are covered by the project license u
 
 - Built with [Amazon Bedrock AgentCore](https://aws.amazon.com/bedrock/agentcore/)
 - Uses [SiLA2 Standard](https://sila-standard.com/) for laboratory automation
-- Powered by Anthropic Claude 3.5 Sonnet v2
+- Powered by Anthropic Claude Sonnet 4.5
 
 ## 📚 Additional Resources
 

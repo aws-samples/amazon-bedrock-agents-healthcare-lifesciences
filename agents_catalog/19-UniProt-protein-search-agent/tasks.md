@@ -12,7 +12,7 @@
 ## Phase 2: CloudFormation Template Development
 
 - [x] Create main CloudFormation template (uniprot-protein-search-agent-cfn.yaml)
-- [x] Define Bedrock Agent resource with Claude 3.5 Sonnet v2
+- [x] Define Bedrock Agent resource with Claude Sonnet 4.5
 - [x] Define Agent Alias resource
 - [x] Define IAM roles for Bedrock Agent and Lambda functions
 - [x] Define Lambda function resources for action groups
@@ -118,4 +118,4 @@
 - Each completed task should be followed by a git commit
 - Test thoroughly with real UniProt API before marking tasks complete
 - Ensure all code follows Python best practices and includes proper error handling
-- Validate that the agent works with the specified Claude 3.5 Sonnet v2 model
+- Validate that the agent works with the specified Claude Sonnet 4.5 model

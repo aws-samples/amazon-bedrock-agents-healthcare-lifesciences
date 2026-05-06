@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
   log('Received chat request', { message, agent_instruction, agentCount: agents.length });
 
   try {
-    const foundationModel = 'us.anthropic.claude-3-5-sonnet-20241022-v2:0';
+    const foundationModel = 'us.anthropic.claude-sonnet-4-5-20250929-v1:0';
 
     log('Resolving agent aliases...');
     const collaboratorConfigurations = await Promise.all(

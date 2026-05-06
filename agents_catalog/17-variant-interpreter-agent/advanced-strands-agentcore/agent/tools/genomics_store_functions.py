@@ -61,7 +61,7 @@ def get_aws_config():
 REGION, ACCOUNT_ID = get_aws_config()
 
 # Environment variables for genomics stores
-MODEL_ID = os.environ.get('MODEL_ID', 'us.anthropic.claude-3-7-sonnet-20250219-v1:0')
+MODEL_ID = os.environ.get('MODEL_ID', 'us.anthropic.claude-sonnet-4-5-20250929-v1:0')
 LAKE_FORMATION_DATABASE = os.environ.get('LAKE_FORMATION_DATABASE', '<YOUR_AWS_PROFILE>')
 VARIANT_STORE_NAME = os.environ.get('VARIANT_STORE_NAME', 'genomicsvariantstore')
 ANNOTATION_STORE_NAME = os.environ.get('ANNOTATION_STORE_NAME', 'genomicsannotationstore')
@@ -454,7 +454,7 @@ def execute_dynamic_query(user_question, patient_ids=None):
         
         # Call Claude to generate the SQL query
         response = bedrock_client.invoke_model(
-            modelId="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+            modelId="us.anthropic.claude-sonnet-4-5-20250929-v1:0",
             body=json.dumps({
                 "anthropic_version": "bedrock-2023-05-31",
                 "max_tokens": 2000,

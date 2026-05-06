@@ -4,7 +4,7 @@
 : "${DEPLOYMENT_BUCKET:?Need DEPLOYMENT_BUCKET}"
 : "${AWS_DEFAULT_REGION:?Need AWS_DEFAULT_REGION}"
 : "${BEDROCK_AGENT_SERVICE_ROLE_ARN:?Need BEDROCK_AGENT_SERVICE_ROLE_ARN}"
-: "${BEDROCK_MODEL_ID:=anthropic.claude-3-5-sonnet-20241022-v2:0}"
+: "${BEDROCK_MODEL_ID:=us.anthropic.claude-sonnet-4-5-20250929-v1:0}"
 
 # Create Lambda Layer directory
 echo "Creating Lambda Layer..."

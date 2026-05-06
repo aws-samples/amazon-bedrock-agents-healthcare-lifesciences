@@ -10,7 +10,7 @@ Parameters:
   BedrockModelId:
     Type: String
     Description: Optional Bedrock foundation model id
-    Default: "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
+    Default: "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
   
   AgentRole:
     Type: String

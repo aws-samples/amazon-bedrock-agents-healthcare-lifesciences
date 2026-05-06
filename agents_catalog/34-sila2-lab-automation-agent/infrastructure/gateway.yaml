@@ -46,7 +46,7 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Sub '${AWS::StackName}-GatewayCustomResourceFunction'
-      Runtime: python3.10
+      Runtime: python3.12
       Handler: index.handler
       Role: !GetAtt GatewayCustomResourceRole.Arn
       Timeout: 300

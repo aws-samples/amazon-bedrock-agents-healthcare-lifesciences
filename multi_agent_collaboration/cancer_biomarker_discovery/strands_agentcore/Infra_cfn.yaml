@@ -1916,7 +1916,7 @@ Resources:
             - bedrock:InvokeModel
             Resource: 
               - !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/amazon.titan-embed-text-v1'
-              - !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/anthropic.claude-3-sonnet-20240229-v1:0'
+              - !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/us.anthropic.claude-sonnet-4-5-20250929-v1:0'
             Sid: BedrockInvokeModelStatement
       - PolicyName: OSSPolicy
         PolicyDocument:

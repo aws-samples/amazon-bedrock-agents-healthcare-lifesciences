@@ -69,7 +69,7 @@ aws s3 cp /tmp/invoker.zip "s3://${DEPLOYMENT_BUCKET}/lambda/" --region "${DEFAU
 rm -rf "${TEMP_DIR}"
 echo "✅ invoker packaged with bedrock-agentcore"
 
-# Create requests Lambda Layer for Python 3.10
+# Create requests Lambda Layer for Python 3.12
 echo "Creating requests Lambda Layer..."
 LAYER_DIR="/tmp/requests_layer"
 rm -rf "${LAYER_DIR}"
@@ -87,9 +87,9 @@ aws s3 cp /tmp/requests_layer.zip "s3://${DEPLOYMENT_BUCKET}/lambda/" --region "
 # Publish Lambda Layer
 LAYER_ARN=$(aws lambda publish-layer-version \
   --layer-name sila2-requests-layer \
-  --description "Requests library for Python 3.10" \
+  --description "Requests library for Python 3.12" \
   --zip-file fileb:///tmp/requests_layer.zip \
-  --compatible-runtimes python3.10 \
+  --compatible-runtimes python3.12 \
   --region "${DEFAULT_REGION}" \
   --query 'LayerVersionArn' \
   --output text)

@@ -170,7 +170,7 @@ def calculate_claim_approval(parsed_data: str, fee_schedule: str) -> str:
     """
     client = use_aws("bedrock-runtime")
     model_id = "amazon.titan-text-express-v1"
-    #model_id= "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
+    #model_id= "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
     prompt = f"Based on the following parsed data:\n{parsed_data}\nand fee schedule:\n{fee_schedule}\nCalculate the cost \
     and determine if the claim is approved or not. If approved, return the amount that will be paid to the provider. \
     If not approved, return the reason for denial. It is not a chat. So dont ask follow up questions. Let them know the reason\
@@ -208,7 +208,7 @@ Here is the list of specialties:
 agent = Agent(
     tools=[ use_llm, get_guidance_document_list, download_appropriate_document, parse_pdf, parse_fee_schedule ],
     system_prompt=system_prompt,
-    model="us.anthropic.claude-3-5-sonnet-20241022-v2:0"
+    model="us.anthropic.claude-sonnet-4-5-20250929-v1:0"
 )
 
 agent(patient_data)

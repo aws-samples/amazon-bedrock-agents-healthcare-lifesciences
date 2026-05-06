@@ -191,4 +191,4 @@ Follow the `create_agent.ipynb` protocol to deploy your agent
 
 # LICENSE
 - [MIT-0](/LICENSE)
-The codebase relies on external models such as [Anthropic claude 3 sonnet](https://www.anthropic.com/news/claude-3-5-sonnet) subject to Licensing Agreements. The VCF data was generated from raw fastq files from the Registry of Open Data (https://registry.opendata.aws/aws-igenomes/) and can be found [here](s3://ngi-igenomes/test-data/sarek/)
+The codebase relies on external models such as [Anthropic Claude Sonnet 4.5](https://www.anthropic.com/news/claude-sonnet-4-5) subject to Licensing Agreements. The VCF data was generated from raw fastq files from the Registry of Open Data (https://registry.opendata.aws/aws-igenomes/) and can be found [here](s3://ngi-igenomes/test-data/sarek/)

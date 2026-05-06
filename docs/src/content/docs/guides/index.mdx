@@ -13,9 +13,9 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 Before getting started, ensure you have:
 
 - **AWS Account** with access to Amazon Bedrock
-- **Model Access** - Request access to foundation models (e.g., Claude 3.5 Sonnet, Haiku)
+- **Model Access** - Request access to foundation models (e.g., Claude Sonnet 4.5, Haiku)
 - **AWS CLI** configured with appropriate permissions
-- **Python 3.10+** installed
+- **Python 3.12+** installed
 - **Node.js 18+** and npm (for FAST template)
 - **Git** and GitHub account
 - **Basic knowledge** of AWS services and JSON/YAML configuration
@@ -466,7 +466,7 @@ def my_domain_tool(query: str) -> str:
 
 # Create agent
 agent = Agent(
-    model="anthropic.claude-3-5-sonnet-20241022-v2:0",
+    model="us.anthropic.claude-sonnet-4-5-20250929-v1:0",
     system_prompt=SYSTEM_PROMPT,
     tools=[my_domain_tool],
 )

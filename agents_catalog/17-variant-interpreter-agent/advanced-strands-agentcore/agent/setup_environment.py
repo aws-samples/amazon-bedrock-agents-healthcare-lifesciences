@@ -31,7 +31,7 @@ def setup_environment():
         'VARIANT_STORE_NAME': 'genomicsvariantstore',
         'ANNOTATION_STORE_NAME': 'genomicsannotationstore',
         'LAKE_FORMATION_DATABASE': '<YOUR_AWS_PROFILE>',  # Update this
-        'MODEL_ID': 'us.anthropic.claude-3-7-sonnet-20250219-v1:0'
+        'MODEL_ID': 'us.anthropic.claude-sonnet-4-5-20250929-v1:0'
     }
     
     for key, value in env_vars.items():

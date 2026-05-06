@@ -53,7 +53,7 @@
 ## Technical Requirements
 
 ### TR1: AWS Infrastructure
-- Amazon Bedrock Agent with Claude 3.5 Sonnet v2
+- Amazon Bedrock Agent with Claude Sonnet 4.5
 - AWS Lambda functions for core DMTA workflow
 - S3 storage for experimental data and results
 - DynamoDB for workflow state management
