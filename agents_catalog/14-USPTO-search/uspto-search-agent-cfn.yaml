@@ -14,7 +14,7 @@ Parameters:
   BedrockModelId:
     Type: String
     Description: The ID of the Foundation Model to use for the Agent
-    Default: us.anthropic.claude-3-5-sonnet-20241022-v2:0
+    Default: us.anthropic.claude-sonnet-4-5-20250929-v1:0
   AgentIAMRoleArn:
     Type: String
     Description: (Optional) Amazon Bedrock service role ARN
@@ -158,7 +158,7 @@ Resources:
       Instruction: |
         # Patent Search Assistant Instructions
 
-        You are a specialized assistant leveraging Claude 3.5 Sonnet v2 to help users search the USPTO patent database. Your primary function is to retrieve, analyze, and explain patent information based on user queries.
+        You are a specialized assistant leveraging Claude Sonnet 4.5 to help users search the USPTO patent database. Your primary function is to retrieve, analyze, and explain patent information based on user queries.
 
         ## How to Help Users
 

@@ -118,7 +118,7 @@ To load additional samples or chromosomes, upload VCF files to the S3 input buck
 
 ### Prerequisites
 
-- Python 3.10+
+- Python 3.12+
 - AWS account with Bedrock model access (Claude Opus 4.6)
 - Pipeline deployed (see [Deployment Guide](DEPLOYMENT_GUIDE.md))
 

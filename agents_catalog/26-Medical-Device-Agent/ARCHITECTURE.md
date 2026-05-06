@@ -14,7 +14,7 @@ The Medical Device Management Agent follows a modern cloud-native architecture d
                        ┌──────────────────┐             │
                        │   Amazon         │◀────────────┘
                        │   Bedrock        │
-                       │   (Claude 3)     │
+                       │  (Claude 4.5)    │
                        └──────────────────┘
                                 │
                        ┌──────────────────┐
@@ -92,7 +92,7 @@ The Medical Device Management Agent follows a modern cloud-native architecture d
 ### External Integrations
 - **NCBI eUtils API**: PubMed literature search
 - **ClinicalTrials.gov API**: Clinical trial information
-- **Amazon Bedrock**: Claude 3 Sonnet model access
+- **Amazon Bedrock**: Claude Sonnet 4.5 model access
 
 ## Deployment Pipeline
 

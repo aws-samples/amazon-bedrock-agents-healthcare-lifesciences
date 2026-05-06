@@ -20,7 +20,7 @@ def configure_runtime():
     print("AgentCore Runtime Configuration:")
     print(f"  Agent ID: {agent_id}")
     print(f"  Memory ID: {memory_id}")
-    print(f"  Model: anthropic.claude-3-5-sonnet-20241022-v2:0")
+    print(f"  Model: us.anthropic.claude-sonnet-4-5-20250929-v1:0")
     print(f"  Instructions: {len(instructions)} chars")
     
     if not agent_id or not memory_id:

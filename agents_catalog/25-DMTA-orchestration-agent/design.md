@@ -65,7 +65,7 @@ The simulation-based approach allows for development and testing of the DMTA wor
 ### 1. Amazon Bedrock Agent (Orchestrator)
 
 **Purpose**: Active learning workflow coordination and chat interface
-**Model**: Configurable foundation model (defaults to Claude 3.5 Sonnet v2)
+**Model**: Configurable foundation model (defaults to Claude Sonnet 4.5)
 **Responsibilities**:
 - Manage chat conversation flow for DMTA optimization
 - Coordinate active learning cycles with acquisition functions

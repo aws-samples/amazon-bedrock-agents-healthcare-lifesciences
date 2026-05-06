@@ -8,7 +8,7 @@ from datetime import datetime
 REGION = os.environ.get('REGION')
 ACCOUNT_ID = os.environ.get('ACCOUNT_ID')
 BUCKET_NAME = os.environ.get('BUCKET_NAME')
-MODEL_ID = os.environ.get('MODEL_ID', 'anthropic.claude-3-sonnet-20240229-v1:0')
+MODEL_ID = os.environ.get('MODEL_ID', 'us.anthropic.claude-sonnet-4-5-20250929-v1:0')
 BATCH_JOB_QUEUE = os.environ.get('BATCH_JOB_QUEUE')
 BATCH_JOB_DEFINITION_FEATURE_EXTRACTION = os.environ.get('BATCH_JOB_DEFINITION_FEATURE_EXTRACTION')
 BATCH_JOB_DEFINITION_CLASSIFIER = os.environ.get('BATCH_JOB_DEFINITION_CLASSIFIER')

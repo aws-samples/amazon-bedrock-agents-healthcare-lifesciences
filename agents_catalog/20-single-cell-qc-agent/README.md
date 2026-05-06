@@ -31,7 +31,7 @@ Both action groups are implemented as AWS Lambda functions that leverage Amazon 
 ### Prerequisites
 
 - AWS account with access to Amazon Bedrock
-- Access to Claude 3.5 Sonnet model in Amazon Bedrock
+- Access to Claude Sonnet 4.5 model in Amazon Bedrock
 - S3 bucket containing web summary files and technical documents
 
 ### Deployment Steps

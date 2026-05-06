@@ -125,18 +125,18 @@ Resources:
     Type: AWS::Lambda::LayerVersion
     Properties:
       LayerName: sila2-requests-layer
-      Description: Requests library for Python 3.10
+      Description: Requests library for Python 3.12
       Content:
         S3Bucket: !Ref DeploymentBucket
         S3Key: lambda/requests_layer.zip
       CompatibleRuntimes:
-        - python3.10
+        - python3.12
 
   InvokerFunction:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: sila2-agentcore-invoker
-      Runtime: python3.10
+      Runtime: python3.12
       Handler: lambda_function.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Timeout: 300

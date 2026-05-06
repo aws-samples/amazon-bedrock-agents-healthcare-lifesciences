@@ -19,8 +19,8 @@ previsit/
 │   │   │   ├── symptoms.py       # Symptom tools
 │   │   │   └── utilities.py      # Utility tools
 │   │   ├── __init__.py
-│   │   ├── pvq_agent.py         # Main PVQ agent (Claude 3.5 Sonnet)
-│   │   ├── pvq_agent_fast.py    # Fast agent (Claude 3 Haiku)
+│   │   ├── pvq_agent.py         # Main PVQ agent (Claude Sonnet 4.5)
+│   │   ├── pvq_agent_fast.py    # Fast agent (Claude Haiku 4.5)
 │   │   └── pvq_agent_ultra_fast.py # Ultra-fast agent (Rule-based)
 │   ├── models/                   # Data models
 │   │   ├── __init__.py

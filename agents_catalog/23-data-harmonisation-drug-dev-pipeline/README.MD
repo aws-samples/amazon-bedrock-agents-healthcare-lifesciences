@@ -116,7 +116,7 @@ aws cloudformation deploy \
     S3Bucket=your-s3-bucket-name \
     AgentRole=arn:aws:iam::your-account-id:role/your-agent-execution-role \
     S3Key=enriched_pipeline_data.json \
-    BedrockModelId=anthropic.claude-3-5-sonnet-20241022-v2:0 \
+    BedrockModelId=us.anthropic.claude-sonnet-4-5-20250929-v1:0 \
     AgentAliasName=Latest \
     IndexName=pipeline-data-index
 ```

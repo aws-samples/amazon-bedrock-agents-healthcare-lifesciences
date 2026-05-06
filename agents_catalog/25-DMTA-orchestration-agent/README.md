@@ -35,7 +35,7 @@ These simulated components allow for demonstration and testing of the DMTA workf
 
 1. **AWS Account**: You need an AWS account with appropriate permissions
 2. **Bedrock Access**: Request access to Bedrock foundation models
-   - Default: Anthropic Claude 3.5 Sonnet v2
+   - Default: Anthropic Claude Sonnet 4.5
    - Or your preferred model (e.g., cross-region inference optimized model)
 3. **Bedrock Agent Service Role**: Create an IAM role for Bedrock Agent service
 
@@ -86,7 +86,7 @@ export BEDROCK_AGENT_SERVICE_ROLE_ARN="arn:aws:iam::YOUR-ACCOUNT-ID:role/Bedrock
 export DEPLOYMENT_BUCKET="your-deployment-bucket"
 export AWS_DEFAULT_REGION="us-west-2"
 # Optional: Override default Bedrock model ID
-export BEDROCK_MODEL_ID="anthropic.claude-3-5-sonnet-20241022-v2:0"  # Example for cross-region inference
+export BEDROCK_MODEL_ID="us.anthropic.claude-sonnet-4-5-20250929-v1:0"  # Example for cross-region inference
 ```
 
 **Deploy the stack:**
@@ -106,7 +106,7 @@ This deployment creates:
 
 The solution creates:
 
-- **Bedrock Agent**: Orchestrates the DMTA workflow using a configurable foundation model (defaults to Claude 3.5 Sonnet v2)
+- **Bedrock Agent**: Orchestrates the DMTA workflow using a configurable foundation model (defaults to Claude Sonnet 4.5)
 - **S3 Bucket**: For storing experimental data
 - **DynamoDB Tables**: For tracking projects, cycles, and variants
 - **Lambda Functions**: For executing DMTA workflow phases
@@ -327,7 +327,7 @@ Estimated cost for typical usage: $10-50/month depending on usage patterns.
 
 1. **Stack Creation Failed**: Check that the Bedrock Agent Service Role ARN is correct
 2. **Permission Denied**: Ensure your AWS credentials have sufficient permissions
-3. **Model Access**: Verify you have access to Claude 3.5 Sonnet v2 in Bedrock
+3. **Model Access**: Verify you have access to Claude Sonnet 4.5 in Bedrock
 
 ### Data Access Examples
 

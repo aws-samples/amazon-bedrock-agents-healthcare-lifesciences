@@ -127,7 +127,7 @@ npm run local
 ### Components
 
 - **Streamlit Frontend**: Interactive web interface for medical professionals
-- **Medical Coordinator Agent**: Main orchestrator using Claude 3 Sonnet
+- **Medical Coordinator Agent**: Main orchestrator using Claude Sonnet 4.5
 - **Device Management**: SQLite database with sample medical device data
 - **External APIs**: PubMed (NCBI eUtils) and ClinicalTrials.gov integration
 - **AWS Fargate**: Containerized deployment with auto-scaling
@@ -141,7 +141,7 @@ npm run local
 - **Basic Authentication**: Username/password authentication
 - **CloudWatch Logs**: Application logging
 - **Amazon ECR**: Container image registry
-- **Amazon Bedrock**: Claude 3 Sonnet model access
+- **Amazon Bedrock**: Claude Sonnet 4.5 model access
 
 ## Configuration
 
@@ -162,7 +162,7 @@ The application uses these environment variables:
 
 ### Model Configuration
 
-The agent uses Claude 3 Sonnet (`anthropic.claude-3-sonnet-20240229-v1:0`) by default. To use a different model, update `agents/medical_coordinator.py`.
+The agent uses Claude Sonnet 4.5 (`us.anthropic.claude-sonnet-4-5-20250929-v1:0`) by default. To use a different model, update `agents/medical_coordinator.py`.
 
 ### Database
 

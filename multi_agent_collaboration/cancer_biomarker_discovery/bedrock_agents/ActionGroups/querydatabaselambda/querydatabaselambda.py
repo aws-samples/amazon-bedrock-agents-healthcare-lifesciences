@@ -73,7 +73,7 @@ def refineSQL(sql, question):
     client = boto3.client('bedrock-runtime')
     user_message = {"role": "user", "content": prompt}
     claude_response = {"role": "assistant", "content": "<efficientQuery>"}
-    model_Id = 'anthropic.claude-3-5-sonnet-20240620-v1:0'
+    model_Id = 'us.anthropic.claude-sonnet-4-5-20250929-v1:0'
     messages = [user_message, claude_response]
     system_prompt = "You are an extremely critical sql query evaluation assistant, your job is to look at the schema, sql query and question being asked to then evaluate the query to ensure it is efficient."
     max_tokens = 1000

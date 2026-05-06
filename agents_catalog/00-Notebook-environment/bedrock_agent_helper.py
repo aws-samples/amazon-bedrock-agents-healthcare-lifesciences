@@ -60,8 +60,8 @@ PYTHON_RUNTIME = "python3.12"
 DEFAULT_ALIAS = "TSTALIASID"
 DEFAULT_CI_ACTION_GROUP_NAME = "CodeInterpreterAction"
 UNDECIDABLE_CLASSIFICATION = "undecidable"
-# ROUTER_MODEL = "us.anthropic.claude-3-haiku-20240307-v1:0"
-ROUTER_MODEL = "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
+# ROUTER_MODEL = "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+ROUTER_MODEL = "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
 TRACE_TRUNCATION_LENGTH = 300
 
 # TODO: Take advantage of a default execution role so that we do not need to have lengthy

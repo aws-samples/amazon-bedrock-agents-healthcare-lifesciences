@@ -11,8 +11,8 @@ import gzip
 REGION = os.environ.get('REGION','us-east-1')
 ACCOUNT_ID = os.environ.get('ACCOUNT_ID','123456789123')
 BUCKET_NAME = os.environ.get('BUCKET_NAME','apj-omics-us')
-MODEL_ID = os.environ.get('MODEL_ID', 'anthropic.claude-3-sonnet-20240229-v1:0')
-modelid = 'anthropic.claude-3-5-sonnet-20240620-v1:0'
+MODEL_ID = os.environ.get('MODEL_ID', 'us.anthropic.claude-sonnet-4-5-20250929-v1:0')
+modelid = 'us.anthropic.claude-sonnet-4-5-20250929-v1:0'
 #BATCH_JOB_QUEUE = os.environ.get('BATCH_JOB_QUEUE')
 
 # Bedrock configuration

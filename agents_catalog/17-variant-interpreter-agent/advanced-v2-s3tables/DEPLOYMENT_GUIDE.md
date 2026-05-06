@@ -12,7 +12,7 @@ VCF Upload → S3 → Trigger Lambda → HealthOmics VEP → EventBridge → Imp
 
 - AWS CLI configured with appropriate permissions
 - Docker (for building container images)
-- Python 3.10+
+- Python 3.12+
 - Access to: S3, S3 Tables, HealthOmics, Lambda, ECR, EventBridge, DynamoDB, IAM, Athena
 
 ---

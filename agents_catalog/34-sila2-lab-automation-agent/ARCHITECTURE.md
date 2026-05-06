@@ -15,7 +15,7 @@
 │  ┌────────────────────────────────────────────────────────────────────┐ │
 │  │              Amazon Bedrock AgentCore Runtime                      │ │
 │  │                  (Agent Orchestration)                             │ │
-│  │                  Claude 3.5 Sonnet v2                              │ │
+│  │                  Claude Sonnet 4.5                              │ │
 │  └────────────────────────────────┬───────────────────────────────────┘ │
 │                                   │ API Call                             │
 │                                   ↓                                      │
@@ -90,7 +90,7 @@ User (Streamlit UI)
   ↓
 AgentCore Runtime
   │
-  │ Agent Orchestration (Claude 3.5 Sonnet v2)
+  │ Agent Orchestration (Claude Sonnet 4.5)
   │ Analyzes request and selects appropriate tool
   ↓
 AgentCore Gateway

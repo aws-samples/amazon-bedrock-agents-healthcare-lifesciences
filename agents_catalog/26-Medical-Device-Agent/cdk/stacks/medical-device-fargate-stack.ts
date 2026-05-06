@@ -105,7 +105,7 @@ export class MedicalDeviceFargateStack extends Stack {
           "bedrock:ConverseStream"
         ],
         resources: [
-          `arn:aws:bedrock:${this.region}::foundation-model/anthropic.claude-3-sonnet-20240229-v1:0`,
+          `arn:aws:bedrock:${this.region}::foundation-model/us.anthropic.claude-sonnet-4-5-20250929-v1:0`,
           `arn:aws:bedrock:${this.region}::foundation-model/anthropic.claude-*`,
         ],
       }),

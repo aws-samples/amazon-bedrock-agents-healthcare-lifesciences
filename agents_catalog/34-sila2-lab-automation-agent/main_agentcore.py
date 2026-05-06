@@ -14,7 +14,7 @@ from bedrock_agentcore import BedrockAgentCoreApp
 app = BedrockAgentCoreApp()
 
 REGION = os.getenv('AWS_REGION', 'us-west-2')
-MODEL_ID = "anthropic.claude-3-5-sonnet-20241022-v2:0"
+MODEL_ID = "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
 MEMORY_ID = os.getenv('MEMORY_ID', 'sila2_memory-NajlMR3ROI')
 GATEWAY_URL = os.getenv('GATEWAY_URL', 'https://sila2-gateway-1770265126-gc1ge4l0eo.gateway.bedrock-agentcore.us-west-2.amazonaws.com/mcp')
 

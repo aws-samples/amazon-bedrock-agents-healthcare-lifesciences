@@ -11,7 +11,7 @@ The `run_prior_auth.py` script is an AI-powered healthcare prior authorization p
 - **PDF Processing**: Extracts and parses content from billing guide PDFs
 - **Fee Schedule Analysis**: Processes Excel-based fee schedules using AWS Bedrock AI
 - **Cost Calculation**: Determines claim costs and approval status based on official fee schedules
-- **AI-Powered Analysis**: Uses Claude 3.5 Sonnet for intelligent document analysis and decision making
+- **AI-Powered Analysis**: Uses Claude Sonnet 4.5 for intelligent document analysis and decision making
 
 ## Prerequisites
 
@@ -114,7 +114,7 @@ logging.basicConfig(
 ```
 
 ### AI Model Configuration
-The script uses Claude 3.5 Sonnet by default. To change the model:
+The script uses Claude Sonnet 4.5 by default. To change the model:
 ```python
 agent = Agent(
     tools=[...],
