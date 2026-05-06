@@ -1,0 +1,380 @@
+/* Cloudscape handles component styling. Custom overrides for chat content. */
+
+body { margin: 0; padding: 0; }
+
+/* ===== LIGHT MODE (default) ===== */
+
+[class*="chat-bubble"] p {
+  margin: 0.3em 0;
+  line-height: 1.5;
+}
+
+[class*="chat-bubble"] h3 {
+  margin: 0.8em 0 0.3em 0;
+  font-size: 1em;
+  font-weight: 600;
+  border-bottom: 1px solid #d5dbdb;
+  padding-bottom: 4px;
+}
+
+[class*="chat-bubble"] h4 {
+  margin: 0.5em 0 0.2em 0;
+  font-size: 0.95em;
+  font-weight: 600;
+}
+
+[class*="chat-bubble"] table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.5em 0;
+  font-size: 0.85em;
+}
+
+[class*="chat-bubble"] th {
+  background: #f2f3f3;
+  font-weight: 600;
+  text-align: left;
+  padding: 8px 12px;
+  border: 1px solid #d5dbdb;
+  white-space: nowrap;
+}
+
+[class*="chat-bubble"] td {
+  padding: 6px 12px;
+  border: 1px solid #d5dbdb;
+  vertical-align: top;
+}
+
+[class*="chat-bubble"] tr:nth-child(even) {
+  background: #fafafa;
+}
+
+[class*="chat-bubble"] ul,
+[class*="chat-bubble"] ol {
+  margin: 0.3em 0;
+  padding-left: 1.5em;
+}
+
+[class*="chat-bubble"] li {
+  margin: 0.2em 0;
+  line-height: 1.4;
+}
+
+[class*="chat-bubble"] code {
+  background: #f2f3f3;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.88em;
+  font-family: 'Monaco', 'Menlo', monospace;
+}
+
+[class*="chat-bubble"] pre {
+  background: #1b2a3e;
+  color: #d5dbdb;
+  padding: 12px 16px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 0.5em 0;
+  font-size: 0.85em;
+}
+
+[class*="chat-bubble"] pre code {
+  background: none;
+  padding: 0;
+  color: inherit;
+}
+
+[class*="chat-bubble"] blockquote {
+  border-left: 3px solid #0972d3;
+  margin: 0.5em 0;
+  padding: 4px 12px;
+  color: #414d5c;
+}
+
+[class*="chat-bubble"] hr {
+  border: none;
+  border-top: 1px solid #d5dbdb;
+  margin: 0.5em 0;
+}
+
+/* ===== DARK MODE ===== */
+/* Cloudscape applies .awsui-dark to body or uses [data-theme="dark"] */
+
+.awsui-dark [class*="chat-bubble"] h3,
+body.awsui-dark [class*="chat-bubble"] h3 {
+  border-bottom-color: #414d5c;
+  color: #e9ebed;
+}
+
+.awsui-dark [class*="chat-bubble"] th,
+body.awsui-dark [class*="chat-bubble"] th {
+  background: #192534;
+  border-color: #354150;
+  color: #e9ebed;
+}
+
+.awsui-dark [class*="chat-bubble"] td,
+body.awsui-dark [class*="chat-bubble"] td {
+  border-color: #354150;
+  color: #d1d5db;
+  background: transparent;
+}
+
+.awsui-dark [class*="chat-bubble"] tr:nth-child(even),
+body.awsui-dark [class*="chat-bubble"] tr:nth-child(even) {
+  background: #192534;
+}
+
+.awsui-dark [class*="chat-bubble"] tr:nth-child(odd),
+body.awsui-dark [class*="chat-bubble"] tr:nth-child(odd) {
+  background: #0f1b2a;
+}
+
+.awsui-dark [class*="chat-bubble"] code,
+body.awsui-dark [class*="chat-bubble"] code {
+  background: #192534;
+  color: #e9ebed;
+}
+
+.awsui-dark [class*="chat-bubble"] pre,
+body.awsui-dark [class*="chat-bubble"] pre {
+  background: #0a1929;
+  color: #e9ebed;
+  border: 1px solid #354150;
+}
+
+.awsui-dark [class*="chat-bubble"] blockquote,
+body.awsui-dark [class*="chat-bubble"] blockquote {
+  border-left-color: #539fe5;
+  color: #b6bec9;
+}
+
+.awsui-dark [class*="chat-bubble"] hr,
+body.awsui-dark [class*="chat-bubble"] hr {
+  border-top-color: #354150;
+}
+
+.awsui-dark [class*="chat-bubble"] p,
+body.awsui-dark [class*="chat-bubble"] p,
+.awsui-dark [class*="chat-bubble"] li,
+body.awsui-dark [class*="chat-bubble"] li {
+  color: #d1d5db;
+}
+
+.awsui-dark [class*="chat-bubble"] strong,
+body.awsui-dark [class*="chat-bubble"] strong {
+  color: #e9ebed;
+}
+
+/* ===== WORKFLOW TRACE VISUALIZATION ===== */
+
+.workflow-trace {
+  margin: 8px 0;
+}
+
+.trace-timeline {
+  position: relative;
+  padding-left: 0;
+}
+
+.trace-step {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 4px;
+  transition: opacity 0.3s ease;
+}
+
+.trace-step.pending {
+  opacity: 0.5;
+}
+
+.trace-step.in_progress {
+  opacity: 1;
+}
+
+.trace-step.completed {
+  opacity: 1;
+}
+
+.trace-step.just-completed {
+  animation: stepComplete 0.6s ease;
+}
+
+@keyframes stepComplete {
+  0% { background: rgba(9, 114, 211, 0.08); }
+  100% { background: transparent; }
+}
+
+/* Timeline connector */
+.trace-connector {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 20px;
+  flex-shrink: 0;
+  padding-top: 6px;
+}
+
+.trace-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid #5f6b7a;
+  background: #ffffff;
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+.trace-dot.in_progress {
+  animation: pulse 1.5s ease-in-out infinite;
+  background: #0972d3;
+  border-color: #0972d3;
+}
+
+.trace-dot.completed {
+  background: #037f0c;
+  border-color: #037f0c;
+}
+
+.trace-dot.failed {
+  background: #d91515;
+  border-color: #d91515;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.3); opacity: 0.7; }
+}
+
+.trace-line {
+  width: 2px;
+  flex-grow: 1;
+  min-height: 20px;
+  background: #d5dbdb;
+}
+
+/* Step content */
+.trace-content {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #d5dbdb;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  background: #fafafa;
+}
+
+.trace-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.trace-step-num {
+  font-weight: 600;
+  font-size: 0.85em;
+  color: #5f6b7a;
+}
+
+.trace-agent {
+  font-weight: 600;
+  font-size: 0.9em;
+}
+
+.trace-duration {
+  margin-left: auto;
+  font-size: 0.8em;
+  color: #5f6b7a;
+  font-family: 'Monaco', 'Menlo', monospace;
+}
+
+.trace-description {
+  margin-top: 4px;
+  font-size: 0.85em;
+  color: #414d5c;
+}
+
+/* Summary table */
+.trace-summary-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85em;
+  margin-top: 8px;
+}
+
+.trace-summary-table th {
+  background: #f2f3f3;
+  padding: 6px 12px;
+  border: 1px solid #d5dbdb;
+  text-align: left;
+  font-weight: 600;
+}
+
+.trace-summary-table td {
+  padding: 6px 12px;
+  border: 1px solid #d5dbdb;
+}
+
+.trace-total-row {
+  font-weight: 600;
+  background: #f2f3f3;
+}
+
+/* ===== DARK MODE — TRACE ===== */
+
+.awsui-dark .trace-content,
+body.awsui-dark .trace-content {
+  background: #192534;
+  border-color: #354150;
+}
+
+.awsui-dark .trace-dot,
+body.awsui-dark .trace-dot {
+  background: #0f1b2a;
+  border-color: #5f6b7a;
+}
+
+.awsui-dark .trace-line,
+body.awsui-dark .trace-line {
+  background: #354150;
+}
+
+.awsui-dark .trace-description,
+body.awsui-dark .trace-description {
+  color: #b6bec9;
+}
+
+.awsui-dark .trace-step-num,
+body.awsui-dark .trace-step-num,
+.awsui-dark .trace-duration,
+body.awsui-dark .trace-duration {
+  color: #8d99a8;
+}
+
+.awsui-dark .trace-summary-table th,
+body.awsui-dark .trace-summary-table th {
+  background: #192534;
+  border-color: #354150;
+  color: #e9ebed;
+}
+
+.awsui-dark .trace-summary-table td,
+body.awsui-dark .trace-summary-table td {
+  border-color: #354150;
+  color: #d1d5db;
+}
+
+.awsui-dark .trace-total-row,
+body.awsui-dark .trace-total-row {
+  background: #192534;
+}
+
+.awsui-dark .trace-step.just-completed,
+body.awsui-dark .trace-step.just-completed {
+  animation: stepCompleteDark 0.6s ease;
+}
+
+@keyframes stepCompleteDark {
+  0% { background: rgba(9, 114, 211, 0.15); }
+  100% { background: transparent; }
+}
