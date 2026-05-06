@@ -102,7 +102,7 @@ AWS_PROFILE=your-profile pytest tests/ -v
 
 | Agent | ARN |
 |-------|-----|
-| clinical_prior_auth | `arn:aws:bedrock-agentcore:us-east-1:864228002124:runtime/clinical_prior_auth-0I0JTA3PT0` |
-| enrollment_pulse | `arn:aws:bedrock-agentcore:us-east-1:864228002124:runtime/enrollment_pulse-6YHCrd3h6H` |
-| clinical_pvq | `arn:aws:bedrock-agentcore:us-east-1:864228002124:runtime/clinical_pvq-F5sm875N80` |
-| medical_device_agent | `arn:aws:bedrock-agentcore:us-east-1:864228002124:runtime/medical_device_agent-YiCRKk2g4F` |
+| clinical_prior_auth | `arn:aws:bedrock-agentcore:us-east-1:<ACCOUNT_ID>:runtime/clinical_prior_auth-0I0JTA3PT0` |
+| enrollment_pulse | `arn:aws:bedrock-agentcore:us-east-1:<ACCOUNT_ID>:runtime/enrollment_pulse-6YHCrd3h6H` |
+| clinical_pvq | `arn:aws:bedrock-agentcore:us-east-1:<ACCOUNT_ID>:runtime/clinical_pvq-F5sm875N80` |
+| medical_device_agent | `arn:aws:bedrock-agentcore:us-east-1:<ACCOUNT_ID>:runtime/medical_device_agent-YiCRKk2g4F` |
