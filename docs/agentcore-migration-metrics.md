@@ -1,108 +1,167 @@
-# AgentCore Migration — Process & Metrics
+# AgentCore Migration — Process, Metrics & Reproducible Pattern
 
-## Overview
+## Executive Summary
 
-Migration of HCLS agents from standalone Strands SDK / CFN Bedrock Agents to the standardized AgentCore runtime pattern, performed using **Kiro CLI** as the AI development agent.
+**4 agents migrated to AgentCore** in a single session using Kiro CLI, averaging **~29 minutes per agent** from branch creation to deployed + tested on AgentCore runtime. Each agent includes a standardized test framework with 15-16 automated tests covering unit, integration, and end-to-end system scenarios.
 
-## Phase 1 Results
+## Key Metrics
 
-| Agent | Time (min) | Tools | Tests | Deploy Verified |
-|-------|-----------|-------|-------|-----------------|
-| 29 - Clinical Prior Auth | ~45 | 5 | 7 | ✅ |
-| 27 - Enrollment Pulse | ~30 | 40+ | 7 | ✅ |
-| 30 - Clinical PreVisit Questionnaire | ~25 | 12 | 6 | ✅ |
-| 26 - Medical Device | ~15 | 4 | 5 | ✅ |
+| Metric | Value |
+|--------|-------|
+| Agents migrated | 4 |
+| Average time per agent | ~29 min |
+| Total automated tests | 63 |
+| Test levels | 3 (unit, integration, system) |
+| System test scenarios | 12 (3 per agent) |
+| Linting tools | 2 (ruff, bandit) |
+| Models validated | 2 (Claude Sonnet 4.5, Claude Haiku 4.5) |
+| UI verification | Streamlit (auto-discovers all agents) |
 
-**Average: ~29 min per agent** (including deploy + live verification)
+## Per-Agent Breakdown
 
-Note: Agent 29 took longest as the first migration — established the pattern, discovered container packaging issues, and identified that Amazon Titan Text Express is EOL. Subsequent agents were faster as the pattern was reused.
+| Agent | Time | Tools | Unit Tests | Integration | System (E2E) | Total |
+|-------|------|-------|-----------|-------------|--------------|-------|
+| 29 - Clinical Prior Auth | ~45 min* | 5 | 10 | 3 | 3 | 16 |
+| 27 - Enrollment Pulse | ~30 min | 40+ | 12 | 1 | 3 | 16 |
+| 30 - Clinical PreVisit | ~25 min | 12 | 10 | 2 | 3 | 15 |
+| 26 - Medical Device | ~15 min | 4 | 11 | 2 | 3 | 16 |
 
-## Template Used
+*Agent 29 took longest as the first migration — established the pattern, discovered container packaging issues, and identified EOL models.
 
-**agentcore_template** (Template 1) — [source](../../agentcore_template)
+## Requirements Provided to Kiro
 
-Reference implementation: [Agent 28 - Research Agent](../../agents_catalog/28-Research-agent-biomni-gateway-tools)
+### Input
+1. **GitHub Issue #248** — Epic describing the migration scope and phases
+2. **Template reference** — `agentcore_template/` (Template 1) and Agent 28 as canonical pattern
+3. **Acceptance criteria**:
+   - Agent runs on AgentCore runtime with Strands SDK
+   - Passes linting: ruff, bandit (security)
+   - Deployed and tested in AWS account with live invocations
+   - README updated with deployment instructions
+   - All tests automated (no manual steps)
+   - System tests based on scenarios from agent documentation
 
-### Standardized Structure
+### No custom steering files or MCP servers were needed
+Kiro used its built-in AWS MCP servers (documentation, CloudWatch, ECS) plus standard tools (file read/write, shell, grep, AWS CLI, GitHub CLI).
+
+## Standardized Template Pattern
+
+Based on `agentcore_template/` (Template 1) — reference: Agent 28.
 
 ```
 agentcore/
 ├── main.py                          # BedrockAgentCoreApp entrypoint
 ├── agent/
 │   ├── agent_config/
-│   │   ├── agent.py                 # Agent task, model config, system prompt
-│   │   └── tools/                   # @tool decorated functions
-│   ├── data/ or resources/          # Data files (if needed)
-│   └── ...
+│   │   ├── agent.py                 # Agent task, model config, system prompt, tools
+│   │   └── tools/                   # @tool decorated functions (if separate)
+│   ├── data/ or resources/          # Data files (CSVs, JSON configs)
+│   └── analysis/                    # Analysis modules (if needed)
 ├── tests/
-│   └── test_agent.py               # Automated pytest suite
-└── pyproject.toml
+│   ├── test_agent.py               # Unit + integration tests
+│   └── test_system.py              # End-to-end system tests
+├── pyproject.toml
+└── pytest.ini
 ```
 
-## Requirements Provided to Kiro
+## Test Framework (Common Across All Agents)
 
-1. **Issue #248** (Epic) — Migrate all agents to AgentCore runtime
-2. **Template reference** — `agentcore_template/` and Agent 28 as canonical patterns
-3. **Acceptance criteria per agent:**
-   - Agent runs on AgentCore runtime with Strands SDK
-   - Passes linting: ruff, bandit (security)
-   - Deployed and tested in AWS account with live invocations
-   - README updated with deployment instructions
-   - All tests automated (no manual steps)
-
-## Test Framework
-
-All tests are fully automated via `pytest`. No manual intervention required.
+### Three automated test levels
 
 ```bash
-# Run all unit tests (no AWS needed)
-pytest tests/ -m "not integration"
+# Unit tests — no AWS needed, tests data loading, tool outputs, model config
+pytest tests/ -m "not integration and not system"
 
-# Run integration tests (requires AWS credentials + Bedrock access)
-AWS_PROFILE=your-profile pytest tests/ -m "integration"
+# Integration tests — validates live Bedrock model access
+AWS_PROFILE=your-profile pytest tests/ -m integration
 
-# Run everything
+# System tests — end-to-end against deployed AgentCore agent
+AWS_PROFILE=your-profile pytest tests/ -m system
+
+# Everything
 AWS_PROFILE=your-profile pytest tests/ -v
 ```
 
-### Test Categories
+### System test pattern (reusable for any agent)
 
-| Category | What it tests | AWS Required |
-|----------|--------------|--------------|
-| Data/Model loading | CSV processors, data models initialize correctly | No |
-| Tool execution | Tools return expected output format with test data | No |
-| Model config | Model IDs are current (not deprecated) | No |
-| Live invocation | Agent responds via Bedrock API | Yes |
-| AgentCore deploy | Full end-to-end on AgentCore runtime | Yes (manual) |
+```python
+@pytest.mark.system
+def test_scenario_from_docs():
+    """Scenario described in agent README/docs."""
+    response = _invoke_agent("user query from documentation")
+    assert any(expected_term in response for expected_term in ["term1", "term2"])
+```
 
-### Linting & Security
+System tests invoke the deployed agent via `invoke_agent_runtime` API and assert responses contain expected content using flexible matching (accounts for LLM non-determinism).
 
-| Tool | Purpose | Automated |
-|------|---------|-----------|
-| ruff | Python linting (style, unused imports, errors) | ✅ `ruff check .` |
-| bandit | Security scanning (hardcoded secrets, injection, etc.) | ✅ `bandit -r agent/` |
-| cfn-lint | CloudFormation template validation | ✅ (if CFN present) |
+### Linting & Security (every agent)
 
-## Key Findings During Migration
+| Tool | Purpose | Command |
+|------|---------|---------|
+| ruff | Python linting | `ruff check .` |
+| bandit | Security scanning | `bandit -r agent/` |
 
-1. **Amazon Titan Text Express is EOL** — Replaced with Claude Haiku 4.5 for cost-sensitive tasks
-2. **Container data packaging** — Data files must be co-located with Python modules (not at project root) for AgentCore container builds
-3. **ECR configuration** — Must use full URI (`<account>.dkr.ecr.<region>.amazonaws.com/<repo>`) in `agentcore configure`
+### UI Verification
+
+The `agentcore_template/app.py` Streamlit app auto-discovers all deployed AgentCore agents in the account. Manual smoke test confirms each agent responds correctly through the chat interface.
+
+## Reproducible Process (for other team members)
+
+### Step 1: Read existing agent code
+- Understand tools, data dependencies, model usage
+
+### Step 2: Create branch + agentcore/ directory
+- Follow the template structure above
+
+### Step 3: Port code
+- Copy tools/data into `agent/agent_config/`
+- Replace `sys.path` hacks with absolute imports
+- Update model IDs to current versions
+- Co-locate data files with modules (for container packaging)
+
+### Step 4: Write tests
+- Unit: test data loading, tool outputs, model config
+- Integration: test model responds
+- System: test scenarios from agent docs against deployed agent
+
+### Step 5: Lint
+- `ruff check --fix .`
+- `bandit -r agent/`
+
+### Step 6: Deploy + verify
+```bash
+aws ecr create-repository --repository-name <agent_name> --region us-east-1
+agentcore configure --entrypoint main.py --name <agent_name> \
+  --ecr <ACCOUNT>.dkr.ecr.us-east-1.amazonaws.com/<agent_name> \
+  --execution-role <ROLE_ARN> --disable-memory --disable-otel
+agentcore deploy
+agentcore invoke '{"prompt": "test query"}'
+```
+
+### Step 7: UI smoke test
+```bash
+cd agentcore_template
+streamlit run app.py  # Select agent from dropdown, send test message
+```
+
+## Key Findings
+
+1. **Amazon Titan Text Express is EOL** — replaced with Claude Haiku 4.5
+2. **Container data packaging** — data files must be co-located with Python modules for AgentCore container builds
+3. **ECR configuration** — must use full URI in `agentcore configure`
 4. **Model compatibility** — Claude Sonnet 4.5 does not allow `temperature` + `top_p` simultaneously
-5. **Import patterns** — Replace `sys.path.append` hacks with absolute imports when code is on sys.path
+5. **Import patterns** — replace `sys.path.append` hacks with absolute imports
+6. **Auth mismatch** — agents deployed with IAM auth work with Streamlit; FAST frontend requires OAuth (separate config)
 
-## Kiro CLI Usage
+## Tools Used
 
-- **MCP Servers**: AWS documentation, CloudWatch, ECS (built-in)
-- **Steering files**: None custom — used existing repo templates as reference
-- **Key capabilities used**: File read/write, shell execution, grep/glob search, AWS CLI, GitHub CLI (`gh`)
-- **Workflow**: Read existing code → understand pattern → create AgentCore structure → port tools → fix imports → write tests → lint → deploy → verify
-
-## Deployed Agents (Sandbox)
-
-| Agent | ARN |
-|-------|-----|
-| clinical_prior_auth | `arn:aws:bedrock-agentcore:us-east-1:<ACCOUNT_ID>:runtime/clinical_prior_auth-0I0JTA3PT0` |
-| enrollment_pulse | `arn:aws:bedrock-agentcore:us-east-1:<ACCOUNT_ID>:runtime/enrollment_pulse-6YHCrd3h6H` |
-| clinical_pvq | `arn:aws:bedrock-agentcore:us-east-1:<ACCOUNT_ID>:runtime/clinical_pvq-F5sm875N80` |
-| medical_device_agent | `arn:aws:bedrock-agentcore:us-east-1:<ACCOUNT_ID>:runtime/medical_device_agent-YiCRKk2g4F` |
+| Tool | Purpose |
+|------|---------|
+| Kiro CLI | AI development agent (code generation, testing, deployment) |
+| agentcore CLI | Agent configuration and deployment |
+| AWS CLI | ECR, IAM, Bedrock operations |
+| GitHub CLI (gh) | PR creation, issue management |
+| pytest | Automated test execution |
+| ruff | Python linting |
+| bandit | Security scanning |
+| Streamlit | UI verification |
