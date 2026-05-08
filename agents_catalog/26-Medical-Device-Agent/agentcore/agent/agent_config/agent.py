@@ -35,7 +35,6 @@ async def agent_task(user_message: str, session_id: str):
         tools=ALL_TOOLS,
     )
 
-    stream = agent.stream_async(user_message)
-    async for event in stream:
-        if "data" in event and isinstance(event["data"], str):
-            yield event["data"]
+    import json as _json
+    async for event in agent.stream_async(user_message):
+        yield _json.loads(_json.dumps(dict(event), default=str))
