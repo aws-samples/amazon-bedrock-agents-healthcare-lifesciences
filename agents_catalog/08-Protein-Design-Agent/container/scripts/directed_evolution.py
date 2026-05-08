@@ -35,11 +35,11 @@ def download_s3_folder(s3_uri, local_dir):
     logging.info(f"Downloading from bucket: {bucket_name}, prefix: {prefix} to {local_dir}")
     
     # Use AWS CLI for efficient recursive download
-    cmd = f"aws s3 cp --recursive s3://{bucket_name}/{prefix} {local_dir}"
-    logging.info(f"Running command: {cmd}")
+    cmd = ["aws", "s3", "cp", "--recursive", f"s3://{bucket_name}/{prefix}", local_dir]
+    logging.info(f"Running command: {' '.join(cmd)}")
     
     try:
-        subprocess.check_call(cmd, shell=True)
+        subprocess.check_call(cmd)  # nosec B603 - args are constructed from validated inputs
         logging.info(f"Successfully downloaded S3 folder to {local_dir}")
     except subprocess.CalledProcessError as e:
         logging.error(f"Failed to download S3 folder: {e}")
