@@ -15,5 +15,6 @@ async def agent_task(message: str, mode: str = "standard", session_id: str = "de
         from agent.agent_config.pvq_agent import PVQStrandsAgent
         agent_instance = PVQStrandsAgent()
 
-    response = agent_instance.chat(message)
-    yield response
+    import json as _json
+    async for event in agent_instance.agent.stream_async(message):
+        yield _json.loads(_json.dumps(dict(event), default=str))
