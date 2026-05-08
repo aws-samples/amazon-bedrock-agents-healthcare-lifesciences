@@ -8,7 +8,7 @@ _local = threading.local()
 
 def get_db_connection():
     if not hasattr(_local, 'connection'):
-        _local.connection = sqlite3.connect("medical_devices.db", check_same_thread=False)
+        _local.connection = sqlite3.connect("/tmp/medical_devices.db", check_same_thread=False)
         _local.connection.execute("PRAGMA journal_mode=WAL")
         _local.connection.execute("PRAGMA synchronous=NORMAL")
     return _local.connection
