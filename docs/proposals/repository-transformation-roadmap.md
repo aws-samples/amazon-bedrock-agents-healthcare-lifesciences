@@ -112,15 +112,52 @@ The `.mcp.json` references already-deployed or available MCP servers:
 }
 ```
 
-#### 5. Integration guide
+#### 5. Integration with AWS Agent Toolkit
+
+The [AWS Agent Toolkit](https://github.com/aws/agent-toolkit-for-aws) provides three plugins that complement the HCLS toolkit. Builders install both — AWS plugins for infrastructure best practices, HCLS plugin for domain knowledge.
+
+**AWS Agent Toolkit plugins and how they integrate with HCLS workflows:**
+
+| AWS Plugin | Capabilities | How HCLS builders use it |
+|------------|-------------|--------------------------|
+| **aws-agents** | 7 skills covering agent lifecycle: scaffolding, building, connecting tools, deploying, debugging, hardening, optimizing | Scaffold new HCLS agents, deploy to AgentCore, debug tool selection, add Cedar policies for PHI, run evaluations |
+| **aws-core** | 12 skills + MCP server for 300+ AWS services: CDK/CloudFormation, Lambda, S3, IAM, serverless, cost optimization | Manage agent infrastructure — deploy CloudFormation stacks, create Lambda action groups, configure IAM roles |
+| **aws-data-analytics** | 7 skills for data lake, ETL, vector storage: S3 Tables, Glue, Athena, Redshift connectors | For data-heavy agents — query biomarker databases, create Iceberg tables for genomics data, connect to external DBs |
+
+**The integration model:**
+
+```
+Builder's AI coding assistant
+├── AWS Agent Toolkit (installed)
+│   ├── aws-agents     → knows HOW to build/deploy/debug agents on AWS
+│   ├── aws-core       → knows HOW to manage AWS infrastructure
+│   └── aws-data-analytics → knows HOW to work with data services
+│
+├── HCLS Agents Toolkit (installed)
+│   ├── hcls-agents    → knows WHAT to build for healthcare/life sciences
+│   │   ├── Domain skills (genomics, clinical, biomarker, drug research)
+│   │   ├── HCLS MCP servers (HealthOmics, AgentCore docs, Strands docs)
+│   │   └── References to catalog agents as patterns
+│   └── (future: additional HCLS domain plugins)
+│
+└── Combined effect: assistant can scaffold an HCLS agent, add domain tools,
+    deploy to AgentCore, apply HIPAA guardrails, and run clinical evaluations
+    — all guided by both toolkits working together
+```
+
+**Example combined workflow:** A builder says "Create a variant interpretation agent with ClinVar access and deploy it." The `aws-agents` skills handle scaffolding and deployment. The HCLS skills provide the domain knowledge (how to structure genomics tools, which ontologies to use, what the clinical interpretation workflow looks like). The MCP servers from both toolkits give the assistant access to AWS docs and HCLS-specific documentation.
+
+The HCLS plugin does NOT duplicate what the AWS Agent Toolkit already provides — it layers domain-specific knowledge on top of the generic AWS agent development workflow.
+
+#### 6. Integration guide
 
 A README documenting:
-- How to install the HCLS plugin in Claude Code (`/plugin marketplace add ...`)
+- How to install both the AWS Agent Toolkit and HCLS plugin together
 - How to configure MCP servers in Co-work and Q Desktop
-- How the HCLS plugin complements the AWS Agent Toolkit
 - Which catalog agents are directly accessible as MCP endpoints
+- Workflow examples showing both plugins working together (e.g., "use aws-agents to deploy, hcls-agents to customize for genomics")
 
-#### 6. Maintain Kiro Power in parallel
+#### 7. Maintain Kiro Power in parallel
 
 Keep `powers/hcls-agentcore-builder/` as-is — update its content to stay in sync with the new skills.
 
@@ -130,9 +167,10 @@ Keep `powers/hcls-agentcore-builder/` as-is — update its content to stay in sy
 |------|----------|
 | Plugin manifests + structure | 1 day |
 | Extract 3-4 skills from existing content | 1 week |
-| MCP config + integration guide | 2-3 days |
+| AWS Agent Toolkit integration (config, guide, workflow examples) | 2-3 days |
+| HCLS MCP config + end-user platform guide | 2-3 days |
 | Testing across Claude Code + Kiro | 2-3 days |
-| **Total** | **~2 weeks** |
+| **Total** | **~2.5 weeks** |
 
 ### Dependencies on parallel migration
 
