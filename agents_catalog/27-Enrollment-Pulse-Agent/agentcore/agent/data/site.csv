@@ -1,0 +1,6 @@
+﻿id,name,site_number,site_name,institution,study,status,address_line_1,city,state_province,postal_code,country,greenlight_date,site_activated_date,screening_start_date,expected_enrollment_end_date,enrollment_target,enrollment_to_date,percent_enrolled
+a0C5f000000JtS9EAK,ONCO-2025-117-001,1,Memorial Sloan Cancer Center,Memorial Sloan Cancer Center,a0B5f000000XmGrEAK,Active,1275 York Avenue,New York,NY,10065,United States,9/25/2024,10/1/2024,10/3/2024,9/30/2025,30,28,93.33
+a0C5f000000JtSAEA0,ONCO-2025-117-002,2,Dana-Farber Cancer Institute,Dana-Farber Cancer Institute,a0B5f000000XmGrEAK,Active,450 Brookline Ave,Boston,MA,2215,United States,9/28/2024,10/5/2024,10/8/2024,9/30/2025,25,23,92
+a0C5f000000JtSBEA0,ONCO-2025-117-003,3,MD Anderson Cancer Center,MD Anderson Cancer Center,a0B5f000000XmGrEAK,Active,1515 Holcombe Blvd,Houston,TX,77030,United States,10/2/2024,10/12/2024,10/15/2024,9/30/2025,25,22,88
+a0C5f000000JtSCEA0,ONCO-2025-117-004,4,UCLA Jonsson Comprehensive Cancer Center,UCLA Medical Center,a0B5f000000XmGrEAK,Active,100 Medical Plaza Driveway,Los Angeles,CA,90095,United States,10/10/2024,10/20/2024,10/22/2024,9/30/2025,20,9,45
+a0C5f000000JtSDEA0,ONCO-2025-117-005,5,Mayo Clinic Cancer Center,Mayo Clinic,a0B5f000000XmGrEAK,Active,200 First St SW,Rochester,MN,55905,United States,10/15/2024,10/25/2024,10/27/2024,9/30/2025,20,7,35
