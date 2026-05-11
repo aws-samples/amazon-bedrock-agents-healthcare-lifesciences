@@ -8,14 +8,7 @@ The HCLS Agents Toolkit is a library of healthcare and life sciences domain capa
 
 ---
 
-## Why Now: Customer Signal
-
-Multiple customers are asking for industry-specific AI capabilities delivered through platforms they already use:
-
-- **Large pharma customer** is asking about packaging and presenting Q Desktop as a more unified "research studio" for their scientists
-- **Multiple customers** want to build "Claude for Bioinformaticians" — assistants for biology scientists who can process data at scale without writing code
-- **Across verticals**, customers are looking for an agents platform that supports custom agents, pre-defined agents, skills, MCP servers and tools, and workflows that combine them for multiple personas
-
+## Why Now: 
 The common ask: **domain-specific AI capabilities that non-technical users can access through natural language, without deploying infrastructure themselves.**
 
 The HCLS Agents Toolkit already has the domain capabilities (36+ agents). What's missing is the portable interface layer that makes them accessible to these consumption surfaces.
