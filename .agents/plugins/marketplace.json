@@ -1,0 +1,19 @@
+{
+  "name": "amazon-bedrock-agents-healthcare-lifesciences",
+  "interface": {
+    "displayName": "HCLS Agents Toolkit"
+  },
+  "plugins": [
+    {
+      "name": "hcls-agents",
+      "source": {
+        "source": "local",
+        "path": "./plugins/hcls-agents"
+      },
+      "policy": {
+        "installation": "AVAILABLE"
+      },
+      "category": "Healthcare"
+    }
+  ]
+}

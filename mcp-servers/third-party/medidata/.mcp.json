@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "medidata": {
+      "type": "http",
+      "url": "https://mcp.imedidata.com/mcp"
+    }
+  }
+}

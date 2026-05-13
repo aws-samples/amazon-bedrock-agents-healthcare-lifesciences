@@ -1,0 +1,5 @@
+{
+  "mcpServers": {
+    "10x-genomics": "https://github.com/10XGenomics/txg-mcp/releases/latest/download/txg-node.mcpb"
+  }
+}

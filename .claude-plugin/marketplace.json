@@ -1,0 +1,19 @@
+{
+  "name": "amazon-bedrock-agents-healthcare-lifesciences",
+  "owner": {
+    "name": "Amazon Web Services"
+  },
+  "metadata": {
+    "version": "1.0.0",
+    "description": "Healthcare and Life Sciences domain capabilities for AI coding assistants — skills, MCP tools, and production agent patterns for genomics, drug discovery, clinical trials, and more."
+  },
+  "plugins": [
+    {
+      "name": "hcls-agents",
+      "source": "./plugins/hcls-agents",
+      "description": "HCLS domain skills and MCP tools for building healthcare and life sciences agents on AWS",
+      "category": "healthcare",
+      "keywords": ["healthcare", "life-sciences", "genomics", "clinical", "drug-discovery", "bedrock", "agentcore"]
+    }
+  ]
+}

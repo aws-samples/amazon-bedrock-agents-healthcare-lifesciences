@@ -1,0 +1,11 @@
+{
+  "name": "hcls-agents",
+  "version": "1.0.0",
+  "description": "Healthcare and Life Sciences domain skills and MCP tools — genomics, drug discovery, clinical trials, biomarker analysis, medical terminology, and more. Use with the AWS Agent Toolkit for full agent build-and-deploy workflows.",
+  "author": {
+    "name": "Amazon Web Services",
+    "url": "https://github.com/aws-samples/amazon-bedrock-agents-healthcare-lifesciences"
+  },
+  "keywords": ["healthcare", "life-sciences", "genomics", "clinical-trials", "drug-discovery", "bedrock", "agentcore", "strands"],
+  "license": "MIT-0"
+}

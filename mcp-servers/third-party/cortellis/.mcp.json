@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "cortellis": {
+      "type": "http",
+      "url": "https://api.clarivate.com/lifesciences/mcp-regulatory/mcp"
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "wiley": {
+      "type": "http",
+      "url": "https://connector.scholargateway.ai/mcp"
+    }
+  }
+}

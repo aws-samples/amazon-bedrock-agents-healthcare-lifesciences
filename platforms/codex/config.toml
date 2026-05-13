@@ -1,0 +1,18 @@
+[mcp_servers.awsknowledge]
+type = "http"
+url = "https://knowledge-mcp.global.api.aws"
+
+[mcp_servers.agentcore-docs]
+command = "uvx"
+args = ["awslabs.amazon-bedrock-agentcore-mcp-server@latest"]
+
+[mcp_servers.strands-docs]
+command = "uvx"
+args = ["strands-agents-mcp-server"]
+
+[mcp_servers.aws-healthomics]
+command = "uvx"
+args = ["awslabs.aws-healthomics-mcp-server@latest"]
+
+[mcp_servers.aws-healthomics.env]
+HEALTHOMICS_DEFAULT_MAX_RESULTS = "100"
