@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "agentcore-docs": {
+      "command": "uvx",
+      "args": ["awslabs.amazon-bedrock-agentcore-mcp-server@latest"]
+    }
+  }
+}

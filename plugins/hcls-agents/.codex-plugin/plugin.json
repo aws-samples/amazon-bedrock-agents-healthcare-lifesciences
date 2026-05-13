@@ -1,0 +1,20 @@
+{
+  "name": "hcls-agents",
+  "version": "1.0.0",
+  "description": "Healthcare and Life Sciences domain skills and MCP tools for building agents on AWS",
+  "author": {
+    "name": "Amazon Web Services",
+    "url": "https://github.com/aws-samples/amazon-bedrock-agents-healthcare-lifesciences"
+  },
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "HCLS Agents",
+    "shortDescription": "Domain skills and MCP tools for healthcare and life sciences AI agents",
+    "longDescription": "Build healthcare and life sciences AI agents on AWS with domain-specific skills (genomics, drug discovery, clinical trials, biomarker analysis) and MCP tools (30+ biomedical databases, ontology lookup, literature search). Use alongside the AWS Agent Toolkit for infrastructure deployment.",
+    "developerName": "Amazon Web Services",
+    "category": "Healthcare",
+    "capabilities": ["Read", "Bash"],
+    "websiteURL": "https://github.com/aws-samples/amazon-bedrock-agents-healthcare-lifesciences"
+  }
+}

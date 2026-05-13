@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "owkin": {
+      "type": "http",
+      "url": "https://mcp.k.owkin.com/mcp"
+    }
+  }
+}
