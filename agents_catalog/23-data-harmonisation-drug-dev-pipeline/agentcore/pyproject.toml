@@ -1,0 +1,10 @@
+[project]
+name = "23-data-harmonisation-drug-dev-pipeline"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "bedrock-agentcore >= 1.0.3",
+    "boto3 >= 1.38.0",
+    "strands-agents >= 1.18.0",
+    "strands-agents-tools >= 0.2.16",
+]

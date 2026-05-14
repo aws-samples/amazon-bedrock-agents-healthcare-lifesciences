@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+dist/
+build/
+.bedrock_agentcore/
+.bedrock_agentcore.yaml
+.dockerignore
+/tmp/

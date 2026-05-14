@@ -9,3 +9,8 @@ node_modules
 __pycache__
 *-packaged.yaml
 tasks.md
+current_state.json
+current_state.json
+medical_devices.db
+medical_devices.db-shm
+medical_devices.db-wal

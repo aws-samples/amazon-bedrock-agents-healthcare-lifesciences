@@ -1,0 +1,6 @@
+﻿id,name,milestone_type,study,site,planned_date,actual_date,status,comments
+a0I5f000000VaB1EAK,ONCO-2025-117-FPFV,First Patient First Visit,a0B5f000000XmGrEAK,,10/15/2024,10/15/2024,Completed,Achieved on target
+a0I5f000000VaB2EAK,ONCO-2025-117-25P,25% Patients Enrolled,a0B5f000000XmGrEAK,,12/15/2024,12/20/2024,Completed,Slight delay of 5 days
+a0I5f000000VaB3EAK,ONCO-2025-117-50P,50% Patients Enrolled,a0B5f000000XmGrEAK,,2/15/2025,3/10/2025,Completed,Delayed by 23 days
+a0I5f000000VaB4EAK,ONCO-2025-117-75P,75% Patients Enrolled,a0B5f000000XmGrEAK,,5/15/2025,6/20/2025,Completed,Delayed by 36 days
+a0I5f000000VaB5EAK,ONCO-2025-117-LPFV,Last Patient First Visit,a0B5f000000XmGrEAK,,8/15/2025,,In Progress,Currently forecasting 2-week delay
