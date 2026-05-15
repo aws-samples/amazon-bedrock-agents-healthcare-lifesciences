@@ -150,8 +150,7 @@ def _tool_search(query: str, gateway_url: str, bearer_token: str, max_tools: int
         headers={
             "Authorization": f"Bearer {bearer_token}",
             "Content-Type": "application/json",
-        },
-    )
+        }, timeout=30)
     
     if response.status_code == 200:
         tool_resp = response.json()

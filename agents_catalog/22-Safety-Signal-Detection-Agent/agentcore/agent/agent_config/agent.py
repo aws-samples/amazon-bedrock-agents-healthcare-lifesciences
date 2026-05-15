@@ -4,7 +4,7 @@ import os
 import urllib.request
 import urllib.parse
 import urllib.error
-import xml.etree.ElementTree as ET
+from defusedxml import ElementTree as ET
 from collections import defaultdict
 from datetime import datetime, timedelta
 

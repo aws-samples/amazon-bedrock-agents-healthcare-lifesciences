@@ -2,22 +2,34 @@
 
 ## Executive Summary
 
-**4 agents migrated to AgentCore** in a single session using Kiro CLI, averaging **~29 minutes per agent** from branch creation to deployed + tested on AgentCore runtime. Each agent includes a standardized test framework with 15-16 automated tests covering unit, integration, and end-to-end system scenarios.
+**20 agents migrated to AgentCore** across two phases using Kiro CLI, totaling ~2.5 hours of wall-clock time. Phase 1 migrated 4 agents individually (~29 min/agent). Phase 2 mass-migrated 16 agents in parallel (42 min total). All agents include automated tests, deploy scripts, and pass security scans with 0 high/critical findings.
 
 ## Key Metrics
 
 | Metric | Value |
 |--------|-------|
-| Agents migrated | 4 |
-| Average time per agent | ~29 min |
-| Total automated tests | 63 |
-| Test levels | 3 (unit, integration, system) |
-| System test scenarios | 12 (3 per agent) |
-| Linting tools | 2 (ruff, bandit) |
+| Agents migrated | 20 (Phase 1: 4, Phase 2: 16) |
+| Total wall-clock time | ~2.5 hrs |
+| Automated tests | 230+ |
+| Security findings (High/Critical) | 0 |
+| Security fixes applied | 48 medium-severity issues remediated |
+| Deploy script | Added to all 20 agents |
+| Old v1 code removed | CFN templates + Lambda action-groups |
+| PRs consolidated | 4 individual → 1 combined (#275) |
 | Models validated | 2 (Claude Sonnet 4.5, Claude Haiku 4.5) |
 | UI verification | Streamlit (auto-discovers all agents) |
 
-## Per-Agent Breakdown
+## Phase 2 Mass Migration
+
+| Metric | Value |
+|--------|-------|
+| Agents migrated | 16 |
+| Code generation | 23 min (parallel Kiro subagents) |
+| Deployment | 19 min (batch script) |
+| Total | 42 minutes |
+| Unit tests | 170+ |
+
+## Phase 1 Per-Agent Breakdown
 
 | Agent | Time | Tools | Unit Tests | Integration | System (E2E) | Total |
 |-------|------|-------|-----------|-------------|--------------|-------|
@@ -165,3 +177,23 @@ streamlit run app.py  # Select agent from dropdown, send test message
 | ruff | Python linting |
 | bandit | Security scanning |
 | Streamlit | UI verification |
+
+## Post-Migration Hardening
+
+| Task | Time | Details |
+|------|------|---------|
+| Security remediation | ~20 min | Fixed 48 medium-severity issues (B113: request timeouts, B314: unsafe XML, B615: HuggingFace pinning, B608: SQL injection) |
+| PCSR scan + packaging | ~10 min | Bandit + cfn-lint + ruff, results zipped for security review |
+| Deploy script | ~15 min | Created `deploy.py` using `bedrock-agentcore-starter-toolkit`, added to all 20 agents |
+| Old v1 code removal | ~10 min | Removed CFN templates, Lambda action-groups, old deploy.sh from all migrated agents |
+| README updates | ~5 min | Added deploy instructions to agentcore/ READMEs, deprecation notice on old READMEs |
+| PR reviews (276, 279) | ~10 min | Reviewed positioning docs and framework scaffold |
+| **Total** | **~65 min** | |
+
+## Security Scan Results (Post-Remediation)
+
+| Tool | High/Critical | Medium | Notes |
+|------|--------------|--------|-------|
+| Bandit | 0 | 86 | Remaining: /tmp in Lambda (28), pickle for ML (23), urllib to known APIs (22), validated SQL (7), bind 0.0.0.0 in containers (6) |
+| Ruff (S-rules) | 0 | 0 | All deploy scripts pass; other findings are S101 (assert in tests) |
+| cfn-lint | 0 new | 67 pre-existing | E3006: cfn-lint doesn't recognize AWS::BedrockAgentCore::* types yet |

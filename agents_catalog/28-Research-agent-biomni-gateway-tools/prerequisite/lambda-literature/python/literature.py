@@ -38,7 +38,7 @@ def fetch_supplementary_info_from_doi(doi: str, output_dir: str = "supplementary
     # CrossRef API to resolve DOI to a publisher page
     crossref_url = f"https://doi.org/{doi}"
     headers = {"User-Agent": "Mozilla/5.0"}
-    response = requests.get(crossref_url, headers=headers)
+    response = requests.get(crossref_url, headers=headers, timeout=30)
 
     if response.status_code != 200:
         log_message = f"Failed to resolve DOI: {doi}. Status Code: {response.status_code}"
@@ -49,7 +49,7 @@ def fetch_supplementary_info_from_doi(doi: str, output_dir: str = "supplementary
     research_log.append(f"Resolved DOI to publisher page: {publisher_url}")
 
     # Fetch publisher page
-    response = requests.get(publisher_url, headers=headers)
+    response = requests.get(publisher_url, headers=headers, timeout=30)
     if response.status_code != 200:
         log_message = f"Failed to access publisher page for DOI {doi}."
         research_log.append(log_message)
@@ -81,7 +81,7 @@ def fetch_supplementary_info_from_doi(doi: str, output_dir: str = "supplementary
     downloaded_files = []
     for link in supplementary_links:
         file_name = os.path.join(output_dir, link.split("/")[-1])
-        file_response = requests.get(link, headers=headers)
+        file_response = requests.get(link, headers=headers, timeout=30)
         if file_response.status_code == 200:
             with open(file_name, "wb") as f:
                 f.write(file_response.content)
@@ -317,7 +317,7 @@ def extract_url_content(url: str) -> str:
         Text content of the webpage
 
     """
-    response = requests.get(url, headers={"User-Agent": "Mozilla/5.0"})
+    response = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=30)
 
     # Check if the response is in text format
     if "text/plain" in response.headers.get("Content-Type", "") or "application/json" in response.headers.get(

@@ -21,7 +21,7 @@ def search_clinical_trials(condition: str, max_results: int = 5) -> str:
             "format": "json"
         }
         
-        response = requests.get(url, params=params)
+        response = requests.get(url, params=params, timeout=30)
         response.raise_for_status()
         data = response.json()
         

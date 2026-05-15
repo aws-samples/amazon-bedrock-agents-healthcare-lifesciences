@@ -11,3 +11,10 @@ agentcore configure --entrypoint main.py --name medical_device_agent \
 agentcore deploy
 agentcore invoke '{"prompt": "List all medical devices and their status"}'
 ```
+
+## Deploy (alternative)
+
+```bash
+pip install bedrock-agentcore-starter-toolkit click
+python deploy.py
+```

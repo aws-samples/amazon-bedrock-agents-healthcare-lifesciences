@@ -98,6 +98,10 @@ def _parse_args():
     parser.add_argument('--verbose', 
                         action='store_true', 
                         help='Enable verbose output')
+    parser.add_argument('--model_revision',
+                        default='main',
+                        type=str,
+                        help='Model revision/commit hash for HuggingFace downloads (default: main)')
     return parser.parse_known_args()
 
 
@@ -135,8 +139,8 @@ def get_expert_list(args):
         logging.info(f"Loading ESM model from {args.esm_expert_name_or_path}")
         esm2_expert = evo_prot_grad.get_expert(
             'esm',
-            model=EsmForMaskedLM.from_pretrained(args.esm_expert_name_or_path, trust_remote_code=True),
-            tokenizer=AutoTokenizer.from_pretrained(args.esm_expert_name_or_path, trust_remote_code=True),
+            model=EsmForMaskedLM.from_pretrained(args.esm_expert_name_or_path, trust_remote_code=True, revision=args.model_revision),
+            tokenizer=AutoTokenizer.from_pretrained(args.esm_expert_name_or_path, trust_remote_code=True, revision=args.model_revision),
             scoring_strategy = 'mutant_marginal',
             temperature=1.0,
             device=device
@@ -148,7 +152,7 @@ def get_expert_list(args):
             'bert',
             scoring_strategy='pseudolikelihood_ratio', 
             temperature=1.0,
-            model=AutoModel.from_pretrained(args.bert_expert_name_or_path, trust_remote_code=True),
+            model=AutoModel.from_pretrained(args.bert_expert_name_or_path, trust_remote_code=True, revision=args.model_revision),
             device=device
         )
         expert_list.append(bert_expert)
@@ -159,7 +163,7 @@ def get_expert_list(args):
             'onehot_downstream_regression',
             scoring_strategy='attribute_value',
             temperature=1.0,
-            model=AutoModel.from_pretrained(args.scorer_expert_name_or_path, trust_remote_code=True),
+            model=AutoModel.from_pretrained(args.scorer_expert_name_or_path, trust_remote_code=True, revision=args.model_revision),
             device=device
         )
         expert_list.append(scorer_expert)

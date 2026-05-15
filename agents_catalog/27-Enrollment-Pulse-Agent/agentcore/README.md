@@ -26,3 +26,10 @@ agentcore configure --entrypoint main.py --name enrollment_pulse \
 agentcore deploy
 agentcore invoke '{"prompt": "What is the current enrollment status by site?"}'
 ```
+
+## Deploy (alternative)
+
+```bash
+pip install bedrock-agentcore-starter-toolkit click
+python deploy.py
+```

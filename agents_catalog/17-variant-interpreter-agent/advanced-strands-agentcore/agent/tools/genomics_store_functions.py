@@ -840,7 +840,7 @@ def analyze_allele_frequencies_function(sample_ids=None, frequency_threshold=0.0
     try:
         sample_filter = ""
         if sample_ids:
-            samples = [s.strip() for s in sample_ids if s.strip()]
+            samples = [validate_sql_input(s.strip()) for s in sample_ids if s.strip()]
             if samples:
                 sample_list = "', '".join(samples)
                 sample_filter = f"AND v.sampleid IN ('{sample_list}')"

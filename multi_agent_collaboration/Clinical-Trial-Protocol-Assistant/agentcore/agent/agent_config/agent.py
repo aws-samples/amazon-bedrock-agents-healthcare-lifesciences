@@ -248,7 +248,7 @@ def search_trials(
         if key in QUERY_MAP and value:
             params[QUERY_MAP[key]] = value.strip()
 
-    res = requests.get(base_url, params=params)
+    res = requests.get(base_url, params=params, timeout=30)
     if res.status_code != 200:
         return json.dumps({"error": f"API call failed: {res.status_code} - {res.text}"})
 
@@ -278,7 +278,7 @@ def get_trial_details(nctId: str) -> str:
             "OutcomesModule",
         ]),
     }
-    res = requests.get(url, params=params)
+    res = requests.get(url, params=params, timeout=30)
     if res.status_code != 200:
         return json.dumps({"error": f"Study details API failed: {res.status_code}"})
     return json.dumps(res.json(), separators=(",", ":"))
@@ -304,7 +304,7 @@ def get_approved_drugs(condition: str, route: str = None) -> str:
         search_terms.append(f"route:{val}")
 
     params = {"search": "+AND+".join(search_terms), "limit": 100}
-    res = requests.get(OPEN_FDA_URL, params=params)
+    res = requests.get(OPEN_FDA_URL, params=params, timeout=30)
     if res.status_code != 200:
         return json.dumps({"error": f"OpenFDA API failed: {res.status_code} - {res.text}"})
 

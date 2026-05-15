@@ -63,3 +63,10 @@ agentcore invoke '{"prompt": "Patient with knee pain requiring orthopedic consul
 agentcore destroy
 aws ecr delete-repository --repository-name clinical_prior_auth --force --region us-east-1
 ```
+
+## Deploy (alternative)
+
+```bash
+pip install bedrock-agentcore-starter-toolkit click
+python deploy.py
+```

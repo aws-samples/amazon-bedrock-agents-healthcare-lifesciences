@@ -167,9 +167,9 @@ def _query_rest_api(endpoint, method="GET", params=None, headers=None, json_data
     try:
         # Make the API request
         if method.upper() == "GET":
-            response = requests.get(endpoint, params=params, headers=headers)
+            response = requests.get(endpoint, params=params, headers=headers, timeout=30)
         elif method.upper() == "POST":
-            response = requests.post(endpoint, params=params, headers=headers, json=json_data)
+            response = requests.post(endpoint, params=params, headers=headers, json=json_data, timeout=30)
         else:
             return {"error": f"Unsupported HTTP method: {method}"}
         print('response text')
@@ -641,7 +641,7 @@ def query_alphafold(
 
     try:
         # Make the API request
-        response = requests.get(url)
+        response = requests.get(url, timeout=30)
         response.raise_for_status()
 
         # Parse the response as JSON
@@ -664,7 +664,7 @@ def query_alphafold(
             download_url = f"https://alphafold.ebi.ac.uk/files/{filename}"
 
             # Download the file
-            download_response = requests.get(download_url)
+            download_response = requests.get(download_url, timeout=30)
             if download_response.status_code == 200:
                 with open(file_path, "wb") as f:
                     f.write(download_response.content)
@@ -1003,7 +1003,7 @@ def query_pdb_identifiers(identifiers, return_type="entry", download=False, attr
                     data_url = f"https://data.rcsb.org/rest/v1/core/chem_comp/{identifier}"
 
                 # Fetch data
-                data_response = requests.get(data_url)
+                data_response = requests.get(data_url, timeout=30)
                 data_response.raise_for_status()
                 entity_data = data_response.json()
 
@@ -1042,7 +1042,7 @@ def query_pdb_identifiers(identifiers, return_type="entry", download=False, attr
                 try:
                     # Download PDB file
                     pdb_url = f"https://files.rcsb.org/download/{pdb_id}.pdb"
-                    pdb_response = requests.get(pdb_url)
+                    pdb_response = requests.get(pdb_url, timeout=30)
 
                     if pdb_response.status_code == 200:
                         # Create data directory if it doesn't exist
@@ -1176,7 +1176,7 @@ def query_stringdb(
         if download_image:
             # For images, we need to handle the download manually
             try:
-                response = requests.get(endpoint, stream=True)
+                response = requests.get(endpoint, stream=True, timeout=30)
                 response.raise_for_status()
 
                 # Create output directory if needed
@@ -1334,7 +1334,7 @@ def query_paleobiology(
     if is_image:
         # For image queries, we need special handling
         try:
-            response = requests.get(endpoint)
+            response = requests.get(endpoint, timeout=30)
             response.raise_for_status()
 
             # Return image metadata without the binary data
@@ -2937,7 +2937,7 @@ def query_reactome(
         if pathway_id and output_dir:
             diagram_url = f"{content_base_url}/data/pathway/{pathway_id}/diagram"
             try:
-                diagram_response = requests.get(diagram_url)
+                diagram_response = requests.get(diagram_url, timeout=30)
                 diagram_response.raise_for_status()
 
                 # Save diagram file
@@ -3276,7 +3276,7 @@ def region_to_ccre_screen(coord_chrom: str, coord_start: int, coord_end: int, as
         steps.append(str(data))
 
         # Make the request
-        response = requests.post(url, json=data)
+        response = requests.post(url, json=data, timeout=30)
 
         # Check if the response is successful
         if not response.ok:
@@ -3375,7 +3375,7 @@ def get_genes_near_ccre(accession: str, assembly: str, chromosome: str, k: int =
     data = {"accession": accession, "assembly": assembly, "coord_chrom": chromosome}
 
     steps_log += "Sending POST request to API with given data.\n"
-    response = requests.post(url, json=data)
+    response = requests.post(url, json=data, timeout=30)
 
     if not response.ok:
         steps_log += f"API request failed with response: {response.text}\n"

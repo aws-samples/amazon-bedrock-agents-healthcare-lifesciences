@@ -38,7 +38,7 @@ def test_query_endpoint():
     
     try:
         # Make the request
-        response = requests.post(url, headers=dict(request.headers), data=query_data)
+        response = requests.post(url, headers=dict(request.headers), data=query_data, timeout=30)
         
         print(f"Status Code: {response.status_code}")
         

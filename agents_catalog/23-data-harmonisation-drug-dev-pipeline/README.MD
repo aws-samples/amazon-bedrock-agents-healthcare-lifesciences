@@ -1,3 +1,5 @@
+> **⚠️ This agent has been migrated to AgentCore.** See [`agentcore/`](agentcore/) for the current deployment. The legacy CloudFormation instructions below are for reference only.
+
 # Data Harmonisation for Drug Development Pipeline
 
 This solution automatically collects, standardizes, and enriches drug development pipeline data from pharmaceutical companies. It uses an agentic approach to answer questions related to drug development pipelines.

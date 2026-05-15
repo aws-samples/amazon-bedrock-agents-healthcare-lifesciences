@@ -142,8 +142,7 @@ def main(agent_name: str, prompt: str):
             "redirect_uri": redirect_uri,
             "code_verifier": code_verifier,
         },
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
-    )
+        headers={"Content-Type": "application/x-www-form-urlencoded"}, timeout=30)
 
     if response.status_code != 200:
         print(f"❌ Failed to exchange code: {response.text}")
