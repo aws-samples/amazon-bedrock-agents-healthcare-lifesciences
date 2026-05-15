@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Settings - Label Compliance Lab</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='28' font-size='28'>💊</text></svg>">
+  <link rel="stylesheet" href="styles.css?v=6">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    <header class="header" role="banner">
+      <div class="header-content">
+        <div class="breadcrumb">
+          <a href="index.html" class="breadcrumb-link">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/>
+            </svg>
+            Dashboard
+          </a>
+          <span class="breadcrumb-separator">/</span>
+          <span class="breadcrumb-current">Settings</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="main-content" role="main">
+      <div class="settings-tabs">
+        <button class="settings-tab active" data-tab="profile" onclick="Settings.switchTab('profile')">Profile</button>
+        <button class="settings-tab" data-tab="documents" onclick="Settings.switchTab('documents')">Knowledge Base Documents</button>
+      </div>
+
+      <!-- Profile Tab -->
+      <div class="settings-panel" id="tab-profile">
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <div>
+              <h2>User Profile</h2>
+              <p>Manage your account information</p>
+            </div>
+          </div>
+          <form id="profileForm" onsubmit="Settings.saveProfile(event)">
+            <div class="settings-form-grid">
+              <div class="form-group">
+                <label for="settingsName">Full Name</label>
+                <input type="text" id="settingsName" placeholder="e.g., Jane Smith">
+              </div>
+              <div class="form-group">
+                <label for="settingsEmail">Email</label>
+                <input type="email" id="settingsEmail" placeholder="e.g., jane@pharma.com">
+              </div>
+              <div class="form-group">
+                <label for="settingsOrg">Organization</label>
+                <input type="text" id="settingsOrg" placeholder="e.g., Acme Pharmaceuticals">
+              </div>
+              <div class="form-group">
+                <label for="settingsRole">Role</label>
+                <select id="settingsRole">
+                  <option value="">Select role...</option>
+                  <option value="analyst">Regulatory Analyst</option>
+                  <option value="manager">Compliance Manager</option>
+                  <option value="reviewer">Quality Reviewer</option>
+                  <option value="admin">Administrator</option>
+                </select>
+              </div>
+            </div>
+            <div class="settings-form-actions">
+              <button type="submit" class="btn-primary">Save Changes</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Documents Tab -->
+      <div class="settings-panel" id="tab-documents" style="display:none;">
+        <div id="regulatoryDocsContainer"></div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Upload Document Modal -->
+  <div id="uploadDocModal" class="modal">
+    <div class="modal-overlay" onclick="Settings.closeUploadModal()"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Upload Document</h3>
+        <button class="modal-close" onclick="Settings.closeUploadModal()" aria-label="Close">
+          <svg width="24" height="24" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"/>
+          </svg>
+        </button>
+      </div>
+      <div style="margin-bottom:1rem;">
+        <div style="font-size:0.875rem;color:#475569;">Uploading to: <span id="uploadRegionLabel" style="font-weight:700;color:#1e293b;"></span></div>
+      </div>
+      <div class="upload-card" id="docUploadZone" style="padding:2rem;margin-bottom:1rem;">
+        <input type="file" id="docFileInput" accept=".pdf,.doc,.docx,.txt" hidden>
+        <div style="text-align:center;">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2" style="margin-bottom:0.75rem;">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="12" y1="18" x2="12" y2="12"/>
+            <line x1="9" y1="15" x2="15" y2="15"/>
+          </svg>
+          <div style="font-weight:600;color:#1e293b;margin-bottom:0.25rem;" id="docUploadLabel">Click to select a file</div>
+          <div style="font-size:0.8125rem;color:#94a3b8;">PDF, DOC, DOCX, or TXT</div>
+        </div>
+      </div>
+      <div id="docUploadProgress" style="display:none;margin-bottom:1rem;">
+        <div style="display:flex;align-items:center;gap:0.75rem;">
+          <div class="spinner-ring" style="width:20px;height:20px;border-width:2px;position:relative;"></div>
+          <span style="font-size:0.875rem;color:#475569;" id="docUploadStatus">Uploading...</span>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" onclick="Settings.closeUploadModal()">Cancel</button>
+        <button type="button" class="btn-primary" id="docUploadBtn" onclick="Settings.confirmUpload()" disabled>Upload</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="config.js?v=6"></script>
+  <script src="settings.js?v=6"></script>
+</body>
+</html>

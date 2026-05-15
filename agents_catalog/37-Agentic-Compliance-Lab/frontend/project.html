@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Project Analysis - Label Compliance Lab</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='28' font-size='28'>💊</text></svg>">
+  <link rel="stylesheet" href="styles.css?v=6">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="header" role="banner">
+      <div class="header-content">
+        <div class="breadcrumb">
+          <a href="index.html" class="breadcrumb-link">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/>
+            </svg>
+            Dashboard
+          </a>
+          <span class="breadcrumb-separator">/</span>
+          <span class="breadcrumb-current" id="projectTitle">Project</span>
+        </div>
+        <div class="project-badge" id="projectRegion">US FDA</div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content" role="main">
+      <!-- Regulatory Info Panel -->
+      <div id="regulatoryInfoPanel"></div>
+      <!-- Upload Section -->
+      <div id="uploadSection" class="upload-section">
+        <div class="upload-container">
+          <div class="upload-card" id="uploadZone">
+            <input type="file" id="fileInput" accept="image/*" hidden>
+            <div class="upload-icon-wrapper" aria-label="Upload medicine label image">
+              <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+              </svg>
+            </div>
+            <h3 id="uploadTitle">Upload Medicine Label</h3>
+            <p>Drag and drop your image here, or click to browse</p>
+            <div class="upload-info">
+              <span>Supported: JPG, PNG</span>
+              <span>•</span>
+              <span>Max: 10MB</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Confirmation Section -->
+      <div id="confirmationSection" class="confirmation-section">
+        <div class="confirmation-container">
+          <div class="confirmation-card">
+            <div class="confirmation-header">
+              <h3>Confirm Analysis</h3>
+              <p>Review your uploaded image before starting the compliance analysis</p>
+            </div>
+            
+            <div class="preview-wrapper">
+              <img id="previewImage" class="preview-image" alt="Preview">
+            </div>
+            
+            <div class="file-info">
+              <div class="info-item">
+                <span class="info-label">File name:</span>
+                <span class="info-value" id="fileName">-</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">File size:</span>
+                <span class="info-value" id="fileSize">-</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Dimensions:</span>
+                <span class="info-value" id="fileDimensions">-</span>
+              </div>
+            </div>
+            
+            <div class="confirmation-actions">
+              <button class="btn-abort" onclick="abortAnalysis()" aria-label="Cancel analysis">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"/>
+                </svg>
+                Cancel
+              </button>
+              <button class="btn-confirm" onclick="confirmAnalysis()" aria-label="Start compliance analysis">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/>
+                </svg>
+                Start Analysis
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Processing Section -->
+      <div id="processingSection" class="processing-section" aria-live="polite">
+        <div class="processing-container">
+          <div class="processing-header">
+            <div class="processing-spinner">
+              <div class="spinner-ring"></div>
+              <div class="spinner-ring"></div>
+              <div class="spinner-ring"></div>
+            </div>
+            <h3>Analyzing Label Compliance</h3>
+            <p>AI agents are processing your label...</p>
+          </div>
+
+          <div class="pipeline-tracker">
+            <div class="pipeline-step" id="step1">
+              <div class="step-marker">
+                <div class="step-pulse"></div>
+                <div class="step-number">1</div>
+              </div>
+              <div class="step-details">
+                <h4>Compliance Analysis</h4>
+                <p>Extracting text and checking FDA regulations</p>
+              </div>
+            </div>
+
+            <div class="pipeline-step" id="step2">
+              <div class="step-marker">
+                <div class="step-pulse"></div>
+                <div class="step-number">2</div>
+              </div>
+              <div class="step-details">
+                <h4>Visual Annotation</h4>
+                <p>Mapping violations to label regions</p>
+              </div>
+            </div>
+
+            <div class="pipeline-step" id="step3">
+              <div class="step-marker">
+                <div class="step-pulse"></div>
+                <div class="step-number">3</div>
+              </div>
+              <div class="step-details">
+                <h4>Validation</h4>
+                <p>Verifying annotation accuracy</p>
+              </div>
+            </div>
+
+            <div class="pipeline-step" id="step4">
+              <div class="step-marker">
+                <div class="step-pulse"></div>
+                <div class="step-number">4</div>
+              </div>
+              <div class="step-details">
+                <h4>Report Generation</h4>
+                <p>Formatting compliance report</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Results Section -->
+      <div id="resultsSection" class="results-section">
+        <!-- Compliance Score Banner -->
+        <div class="compliance-banner" id="complianceBanner">
+          <div class="banner-content">
+            <div class="banner-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </div>
+            <div class="banner-info">
+              <div class="banner-label">Overall Compliance Score</div>
+              <div class="banner-score" id="bannerScore">--</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Re-upload Button -->
+        <div class="reupload-section">
+          <button class="btn-reupload" onclick="showReupload()" aria-label="Re-upload medicine label">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+            </svg>
+            Re-upload Label
+          </button>
+        </div>
+
+        <!-- Evaluation History -->
+        <div class="evaluation-history" id="evaluationHistory"></div>
+
+        <!-- Compliance Checklist -->
+        <div id="complianceChecklist"></div>
+
+        <!-- Summary Cards -->
+        <div class="results-summary">
+          <div class="summary-card critical">
+            <div class="summary-icon">⚠️</div>
+            <div class="summary-data">
+              <div class="summary-value" id="criticalCount">0</div>
+              <div class="summary-label">Critical</div>
+            </div>
+          </div>
+          <div class="summary-card medium">
+            <div class="summary-icon">⚡</div>
+            <div class="summary-data">
+              <div class="summary-value" id="mediumCount">0</div>
+              <div class="summary-label">Medium</div>
+            </div>
+          </div>
+          <div class="summary-card low">
+            <div class="summary-icon">ℹ️</div>
+            <div class="summary-data">
+              <div class="summary-value" id="lowCount">0</div>
+              <div class="summary-label">Low</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Analysis Grid -->
+        <div class="analysis-grid">
+          <!-- Image Panel -->
+          <div class="analysis-panel image-panel">
+            <div class="panel-header">
+              <h3>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                  <circle cx="8.5" cy="8.5" r="1.5"/>
+                  <polyline points="21 15 16 10 5 21"/>
+                </svg>
+                Annotated Label
+              </h3>
+              <div class="panel-actions">
+                <button class="action-btn pdf-export-btn" onclick="exportPDF()" title="Export PDF" aria-label="Export PDF report">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                    <polyline points="10 9 9 9 8 9"/>
+                  </svg>
+                </button>
+                <button class="action-btn" onclick="downloadImage()" title="Download" aria-label="Download annotated image">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+                  </svg>
+                </button>
+                <button class="action-btn" onclick="toggleFullscreen()" title="Fullscreen" aria-label="Toggle fullscreen view">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div class="panel-content">
+              <div class="image-wrapper">
+                <img id="annotatedImage" class="annotated-image" alt="Annotated compliance label">
+              </div>
+            </div>
+          </div>
+
+          <!-- Violations Panel -->
+          <div class="analysis-panel violations-panel">
+            <div class="panel-header">
+              <h3>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                </svg>
+                Compliance Report
+              </h3>
+            </div>
+            <div class="panel-content">
+              <div class="violations-list" id="violationsList"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="config.js?v=6"></script>
+  <script src="db.js?v=6"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha512-qZvrmS2ekKPF2mSznTQsxqPgnpkI4DNTlrdUmIzVYI9KTnlQ4/YJfecI3GC7vtrX+GNnTijQThcJKHTkJrV/A==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="regulatory-info.js?v=6"></script>
+  <script src="checklist.js?v=6"></script>
+  <script src="pdf-export.js?v=6"></script>
+  <script src="comparison.js?v=6"></script>
+  <script src="project.js?v=6"></script>
+</body>
+</html>
