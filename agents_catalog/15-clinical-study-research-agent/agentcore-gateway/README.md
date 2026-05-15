@@ -21,35 +21,35 @@ Agent (Strands)  →  AgentCore Gateway  →  ClinicalTrials.gov MCP Server
 
 ```bash
 # 1. Initialize
-agentcore create --framework strands --name clinical-study-research
+npx @aws/agentcore create --framework strands --name clinical-study-research
 
 # 2. Add gateway
-agentcore add gateway --name ClinicalResearchGateway
+npx @aws/agentcore add gateway --name ClinicalResearchGateway
 
 # 3. Connect data sources as MCP server targets
-agentcore add gateway-target \
+npx @aws/agentcore add gateway-target \
   --type mcp-server \
   --name ClinicalTrials \
   --endpoint https://mcp.clinicaltrials.example.com/mcp \
   --gateway ClinicalResearchGateway
 
-agentcore add gateway-target \
+npx @aws/agentcore add gateway-target \
   --type mcp-server \
   --name PubMed \
   --endpoint https://mcp.pubmed.example.com/mcp \
   --gateway ClinicalResearchGateway
 
-agentcore add gateway-target \
+npx @aws/agentcore add gateway-target \
   --type mcp-server \
   --name OpenFDA \
   --endpoint https://mcp.openfda.example.com/mcp \
   --gateway ClinicalResearchGateway
 
 # 4. Deploy
-agentcore deploy -y
+npx @aws/agentcore deploy -y
 
 # 5. Test
-agentcore invoke '{"prompt": "Find active Phase 3 trials for NSCLC with pembrolizumab"}'
+npx @aws/agentcore invoke '{"prompt": "Find active Phase 3 trials for NSCLC with pembrolizumab"}'
 ```
 
 ## Adding a new data source
@@ -58,13 +58,13 @@ No code changes needed — just add another gateway target:
 
 ```bash
 # Example: add UniProt protein data
-agentcore add gateway-target \
+npx @aws/agentcore add gateway-target \
   --type mcp-server \
   --name UniProt \
   --endpoint https://mcp.uniprot.example.com/mcp \
   --gateway ClinicalResearchGateway
 
-agentcore deploy -y
+npx @aws/agentcore deploy -y
 ```
 
 The agent automatically discovers the new tools on next invocation.
@@ -101,7 +101,7 @@ forbid(
 | Aspect | `agentcore/` (local tools) | `agentcore-gateway/` (this) |
 |--------|---------------------------|----------------------------|
 | API keys | In env vars, agent code handles auth | Gateway manages credentials |
-| Adding a tool | Write Python function + redeploy | `agentcore add gateway-target` + redeploy |
+| Adding a tool | Write Python function + redeploy | `npx @aws/agentcore add gateway-target` + redeploy |
 | Access control | None (all tools always available) | Cedar policies per tool/user/role |
 | Tool discovery | Hardcoded in agent constructor | Dynamic via MCP protocol |
 | Code complexity | Higher (HTTP calls, error handling) | Minimal (just connect to gateway) |

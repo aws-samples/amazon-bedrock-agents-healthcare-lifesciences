@@ -19,30 +19,30 @@ Agent (Strands)  →  AgentCore Gateway  →  Tavily MCP Server (external)
 
 ```bash
 # 1. Initialize project
-agentcore create --framework strands --name tavily-web-search
+npx @aws/agentcore create --framework strands --name tavily-web-search
 
 # 2. Add a gateway
-agentcore add gateway --name TavilyGateway
+npx @aws/agentcore add gateway --name TavilyGateway
 
 # 3. Connect the Tavily MCP server as a gateway target
-agentcore add gateway-target \
+npx @aws/agentcore add gateway-target \
   --type mcp-server \
   --name TavilySearch \
   --endpoint https://mcp.tavily.com/mcp \
   --gateway TavilyGateway
 
 # 4. Deploy
-agentcore deploy -y
+npx @aws/agentcore deploy -y
 
 # 5. Test
-agentcore invoke '{"prompt": "What are the latest developments in mRNA therapeutics?"}'
+npx @aws/agentcore invoke '{"prompt": "What are the latest developments in mRNA therapeutics?"}'
 ```
 
 ## When to use this pattern
 
 - You want **tool access control** (Cedar policies can allow/deny specific tools per user)
 - You want **zero secrets in agent code** (credentials managed by Gateway's credential providers)
-- You want to **swap or add tools without code changes** (just `agentcore add gateway-target`)
+- You want to **swap or add tools without code changes** (just `npx @aws/agentcore add gateway-target`)
 - You're connecting to a **third-party MCP server** that already exists
 
 ## When to use the local `@tool` pattern instead
