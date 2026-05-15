@@ -203,6 +203,7 @@ streamlit run app.py  # Select agent from dropdown, send test message
 | pytest | Automated test execution |
 | ruff | Python linting |
 | bandit | Security scanning |
+| cfn-lint | CloudFormation template validation |
 | Streamlit | UI verification |
 
 ## Kiro CLI Setup & Workflow
