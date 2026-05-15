@@ -15,6 +15,6 @@ agentcore invoke '{"message": "I need to fill out my pre-visit form"}'
 ## Deploy (alternative)
 
 ```bash
-pip install bedrock-agentcore-starter-toolkit click
-python deploy.py
+npm install -g @aws/agentcore  # if not already installed
+python deploy.py              # or: agentcore deploy -y
 ```

@@ -30,6 +30,6 @@ agentcore invoke '{"prompt": "What is the current enrollment status by site?"}'
 ## Deploy (alternative)
 
 ```bash
-pip install bedrock-agentcore-starter-toolkit click
-python deploy.py
+npm install -g @aws/agentcore  # if not already installed
+python deploy.py              # or: agentcore deploy -y
 ```

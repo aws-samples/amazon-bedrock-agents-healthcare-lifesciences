@@ -67,6 +67,6 @@ aws ecr delete-repository --repository-name clinical_prior_auth --force --region
 ## Deploy (alternative)
 
 ```bash
-pip install bedrock-agentcore-starter-toolkit click
-python deploy.py
+npm install -g @aws/agentcore  # if not already installed
+python deploy.py              # or: agentcore deploy -y
 ```

@@ -271,7 +271,7 @@ All 16 ran concurrently → 23 min for code generation (vs ~8 hrs sequential).
 |------|------|---------|
 | Security remediation | ~20 min | Fixed 48 medium-severity issues (B113: request timeouts, B314: unsafe XML, B615: HuggingFace pinning, B608: SQL injection) |
 | PCSR scan + packaging | ~10 min | Bandit + cfn-lint + ruff, results zipped for security review |
-| Deploy script | ~15 min | Created `deploy.py` using `bedrock-agentcore-starter-toolkit`, added to all 20 agents |
+| Deploy script | ~15 min | Created `deploy.py` using `agentcore CLI (@aws/agentcore)`, added to all 20 agents |
 | Old v1 code removal | ~10 min | Removed CFN templates, Lambda action-groups, old deploy.sh from all migrated agents |
 | README updates | ~5 min | Added deploy instructions to agentcore/ READMEs, deprecation notice on old READMEs |
 | PR reviews (276, 279) | ~10 min | Reviewed positioning docs and framework scaffold |

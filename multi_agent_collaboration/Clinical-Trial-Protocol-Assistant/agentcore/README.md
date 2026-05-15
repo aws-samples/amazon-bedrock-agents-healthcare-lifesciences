@@ -6,8 +6,8 @@ Multi-agent clinical trial protocol generation. Based on [agentcore_template](..
 
 ```bash
 # Option 1: Using deploy script (recommended)
-pip install bedrock-agentcore-starter-toolkit click
-python deploy.py
+npm install -g @aws/agentcore  # if not already installed
+python deploy.py              # or: agentcore deploy -y
 
 # Option 2: Using agentcore CLI directly
 agentcore deploy
