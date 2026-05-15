@@ -19,6 +19,33 @@
 | Models validated | 2 (Claude Sonnet 4.5, Claude Haiku 4.5) |
 | UI verification | Streamlit (auto-discovers all agents) |
 
+## Prework: Analysis & Planning
+
+Before any code was written, Kiro CLI was used to analyze the repo and create a structured plan:
+
+### Step 1: Repository Analysis
+- Analyzed all 38 agents to understand current patterns (CFN/Lambda vs Strands vs notebook-only)
+- Identified which agents were candidates for migration vs deprecation
+- Mapped dependencies, data files, and tool complexity per agent
+
+### Step 2: Epic Creation (GitHub Issue #248)
+- Created a phased epic with all agents categorized by effort level:
+  - Phase 1 (Low effort): 4 agents already on Strands, just needed AgentCore runtime
+  - Phase 2 (High effort): 16 agents requiring full rewrite from CFN/Lambda
+  - Phase 3 (Triage): 9 notebook/legacy agents to evaluate
+- Defined acceptance criteria for each migration
+
+### Step 3: Individual Issues
+- Created 20 individual GitHub issues (#250-#269), one per agent
+- Each issue linked to the epic with specific scope and context
+- Enabled tracking progress and parallelizing work
+
+### Step 4: Template Selection
+- Evaluated `agentcore_template/` and Agent 28 as reference patterns
+- Chose the standardized structure before starting any migration
+
+**Total planning time:** ~30 min (Kiro analyzed the repo, created epic + issues, identified phases)
+
 ## Phase 2 Mass Migration
 
 | Metric | Value |
