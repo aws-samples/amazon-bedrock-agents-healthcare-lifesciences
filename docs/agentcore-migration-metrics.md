@@ -277,6 +277,50 @@ All 16 ran concurrently → 23 min for code generation (vs ~8 hrs sequential).
 | PR reviews (276, 279) | ~10 min | Reviewed positioning docs and framework scaffold |
 | **Total** | **~65 min** | |
 
+## AgentCore Gateway + External MCP Server Examples
+
+Added reference implementations showing the recommended pattern for connecting agents to external tools via AgentCore Gateway (per [agents-connect skill](https://github.com/aws/agent-toolkit-for-aws/blob/main/plugins/aws-agents/skills/agents-connect/SKILL.md)):
+
+| Agent | Pattern | MCP Servers | Key demonstration |
+|-------|---------|-------------|-------------------|
+| 11 - Tavily Web Search | Single MCP server | Tavily | Simplest case: one external tool provider, zero API keys in agent code |
+| 15 - Clinical Study Research | Multiple MCP servers | ClinicalTrials.gov, PubMed, OpenFDA | Tool aggregation, dynamic discovery, Cedar policies |
+
+### Architecture comparison
+
+| Aspect | `agentcore/` (local tools) | `agentcore-gateway/` (MCP pattern) |
+|--------|---------------------------|-------------------------------------|
+| API keys | In env vars, agent code handles auth | Gateway manages credentials |
+| Adding a tool | Write Python function + redeploy | `agentcore add gateway-target` + redeploy |
+| Access control | None (all tools always available) | Cedar policies per tool/user/role |
+| Tool discovery | Hardcoded in agent constructor | Dynamic via MCP protocol |
+| Code complexity | Higher (HTTP calls, error handling) | Minimal (connect to gateway) |
+| Local dev | Works offline | Needs gateway deployed (or fallback) |
+
+### Key references
+
+- [AWS Agent Toolkit — agents-deploy skill](https://github.com/aws/agent-toolkit-for-aws/blob/main/plugins/aws-agents/skills/agents-deploy/SKILL.md)
+- [AWS Agent Toolkit — agents-connect skill](https://github.com/aws/agent-toolkit-for-aws/blob/main/plugins/aws-agents/skills/agents-connect/SKILL.md)
+- [AgentCore CLI (recommended)](https://github.com/aws/agentcore-cli) — replaces deprecated bedrock-agentcore-starter-toolkit
+- [Bedrock AgentCore Starter Toolkit (deprecated)](https://github.com/aws/bedrock-agentcore-starter-toolkit)
+
+### Candidates for future gateway conversion
+
+| Agent | External APIs | MCP Server available |
+|-------|--------------|---------------------|
+| 19 - UniProt Protein Search | UniProt REST API | Community MCP possible |
+| 22 - Safety Signal Detection | OpenFDA + PubMed | PubMed MCP + OpenFDA MCP |
+| 26 - Medical Device | PubMed + ClinicalTrials.gov | Both available as MCP |
+
+## Session Log
+
+| Date | Session | Duration | Work done |
+|------|---------|----------|-----------|
+| 2025-05-06 | Phase 1 migration | ~2 hrs | 4 agents migrated individually (26, 27, 29, 30) |
+| 2025-05-08 | Phase 2 mass migration | ~42 min | 16 agents migrated in parallel via subagents |
+| 2025-05-11 | PR consolidation + security | ~65 min | Combined PRs, security fixes, PCSR scan |
+| 2025-05-15 | Hasan feedback + gateway examples | ~60 min | Deploy scripts (agentcore CLI), old code removal, gateway pattern examples, PR 279 review |
+
 ## Security Scan Results (Post-Remediation)
 
 | Tool | High/Critical | Medium | Notes |
