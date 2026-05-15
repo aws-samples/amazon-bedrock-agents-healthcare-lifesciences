@@ -178,6 +178,65 @@ streamlit run app.py  # Select agent from dropdown, send test message
 | bandit | Security scanning |
 | Streamlit | UI verification |
 
+## Kiro CLI Setup & Workflow
+
+### MCP Servers (built-in, no custom config needed)
+
+| MCP Server | What it provided |
+|------------|-----------------|
+| `awslabs.aws-documentation-mcp-server` | AWS docs lookup (AgentCore, Strands, Bedrock APIs) |
+| `awslabs.cloudwatch-mcp-server` | Log analysis, metric queries for deployed agents |
+| `awslabs.ecs-mcp-server` | Container troubleshooting |
+| `aws-knowledge-mcp-server` | Regional availability, service features |
+
+### Tools Used by Kiro During Migration
+
+| Tool | Usage |
+|------|-------|
+| File read/write | Read existing agent code, write new agentcore/ files |
+| Shell | Run agentcore CLI, pytest, ruff, bandit, git, gh |
+| Grep/Glob | Search patterns across agents, find files |
+| AWS CLI (`use_aws`) | ECR operations, IAM role checks, Bedrock invocations |
+| Code intelligence | Symbol search, AST parsing for understanding agent structure |
+| Subagents | Parallel code generation for Phase 2 mass migration |
+
+### Workflow: How Context Was Maintained Across Sessions
+
+1. **Chat history persistence** — Kiro CLI maintains conversation context between sessions. Each agent migration built on learnings from the previous one.
+2. **Task lists** — Active task tracking carried across sessions (what's done, what's next, key decisions made).
+3. **Template-first approach** — Phase 1 established the pattern in context. Phase 2 referenced it without re-explaining.
+4. **Knowledge base** — Key findings (EOL models, container packaging issues, import patterns) accumulated in context and informed later agents.
+
+### Subagent Pattern (Phase 2)
+
+For the mass migration, Kiro spawned parallel subagents — each responsible for one agent's migration:
+
+```
+Main agent (orchestrator):
+  ├── Subagent 1: Migrate agent 10 (SEC 10-K)
+  ├── Subagent 2: Migrate agent 11 (Tavily)
+  ├── Subagent 3: Migrate agent 12 (JSL Reports)
+  ├── ...
+  └── Subagent 16: Migrate competitive_intelligence
+```
+
+Each subagent received:
+- The template pattern (from Phase 1)
+- The specific agent's existing code to port
+- Acceptance criteria (tests, linting, structure)
+
+All 16 ran concurrently → 23 min for code generation (vs ~8 hrs sequential).
+
+### Key Workflow Decisions
+
+| Decision | Rationale |
+|----------|-----------|
+| No custom steering files | Built-in MCP servers + template reference was sufficient |
+| Phase 1 before Phase 2 | Needed to validate pattern and discover edge cases first |
+| Chat history over docs | Faster iteration — context stayed in conversation, documented after |
+| Subagents for parallelism | Each migration is independent — perfect for parallel execution |
+| Single PR consolidation | 4 individual PRs merged into 1 for cleaner review |
+
 ## Post-Migration Hardening
 
 | Task | Time | Details |
