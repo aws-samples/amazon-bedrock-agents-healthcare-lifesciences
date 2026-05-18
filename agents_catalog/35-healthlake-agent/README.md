@@ -6,13 +6,59 @@ An intelligent healthcare agent built on AWS Bedrock AgentCore, providing natura
 
 The HealthLake AI Assistant enables healthcare professionals to query patient records, search clinical data, and access medical guidelines through conversational AI, eliminating the need for technical FHIR expertise.
 
-**Key Features:**
-- Natural language queries for FHIR resources (Patients, Conditions, Observations, Medications, etc.)
-- Complete patient record retrieval with `$patient-everything` operation
-- Clinical document access from S3 with presigned URL generation
+## Agent Capabilities
+
+The agent provides the following capabilities through 7 specialized tools:
+
+| Capability | Description |
+|---|---|
+| **FHIR Resource Search** | Search across all FHIR R4 resource types (Patient, Condition, Observation, Medication, Procedure, Coverage, Claim, AllergyIntolerance, MedicationRequest, etc.) with flexible query parameters |
+| **Patient Record Retrieval** | Retrieve a complete patient record using the FHIR `$patient-everything` operation with optional date range filtering |
+| **Resource Detail Lookup** | Read any individual FHIR resource by type and ID with automatic FHIR code translation to human-readable text |
+| **Datastore Metadata** | Query HealthLake datastore status, FHIR version, endpoint, and configuration |
+| **Clinical Document Access** | List, read, and retrieve clinical documents (guidelines, notes, reports) stored in S3 buckets |
+| **Presigned URL Generation** | Generate time-limited secure download links for S3 documents (up to 7-day expiration) |
+| **S3 URI Resolution** | Automatically parse and follow `s3://` URIs found in FHIR DocumentReference resources |
+
+Additional runtime features:
 - Session-based conversation memory (30-day retention)
 - Role-based access control (patient, doctor, nurse, admin)
 - Real-time streaming responses with tool execution visibility
+- Automatic retry with exponential backoff for AWS API calls
+
+## Input Data Sources
+
+The agent connects to the following data sources:
+
+### Primary: AWS HealthLake (FHIR R4 Datastore)
+
+All clinical data is read from an [AWS HealthLake](https://aws.amazon.com/healthlake/) datastore via signed FHIR REST API calls. Supported FHIR resource types include:
+
+- **Patient** — Demographics, identifiers, contact information
+- **Condition** — Diagnoses, clinical status, onset dates
+- **Observation** — Lab results, vital signs, measurements
+- **MedicationRequest** — Prescriptions, dosage, status
+- **Procedure** — Surgical and clinical procedures performed
+- **Coverage** — Insurance and payer information
+- **Claim** — Billing claims and adjudication
+- **AllergyIntolerance** — Allergies and adverse reactions
+- **DocumentReference** — Pointers to clinical documents (often S3 URIs)
+
+Data access is authenticated via AWS SigV4 signing against the HealthLake FHIR endpoint.
+
+### Secondary: Amazon S3 (Clinical Documents)
+
+Clinical documents referenced by FHIR resources (or queried directly) are stored in S3:
+
+- Preventive care guidelines (JSON)
+- Clinical notes and encounter summaries (text)
+- Medical reports and imaging results
+- Any document referenced via `s3://` URIs in FHIR `DocumentReference` resources
+
+### AI Model: Amazon Bedrock
+
+- **Claude Opus 4.5** (`anthropic.claude-opus-4-5-20250514`) for reasoning and natural language generation
+- Configurable model, temperature, and max tokens via environment variables
 
 ## Architecture
 
@@ -173,18 +219,22 @@ See `examples/api.py` for FastAPI integration example.
 
 ## Available Tools
 
-The agent includes 7 specialized tools:
+The agent includes 7 specialized tools organized into two categories:
 
-**FHIR Tools:**
-- `get_datastore_info` - Retrieve datastore metadata
-- `search_fhir_resources` - Search for FHIR resources with filters
-- `read_fhir_resource` - Read complete resource by ID
-- `patient_everything` - Get all resources for a patient
+**FHIR Tools (HealthLake):**
+| Tool | Description | Input |
+|---|---|---|
+| `get_datastore_info` | Retrieve datastore metadata (status, FHIR version, endpoint) | None |
+| `search_fhir_resources` | Search for FHIR resources with query parameters | `resource_type`, `search_params`, `count` |
+| `read_fhir_resource` | Read a complete FHIR resource by ID (with code translation) | `resource_type`, `resource_id` |
+| `patient_everything` | Get all resources for a patient (`$patient-everything`) | `patient_id`, `start_date`, `end_date` |
 
-**S3 Tools:**
-- `list_s3_documents` - List documents in S3 bucket
-- `read_s3_document` - Read document content (up to 50MB)
-- `generate_presigned_url` - Create secure download link
+**S3 Tools (Clinical Documents):**
+| Tool | Description | Input |
+|---|---|---|
+| `list_s3_documents` | List documents in an S3 bucket/prefix | `bucket_name`, `prefix` |
+| `read_s3_document` | Read document content (text or base64, up to 50MB) | `bucket_name`, `document_key`, `max_size_mb` |
+| `generate_s3_presigned_url` | Create a time-limited secure download link | `bucket_name`, `document_key`, `expiration` |
 
 ## Monitoring
 
