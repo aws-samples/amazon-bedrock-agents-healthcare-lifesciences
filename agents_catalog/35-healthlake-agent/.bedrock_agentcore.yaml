@@ -32,7 +32,7 @@ agents:
     bedrock_agentcore:
       agent_id: healthlake_agent-jGb6dWHRJF
       agent_arn: arn:aws:bedrock-agentcore:us-east-1:078323627405:runtime/healthlake_agent-jGb6dWHRJF
-      agent_session_id: eb670675-30a8-4e85-9cd0-da7176af00af
+      agent_session_id: f2a34544-5d58-4c32-8287-61b1fb53950c
     codebuild:
       project_name: bedrock-agentcore-healthlake_agent-builder
       execution_role: arn:aws:iam::078323627405:role/AmazonBedrockAgentCoreSDKCodeBuild-us-east-1-0ac9d03bfe

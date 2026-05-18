@@ -99,6 +99,57 @@ For detailed architecture documentation, see [docs/ARCHITECTURE.md](docs/ARCHITE
 - Python 3.11 or higher
 - AWS HealthLake datastore with FHIR R4 data
 
+## Data Ingestion & HealthLake Setup
+
+HealthLake datastore creation and data ingestion are handled via **CLI workflow scripts** (not CloudFormation). The deployment scripts will automatically create a datastore preloaded with Synthea synthetic patient data if one doesn't already exist.
+
+### Automated Setup (Recommended)
+
+The `deploy_with_verification` script handles the full workflow — datastore creation, agent deployment, and verification:
+
+```bash
+# PowerShell
+.\scripts\deploy_with_verification.ps1 -Region us-east-1
+
+# Python (cross-platform)
+python scripts/deploy_with_verification.py --region us-east-1
+```
+
+This script will:
+1. Check for an existing ACTIVE HealthLake datastore in your account
+2. If none found, create a new FHIR R4 datastore preloaded with **Synthea** synthetic patient data (~48 patients)
+3. Wait for the datastore to become ACTIVE (5–10 minutes)
+4. Configure and deploy the AgentCore agent
+5. Run verification tests
+
+### Manual Setup
+
+If you prefer to create the datastore separately:
+
+```bash
+# Create HealthLake datastore with Synthea sample data
+aws healthlake create-fhir-datastore \
+    --datastore-name healthlake-agent-demo \
+    --datastore-type-version R4 \
+    --preload-data-config PreloadDataType=SYNTHEA \
+    --region us-east-1 \
+    --output json
+
+# Check status (wait until ACTIVE, ~5-10 minutes)
+aws healthlake describe-fhir-datastore \
+    --datastore-id <DATASTORE_ID> \
+    --region us-east-1
+```
+
+Then set the datastore ID in your `.env` file:
+```bash
+HEALTHLAKE_DATASTORE_ID=<your-datastore-id>
+```
+
+### Why Not CloudFormation?
+
+HealthLake datastore creation takes 5–10 minutes and the Synthea preload is a one-time operation. The CLI workflow approach provides better visibility into the creation progress and allows reuse of existing datastores across deployments.
+
 ## Quick Start
 
 ### 1. Configure Environment
@@ -237,6 +288,63 @@ The agent includes 7 specialized tools organized into two categories:
 | `generate_s3_presigned_url` | Create a time-limited secure download link | `bucket_name`, `document_key`, `expiration` |
 
 ## Monitoring
+
+### Test the Agent
+
+After deployment, use the provided test scripts and payloads to verify the agent is working:
+
+#### Quick Test (single query)
+
+```bash
+# Using test payload files
+agentcore invoke --agent healthlake_agent - < test_payload.json
+agentcore invoke --agent healthlake_agent - < test_patient_search.json
+
+# Or inline
+agentcore invoke '{"prompt": "Get information about the HealthLake datastore"}' --agent healthlake_agent
+```
+
+#### Full Test Suite (PowerShell)
+
+Run all 5 test scenarios including role-based access:
+
+```powershell
+.\scripts\test_agentcore_agent.ps1 -AgentName healthlake_agent -Region us-east-1
+```
+
+This runs:
+1. Simple greeting
+2. Datastore information retrieval
+3. Patient search (diabetes)
+4. S3 document listing
+5. Role-based access (doctor context)
+
+#### Manual Test Queries
+
+```bash
+# Search for patients with a condition
+agentcore invoke '{"prompt": "Search for patients with diabetes"}' --agent healthlake_agent
+
+# Get full patient record
+agentcore invoke '{"prompt": "Show me details for a patient including conditions and medications"}' --agent healthlake_agent
+
+# List clinical documents
+agentcore invoke '{"prompt": "List all clinical documents in S3"}' --agent healthlake_agent
+
+# With user context (role-based access)
+agentcore invoke '{"prompt": "Search for patients", "context": {"user_id": "doctor-001", "user_role": "doctor"}}' --agent healthlake_agent
+
+# With session continuity
+agentcore invoke '{"prompt": "Tell me more about the first patient", "session_id": "my-session-123"}' --agent healthlake_agent
+```
+
+#### Expected Results
+
+See [TEST_RESULTS.md](TEST_RESULTS.md) for documented test outcomes including:
+- Datastore access verification (status, FHIR version, Synthea data confirmation)
+- Patient search (48 records in sample datastore)
+- Patient detail retrieval (conditions, medications, demographics)
+- All 7 tools confirmed working
 
 ### View Logs
 

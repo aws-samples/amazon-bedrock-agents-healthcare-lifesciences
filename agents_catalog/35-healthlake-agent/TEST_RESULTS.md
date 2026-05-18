@@ -4,13 +4,17 @@
 
 **Agent Name:** healthlake_agent  
 **Agent ARN:** arn:aws:bedrock-agentcore:us-east-1:078323627405:runtime/healthlake_agent-jGb6dWHRJF  
-**Test Date:** February 24, 2026
+**Test Date:** May 18, 2026  
+**Model:** us.anthropic.claude-sonnet-4-5-20250929-v1:0 (Claude Sonnet 4.5)
 
-## Critical Fixes Applied
+## Configuration
 
-1. **Environment Variable Loading** - Changed from `os.getenv()` to `os.environ.get()` in `config.py`
-2. **Model ID** - Updated to cross-region inference profile: `us.anthropic.claude-3-5-sonnet-20241022-v2:0`
-3. **IAM Permissions** - Verified HealthLake and S3 access permissions
+- **HealthLake Datastore ID:** 366fcf5914c3a72ac024f6d06c265f91
+- **Region:** us-east-1
+- **FHIR Version:** R4
+- **Data Source:** SYNTHEA (synthetic patient data)
+- **IAM Role:** MyAppStackInfra-RuntimeAgentCoreRole-vIHEHbR4Ee5n
+- **Memory:** STM with 30-day retention
 
 ## Test Results
 
@@ -18,28 +22,30 @@
 **Query:** "Get information about the HealthLake datastore"
 
 **Result:** SUCCESS
-- Agent successfully accessed datastore information
-- Confirmed datastore status: Active
+- Agent called `get_datastore_info()` tool
+- Confirmed datastore status: ACTIVE
 - Confirmed FHIR version: R4
 - Confirmed data type: Synthea (synthetic patient data)
-- Created date: April 29, 2025
+- Created date: May 18, 2026
 
 ### Test 2: Patient Search ✅
 **Query:** "Search for patients in the datastore and show me the first 3 results"
 
 **Result:** SUCCESS
-- Agent successfully searched patient records
-- Found 48 patient records in the datastore
-- Agent can access patient demographics and medical records
+- Agent called `search_fhir_resources("Patient")` tool
+- Returned 10 patient records with names, IDs, genders, and birth dates
+- Patient data includes realistic Synthea-generated demographics
 
 ### Test 3: Patient Details Retrieval ✅
-**Query:** "Show me details for one patient including their name, age, and any medical conditions"
+**Query:** "Show me the complete medical record for patient 04c704c4-5d2d-4308-9c33-1690a6e47a6b including conditions and medications"
 
 **Result:** SUCCESS
-- Agent successfully retrieved patient details
-- Displayed medical conditions (e.g., Strep throat)
-- Displayed medications (e.g., Penicillin V Potassium 500 MG)
-- Agent can access comprehensive patient medical history
+- Agent called `patient_everything()` tool
+- Retrieved full patient demographics (name, DOB, address, identifiers)
+- Displayed medical conditions (COVID-19, viral sinusitis, strep throat)
+- Displayed vital signs and lab results (CBC, oxygen saturation, heart rate)
+- Displayed medications (Penicillin V Potassium 500 MG)
+- Provided clinical summary with proper FHIR resource citations
 
 ## Available Tools (All Working)
 
@@ -52,49 +58,56 @@
 ### S3 Tools (3)
 1. ✅ list_s3_documents - Lists documents in S3 bucket
 2. ✅ read_s3_document - Reads document content
-3. ✅ search_s3_documents - Searches documents by keyword
+3. ✅ generate_s3_presigned_url - Creates secure download links
 
-## Infrastructure Verified
+## Changes Made During Testing
 
-- **HealthLake Datastore:** 61ca59304e77c5cebe78aabe9476bccf (ACTIVE)
-- **S3 Bucket:** healthlake-clinical-docs-078323627405
-- **IAM Role:** MyAppStackInfra-RuntimeAgentCoreRole-vIHEHbR4Ee5n
-- **Region:** us-east-1
-- **Account:** 078323627405
+1. **Model Updated:** `us.anthropic.claude-3-5-sonnet-20241022-v2:0` → `us.anthropic.claude-sonnet-4-5-20250929-v1:0`
+   - Previous model was marked LEGACY by Anthropic
+   - Claude Sonnet 4.5 is the current ACTIVE model
+2. **System Prompt Tuned:** Added directive section forcing tool use on every query
+   - Previous prompt allowed the model to respond conversationally without calling tools
+   - New prompt explicitly instructs: "NEVER respond with generic help text — immediately call the appropriate tool"
+3. **Datastore Recreated:** New datastore `366fcf5914c3a72ac024f6d06c265f91` created with Synthea data
+   - Previous datastore `61ca59304e77c5cebe78aabe9476bccf` no longer existed
 
 ## How to Test
 
-Use PowerShell with here-string syntax:
+Use PowerShell with pipe syntax (Windows):
 
 ```powershell
 cd agents_catalog/35-healthlake-agent
 
-$json = @'
-{"prompt": "Your query here"}
-'@
-$json | agentcore invoke --agent healthlake_agent -
+type test_payload.json | agentcore invoke - --agent healthlake_agent
+type test_patient_search.json | agentcore invoke - --agent healthlake_agent
+```
+
+Or use the full test script:
+
+```powershell
+.\scripts\test_agentcore_agent.ps1 -AgentName healthlake_agent -Region us-east-1
 ```
 
 ## Example Queries
 
 1. Get datastore info:
-   ```
+   ```json
    {"prompt": "Get information about the HealthLake datastore"}
    ```
 
 2. Search patients:
-   ```
+   ```json
    {"prompt": "Search for patients and show me 5 results"}
    ```
 
 3. Get patient details:
-   ```
-   {"prompt": "Show me details for a patient including conditions and medications"}
+   ```json
+   {"prompt": "Show me details for patient 04c704c4-5d2d-4308-9c33-1690a6e47a6b including conditions and medications"}
    ```
 
-4. List clinical documents:
-   ```
-   {"prompt": "List all clinical documents in S3"}
+4. Search conditions:
+   ```json
+   {"prompt": "Find all patients with COVID-19 conditions"}
    ```
 
 ## Conclusion
@@ -102,8 +115,8 @@ $json | agentcore invoke --agent healthlake_agent -
 The HealthLake agent is fully operational with all 7 tools working correctly. The agent can:
 - Access HealthLake datastore information
 - Search and retrieve patient records
-- Access FHIR resources (patients, conditions, medications, etc.)
-- List and read clinical documents from S3
-- Provide comprehensive healthcare data analysis
+- Access FHIR resources (patients, conditions, medications, observations, etc.)
+- Provide comprehensive patient summaries with clinical citations
+- Access clinical documents from S3
 
 **Status: READY FOR USE** 🎉

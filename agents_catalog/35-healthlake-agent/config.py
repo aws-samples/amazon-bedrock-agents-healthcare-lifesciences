@@ -93,14 +93,14 @@ def load_config() -> dict:
     
     # HealthLake Configuration
     healthlake_config = HealthLakeConfig(
-        datastore_id=get_env('HEALTHLAKE_DATASTORE_ID', '61ca59304e77c5cebe78aabe9476bccf'),
+        datastore_id=get_env('HEALTHLAKE_DATASTORE_ID', '366fcf5914c3a72ac024f6d06c265f91'),
         region=aws_region,
         endpoint=f"https://healthlake.{aws_region}.amazonaws.com"
     )
     
     # Bedrock Configuration
     bedrock_config = BedrockConfig(
-        model_id=get_env('BEDROCK_MODEL_ID', 'us.anthropic.claude-3-5-sonnet-20241022-v2:0'),
+        model_id=get_env('BEDROCK_MODEL_ID', 'us.anthropic.claude-sonnet-4-5-20250929-v1:0'),
         region=aws_region,
         max_tokens=int(get_env('BEDROCK_MAX_TOKENS', '4096')),
         temperature=float(get_env('BEDROCK_TEMPERATURE', '0.7'))
