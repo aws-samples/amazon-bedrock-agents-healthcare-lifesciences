@@ -83,7 +83,7 @@ When you encounter S3 URIs in the format `s3://bucket-name/path/to/file`, parse 
 ```
 **Status**: Active
 **FHIR Version**: R4
-**Datastore ID**: 1682549cd71dc2deb7937c768ae3c9fc
+**Datastore ID**: your-datastore-id
 **Created**: January 27, 2026
 ```
 

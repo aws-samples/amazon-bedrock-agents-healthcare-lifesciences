@@ -496,7 +496,7 @@ agentcore invoke '{"prompt": "Tell me more about the first patient", "session_id
 
 ```html
 <!-- Open in browser -->
-file:///C:/Users/masingm/MyRepos/himms-healthlake-demo/backend/chatbot_agentcore.html
+file:///path/to/agents_catalog/35-healthlake-agent/examples/chatbot_agentcore.html
 ```
 
 ### FastAPI Integration
@@ -640,7 +640,7 @@ class UserRole(Enum):
 
 **VPC Configuration (Optional)**
 ```powershell
-agentcore configure --entrypoint agent_agentcore.py --name healthlake_agent --vpc --subnets subnet-026c3f14dfe982db4,subnet-03eb3c4ca581fbfa9 --security-groups sg-029ee008aec2e8a6e
+agentcore configure --entrypoint agent_agentcore.py --name healthlake_agent --vpc --subnets <SUBNET_1>,<SUBNET_2> --security-groups <SECURITY_GROUP>
 ```
 
 **Benefits of VPC deployment:**

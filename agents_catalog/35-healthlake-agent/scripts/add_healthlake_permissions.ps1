@@ -2,11 +2,11 @@
 # This script adds the necessary HealthLake permissions to the AgentCore execution role
 
 param(
-    [string]$Profile = "himssdemo",
-    [string]$Region = "us-west-2"
+    [Parameter(Mandatory=$true)][string]$RoleName,
+    [string]$Profile = $env:AWS_PROFILE,
+    [string]$Region = "us-east-1"
 )
 
-$RoleName = "AmazonBedrockAgentCoreSDKRuntime-us-west-2-0ac9d03bfe"
 $PolicyName = "HealthLakeAccessPolicy"
 $PolicyFile = "healthlake-permissions-policy.json"
 
@@ -14,12 +14,18 @@ Write-Host "Adding HealthLake permissions to role: $RoleName" -ForegroundColor C
 Write-Host ""
 
 # Add inline policy to the role using file:// URI
-aws iam put-role-policy `
-    --role-name $RoleName `
-    --policy-name $PolicyName `
-    --policy-document "file://$PolicyFile" `
-    --profile $Profile `
-    --region $Region
+$args = @("iam", "put-role-policy",
+    "--role-name", $RoleName,
+    "--policy-name", $PolicyName,
+    "--policy-document", "file://$PolicyFile",
+    "--region", $Region
+)
+
+if ($Profile) {
+    $args += @("--profile", $Profile)
+}
+
+aws @args
 
 if ($LASTEXITCODE -eq 0) {
     Write-Host "✅ Successfully added HealthLake permissions!" -ForegroundColor Green
@@ -29,8 +35,6 @@ if ($LASTEXITCODE -eq 0) {
     Write-Host "  - healthlake:ReadResource"
     Write-Host "  - healthlake:SearchWithGet"
     Write-Host "  - healthlake:SearchWithPost"
-    Write-Host ""
-    Write-Host "Resource: arn:aws:healthlake:us-west-2:423881498839:datastore/fhir/1682549cd71dc2deb7937c768ae3c9fc"
     Write-Host ""
     Write-Host "Next: Test the agent with HealthLake queries"
     Write-Host "  .\test_agentcore_agent.ps1"

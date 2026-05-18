@@ -93,7 +93,7 @@ def load_config() -> dict:
     
     # HealthLake Configuration
     healthlake_config = HealthLakeConfig(
-        datastore_id=get_env('HEALTHLAKE_DATASTORE_ID', '366fcf5914c3a72ac024f6d06c265f91'),
+        datastore_id=get_env('HEALTHLAKE_DATASTORE_ID', ''),
         region=aws_region,
         endpoint=f"https://healthlake.{aws_region}.amazonaws.com"
     )

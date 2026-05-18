@@ -11,7 +11,7 @@
                 "healthlake:SearchWithPost",
                 "healthlake:GetCapabilities"
             ],
-            "Resource": "arn:aws:healthlake:*:078323627405:datastore/fhir/*"
+            "Resource": "arn:aws:healthlake:*:*:datastore/fhir/*"
         },
         {
             "Sid": "S3DocumentAccess",

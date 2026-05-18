@@ -42,9 +42,6 @@ $configArgs = @(
     "--runtime", "PYTHON_3_12",
     "--requirements-file", "requirements.txt",
     "--deployment-type", "direct_code_deploy",
-    "--vpc",
-    "--subnets", "subnet-026c3f14dfe982db4,subnet-03eb3c4ca581fbfa9",
-    "--security-groups", "sg-029ee008aec2e8a6e",
     "--non-interactive"
 )
 

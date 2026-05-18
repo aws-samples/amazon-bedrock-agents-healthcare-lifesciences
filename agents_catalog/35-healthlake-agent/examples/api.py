@@ -363,7 +363,7 @@ async def chat_agentcore(request: ChatRequest):
         
         # Set AWS environment
         env = os.environ.copy()
-        env['AWS_PROFILE'] = env.get('AWS_PROFILE', 'himssdemo')
+        env['AWS_PROFILE'] = env.get('AWS_PROFILE', '')
         env['AWS_REGION'] = env.get('AWS_REGION', 'us-west-2')
         
         # Call AgentCore CLI

@@ -16,7 +16,7 @@ AWS Services (HealthLake, Bedrock, S3)
 
 ## Prerequisites
 
-1. **AWS CLI configured** with profile: `himssdemo`
+1. **AWS CLI configured** with your AWS profile
 2. **Python 3.12+** installed
 3. **AgentCore CLI** (will be installed automatically)
 4. **AWS Permissions** for:
@@ -53,42 +53,45 @@ pip install bedrock-agentcore-starter-toolkit
 # 2. Configure agent
 agentcore configure `
   --entrypoint agent_agentcore.py `
-  --name healthlake-agent `
-  --region us-west-2 `
+  --name healthlake_agent `
+  --region us-east-1 `
   --runtime PYTHON_3_12 `
   --requirements-file requirements.txt `
   --deployment-type direct_code_deploy `
-  --vpc `
-  --subnets subnet-026c3f14dfe982db4,subnet-03eb3c4ca581fbfa9 `
-  --security-groups sg-029ee008aec2e8a6e `
   --non-interactive
 
 # 3. Deploy to AWS
-agentcore launch --agent healthlake-agent --auto-update-on-conflict
+agentcore launch --agent healthlake_agent --auto-update-on-conflict
 
 # 4. Check status
-agentcore status --agent healthlake-agent --verbose
+agentcore status --agent healthlake_agent --verbose
 
 # 5. Test the agent
-agentcore invoke '{"prompt": "What is the HealthLake datastore information?"}' --agent healthlake-agent
+agentcore invoke '{"prompt": "What is the HealthLake datastore information?"}' --agent healthlake_agent
 ```
 
 ## Configuration Details
 
-### VPC Configuration
+### VPC Configuration (Optional)
 
-The agent is deployed in VPC mode to access HealthLake privately:
+If you need private VPC access to HealthLake, add VPC parameters during configure:
 
-- **Subnets**: `subnet-026c3f14dfe982db4`, `subnet-03eb3c4ca581fbfa9`
-- **Security Group**: `sg-029ee008aec2e8a6e`
-- **VPC**: `vpc-0847ef8e50f8e3cc2`
+```powershell
+agentcore configure `
+  --entrypoint agent_agentcore.py `
+  --name healthlake_agent `
+  --vpc `
+  --subnets <YOUR_SUBNET_1>,<YOUR_SUBNET_2> `
+  --security-groups <YOUR_SECURITY_GROUP> `
+  --non-interactive
+```
 
 ### Runtime Configuration
 
 - **Python Version**: 3.12
 - **Deployment Type**: `direct_code_deploy` (no Docker required)
 - **Architecture**: ARM64 (handled automatically)
-- **Region**: us-west-2
+- **Region**: us-east-1 (configurable)
 
 ### Environment Variables
 
@@ -159,7 +162,7 @@ AgentCore automatically creates CloudWatch Log Groups:
 # Log Group: /aws/lambda/healthlake-agent-*
 
 # Or use AWS CLI
-aws logs tail /aws/lambda/healthlake-agent --follow --region us-west-2 --profile himssdemo
+aws logs tail /aws/lambda/healthlake-agent --follow --region us-east-1
 ```
 
 ### Session Management
@@ -281,9 +284,9 @@ if __name__ == "__main__":
 **Solution**: Ensure AWS profile is configured:
 
 ```powershell
-aws configure --profile himssdemo
+aws configure
 # Or set environment variable
-$env:AWS_PROFILE = "himssdemo"
+$env:AWS_PROFILE = "your-profile-name"
 ```
 
 **Error**: `VPC configuration invalid`

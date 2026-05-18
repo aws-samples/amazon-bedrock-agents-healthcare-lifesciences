@@ -3,8 +3,8 @@
 
 param(
     [string]$AgentName = "healthlake_agent",
-    [string]$Profile = "himssdemo",
-    [string]$Region = "us-west-2"
+    [string]$Profile = $env:AWS_PROFILE,
+    [string]$Region = "us-east-1"
 )
 
 Write-Host "=== Testing AgentCore Agent ===" -ForegroundColor Cyan

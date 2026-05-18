@@ -9,7 +9,7 @@
         "healthlake:SearchWithGet",
         "healthlake:SearchWithPost"
       ],
-      "Resource": "arn:aws:healthlake:us-west-2:423881498839:datastore/fhir/1682549cd71dc2deb7937c768ae3c9fc"
+      "Resource": "arn:aws:healthlake:*:*:datastore/fhir/*"
     }
   ]
 }

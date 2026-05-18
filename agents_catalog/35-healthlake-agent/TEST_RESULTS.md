@@ -3,17 +3,14 @@
 ## Deployment Status: ✅ SUCCESS
 
 **Agent Name:** healthlake_agent  
-**Agent ARN:** arn:aws:bedrock-agentcore:us-east-1:078323627405:runtime/healthlake_agent-jGb6dWHRJF  
 **Test Date:** May 18, 2026  
 **Model:** us.anthropic.claude-sonnet-4-5-20250929-v1:0 (Claude Sonnet 4.5)
 
 ## Configuration
 
-- **HealthLake Datastore ID:** 366fcf5914c3a72ac024f6d06c265f91
 - **Region:** us-east-1
 - **FHIR Version:** R4
 - **Data Source:** SYNTHEA (synthetic patient data)
-- **IAM Role:** MyAppStackInfra-RuntimeAgentCoreRole-vIHEHbR4Ee5n
 - **Memory:** STM with 30-day retention
 
 ## Test Results
@@ -68,8 +65,8 @@
 2. **System Prompt Tuned:** Added directive section forcing tool use on every query
    - Previous prompt allowed the model to respond conversationally without calling tools
    - New prompt explicitly instructs: "NEVER respond with generic help text — immediately call the appropriate tool"
-3. **Datastore Recreated:** New datastore `366fcf5914c3a72ac024f6d06c265f91` created with Synthea data
-   - Previous datastore `61ca59304e77c5cebe78aabe9476bccf` no longer existed
+3. **Datastore Recreated:** New datastore created with Synthea data
+   - Previous datastore no longer existed
 
 ## How to Test
 

@@ -33,7 +33,7 @@ agentcore status --agent healthlake-agent --verbose
 agentcore launch --agent healthlake-agent --auto-update-on-conflict
 
 # View logs
-aws logs tail /aws/lambda/healthlake-agent --follow --region us-west-2 --profile himssdemo
+aws logs tail /aws/lambda/healthlake-agent --follow --region us-east-1
 
 # Destroy
 agentcore destroy --agent healthlake-agent
@@ -65,7 +65,7 @@ agentcore invoke '{
 | Issue | Solution |
 |-------|----------|
 | Module not found | Add to requirements.txt and redeploy |
-| AWS auth failed | Set `$env:AWS_PROFILE = "himssdemo"` |
+| AWS auth failed | Verify AWS CLI credentials: `aws sts get-caller-identity` |
 | VPC error | Verify subnets/security groups exist |
 | Cold start slow | Use provisioned concurrency |
 

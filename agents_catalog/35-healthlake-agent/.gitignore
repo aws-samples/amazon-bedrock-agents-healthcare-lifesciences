@@ -46,6 +46,16 @@ env/
 
 # AgentCore
 .bedrock_agentcore/
+.bedrock_agentcore.yaml
+.agentcore.yaml
+
+# Generated artifacts
+temp_arch.txt
+arch_base64.txt
+HealthLake-Agent-Documentation.zip
+README.html
+documentation.html
+create_archive.ps1
 
 # Logs
 *.log
