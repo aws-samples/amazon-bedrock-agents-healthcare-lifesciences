@@ -1,0 +1,26 @@
+# Core dependencies
+strands-agents>=1.24.0
+bedrock-agentcore>=0.1.0
+fastapi>=0.128.0
+uvicorn[standard]>=0.40.0
+python-dotenv>=1.2.0
+pydantic>=2.12.0
+pydantic-settings>=2.12.0
+
+# AWS SDK
+boto3>=1.42.0
+botocore>=1.42.0
+
+# HTTP requests
+requests>=2.32.0
+
+# Testing
+pytest>=9.0.0
+pytest-asyncio>=1.3.0
+pytest-cov>=7.0.0
+hypothesis>=6.151.0
+
+# Code quality
+black>=26.0.0
+flake8>=7.3.0
+mypy>=1.19.0
