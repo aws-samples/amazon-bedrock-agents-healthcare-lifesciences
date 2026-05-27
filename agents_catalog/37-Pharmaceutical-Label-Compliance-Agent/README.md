@@ -1,4 +1,4 @@
-# Agentic Compliance Lab
+# PharmaLabel — Pharmaceutical Label Compliance Agent
 
 An AI-powered medicine label compliance analysis system built on AWS. Upload an OTC medicine label image, and a multi-agent pipeline automatically analyzes it against FDA or MHRA regulatory requirements, visually annotates violations, validates the results, and produces a compliance report.
 
@@ -30,16 +30,24 @@ The pipeline retries up to 3 times if validation rejects the annotated image. If
 
 ## Deployment
 
+> **Region:** The stack deploys to `us-east-1` by default. The agents use US cross-region inference profiles (`us.anthropic.claude-*`) which require a US region.
+
 ```bash
 # Create and activate a virtual environment
-python3 -m venv .venv
+python -m venv .venv
 source .venv/bin/activate
 
 # Install CDK dependencies
 pip install -r requirements.txt
 
-# Install agent runtime dependencies
-pip install -r agent_runtime_requirements.txt -t agent_package
+# Install agent runtime dependencies (cross-compiled for Linux ARM64)
+pip install \
+  --platform manylinux2014_aarch64 \
+  --implementation cp \
+  --python-version 3.12 \
+  --only-binary=:all: \
+  --target agent_package/ \
+  -r agent_runtime_requirements.txt
 
 # Install custom resource dependencies
 pip install -r custom_resources/runtime_resource_policy/requirements.txt -t custom_resources/runtime_resource_policy
@@ -52,16 +60,15 @@ cdk bootstrap
 cdk deploy
 ```
 
-Deployment takes approximately 10-15 minutes. When complete, CDK outputs:
+> **Note:** The `--platform manylinux2014_aarch64` flag ensures that native dependencies (like Pillow) are downloaded as pre-built Linux ARM64 binaries, regardless of your local machine's OS or architecture. This works on macOS (Intel/Apple Silicon), Windows, and Linux x86/ARM.
 
-- **FrontendUrl**: The CloudFront URL for the web dashboard
-- **ApiEndpoint**: The API Gateway endpoint (auto-configured in the frontend)
+Deployment takes approximately 10-15 minutes.
 
 ## Usage
 
 1. Open the **FrontendUrl** in your browser.
 2. Click **New Analysis** to create a project. Give it a name and select a regulatory region (US FDA or UK MHRA).
-3. Upload a medicine label image (JPG or PNG, max 10 MB).
+3. Upload a medicine label image (JPG or PNG).
 4. Review the preview and click **Start Analysis**.
 5. Watch the pipeline progress through its stages (typically 5-10 minutes).
 6. View results: annotated image, violation list with severity levels, and compliance score.
@@ -110,6 +117,30 @@ From a completed project, click **Re-upload Label** to run a new analysis. All e
 | UK | MHRA Human Medicines Regulations 2012 | Patient information leaflet, product characteristics, labeling requirements | [PAGB Packaging Code](https://www.pagb.co.uk/advice-guidance/packaging-code-for-medicines/) |
 
 The regulatory documents are stored in the `kb_documents/` directory (2 documents for US FDA, 1 for UK MHRA) and are automatically uploaded to the Bedrock Knowledge Base during deployment.
+
+## Testing
+
+The project includes a comprehensive test suite covering unit tests, integration tests (with moto for AWS service simulation), and CDK infrastructure assertions.
+
+```bash
+# Create and activate a virtual environment (if not already done)
+python -m venv .venv
+source .venv/bin/activate
+
+# Install test dependencies
+pip install -r tests/requirements-test.txt
+
+# Run all tests
+pytest tests/
+```
+
+### What the tests cover
+
+- **Steering hooks:** verifies that the behavioral guardrails (tool ordering, data structure validation, status consistency) correctly block or allow tool calls
+- **Orchestrator:** tests the retry state machine, S3 key extraction, best-attempt selection, and error wrapping
+- **Lambda handlers:** validates request routing, input validation, presigned URL generation, CRUD operations, and CORS handling
+- **Agent tools:** tests image annotation drawing, Textract coordinate conversion, and text wrapping
+- **CDK stack:** asserts correct resource counts, DynamoDB key schema, Lambda architectures, and security configurations
 
 ## Cleanup
 

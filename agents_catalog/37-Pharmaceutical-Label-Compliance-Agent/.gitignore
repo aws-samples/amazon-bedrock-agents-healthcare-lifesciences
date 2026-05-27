@@ -1,0 +1,29 @@
+# Virtual environment
+.venv/
+
+# Python bytecode
+__pycache__/
+
+# CDK output
+cdk.out/
+
+# Test/coverage artifacts
+.coverage
+.pytest_cache/
+htmlcov/
+
+# Pip-installed dependencies in agent_package (installed at deploy time)
+agent_package/*
+!agent_package/agent1_compliance.py
+!agent_package/agent2_annotation.py
+!agent_package/agent3_validation.py
+!agent_package/orchestrator.py
+!agent_package/steering_hooks.py
+
+# Pip-installed dependencies in custom resources
+custom_resources/aoss_index_creator/*
+!custom_resources/aoss_index_creator/index.py
+!custom_resources/aoss_index_creator/requirements.txt
+custom_resources/runtime_resource_policy/*
+!custom_resources/runtime_resource_policy/index.py
+!custom_resources/runtime_resource_policy/requirements.txt

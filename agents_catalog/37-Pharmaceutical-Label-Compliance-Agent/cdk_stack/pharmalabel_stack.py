@@ -20,7 +20,7 @@ import aws_cdk.aws_bedrock_agentcore_alpha as agentcore
 from constructs import Construct
 
 
-class MedicineLabelComplianceStack(Stack):
+class PharmaLabelStack(Stack):
 
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
@@ -34,7 +34,7 @@ class MedicineLabelComplianceStack(Stack):
         self.incoming_bucket = s3.Bucket(
             self,
             "IncomingBucket",
-            bucket_name=f"agenticlabcompliance-incoming-labels-{unique_suffix}",
+            bucket_name=f"pharmalabel-incoming-labels-{unique_suffix}",
             removal_policy=RemovalPolicy.DESTROY,
             auto_delete_objects=True,
             block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
@@ -46,7 +46,7 @@ class MedicineLabelComplianceStack(Stack):
         self.results_bucket = s3.Bucket(
             self,
             "ResultsBucket",
-            bucket_name=f"agenticlabcompliance-processed-results-{unique_suffix}",
+            bucket_name=f"pharmalabel-processed-results-{unique_suffix}",
             removal_policy=RemovalPolicy.DESTROY,
             auto_delete_objects=True,
             block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
@@ -58,7 +58,7 @@ class MedicineLabelComplianceStack(Stack):
         self.kb_bucket = s3.Bucket(
             self,
             "KnowledgeBaseBucket",
-            bucket_name=f"agentic-compliance-knowledge-base-{unique_suffix}",
+            bucket_name=f"pharmalabel-knowledge-base-{unique_suffix}",
             removal_policy=RemovalPolicy.DESTROY,
             auto_delete_objects=True,
             versioned=True,
@@ -71,7 +71,7 @@ class MedicineLabelComplianceStack(Stack):
         self.frontend_bucket = s3.Bucket(
             self,
             "FrontendBucket",
-            bucket_name=f"agenticlabcompliance-frontend-{unique_suffix}",
+            bucket_name=f"pharmalabel-frontend-{unique_suffix}",
             removal_policy=RemovalPolicy.DESTROY,
             auto_delete_objects=True,
             website_index_document="index.html",
@@ -153,7 +153,7 @@ class MedicineLabelComplianceStack(Stack):
         self.projects_table = cdk.aws_dynamodb.Table(
             self,
             "ProjectsTable",
-            table_name=f"agenticlabcompliance-projects-{unique_suffix}",
+            table_name=f"pharmalabel-projects-{unique_suffix}",
             partition_key=cdk.aws_dynamodb.Attribute(
                 name="projectId",
                 type=cdk.aws_dynamodb.AttributeType.STRING,
@@ -325,8 +325,8 @@ class MedicineLabelComplianceStack(Stack):
         # The knowledge base (using OpenSearch Serverless)
         self.knowledge_base = bedrock.CfnKnowledgeBase(
             self,
-            "MedicineLabelComplianceKB",
-            name="MedicineLabelComplianceKB",
+            "PharmaLabelKB",
+            name="PharmaLabelKB",
             role_arn=self.kb_role.role_arn,
             knowledge_base_configuration=bedrock.CfnKnowledgeBase.KnowledgeBaseConfigurationProperty(
                 type="VECTOR",
@@ -446,7 +446,7 @@ class MedicineLabelComplianceStack(Stack):
 
         # Deploy agent code (AgentCore L2 construct -> from_code_asset)
         agent_runtime_artifact = agentcore.AgentRuntimeArtifact.from_code_asset(
-            path="agent_package", # contains agents source + pre-installed dependencies
+            path="agent_package",
             runtime=agentcore.AgentCoreRuntime.PYTHON_3_12,
             entrypoint=["orchestrator.py"],
             exclude=["__pycache__", "*.pyc", "*.pyo"],
@@ -455,9 +455,9 @@ class MedicineLabelComplianceStack(Stack):
         self.agent_runtime = agentcore.Runtime(
             self,
             "AgentRuntime",
-            runtime_name="MedicineLabelComplianceRuntime",
+            runtime_name="PharmaLabelRuntime",
             agent_runtime_artifact=agent_runtime_artifact,
-            description="Multi-agent compliance pipeline for medicine label analysis",
+            description="PharmaLabel: multi-agent compliance pipeline for pharmaceutical label analysis",
             environment_variables={
                 "INCOMING_BUCKET": self.incoming_bucket.bucket_name,
                 "RESULTS_BUCKET": self.results_bucket.bucket_name,
@@ -552,7 +552,7 @@ class MedicineLabelComplianceStack(Stack):
         self.compliancelambda = lambda_.Function(
             self,
             "ComplianceApiLambda",
-            function_name="CUSTOM-ComplianceApi",
+            function_name="PharmaLabel-ComplianceApi",
             runtime=lambda_.Runtime.PYTHON_3_12,
             architecture=lambda_.Architecture.ARM_64,
             code=lambda_.Code.from_asset("lambda_functions/frontend_api"),
@@ -587,7 +587,7 @@ class MedicineLabelComplianceStack(Stack):
         self.doc_managementlambda = lambda_.Function(
             self,
             "DocumentManagementLambda",
-            function_name="CUSTOM-DocumentManagement",
+            function_name="PharmaLabel-DocumentManagement",
             runtime=lambda_.Runtime.PYTHON_3_12,
             architecture=lambda_.Architecture.ARM_64,
             code=lambda_.Code.from_asset("lambda_functions/document_management"),
@@ -616,7 +616,7 @@ class MedicineLabelComplianceStack(Stack):
         self.triggerlambda = lambda_.Function(
             self,
             "TriggerLambda",
-            function_name="CUSTOM-TriggerLambda",
+            function_name="PharmaLabel-TriggerLambda",
             runtime=lambda_.Runtime.PYTHON_3_12,
             architecture=lambda_.Architecture.ARM_64,
             code=lambda_.Code.from_asset("lambda_functions/trigger"),
@@ -695,7 +695,7 @@ class MedicineLabelComplianceStack(Stack):
         self.api = apigwv2.CfnApi(
             self,
             "HttpApi",
-            name="MedicineLabelComplianceApi",
+            name="PharmaLabelApi",
             protocol_type="HTTP",
             cors_configuration=apigwv2.CfnApi.CorsProperty(
                 allow_origins=[self.frontend_origin],
