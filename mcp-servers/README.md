@@ -11,6 +11,8 @@ MCP endpoints powered by AWS Lambda tools behind AgentCore Gateway. You deploy C
 | Server | Tools | What it provides |
 |--------|-------|------------------|
 | [biomni-research-tools](agentcore-gateway/biomni-research-tools/) | 30+ | Biomedical database queries (UniProt, Reactome, STRING, DrugBank, etc.) |
+| [fda-ecfr](agentcore-gateway/fda-ecfr/) | 3 | FDA regulations (21 CFR) via public eCFR API |
+| [ich-guidelines](agentcore-gateway/ich-guidelines/) | 1 | ICH guideline semantic search (E6, E8, E9) via Bedrock Knowledge Base |
 
 ### [agentcore-runtime/](agentcore-runtime/) — User Deploys
 

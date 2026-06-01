@@ -1,0 +1,46 @@
+{
+  "target_name": "fda-ecfr",
+  "tools": [
+    {
+      "name": "get_cfr_section",
+      "description": "Retrieve the full text of a specific FDA regulation section from the Code of Federal Regulations. Returns the regulatory text for clinical trial protocol compliance. Example: get 21 CFR 312.23 for IND content requirements.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "action_name": { "type": "string", "const": "get_cfr_section" },
+          "title": { "type": "string", "description": "CFR title number (default: 21 for FDA)", "default": "21" },
+          "part": { "type": "string", "description": "CFR part number (e.g., 312 for IND, 50 for human subjects, 56 for IRB)" },
+          "section": { "type": "string", "description": "Section number within the part (e.g., 23 for 312.23). Omit to get entire part." }
+        },
+        "required": ["action_name", "part"]
+      }
+    },
+    {
+      "name": "search_cfr",
+      "description": "Search FDA regulations (21 CFR) for specific terms or concepts. Returns matching sections with snippets. Use for finding relevant regulatory requirements when you don't know the exact section number.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "action_name": { "type": "string", "const": "search_cfr" },
+          "query": { "type": "string", "description": "Search terms (e.g., 'informed consent requirements', 'protocol amendments')" },
+          "title": { "type": "string", "description": "CFR title to search within (default: 21)", "default": "21" },
+          "part": { "type": "string", "description": "Limit search to a specific part (e.g., 312)" }
+        },
+        "required": ["action_name", "query"]
+      }
+    },
+    {
+      "name": "get_cfr_part_structure",
+      "description": "Get the table of contents and section structure of a CFR part. Useful for understanding what regulatory sections exist before retrieving specific ones.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "action_name": { "type": "string", "const": "get_cfr_part_structure" },
+          "title": { "type": "string", "description": "CFR title number (default: 21)", "default": "21" },
+          "part": { "type": "string", "description": "CFR part number (e.g., 312)" }
+        },
+        "required": ["action_name", "part"]
+      }
+    }
+  ]
+}

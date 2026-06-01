@@ -1,0 +1,25 @@
+{
+  "target_name": "ich-guidelines",
+  "tools": [
+    {
+      "name": "search_ich_guidance",
+      "description": "Search ICH guidelines (E6 Good Clinical Practice, E8 General Considerations for Clinical Studies, E9 Statistical Principles) for relevant regulatory guidance. Use when drafting clinical trial protocol sections that must comply with ICH standards.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "action_name": { "type": "string", "const": "search_ich_guidance" },
+          "query": {
+            "type": "string",
+            "description": "Natural language query about ICH requirements (e.g., 'how should protocol objectives be stated', 'randomization requirements for Phase 2')"
+          },
+          "guideline": {
+            "type": "string",
+            "description": "Optional: filter to specific guideline. Values: E6, E8, E9. Omit to search all.",
+            "enum": ["E6", "E8", "E9"]
+          }
+        },
+        "required": ["action_name", "query"]
+      }
+    }
+  ]
+}

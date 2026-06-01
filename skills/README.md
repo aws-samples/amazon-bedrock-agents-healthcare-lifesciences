@@ -46,6 +46,7 @@ skills/<skill-name>/
 |-------|----------------|
 | [clinical-trial-search](clinical-trial-search/) | Search and filter ClinicalTrials.gov data |
 | [clinical-protocol-generation](clinical-protocol-generation/) | Generate trial protocols with eligibility, endpoints, sample size |
+| [clinical-protocol-drafting](clinical-protocol-drafting/) | Draft protocol sections (objectives, background, design) grounded in ICH/FDA regulations |
 | [clinical-enrollment-monitoring](clinical-enrollment-monitoring/) | Enrollment analytics and site performance insights |
 
 ### Biomarker Discovery & Oncology

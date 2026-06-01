@@ -1,0 +1,37 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: ICH Guidelines - S3 bucket for PDF storage (KB created via deploy script)
+
+Parameters:
+  AppName:
+    Type: String
+    Default: ich-guidelines
+    Description: Application name used for resource naming
+
+Resources:
+  IchDocsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${AppName}-docs-${AWS::AccountId}-${AWS::Region}'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+  # Note: Bedrock Knowledge Base creation requires the Bedrock API
+  # (not yet fully supported in CloudFormation as of 2024).
+  # The deploy.sh script creates the KB programmatically via AWS CLI/SDK.
+
+Outputs:
+  BucketName:
+    Description: S3 bucket for ICH guideline PDFs
+    Value: !Ref IchDocsBucket
+    Export:
+      Name: !Sub '${AppName}-bucket-name'
+  BucketArn:
+    Description: S3 bucket ARN
+    Value: !GetAtt IchDocsBucket.Arn

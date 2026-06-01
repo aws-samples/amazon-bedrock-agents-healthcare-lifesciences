@@ -29,6 +29,8 @@ AgentCore Gateway:
 | Server | Tools | Domain |
 |--------|-------|--------|
 | [biomni-research-tools](biomni-research-tools/) | 30+ | Biomedical database queries (UniProt, Reactome, STRING, DrugBank, etc.) |
+| [fda-ecfr](fda-ecfr/) | 3 | FDA regulations (21 CFR) via public eCFR API |
+| [ich-guidelines](ich-guidelines/) | 1 | ICH guideline search (E6, E8, E9) via Bedrock Knowledge Base |
 
 ## Deployment Pattern
 
