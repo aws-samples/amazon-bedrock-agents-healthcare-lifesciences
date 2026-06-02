@@ -1,3 +1,5 @@
+> **⚠️ This agent has been migrated to AgentCore.** See [`agentcore/`](agentcore/) for the current deployment. The legacy CloudFormation instructions below are for reference only.
+
 # Wiley Online Library Search Agent
 
 ## 1. Summary

@@ -1,3 +1,5 @@
+> **⚠️ This agent has been migrated to AgentCore.** See [`agentcore/`](agentcore/) for the current deployment. The legacy CloudFormation instructions below are for reference only.
+
 # Clinical Trial Protocol Generator Agent
 
 This agent helps users create, and optimize clinical trial protocols based on best practices and common data model (cdm). It assists with protocol design, inclusion/exclusion criteria development, endpoint selection, and statistical considerations.

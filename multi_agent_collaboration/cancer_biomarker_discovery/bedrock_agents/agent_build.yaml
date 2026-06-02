@@ -241,7 +241,7 @@ Resources:
         - IpProtocol: All
           FromPort: 0
           ToPort: 65535
-          CidrIp: 0.0.0.0/0
+          CidrIp: 10.0.0.0/16  # Restrict to VPC CIDR - do not expose to internet
       Tags:
         - Key: Name
           Value: !Sub ${AWS::StackName}-RedshiftSG

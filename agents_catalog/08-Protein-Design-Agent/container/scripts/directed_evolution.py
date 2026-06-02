@@ -31,15 +31,22 @@ def download_s3_folder(s3_uri, local_dir):
     
     bucket_name = s3_uri.split('//')[1].split('/')[0]
     prefix = '/'.join(s3_uri.split('//')[1].split('/')[1:])
+    # Validate inputs to prevent command injection
+    import re
+    if not re.match(r'^[a-zA-Z0-9._-]+$', bucket_name):
+        raise ValueError(f"Invalid bucket name: {bucket_name}")
+    if prefix and not re.match(r'^[a-zA-Z0-9._/=-]+$', prefix):
+        raise ValueError(f"Invalid S3 prefix: {prefix}")
+
     
     logging.info(f"Downloading from bucket: {bucket_name}, prefix: {prefix} to {local_dir}")
     
     # Use AWS CLI for efficient recursive download
-    cmd = f"aws s3 cp --recursive s3://{bucket_name}/{prefix} {local_dir}"
-    logging.info(f"Running command: {cmd}")
+    cmd = ["aws", "s3", "cp", "--recursive", f"s3://{bucket_name}/{prefix}", local_dir]
+    logging.info(f"Running command: {' '.join(cmd)}")
     
     try:
-        subprocess.check_call(cmd, shell=True)
+        subprocess.check_call(cmd)  # nosec B603 - args are validated with regex above, shell=False (list form)
         logging.info(f"Successfully downloaded S3 folder to {local_dir}")
     except subprocess.CalledProcessError as e:
         logging.error(f"Failed to download S3 folder: {e}")
@@ -98,6 +105,10 @@ def _parse_args():
     parser.add_argument('--verbose', 
                         action='store_true', 
                         help='Enable verbose output')
+    parser.add_argument('--model_revision',
+                        default='main',
+                        type=str,
+                        help='Model revision/commit hash for HuggingFace downloads (default: main)')
     return parser.parse_known_args()
 
 
@@ -135,8 +146,8 @@ def get_expert_list(args):
         logging.info(f"Loading ESM model from {args.esm_expert_name_or_path}")
         esm2_expert = evo_prot_grad.get_expert(
             'esm',
-            model=EsmForMaskedLM.from_pretrained(args.esm_expert_name_or_path, trust_remote_code=True),
-            tokenizer=AutoTokenizer.from_pretrained(args.esm_expert_name_or_path, trust_remote_code=True),
+            model=EsmForMaskedLM.from_pretrained(args.esm_expert_name_or_path, trust_remote_code=True, revision=args.model_revision),
+            tokenizer=AutoTokenizer.from_pretrained(args.esm_expert_name_or_path, trust_remote_code=True, revision=args.model_revision),
             scoring_strategy = 'mutant_marginal',
             temperature=1.0,
             device=device
@@ -148,7 +159,7 @@ def get_expert_list(args):
             'bert',
             scoring_strategy='pseudolikelihood_ratio', 
             temperature=1.0,
-            model=AutoModel.from_pretrained(args.bert_expert_name_or_path, trust_remote_code=True),
+            model=AutoModel.from_pretrained(args.bert_expert_name_or_path, trust_remote_code=True, revision=args.model_revision),
             device=device
         )
         expert_list.append(bert_expert)
@@ -159,7 +170,7 @@ def get_expert_list(args):
             'onehot_downstream_regression',
             scoring_strategy='attribute_value',
             temperature=1.0,
-            model=AutoModel.from_pretrained(args.scorer_expert_name_or_path, trust_remote_code=True),
+            model=AutoModel.from_pretrained(args.scorer_expert_name_or_path, trust_remote_code=True, revision=args.model_revision),
             device=device
         )
         expert_list.append(scorer_expert)

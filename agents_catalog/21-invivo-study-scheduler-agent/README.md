@@ -1,3 +1,5 @@
+> **⚠️ This agent has been migrated to AgentCore.** See [`agentcore/`](agentcore/) for the current deployment. The legacy CloudFormation instructions below are for reference only.
+
 # In Vivo Study Scheduler Agent
 
 This agent optimizes the scheduling of in vivo studies across a 30-day period, ensuring efficient resource utilization while respecting capacity constraints and study requirements. The agent uses advanced optimization algorithms to balance animal usage and study distribution across the month.

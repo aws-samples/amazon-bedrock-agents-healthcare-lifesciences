@@ -27,7 +27,7 @@ def search_pubmed(query: str, max_results: int = 5) -> str:
             "retmode": "json"
         }
         
-        search_response = requests.get(search_url, params=search_params)
+        search_response = requests.get(search_url, params=search_params, timeout=30)
         search_data = search_response.json()
         
         if "esearchresult" not in search_data or not search_data["esearchresult"]["idlist"]:
@@ -43,7 +43,7 @@ def search_pubmed(query: str, max_results: int = 5) -> str:
             "retmode": "json"
         }
         
-        summary_response = requests.get(summary_url, params=summary_params)
+        summary_response = requests.get(summary_url, params=summary_params, timeout=30)
         summary_data = summary_response.json()
         
         results = []

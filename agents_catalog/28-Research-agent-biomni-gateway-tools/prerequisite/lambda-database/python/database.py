@@ -6,7 +6,6 @@ import json
 import sys
 import os
 import requests
-import pickle  # nosec B403
 import time
 from typing import Dict, Any, List
 
@@ -182,13 +181,9 @@ def _query_rest_api(
     try:
         # Make the API request
         if method.upper() == "GET":
-            response = requests.get(
-                endpoint, params=params, headers=headers, timeout=30
-            )
+            response = requests.get(endpoint, params=params, headers=headers, timeout=30)
         elif method.upper() == "POST":
-            response = requests.post(
-                endpoint, params=params, headers=headers, json=json_data, timeout=30
-            )
+            response = requests.post(endpoint, params=params, headers=headers, json=json_data, timeout=30)
         else:
             return {"error": f"Unsupported HTTP method: {method}"}
         print("response text")
@@ -551,11 +546,10 @@ def query_uniprot(
     if prompt:
         # Load UniProt schema
         schema_path = os.path.join(
-            os.path.dirname(__file__), "schema_db", "uniprot.pkl"
+            os.path.dirname(__file__), "schema_db", "uniprot.json"
         )
-        with open(schema_path, "rb") as f:
-            # nosemgrep: avoid-pickle
-            uniprot_schema = pickle.load(f)  # nosec B301
+        with open(schema_path, "r") as f:
+            uniprot_schema = json.load(f)
 
         # Create system prompt template
         system_template = """
@@ -811,11 +805,10 @@ def query_interpro(
     if prompt:
         # Load InterPro schema
         schema_path = os.path.join(
-            os.path.dirname(__file__), "schema_db", "interpro.pkl"
+            os.path.dirname(__file__), "schema_db", "interpro.json"
         )
-        with open(schema_path, "rb") as f:
-            # nosemgrep: avoid-pickle
-            interpro_schema = pickle.load(f)  # nosec B301
+        with open(schema_path, "r") as f:
+            interpro_schema = json.load(f)
 
         # Create system prompt template
         system_template = """
@@ -917,12 +910,11 @@ def query_pdb(
 
     # Generate search query from natural language if prompt is provided and query is not
     if prompt and not query:
-        # Load schema from pickle file
-        schema_path = os.path.join(os.path.dirname(__file__), "schema_db", "pdb.pkl")
+        # Load schema from JSON file
+        schema_path = os.path.join(os.path.dirname(__file__), "schema_db", "pdb.json")
 
-        with open(schema_path, "rb") as f:
-            # nosemgrep: avoid-pickle
-            schema = pickle.load(f)  # nosec B301
+        with open(schema_path, "r") as f:
+            schema = json.load(f)
 
         # Create system prompt template
         system_template = """
@@ -1165,11 +1157,10 @@ def query_stringdb(
     if prompt:
         # Load STRING schema
         schema_path = os.path.join(
-            os.path.dirname(__file__), "schema_db", "stringdb.pkl"
+            os.path.dirname(__file__), "schema_db", "stringdb.json"
         )
-        with open(schema_path, "rb") as f:
-            # nosemgrep: avoid-pickle
-            stringdb_schema = pickle.load(f)  # nosec B301
+        with open(schema_path, "r") as f:
+            stringdb_schema = json.load(f)
 
         # Create system prompt template
         system_template = """
@@ -1340,10 +1331,9 @@ def query_paleobiology(
     # If using prompt, parse with Claude
     if prompt:
         # Load PBDB schema
-        schema_path = os.path.join(os.path.dirname(__file__), "schema_db", "pbdb.pkl")
-        with open(schema_path, "rb") as f:
-            # nosemgrep: avoid-pickle
-            pbdb_schema = pickle.load(f)  # nosec B301
+        schema_path = os.path.join(os.path.dirname(__file__), "schema_db", "pbdb.json")
+        with open(schema_path, "r") as f:
+            pbdb_schema = json.load(f)
 
         # Create system prompt template
         system_template = """
@@ -1480,10 +1470,9 @@ def query_jaspar(
     # If using prompt, parse with Claude
     if prompt:
         # Load JASPAR schema
-        schema_path = os.path.join(os.path.dirname(__file__), "schema_db", "jaspar.pkl")
-        with open(schema_path, "rb") as f:
-            # nosemgrep: avoid-pickle
-            jaspar_schema = pickle.load(f)  # nosec B301
+        schema_path = os.path.join(os.path.dirname(__file__), "schema_db", "jaspar.json")
+        with open(schema_path, "r") as f:
+            jaspar_schema = json.load(f)
 
         # Create system prompt template
         system_template = """
@@ -1592,10 +1581,9 @@ def query_worms(
     # If using prompt, parse with Claude
     if prompt:
         # Load WoRMS schema
-        schema_path = os.path.join(os.path.dirname(__file__), "schema_db", "worms.pkl")
-        with open(schema_path, "rb") as f:
-            # nosemgrep: avoid-pickle
-            worms_schema = pickle.load(f)  # nosec B301
+        schema_path = os.path.join(os.path.dirname(__file__), "schema_db", "worms.json")
+        with open(schema_path, "r") as f:
+            worms_schema = json.load(f)
 
         # Create system prompt template
         system_template = """
@@ -1702,11 +1690,10 @@ def query_cbioportal(
     if prompt:
         # Load cBioPortal schema
         schema_path = os.path.join(
-            os.path.dirname(__file__), "schema_db", "cbioportal.pkl"
+            os.path.dirname(__file__), "schema_db", "cbioportal.json"
         )
-        with open(schema_path, "rb") as f:
-            # nosemgrep: avoid-pickle
-            cbioportal_schema = pickle.load(f)  # nosec B301
+        with open(schema_path, "r") as f:
+            cbioportal_schema = json.load(f)
 
         # Create system prompt template
         system_template = """
@@ -1804,11 +1791,10 @@ def query_clinvar(
     if prompt:
         # Load ClinVar schema
         schema_path = os.path.join(
-            os.path.dirname(__file__), "schema_db", "clinvar.pkl"
+            os.path.dirname(__file__), "schema_db", "clinvar.json"
         )
-        with open(schema_path, "rb") as f:
-            # nosemgrep: avoid-pickle
-            clinvar_schema = pickle.load(f)  # nosec B301
+        with open(schema_path, "r") as f:
+            clinvar_schema = json.load(f)
 
         # ClinVar system prompt template
         system_prompt_template = """
@@ -1896,10 +1882,9 @@ def query_geo(
 
     if prompt:
         # Load GEO schema
-        schema_path = os.path.join(os.path.dirname(__file__), "schema_db", "geo.pkl")
-        with open(schema_path, "rb") as f:
-            # nosemgrep: avoid-pickle
-            geo_schema = pickle.load(f)  # nosec B301
+        schema_path = os.path.join(os.path.dirname(__file__), "schema_db", "geo.json")
+        with open(schema_path, "r") as f:
+            geo_schema = json.load(f)
 
         # Create system prompt template
         system_template = """
@@ -1993,10 +1978,9 @@ def query_dbsnp(
 
     if prompt:
         # Load dbSNP schema
-        schema_path = os.path.join(os.path.dirname(__file__), "schema_db", "dbsnp.pkl")
-        with open(schema_path, "rb") as f:
-            # nosemgrep: avoid-pickle
-            dbsnp_schema = pickle.load(f)  # nosec B301
+        schema_path = os.path.join(os.path.dirname(__file__), "schema_db", "dbsnp.json")
+        with open(schema_path, "r") as f:
+            dbsnp_schema = json.load(f)
 
         # Create system prompt template
         system_template = """
@@ -2087,10 +2071,9 @@ def query_ucsc(
     # If using prompt, parse with Claude
     if prompt:
         # Load UCSC schema
-        schema_path = os.path.join(os.path.dirname(__file__), "schema_db", "ucsc.pkl")
-        with open(schema_path, "rb") as f:
-            # nosemgrep: avoid-pickle
-            ucsc_schema = pickle.load(f)  # nosec B301
+        schema_path = os.path.join(os.path.dirname(__file__), "schema_db", "ucsc.json")
+        with open(schema_path, "r") as f:
+            ucsc_schema = json.load(f)
 
         # Create system prompt template
         system_template = """
@@ -2198,11 +2181,10 @@ def query_ensembl(
     if prompt:
         # Load Ensembl schema
         schema_path = os.path.join(
-            os.path.dirname(__file__), "schema_db", "ensembl.pkl"
+            os.path.dirname(__file__), "schema_db", "ensembl.json"
         )
-        with open(schema_path, "rb") as f:
-            # nosemgrep: avoid-pickle
-            ensembl_schema = pickle.load(f)  # nosec B301
+        with open(schema_path, "r") as f:
+            ensembl_schema = json.load(f)
 
         # Create system prompt template
         system_template = """
@@ -2329,11 +2311,10 @@ def query_opentarget(
     if prompt:
         # Load OpenTargets schema
         schema_path = os.path.join(
-            os.path.dirname(__file__), "schema_db", "opentarget.pkl"
+            os.path.dirname(__file__), "schema_db", "opentarget.json"
         )
-        with open(schema_path, "rb") as f:
-            # nosemgrep: avoid-pickle
-            opentarget_schema = pickle.load(f)  # nosec B301
+        with open(schema_path, "r") as f:
+            opentarget_schema = json.load(f)
 
         # Create system prompt template
         system_template = """
@@ -2434,12 +2415,11 @@ def query_monarch(
     # If using prompt, use Claude to generate the endpoint
     if prompt:
         schema_path = os.path.join(
-            os.path.dirname(__file__), "schema_db", "monarch.pkl"
+            os.path.dirname(__file__), "schema_db", "monarch.json"
         )
         if os.path.exists(schema_path):
-            with open(schema_path, "rb") as f:
-                # nosemgrep: avoid-pickle
-                monarch_schema = pickle.load(f)  # nosec B301
+            with open(schema_path, "r") as f:
+                monarch_schema = json.load(f)
         else:
             monarch_schema = None
 
@@ -2567,11 +2547,10 @@ def query_openfda(
 
     # If using prompt, use LLM to generate the endpoint
     if prompt:
-        schema_path = os.path.join(os.path.dirname(__file__), "schema_db", "openfda.pkl")
+        schema_path = os.path.join(os.path.dirname(__file__), "schema_db", "openfda.json")
         if os.path.exists(schema_path):
-            with open(schema_path, "rb") as f:
-                # nosemgrep: avoid-pickle
-                openfda_schema = pickle.load(f)  # nosec B301
+            with open(schema_path, "r") as f:
+                openfda_schema = json.load(f)
         else:
             openfda_schema = None
 
@@ -2683,11 +2662,10 @@ def query_gwas_catalog(
     if prompt:
         # Load GWAS Catalog schema
         schema_path = os.path.join(
-            os.path.dirname(__file__), "schema_db", "gwas_catalog.pkl"
+            os.path.dirname(__file__), "schema_db", "gwas_catalog.json"
         )
-        with open(schema_path, "rb") as f:
-            # nosemgrep: avoid-pickle
-            gwas_schema = pickle.load(f)  # nosec B301
+        with open(schema_path, "r") as f:
+            gwas_schema = json.load(f)
 
         # Create system prompt template
         system_template = """
@@ -2788,10 +2766,9 @@ def query_gnomad(
     # If using prompt, parse with Claude
     if prompt and not gene_symbol:
         # Load gnomAD schema
-        schema_path = os.path.join(os.path.dirname(__file__), "schema_db", "gnomad.pkl")
-        with open(schema_path, "rb") as f:
-            # nosemgrep: avoid-pickle
-            gnomad_schema = pickle.load(f)  # nosec B301
+        schema_path = os.path.join(os.path.dirname(__file__), "schema_db", "gnomad.json")
+        with open(schema_path, "r") as f:
+            gnomad_schema = json.load(f)
 
         # Create system prompt template
         system_template = """
@@ -2903,11 +2880,10 @@ def query_reactome(
     if prompt:
         # Load Reactome schema
         schema_path = os.path.join(
-            os.path.dirname(__file__), "schema_db", "reactome.pkl"
+            os.path.dirname(__file__), "schema_db", "reactome.json"
         )
-        with open(schema_path, "rb") as f:
-            # nosemgrep: avoid-pickle
-            reactome_schema = pickle.load(f)  # nosec B301
+        with open(schema_path, "r") as f:
+            reactome_schema = json.load(f)
 
         # Create system prompt template
         system_template = """
@@ -3015,7 +2991,7 @@ def query_reactome(
         if pathway_id and output_dir:
             diagram_url = f"{content_base_url}/data/pathway/{pathway_id}/diagram"
             try:
-                diagram_response = requests.get(diagram_url, time, timeout=30)
+                diagram_response = requests.get(diagram_url, timeout=30)
                 diagram_response.raise_for_status()
 
                 # Save diagram file
@@ -3168,10 +3144,9 @@ def query_pride(
     # If using prompt, parse with Claude
     if prompt:
         # Load PRIDE schema
-        schema_path = os.path.join(os.path.dirname(__file__), "schema_db", "pride.pkl")
-        with open(schema_path, "rb") as f:
-            # nosemgrep: avoid-pickle
-            pride_schema = pickle.load(f)  # nosec B301
+        schema_path = os.path.join(os.path.dirname(__file__), "schema_db", "pride.json")
+        with open(schema_path, "r") as f:
+            pride_schema = json.load(f)
 
         # Create system prompt template
         system_template = """
@@ -3270,10 +3245,9 @@ def query_gtopdb(
     # If using prompt, parse with Claude
     if prompt:
         # Load GtoPdb schema
-        schema_path = os.path.join(os.path.dirname(__file__), "schema_db", "gtopdb.pkl")
-        with open(schema_path, "rb") as f:
-            # nosemgrep: avoid-pickle
-            gtopdb_schema = pickle.load(f)  # nosec B301
+        schema_path = os.path.join(os.path.dirname(__file__), "schema_db", "gtopdb.json")
+        with open(schema_path, "r") as f:
+            gtopdb_schema = json.load(f)
 
         # Create system prompt template
         system_template = r"""
@@ -3558,10 +3532,9 @@ def query_mpd(
     # If using prompt, parse with Claude
     if prompt:
         # Load MPD schema
-        schema_path = os.path.join(os.path.dirname(__file__), "schema_db", "mpd.pkl")
-        with open(schema_path, "rb") as f:
-            # nosemgrep: avoid-pickle
-            mpd_schema = pickle.load(f)  # nosec B301
+        schema_path = os.path.join(os.path.dirname(__file__), "schema_db", "mpd.json")
+        with open(schema_path, "r") as f:
+            mpd_schema = json.load(f)
 
         # Create system prompt template
         system_template = """
@@ -3667,10 +3640,9 @@ def query_emdb(
     # If using prompt, parse with Claude
     if prompt:
         # Load EMDB schema
-        schema_path = os.path.join(os.path.dirname(__file__), "schema_db", "emdb.pkl")
-        with open(schema_path, "rb") as f:
-            # nosemgrep: avoid-pickle
-            emdb_schema = pickle.load(f)  # nosec B301
+        schema_path = os.path.join(os.path.dirname(__file__), "schema_db", "emdb.json")
+        with open(schema_path, "r") as f:
+            emdb_schema = json.load(f)
 
         # Create system prompt template
         system_template = """
@@ -3930,9 +3902,9 @@ def query_pubchem(
     # If using prompt, parse with Claude
     if prompt:
         # Load PubChem schema
-        schema_path = os.path.join(os.path.dirname(__file__), "schema_db", "pubchem.pkl")
-        with open(schema_path, "rb") as f:
-            pubchem_schema = pickle.load(f)
+        schema_path = os.path.join(os.path.dirname(__file__), "schema_db", "pubchem.json")
+        with open(schema_path, "r") as f:
+            pubchem_schema = json.load(f)
 
         # Create system prompt template
         system_template = """
@@ -4048,9 +4020,9 @@ def query_chembl(
         # Try LLM-based parsing with fallback
         try:
             # Load ChEMBL schema
-            schema_path = os.path.join(os.path.dirname(__file__), "schema_db", "chembl.pkl")
-            with open(schema_path, "rb") as f:
-                chembl_schema = pickle.load(f)
+            schema_path = os.path.join(os.path.dirname(__file__), "schema_db", "chembl.json")
+            with open(schema_path, "r") as f:
+                chembl_schema = json.load(f)
 
             # Create system prompt template
             system_template = """
@@ -4273,9 +4245,9 @@ def query_unichem(
     # If using prompt, parse with Claude
     if prompt:
         # Load UniChem schema
-        schema_path = os.path.join(os.path.dirname(__file__), "schema_db", "unichem.pkl")
-        with open(schema_path, "rb") as f:
-            unichem_schema = pickle.load(f)
+        schema_path = os.path.join(os.path.dirname(__file__), "schema_db", "unichem.json")
+        with open(schema_path, "r") as f:
+            unichem_schema = json.load(f)
 
         # Create system prompt template
         system_template = """
@@ -4384,9 +4356,9 @@ def query_clinicaltrials(
     # If using prompt, parse with Claude
     if prompt:
         # Load ClinicalTrials.gov schema
-        schema_path = os.path.join(os.path.dirname(__file__), "schema_db", "clinicaltrials.pkl")
-        with open(schema_path, "rb") as f:
-            clinicaltrials_schema = pickle.load(f)
+        schema_path = os.path.join(os.path.dirname(__file__), "schema_db", "clinicaltrials.json")
+        with open(schema_path, "r") as f:
+            clinicaltrials_schema = json.load(f)
 
         # Create system prompt template
         system_template = """
@@ -4506,9 +4478,9 @@ def query_dailymed(
     # If using prompt, parse with Claude
     if prompt:
         # Load DailyMed schema
-        schema_path = os.path.join(os.path.dirname(__file__), "schema_db", "dailymed.pkl")
-        with open(schema_path, "rb") as f:
-            dailymed_schema = pickle.load(f)
+        schema_path = os.path.join(os.path.dirname(__file__), "schema_db", "dailymed.json")
+        with open(schema_path, "r") as f:
+            dailymed_schema = json.load(f)
 
         # Create system prompt template
         system_template = """
@@ -4614,9 +4586,9 @@ def query_quickgo(
     # If using prompt, parse with Claude
     if prompt:
         # Load QuickGO schema
-        schema_path = os.path.join(os.path.dirname(__file__), "schema_db", "quickgo.pkl")
-        with open(schema_path, "rb") as f:
-            quickgo_schema = pickle.load(f)
+        schema_path = os.path.join(os.path.dirname(__file__), "schema_db", "quickgo.json")
+        with open(schema_path, "r") as f:
+            quickgo_schema = json.load(f)
 
         # Create system prompt template
         system_template = """
@@ -4725,9 +4697,9 @@ def query_encode(
     # If using prompt, parse with Claude
     if prompt:
         # Load ENCODE schema
-        schema_path = os.path.join(os.path.dirname(__file__), "schema_db", "encode.pkl")
-        with open(schema_path, "rb") as f:
-            encode_schema = pickle.load(f)
+        schema_path = os.path.join(os.path.dirname(__file__), "schema_db", "encode.json")
+        with open(schema_path, "r") as f:
+            encode_schema = json.load(f)
 
         # Create system prompt template
         system_template = """

@@ -23,6 +23,11 @@ Parameters:
 Resources:
   RuntimeAgentCoreRole:
     Type: AWS::IAM::Role
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: "ECR GetAuthorizationToken, X-Ray, and CloudWatch PutMetricData do not support resource-level permissions per AWS documentation"
     Properties:
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
@@ -67,17 +72,22 @@ Resources:
                 Action:
                   - ecr:GetAuthorizationToken
                 Resource: "*"
-              - Effect: Allow
+                # cfn_nag W11: ECR GetAuthorizationToken does not support resource-level permissions
+              - Sid: XRayTracing
+                Effect: Allow
                 Action:
                   - xray:PutTraceSegments
                   - xray:PutTelemetryRecords
                   - xray:GetSamplingRules
                   - xray:GetSamplingTargets
                 Resource: "*"
-              - Effect: Allow
+                # cfn_nag W11: X-Ray actions do not support resource-level permissions
+              - Sid: CloudWatchMetrics
+                Effect: Allow
                 Action:
                   - cloudwatch:PutMetricData
                 Resource: "*"
+                # cfn_nag W11: PutMetricData does not support resource-level permissions
                 Condition:
                   StringEquals:
                     cloudwatch:namespace: bedrock-agentcore
@@ -90,14 +100,15 @@ Resources:
                 Resource:
                   - !Sub arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:workload-identity-directory/default
                   - !Sub arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:workload-identity-directory/default/workload-identity/myapp*
-              - Sid: ProvisionedThroughputModelInvocation
+              - Sid: BedrockModelInvocation
                 Effect: Allow
                 Action:
                   - bedrock:InvokeModel
                   - bedrock:InvokeModelWithResponseStream
                 Resource:
-                  - "arn:aws:bedrock:*::foundation-model/*"
-                  - !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:*
+                  - !Sub arn:aws:bedrock:${AWS::Region}::foundation-model/*
+                  - !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/*
+                  - !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:provisioned-model/*
               - Sid: SSMGetparam
                 Effect: Allow
                 Action:

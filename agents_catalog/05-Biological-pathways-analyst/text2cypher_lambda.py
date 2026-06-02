@@ -97,7 +97,7 @@ def query_neptune(query):
         data = f'query={quote(query)}'
 
         # Send the POST request
-        response = requests.post(url, headers=headers, data=data, verify=True)
+        response = requests.post(url, headers=headers, data=data, verify=True, timeout=30)
 
         # Check if the request was successful
         response.raise_for_status()

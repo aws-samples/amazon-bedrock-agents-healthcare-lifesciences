@@ -18,7 +18,7 @@ Parameters:
   RedshiftPassword:
     Type: String
     NoEcho: true
-    Default: 'MyPassword123'  
+    Default: ''  # REQUIRED: Set a secure password at deploy time  
     Description: 'The password for the Redshift master user. Must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, and one number.'
     MinLength: 8
     MaxLength: 64
@@ -178,6 +178,11 @@ Resources:
   # Bedrock AgentCore runtime role
   BedrockAgentCoreStrandsExecutionRole:
     Type: AWS::IAM::Role
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: "ECR GetAuthorizationToken, X-Ray, and CloudWatch PutMetricData do not support resource-level permissions"
     Properties:
       AssumeRolePolicyDocument:
         Version: 2012-10-17
@@ -189,12 +194,6 @@ Resources:
             Action:
               - sts:AssumeRole
       Path: /
-      ManagedPolicyArns:
-        - "arn:aws:iam::aws:policy/AmazonBedrockFullAccess"
-        - "arn:aws:iam::aws:policy/AWSLambda_FullAccess"
-        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
-        - "arn:aws:iam::aws:policy/AmazonRedshiftQueryEditor"
-        - "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryFullAccess"
       Policies:
         - PolicyName: AgentCorePolicy
           PolicyDocument:
@@ -202,7 +201,10 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
-                  - states:*
+                  - states:StartExecution
+                  - states:DescribeExecution
+                  - states:StopExecution
+                  - states:ListExecutions
                 Resource: "*"
               - Effect: Allow
                 Action:
@@ -235,17 +237,26 @@ Resources:
                 Condition:
                   StringEquals:
                     cloudwatch:namespace: bedrock-agentcore
-              - Effect: Allow
-                Resource: "*"
+              - Sid: S3DataAccess
+                Effect: Allow
+                Resource:
+                  - !Sub arn:aws:s3:::*-${AWS::AccountId}-${AWS::Region}*/*
+                  - !Sub arn:aws:s3:::bedrock-agentcore-*/*
                 Action: s3:GetObject
-              - Effect: Allow
-                Resource: "*"
+              - Sid: LambdaInvoke
+                Effect: Allow
+                Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*
                 Action: lambda:InvokeFunction
-              - Effect: Allow
+              - Sid: BedrockAgentCoreAccess
+                Effect: Allow
                 Action:
-                  - bedrock-agentcore:*
-                  - iam:PassRole
-                Resource: "*"
+                  - bedrock-agentcore:InvokeAgentRuntime
+                  - bedrock-agentcore:GetWorkloadAccessToken
+                  - bedrock-agentcore:GetWorkloadAccessTokenForJWT
+                  - bedrock-agentcore:GetWorkloadAccessTokenForUserId
+                  - bedrock-agentcore:GetResourceOauth2Token
+                Resource:
+                  - !Sub arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:*
               - Sid: GetAgentAccessToken
                 Effect: Allow
                 Action:
@@ -651,7 +662,7 @@ Resources:
                   - 'logs:CreateLogStream'
                   - 'logs:PutLogEvents'
                 Resource: 
-                  - 'arn:aws:logs:*:*:*'
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*'
               - Effect: 'Allow'
                 Action: 
                   - 's3:GetObject'
@@ -663,8 +674,12 @@ Resources:
                   - !Sub 'arn:aws:s3:::biomarkers-discovery-agent-test-${AWS::Region}-${AWS::AccountId}/*'
               - Effect: 'Allow'
                 Action: 
-                  - 'redshift-data:*'
-                  - 'redshift:*'
+                  - 'redshift-data:ExecuteStatement'
+                  - 'redshift-data:GetStatementResult'
+                  - 'redshift-data:DescribeStatement'
+                  - 'redshift-data:ListStatements'
+                  - 'redshift:GetClusterCredentials'
+                  - 'redshift:DescribeClusters'
                 Resource: 
                   - !Sub 'arn:aws:redshift:${AWS::Region}:${AWS::AccountId}:dbuser:biomarker-redshift-cluster/*'
                   - !Sub 'arn:aws:redshift:${AWS::Region}:${AWS::AccountId}:dbuser:biomarker-redshift-cluster'

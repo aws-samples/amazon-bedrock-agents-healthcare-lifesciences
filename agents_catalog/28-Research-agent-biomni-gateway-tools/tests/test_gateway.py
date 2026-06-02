@@ -110,8 +110,7 @@ def get_gateway_access_token():
         response = requests.post(
             token_url, 
             data=token_data, 
-            headers={"Content-Type": "application/x-www-form-urlencoded"}
-        )
+            headers={"Content-Type": "application/x-www-form-urlencoded"}, timeout=30)
         
         if response.status_code != 200:
             print(f"Failed to get access token: {response.text}")
@@ -144,8 +143,7 @@ def tool_search(gateway_endpoint, jwt_token, query, max_tools=5):
         headers={
             "Authorization": f"Bearer {jwt_token}",
             "Content-Type": "application/json",
-        },
-    )
+        }, timeout=30)
     
     if response.status_code == 200:
         tool_resp = response.json()

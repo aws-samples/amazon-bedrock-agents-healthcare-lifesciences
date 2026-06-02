@@ -147,7 +147,7 @@ Resources:
         ToPort:
           Ref: DBClusterPort
         IpProtocol: tcp
-        CidrIp: 0.0.0.0/0
+        CidrIp: 10.0.0.0/16  # Restrict to VPC CIDR - do not expose to internet
         Description: http access
       Tags:
       - Key: Name

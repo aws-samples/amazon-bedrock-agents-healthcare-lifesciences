@@ -1,3 +1,5 @@
+> **⚠️ This agent has been migrated to AgentCore.** See [`agentcore/`](agentcore/) for the current deployment. The legacy CloudFormation instructions below are for reference only.
+
 # Clinical Study Research Agent
 
 This agent helps users explore, filter, and analyze clinical trial data from public registries like ClinicalTrials.gov. It assists with condition-specific study identification, intervention tracking, sponsor profiling, and outcome analysis using structured search criteria.

@@ -1,6 +1,11 @@
 Resources:
   BedrockAgentCoreStrandsExecutionRole:
     Type: AWS::IAM::Role
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: "ECR GetAuthorizationToken, X-Ray, and CloudWatch PutMetricData do not support resource-level permissions"
     Properties:
       AssumeRolePolicyDocument:
         Version: 2012-10-17
@@ -13,69 +18,97 @@ Resources:
             Action:
               - sts:AssumeRole
       Path: /
-      ManagedPolicyArns:
-        - "arn:aws:iam::aws:policy/AmazonBedrockFullAccess"
-        - "arn:aws:iam::aws:policy/AWSLambda_FullAccess"
-        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
-        - "arn:aws:iam::aws:policy/AmazonRedshiftQueryEditor"
-        - "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryFullAccess"
       Policies:
-        - PolicyName: AgentCorePolicy
+        - PolicyName: AgentCoreRuntimePolicy
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
-              - Effect: Allow
+              - Sid: BedrockModelInvocation
+                Effect: Allow
                 Action:
-                  - states:*
-                Resource: "*"
-              - Effect: Allow
-                Action:
-                  - logs:DescribeLogStreams
-                  - logs:CreateLogGroup
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                  - bedrock:ListFoundationModels
                 Resource:
-                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/bedrock-agentcore/runtimes/*
-              - Effect: Allow
+                  - !Sub arn:aws:bedrock:${AWS::Region}::foundation-model/*
+                  - !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/*
+              - Sid: BedrockAgentCoreRuntime
+                Effect: Allow
                 Action:
+                  - bedrock-agentcore:InvokeAgentRuntime
+                  - bedrock-agentcore:GetWorkloadAccessToken
+                  - bedrock-agentcore:GetWorkloadAccessTokenForJWT
+                  - bedrock-agentcore:GetWorkloadAccessTokenForUserId
+                  - bedrock-agentcore:GetResourceOauth2Token
+                Resource:
+                  - !Sub arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:*
+              - Sid: ECRImageAccess
+                Effect: Allow
+                Action:
+                  - ecr:BatchGetImage
+                  - ecr:GetDownloadUrlForLayer
+                Resource:
+                  - !Sub arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/bedrock-agentcore-*
+              - Sid: ECRTokenAccess
+                Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                Resource: "*"
+                # ECR GetAuthorizationToken does not support resource-level permissions
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:DescribeLogStreams
                   - logs:DescribeLogGroups
                 Resource:
+                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/bedrock-agentcore/runtimes/*
                   - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:*
-              - Effect: Allow
+              - Sid: CloudWatchLogStream
+                Effect: Allow
                 Action:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Resource:
                   - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/bedrock-agentcore/runtimes/*:log-stream:*
-              - Effect: Allow
+              - Sid: XRayTracing
+                Effect: Allow
                 Action:
                   - xray:PutTraceSegments
                   - xray:PutTelemetryRecords
                   - xray:GetSamplingRules
                   - xray:GetSamplingTargets
-                Resource:
-                  - "*"
-              - Effect: Allow
                 Resource: "*"
-                Action: cloudwatch:PutMetricData
+                # X-Ray actions do not support resource-level permissions
+              - Sid: CloudWatchMetrics
+                Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricData
+                Resource: "*"
+                # PutMetricData does not support resource-level permissions
                 Condition:
                   StringEquals:
                     cloudwatch:namespace: bedrock-agentcore
-              - Effect: Allow
-                Resource: "*"
-                Action: s3:GetObject
-              - Effect: Allow
-                Resource: "*"
-                Action: lambda:InvokeFunction
-              - Effect: Allow
-                Action:
-                  - bedrock-agentcore:*
-                  - iam:PassRole
-                Resource: "*"
-              - Sid: GetAgentAccessToken
+              - Sid: S3DataAccess
                 Effect: Allow
                 Action:
-                  - bedrock-agentcore:GetWorkloadAccessToken
-                  - bedrock-agentcore:GetWorkloadAccessTokenForJWT
-                  - bedrock-agentcore:GetWorkloadAccessTokenForUserId
+                  - s3:GetObject
+                  - s3:ListBucket
                 Resource:
-                  - !Sub arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:workload-identity-directory/default
-                  - !Sub arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:workload-identity-directory/default/workload-identity/agentcore_strands-*
+                  - !Sub arn:aws:s3:::*-${AWS::AccountId}-${AWS::Region}*
+                  - !Sub arn:aws:s3:::*-${AWS::AccountId}-${AWS::Region}*/*
+              - Sid: LambdaInvoke
+                Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*
+              - Sid: RedshiftDataAccess
+                Effect: Allow
+                Action:
+                  - redshift-data:ExecuteStatement
+                  - redshift-data:GetStatementResult
+                  - redshift-data:DescribeStatement
+                  - redshift-data:ListStatements
+                Resource:
+                  - !Sub arn:aws:redshift:${AWS::Region}:${AWS::AccountId}:cluster:*

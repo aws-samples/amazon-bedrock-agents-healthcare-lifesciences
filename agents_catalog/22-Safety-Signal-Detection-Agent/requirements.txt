@@ -1,2 +1,0 @@
-# No global dependencies required
-# Each Lambda function has its own requirements.txt

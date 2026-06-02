@@ -170,7 +170,7 @@ Resources:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: arn:aws:logs:*:*:*
+                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*
         - PolicyName: Cognito
           PolicyDocument:
             Version: '2012-10-17'
@@ -178,7 +178,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - cognito-idp:AdminAddUserToGroup
-                Resource: "*"
+                Resource: !GetAtt UserPool.Arn
 
   PostSignupFunction:
     Type: AWS::Lambda::Function
