@@ -1,0 +1,530 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Shared infrastructure prerequisites for HCLS AgentCore agents.
+  Deploys VPC, Redshift, S3, and Bedrock Knowledge Base resources
+  that agents reference at runtime.
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Description: Short environment identifier (lowercase + one digit, max 5 chars).
+    Default: env1
+    MaxLength: 5
+    AllowedPattern: ^[a-z]{1,4}[0-9]$
+    ConstraintDescription: Must be lowercase letters followed by one digit, max 5 characters.
+
+  RedshiftDatabaseName:
+    Type: String
+    Default: dev
+
+  RedshiftUserName:
+    Type: String
+    Default: admin
+
+  RedshiftPassword:
+    Type: String
+    NoEcho: true
+    Description: >
+      Password for the Redshift master user. Must be 8-64 characters with at least
+      one uppercase letter, one lowercase letter, and one number.
+    MinLength: 8
+    MaxLength: 64
+    AllowedPattern: ^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d!@#$%^&*()_+\-=\[\]{};:'",.<>?]{8,64}$
+    ConstraintDescription: Must contain uppercase, lowercase, and a number.
+
+  ExistingVpcId:
+    Type: String
+    Description: (Optional) Use an existing VPC. Leave empty to create a new one.
+    Default: ""
+
+  ExistingPrivateSubnets:
+    Type: CommaDelimitedList
+    Description: (Optional) Two private subnet IDs in different AZs. Required if ExistingVpcId is set.
+    Default: ""
+
+Conditions:
+  CreateNewVpc: !Equals [!Ref ExistingVpcId, ""]
+
+Resources:
+  # ============================================================
+  # VPC & Networking
+  # ============================================================
+  VPC:
+    Type: AWS::EC2::VPC
+    Condition: CreateNewVpc
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-VPC
+
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Condition: CreateNewVpc
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Select
+        - 0
+        - !GetAZs ""
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-PrivateSubnet1
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Condition: CreateNewVpc
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: !Select
+        - 1
+        - !GetAZs ""
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-PrivateSubnet2
+
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Condition: CreateNewVpc
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: SUBNET_AUTO_ASSIGN_PUBLIC_IP_DISABLED
+            reason: "Public subnet required for NAT Gateway to provide internet access to private subnets"
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.3.0/24
+      AvailabilityZone: !Select
+        - 0
+        - !GetAZs ""
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-PublicSubnet1
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Condition: CreateNewVpc
+
+  VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Condition: CreateNewVpc
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  NatGatewayEIP:
+    Type: AWS::EC2::EIP
+    Condition: CreateNewVpc
+    Properties:
+      Domain: vpc
+
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Condition: CreateNewVpc
+    Properties:
+      AllocationId: !GetAtt NatGatewayEIP.AllocationId
+      SubnetId: !Ref PublicSubnet1
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Condition: CreateNewVpc
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-PublicRT
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    Condition: CreateNewVpc
+    DependsOn: VPCGatewayAttachment
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: NO_UNRESTRICTED_ROUTE_TO_IGW
+            reason: "Public subnet requires internet access for NAT Gateway"
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnet1RTAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: CreateNewVpc
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Condition: CreateNewVpc
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-PrivateRT
+
+  PrivateRoute:
+    Type: AWS::EC2::Route
+    Condition: CreateNewVpc
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway
+
+  PrivateSubnet1RTAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: CreateNewVpc
+    Properties:
+      SubnetId: !Ref PrivateSubnet1
+      RouteTableId: !Ref PrivateRouteTable
+
+  PrivateSubnet2RTAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: CreateNewVpc
+    Properties:
+      SubnetId: !Ref PrivateSubnet2
+      RouteTableId: !Ref PrivateRouteTable
+
+  # ============================================================
+  # Security Group
+  # ============================================================
+  RedshiftSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: SECURITY_GROUP_INGRESS_CIDR_NON_32_RULE
+            reason: "VPC-wide CIDR needed for agents running in any subnet to reach Redshift"
+    Properties:
+      GroupDescription: Allow Redshift access from within VPC only on port 5439
+      VpcId: !If [CreateNewVpc, !Ref VPC, !Ref ExistingVpcId]
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5439
+          ToPort: 5439
+          CidrIp: 10.0.0.0/16
+          Description: Redshift access from VPC CIDR
+      SecurityGroupEgress:
+        - IpProtocol: "-1"
+          CidrIp: 0.0.0.0/0
+          Description: Allow all outbound
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-RedshiftSG
+
+  # ============================================================
+  # S3 Bucket (data & logs)
+  # ============================================================
+  DataBucket:
+    Type: AWS::S3::Bucket
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: S3_BUCKET_DEFAULT_LOCK_ENABLED
+            reason: "Object lock not needed for agent data/logs bucket"
+          - id: S3_BUCKET_REPLICATION_ENABLED
+            reason: "Cross-region replication not needed for sample workloads"
+          - id: S3_BUCKET_LOGGING_ENABLED
+            reason: "Access logging omitted for sample workload; Redshift audit logs captured separately"
+    Properties:
+      BucketName: !Sub ${EnvironmentName}-${AWS::AccountId}-${AWS::Region}-hcls-data
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+
+  DataBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref DataBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource:
+              - !Sub arn:aws:s3:::${DataBucket}
+              - !Sub arn:aws:s3:::${DataBucket}/*
+            Condition:
+              Bool:
+                aws:SecureTransport: "false"
+          - Sid: AllowRedshiftLogging
+            Effect: Allow
+            Principal:
+              Service: redshift.amazonaws.com
+            Action:
+              - s3:PutObject
+              - s3:GetBucketAcl
+            Resource:
+              - !Sub arn:aws:s3:::${DataBucket}
+              - !Sub arn:aws:s3:::${DataBucket}/*
+
+  # ============================================================
+  # Redshift
+  # ============================================================
+  RedshiftClusterParameterGroup:
+    Type: AWS::Redshift::ClusterParameterGroup
+    Properties:
+      Description: Enforce SSL and audit logging
+      ParameterGroupFamily: redshift-1.0
+      Parameters:
+        - ParameterName: enable_user_activity_logging
+          ParameterValue: "true"
+        - ParameterName: require_ssl
+          ParameterValue: "true"
+
+  RedshiftSubnetGroup:
+    Type: AWS::Redshift::ClusterSubnetGroup
+    Properties:
+      Description: Subnet group for Redshift cluster
+      SubnetIds: !If
+        - CreateNewVpc
+        - - !Ref PrivateSubnet1
+          - !Ref PrivateSubnet2
+        - !Ref ExistingPrivateSubnets
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-RedshiftSubnetGroup
+
+  RedshiftRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: IAM_NO_INLINE_POLICY_CHECK
+            reason: "Inline policy scoped to specific S3 bucket created in this stack"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: redshift.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: RedshiftDataAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub arn:aws:s3:::${DataBucket}
+                  - !Sub arn:aws:s3:::${DataBucket}/*
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetBucketAcl
+                Resource:
+                  - !Sub arn:aws:s3:::${DataBucket}
+                  - !Sub arn:aws:s3:::${DataBucket}/*
+
+  RedshiftCluster:
+    Type: AWS::Redshift::Cluster
+    Properties:
+      DBName: !Ref RedshiftDatabaseName
+      ClusterIdentifier: !Sub ${EnvironmentName}-hcls-redshift
+      NodeType: ra3.large
+      ClusterType: single-node
+      MasterUsername: !Ref RedshiftUserName
+      MasterUserPassword: !Ref RedshiftPassword
+      PubliclyAccessible: false
+      Encrypted: true
+      VpcSecurityGroupIds:
+        - !Ref RedshiftSecurityGroup
+      ClusterSubnetGroupName: !Ref RedshiftSubnetGroup
+      ClusterParameterGroupName: !Ref RedshiftClusterParameterGroup
+      LoggingProperties:
+        BucketName: !Ref DataBucket
+        S3KeyPrefix: redshift-logs/
+        LogDestinationType: s3
+      IamRoles:
+        - !GetAtt RedshiftRole.Arn
+
+  # ============================================================
+  # Bedrock Knowledge Base
+  # ============================================================
+  KnowledgeBaseRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: IAM_NO_INLINE_POLICY_CHECK
+            reason: "Inline policy scoped to specific resources created in this stack"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: bedrock.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: KBDataAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub arn:aws:s3:::${DataBucket}
+                  - !Sub arn:aws:s3:::${DataBucket}/*
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                Resource:
+                  - !Sub arn:aws:bedrock:${AWS::Region}::foundation-model/*
+
+  KnowledgeBase:
+    Type: AWS::Bedrock::KnowledgeBase
+    Properties:
+      Name: !Sub ${EnvironmentName}-hcls-knowledge-base
+      RoleArn: !GetAtt KnowledgeBaseRole.Arn
+      KnowledgeBaseConfiguration:
+        Type: VECTOR
+        VectorKnowledgeBaseConfiguration:
+          EmbeddingModelArn: !Sub arn:aws:bedrock:${AWS::Region}::foundation-model/amazon.titan-embed-text-v2:0
+
+  KnowledgeBaseDataSource:
+    Type: AWS::Bedrock::DataSource
+    Properties:
+      KnowledgeBaseId: !Ref KnowledgeBase
+      Name: !Sub ${EnvironmentName}-s3-datasource
+      DataSourceConfiguration:
+        Type: S3
+        S3Configuration:
+          BucketArn: !Sub arn:aws:s3:::${DataBucket}
+          InclusionPrefixes:
+            - knowledge-base/
+
+  # ============================================================
+  # AgentCore Execution Role
+  # ============================================================
+  AgentCoreExecutionRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: "X-Ray and CloudWatch PutMetricData do not support resource-level permissions"
+          - id: IAM_NO_INLINE_POLICY_CHECK
+            reason: "Inline policy scoped to specific resources created in this stack"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: bedrock-agentcore.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AgentCoreRuntimePolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: BedrockInvoke
+                Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                Resource:
+                  - !Sub arn:aws:bedrock:${AWS::Region}::foundation-model/*
+              - Sid: BedrockAgentCoreAccess
+                Effect: Allow
+                Action:
+                  - bedrock-agentcore:InvokeAgentRuntime
+                  - bedrock-agentcore:GetWorkloadAccessToken
+                Resource:
+                  - !Sub arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:*
+              - Sid: RedshiftDataAccess
+                Effect: Allow
+                Action:
+                  - redshift-data:ExecuteStatement
+                  - redshift-data:GetStatementResult
+                  - redshift-data:DescribeStatement
+                  - redshift:GetClusterCredentials
+                  - redshift:DescribeClusters
+                Resource:
+                  - !Sub arn:aws:redshift:${AWS::Region}:${AWS::AccountId}:cluster:${EnvironmentName}-hcls-redshift
+                  - !Sub arn:aws:redshift:${AWS::Region}:${AWS::AccountId}:dbname:${EnvironmentName}-hcls-redshift/*
+                  - !Sub arn:aws:redshift:${AWS::Region}:${AWS::AccountId}:dbuser:${EnvironmentName}-hcls-redshift/*
+              - Sid: S3DataAccess
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub arn:aws:s3:::${DataBucket}
+                  - !Sub arn:aws:s3:::${DataBucket}/*
+              - Sid: KnowledgeBaseAccess
+                Effect: Allow
+                Action:
+                  - bedrock:Retrieve
+                  - bedrock:RetrieveAndGenerate
+                Resource:
+                  - !GetAtt KnowledgeBase.KnowledgeBaseArn
+              - Sid: Logging
+                Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/bedrock-agentcore/runtimes/*
+              - Sid: Observability
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                  - cloudwatch:PutMetricData
+                Resource: "*"
+
+Outputs:
+  VpcId:
+    Description: VPC ID (created or existing)
+    Value: !If [CreateNewVpc, !Ref VPC, !Ref ExistingVpcId]
+
+  PrivateSubnetIds:
+    Description: Private subnet IDs
+    Value: !If
+      - CreateNewVpc
+      - !Sub ${PrivateSubnet1},${PrivateSubnet2}
+      - !Join [",", !Ref ExistingPrivateSubnets]
+
+  RedshiftEndpoint:
+    Description: Redshift cluster endpoint
+    Value: !GetAtt RedshiftCluster.Endpoint.Address
+
+  RedshiftClusterIdentifier:
+    Description: Redshift cluster identifier
+    Value: !Ref RedshiftCluster
+
+  DataBucketName:
+    Description: S3 bucket for data and artifacts
+    Value: !Ref DataBucket
+
+  KnowledgeBaseId:
+    Description: Bedrock Knowledge Base ID
+    Value: !Ref KnowledgeBase
+
+  AgentCoreExecutionRoleArn:
+    Description: IAM role ARN for AgentCore agent runtimes
+    Value: !GetAtt AgentCoreExecutionRole.Arn

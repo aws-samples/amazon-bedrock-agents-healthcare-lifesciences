@@ -30,6 +30,22 @@ Highlights:
 - [Terminology agent with OLS](agents_catalog/35-Terminology-agent/) — Ontology standardization
 - [C4LS agent with AgentSkills](agents_catalog/36-C4LS-agent/) — Skills + MCP at runtime
 
+### Step 1: Deploy Shared Infrastructure (if needed)
+
+Some agents require backend infrastructure (Redshift, Bedrock Knowledge Base). Deploy the shared prerequisites stack first:
+
+```bash
+aws cloudformation deploy \
+  --template-file Infra_cfn.yaml \
+  --stack-name hcls-agent-infra \
+  --parameter-overrides RedshiftPassword=<YourSecurePassword> \
+  --capabilities CAPABILITY_IAM
+```
+
+This creates: VPC, Redshift cluster, S3 data bucket, Bedrock Knowledge Base, and an AgentCore execution role. You can also provide an existing VPC via the `ExistingVpcId` parameter.
+
+### Step 2: Deploy an Agent
+
 ### MCP Servers
 
 Domain tools exposed as MCP endpoints, organized by deployment model:
