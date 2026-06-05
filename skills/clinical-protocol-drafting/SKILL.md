@@ -19,9 +19,10 @@ description: Use when drafting clinical trial protocol sections (objectives, bac
 |---|---|---|
 | fda-ecfr | `get_cfr_section` | Retrieve 21 CFR regulatory text |
 | fda-ecfr | `search_cfr` | Search across CFR titles |
-| ich-guidelines | `search_ich_guidance` | Query ICH E6/E8/E9 content |
+| awslabs.bedrock-kb-retrieval-mcp-server | `retrieve` | Query ICH E6/E8/E9 content via Bedrock Knowledge Base |
 
-Both servers are in `mcp-servers/agentcore-gateway/` — deploy them first.
+The fda-ecfr server is in `mcp-servers/agentcore-gateway/fda-ecfr/` — deploy it first.
+For ICH guidelines, set up a Bedrock Knowledge Base per `mcp-servers/agentcore-gateway/ich-guidelines/README.md` and use the existing awslabs MCP server.
 
 ## Workflow: Protocol Drafting from Grant Document
 
@@ -30,7 +31,7 @@ Both servers are in `mcp-servers/agentcore-gateway/` — deploy them first.
 Generate the draft Objectives section of a clinical trial protocol.
 
 1. Extract from the grant: specific aims, primary endpoint, secondary endpoints.
-2. Use `search_ich_guidance` with query "protocol objectives requirements" and guideline "E6" to retrieve ICH E6(R2) Section 6 guidance on how protocol objectives should be stated.
+2. Use `retrieve` with query "protocol objectives requirements ICH E6(R2) Section 6" to retrieve guidance on how protocol objectives should be stated.
 
 **Output structure:**
 - Primary Objective (linked to the primary endpoint)
@@ -45,7 +46,7 @@ Generate the draft Background and Rationale section.
 
 1. Extract from the grant: disease context, preliminary data (preclinical and Phase 1 results), unmet medical need, scientific rationale for the investigational agent.
 2. Use `get_cfr_section` with part "312" and section "23" to retrieve 21 CFR 312.23 requirements on nonclinical and clinical background information for an IND protocol.
-3. Use `search_ich_guidance` with query "protocol background section requirements" to retrieve ICH E6(R2) Section 6 and ICH E8(R1) guidance.
+3. Use `retrieve` with query "protocol background section requirements ICH E6(R2) E8(R1)" to retrieve guidance.
 
 **Output structure:**
 - Disease Overview (epidemiology, molecular subtype prevalence, current standard of care)
@@ -62,8 +63,8 @@ Tone: scientific, appropriate for IRB submission. Cite grant preliminary data wh
 Generate the draft Study Design section.
 
 1. Extract from the grant: study design type, randomization scheme, treatment arms, dosing, sample size, study duration, number of sites, target population.
-2. Use `search_ich_guidance` with query "general study design considerations randomization" and guideline "E8" for ICH E8(R1) design guidance.
-3. Use `search_ich_guidance` with query "statistical design principles sample size" and guideline "E9" for ICH E9 statistical principles.
+2. Use `retrieve` with query "general study design considerations randomization ICH E8(R1)" for design guidance.
+3. Use `retrieve` with query "statistical design principles sample size ICH E9" for statistical principles.
 4. Use `get_cfr_section` with part "312" and section "23" for 21 CFR 312.23(a)(6) requirements on protocol design elements.
 
 **Output structure:**
