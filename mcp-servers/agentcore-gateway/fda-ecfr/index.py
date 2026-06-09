@@ -14,6 +14,15 @@ import urllib.parse
 
 
 ECFR_BASE = "https://www.ecfr.gov/api/versioner/v1"
+ALLOWED_SCHEME = "https://"
+
+
+def _safe_urlopen(url, timeout=30):
+    """Open a URL after validating it uses HTTPS only."""
+    if not url.startswith(ALLOWED_SCHEME):
+        raise ValueError(f"URL scheme not allowed: {url}")
+    req = urllib.request.Request(url, headers={"Accept": "application/json"})
+    return urllib.request.urlopen(req, timeout=timeout)  # nosec B310
 
 
 def handler(event, context):
@@ -46,8 +55,7 @@ def _get_cfr_section(event):
         url = f"{ECFR_BASE}{path}?part={part}"
 
     try:
-        req = urllib.request.Request(url, headers={"Accept": "application/json"})
-        with urllib.request.urlopen(req, timeout=30) as resp:
+        with _safe_urlopen(url) as resp:
             data = json.loads(resp.read())
         return {
             "title": f"21 CFR Part {part}" + (f".{section}" if section else ""),
@@ -79,8 +87,7 @@ def _search_cfr(event):
     url = f"{ECFR_BASE}/search?{urllib.parse.urlencode(params)}"
 
     try:
-        req = urllib.request.Request(url, headers={"Accept": "application/json"})
-        with urllib.request.urlopen(req, timeout=30) as resp:
+        with _safe_urlopen(url) as resp:
             data = json.loads(resp.read())
         results = []
         for hit in data.get("results", [])[:5]:
@@ -106,8 +113,7 @@ def _get_cfr_part_structure(event):
     url = f"{ECFR_BASE}/structure/current/title-{title}?part={part}"
 
     try:
-        req = urllib.request.Request(url, headers={"Accept": "application/json"})
-        with urllib.request.urlopen(req, timeout=30) as resp:
+        with _safe_urlopen(url) as resp:
             data = json.loads(resp.read())
         return {"structure": data}
     except Exception as e:
