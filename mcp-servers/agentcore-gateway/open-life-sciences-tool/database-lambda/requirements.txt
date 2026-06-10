@@ -1,0 +1,44 @@
+# Python dependencies for database Lambda function
+# Dependencies from kiro-life-sciences MCP server modules
+
+# AWS SDK for credential retrieval from SSM Parameter Store
+boto3>=1.28.0
+
+# Core MCP dependencies
+mcp>=0.9.0
+
+# HTTP client for database API calls
+httpx>=0.25.0
+
+# Common base classes and utilities (shared across all life sciences modules)
+# This will be copied from kiro-life-sciences/life-sciences-common/src/
+# It provides BaseLifeSciencesServer and error handling utilities
+
+# Life sciences MCP server modules
+# These will be copied from kiro-life-sciences/{module}/src/ by sub-task 6.2
+# Each module provides domain-specific database tools:
+#
+# - life_sciences_genomics: NCBI, Ensembl, ClinVar, gnomAD, dbSNP, etc.
+# - life_sciences_proteomics: UniProt, InterPro, Pfam, STRING, PRIDE, neXtProt
+# - life_sciences_structural: PDB, AlphaFold DB, CATH, SCOP
+# - life_sciences_cheminformatics: PubChem, ChemSpider, ZINC, RDKit
+# - life_sciences_pathways: KEGG, Reactome, BioCyc, WikiPathways
+# - life_sciences_ontologies: Gene Ontology, Disease Ontology, etc.
+# - life_sciences_clinical: OMIM, DrugBank, ChEMBL, ClinicalTrials.gov
+# - life_sciences_agriculture: Agricultural databases
+# - life_sciences_aiml: AI/ML model databases
+# - life_sciences_biobanking: Biobank databases
+# - life_sciences_cellbiology: Cell biology databases
+# - life_sciences_cloud: Cloud genomics platforms
+# - life_sciences_datastandards: Data format converters
+# - life_sciences_ecology: Ecological databases
+# - life_sciences_epigenomics: Epigenomics databases
+# - life_sciences_healthcare: Healthcare databases
+# - life_sciences_imaging: Imaging databases
+# - life_sciences_immunology: Immunology databases
+# - life_sciences_metabolomics: Metabolomics databases
+# - life_sciences_microbiology: Microbiology databases
+# - life_sciences_model_organisms: Model organism databases
+# - life_sciences_molbio: Molecular biology databases
+# - life_sciences_neuroscience: Neuroscience databases
+# - life_sciences_pipelines: Bioinformatics pipeline tools
