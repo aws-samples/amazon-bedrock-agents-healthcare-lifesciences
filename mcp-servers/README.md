@@ -11,6 +11,7 @@ MCP endpoints powered by AWS Lambda tools behind AgentCore Gateway. You deploy C
 | Server | Tools | What it provides |
 |--------|-------|------------------|
 | [biomni-research-tools](agentcore-gateway/biomni-research-tools/) | 30+ | Biomedical database queries (UniProt, Reactome, STRING, DrugBank, etc.) |
+| [open-life-sciences-tool](agentcore-gateway/open-life-sciences-tool/) | 155 | Comprehensive life sciences database tools across genomics, proteomics, structural biology, pathways, clinical research, model organisms, and 18+ specialized domains |
 
 ### [agentcore-runtime/](agentcore-runtime/) — User Deploys
 
