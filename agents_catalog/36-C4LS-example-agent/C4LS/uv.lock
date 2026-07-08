@@ -251,7 +251,7 @@ wheels = [
 
 [[package]]
 name = "bedrock-agentcore"
-version = "1.4.6"
+version = "1.6.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "boto3" },
@@ -263,37 +263,37 @@ dependencies = [
     { name = "uvicorn" },
     { name = "websockets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0c/86/7f024874020d3848f52778995b1c1437148db12e26fd0c519a7d44659c9d/bedrock_agentcore-1.4.6.tar.gz", hash = "sha256:e29728416f759e06a75404534c874c8fc035c98f66ed14ca653b135be7aa32ba", size = 450761, upload-time = "2026-03-12T16:57:51.363Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ca/8c/d234d17709d75a889c23b160656422105dcc162d82fb4466ddfa463cb608/bedrock_agentcore-1.6.1.tar.gz", hash = "sha256:477ba4096e4b9a3bd7e6c1cb15a580af6b137e1d0cabb62fe48aa13ebe9a9be6", size = 514850, upload-time = "2026-04-10T13:02:23.451Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/62/10/829a1a302fd5edd3c7391e5d5d6643ad2e4400922f2df09c36d103c55e97/bedrock_agentcore-1.4.6-py3-none-any.whl", hash = "sha256:2281fb16eb655c837edc7d1e3b4de63cf8833a8e5086b75ecdb1b9a5c556213f", size = 136000, upload-time = "2026-03-12T16:57:50.278Z" },
+    { url = "https://files.pythonhosted.org/packages/3a/44/6db52ec7cb66eaec9ac8c18cfdd1cb937114dadc045110fd174a973385fa/bedrock_agentcore-1.6.1-py3-none-any.whl", hash = "sha256:54dd2e3c250aa91f1c4acd4d3cac21a60db83a52b065040f3b616bbcb3296cc5", size = 164413, upload-time = "2026-04-10T13:02:21.816Z" },
 ]
 
 [[package]]
 name = "boto3"
-version = "1.42.66"
+version = "1.43.37"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "botocore" },
     { name = "jmespath" },
     { name = "s3transfer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0a/2e/67206daa5acb6053157ae5241421713a84ed6015d33d0781985bd5558898/boto3-1.42.66.tar.gz", hash = "sha256:3bec5300fb2429c3be8e8961fdb1f11e85195922c8a980022332c20af05616d5", size = 112805, upload-time = "2026-03-11T19:58:19.17Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/fa/8b/281ca08c796322a36a639b76c714dc4c4323cab4563a492e6a923aa5f15d/boto3-1.43.37.tar.gz", hash = "sha256:cf7e75963229b337d1b0e37c46de6f3c2c2290d186157729c8e7afb12909bfc0", size = 112674, upload-time = "2026-06-29T20:29:39.273Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4c/09/83224363c3f5e468e298e48beb577ffe8cb51f18c2116bc1ecf404796e60/boto3-1.42.66-py3-none-any.whl", hash = "sha256:7c6c60dc5500e8a2967a306372a5fdb4c7f9a5b8adc5eb9aa2ebb5081c51ff47", size = 140557, upload-time = "2026-03-11T19:58:17.61Z" },
+    { url = "https://files.pythonhosted.org/packages/e2/48/c740abb7ba90d89ef63cf766c8e07d72e6422b3cf68aa4dccf0a83efed93/boto3-1.43.37-py3-none-any.whl", hash = "sha256:f409f931e836f2f24e168e8f93901010cb8055c7f2ddcfcfbd72b25f8c4e306c", size = 140032, upload-time = "2026-06-29T20:29:36.409Z" },
 ]
 
 [[package]]
 name = "botocore"
-version = "1.42.66"
+version = "1.43.37"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jmespath" },
     { name = "python-dateutil" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/77/ef/1c8f89da69b0c3742120e19a6ea72ec46ac0596294466924fdd4cf0f36bb/botocore-1.42.66.tar.gz", hash = "sha256:39756a21142b646de552d798dde2105759b0b8fa0d881a34c26d15bd4c9448fa", size = 14977446, upload-time = "2026-03-11T19:58:07.714Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c4/a8/3409b5df7e6a562be82e409ba5a976e7ac3df8d5567552c23d44b367a40b/botocore-1.43.37.tar.gz", hash = "sha256:46a7982815579cfe8c7851036b1f51237e35e7937456341df55bc5c36a316145", size = 15646119, upload-time = "2026-06-29T20:29:25.452Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/13/6f/7b45ed2ca300c1ad38ecfc82c1368546d4a90512d9dff589ebbd182a7317/botocore-1.42.66-py3-none-any.whl", hash = "sha256:ac48af1ab527dfa08c4617c387413ca56a7f87780d7bfc1da34ef847a59219a5", size = 14653886, upload-time = "2026-03-11T19:58:04.922Z" },
+    { url = "https://files.pythonhosted.org/packages/bf/64/49313b38d675f4004fb736d2a4293b72504eac5380fc21b6e4a8660824ad/botocore-1.43.37-py3-none-any.whl", hash = "sha256:8b7e8408aa7eca7dca9ae9824fb7677daf64d40ed675366ed7b9248470d08757", size = 15333748, upload-time = "2026-06-29T20:29:20.459Z" },
 ]
 
 [[package]]
@@ -317,7 +317,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "aws-opentelemetry-distro", specifier = ">=0.10.0" },
-    { name = "bedrock-agentcore", specifier = ">=1.0.3" },
+    { name = "bedrock-agentcore", specifier = ">=1.6.1" },
     { name = "boto3", specifier = ">=1.38.0" },
     { name = "botocore", specifier = ">=1.38.0" },
     { name = "chardet", specifier = "<6.0.0" },
@@ -2470,14 +2470,14 @@ wheels = [
 
 [[package]]
 name = "s3transfer"
-version = "0.16.0"
+version = "0.19.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "botocore" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/05/04/74127fc843314818edfa81b5540e26dd537353b123a4edc563109d8f17dd/s3transfer-0.16.0.tar.gz", hash = "sha256:8e990f13268025792229cd52fa10cb7163744bf56e719e0b9cb925ab79abf920", size = 153827, upload-time = "2025-12-01T02:30:59.114Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f6/94/dcdaeb1713cab9c84def276cfac7388b17c7d9855bbcfe88d77e4dbafd44/s3transfer-0.19.0.tar.gz", hash = "sha256:ce436931687addc4c1712d52d40b32f53e88315723f107ffa20ba82b05a0f685", size = 165171, upload-time = "2026-06-16T19:44:51.599Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/fc/51/727abb13f44c1fcf6d145979e1535a35794db0f6e450a0cb46aa24732fe2/s3transfer-0.16.0-py3-none-any.whl", hash = "sha256:18e25d66fed509e3868dc1572b3f427ff947dd2c56f844a5bf09481ad3f3b2fe", size = 86830, upload-time = "2025-12-01T02:30:57.729Z" },
+    { url = "https://files.pythonhosted.org/packages/46/5f/4c174edad94f82de888ac00a5ddd8d07b35609b6c94f0bdf4d74af57703e/s3transfer-0.19.0-py3-none-any.whl", hash = "sha256:777cc2415536f1debadb5c2ef7779275d0fc0fe0e042411cdd6caebeb2685262", size = 90101, upload-time = "2026-06-16T19:44:50.439Z" },
 ]
 
 [[package]]
