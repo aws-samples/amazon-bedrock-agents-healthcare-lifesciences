@@ -1,0 +1,53 @@
+# Lambda ZIP files
+*.zip
+database-function.zip
+literature-function.zip
+
+# Python virtual environments
+.venv/
+venv/
+env/
+ENV/
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+.Python
+
+# CloudFormation outputs
+cfn-outputs/
+*.out
+
+# IDE and OS files
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# AWS credentials and config
+.aws/
+aws-credentials.json
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Tool schema generated files
+*-api-spec.json
+
+# Test outputs
+.pytest_cache/
+.coverage
+htmlcov/
+test-results/
+
+# Deployment artifacts
+deployment-artifacts/
+lambda-packages/
+
+# Local environment files
+.env
+.env.local

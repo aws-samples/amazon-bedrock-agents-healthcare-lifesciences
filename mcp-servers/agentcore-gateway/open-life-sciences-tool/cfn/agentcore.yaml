@@ -1,0 +1,106 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Open Life Sciences Tool MCP Server - AgentCore Gateway + Targets"
+
+Parameters:
+  AppName:
+    Description: Application name used as prefix for all resources
+    Type: String
+    Default: "open-life-sciences-tool"
+
+  GatewayName:
+    Description: Name for the AgentCore Gateway
+    Type: String
+    Default: "open-life-sciences-gw"
+
+  S3Bucket:
+    Description: S3 bucket containing the API specifications
+    Type: String
+
+  DatabaseApiS3Key:
+    Description: S3 key for the database API specification
+    Type: String
+    Default: "api-specs/database-api-spec.json"
+
+  LiteratureApiS3Key:
+    Description: S3 key for the literature API specification
+    Type: String
+    Default: "api-specs/literature-api-spec.json"
+
+Resources:
+  AgentCoreGateway:
+    Type: AWS::BedrockAgentCore::Gateway
+    Properties:
+      Name: !Ref GatewayName
+      Description: "Open Life Sciences Tool - 100+ life sciences database and literature MCP tools"
+      AuthorizerType: "CUSTOM_JWT"
+      ProtocolType: "MCP"
+      RoleArn: !Sub "{{resolve:ssm:/app/${AppName}/agentcore/gateway_iam_role}}"
+      AuthorizerConfiguration:
+        CustomJWTAuthorizer:
+          AllowedClients:
+            - !Sub "{{resolve:ssm:/app/${AppName}/agentcore/machine_client_id}}"
+          DiscoveryUrl: !Sub "{{resolve:ssm:/app/${AppName}/agentcore/cognito_discovery_url}}"
+      ProtocolConfiguration:
+        Mcp:
+          SearchType: "SEMANTIC"
+      Tags:
+        Application: !Ref AppName
+
+  DatabaseGatewayTarget:
+    Type: AWS::BedrockAgentCore::GatewayTarget
+    Properties:
+      GatewayIdentifier: !Ref AgentCoreGateway
+      Name: "DatabaseLambda"
+      Description: "Life sciences database query tools (proteomics, genomics, structural biology, pathways, clinical)"
+      TargetConfiguration:
+        Mcp:
+          Lambda:
+            LambdaArn: !Sub "{{resolve:ssm:/app/${AppName}/agentcore/database_lambda_arn}}"
+            ToolSchema:
+              S3:
+                Uri: !Sub "s3://${S3Bucket}/${DatabaseApiS3Key}"
+                BucketOwnerAccountId: !Ref "AWS::AccountId"
+      CredentialProviderConfigurations:
+        - CredentialProviderType: "GATEWAY_IAM_ROLE"
+
+  # LiteratureGatewayTarget - FUTURE IMPLEMENTATION
+  # Literature tools not yet implemented, commented out until ready
+  # LiteratureGatewayTarget:
+  #   Type: AWS::BedrockAgentCore::GatewayTarget
+  #   Properties:
+  #     GatewayIdentifier: !Ref AgentCoreGateway
+  #     Name: "LiteratureLambda"
+  #     Description: "Literature research tools (PubMed, arXiv, Google Scholar, web extraction)"
+  #     TargetConfiguration:
+  #       Mcp:
+  #         Lambda:
+  #           LambdaArn: !Sub "{{resolve:ssm:/app/${AppName}/agentcore/literature_lambda_arn}}"
+  #           ToolSchema:
+  #             S3:
+  #               Uri: !Sub "s3://${S3Bucket}/${LiteratureApiS3Key}"
+  #               BucketOwnerAccountId: !Ref "AWS::AccountId"
+  #     CredentialProviderConfigurations:
+  #       - CredentialProviderType: "GATEWAY_IAM_ROLE"
+
+  GatewayUrlParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /app/${AppName}/agentcore/gateway_url
+      Type: String
+      Value: !GetAtt AgentCoreGateway.GatewayUrl
+      Description: AgentCore Gateway MCP endpoint URL
+      Tags:
+        Application: !Ref AppName
+
+Outputs:
+  GatewayId:
+    Description: "AgentCore Gateway ID"
+    Value: !Ref AgentCoreGateway
+
+  GatewayArn:
+    Description: "AgentCore Gateway ARN"
+    Value: !GetAtt AgentCoreGateway.GatewayArn
+
+  GatewayUrl:
+    Description: "AgentCore Gateway MCP endpoint URL"
+    Value: !GetAtt AgentCoreGateway.GatewayUrl
