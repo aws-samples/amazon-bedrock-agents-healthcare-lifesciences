@@ -22,7 +22,7 @@ description: Use when drafting clinical trial protocol sections (objectives, bac
 | awslabs.bedrock-kb-retrieval-mcp-server | `retrieve` | Query ICH E6/E8/E9 content via Bedrock Knowledge Base |
 
 The fda-ecfr server is in `mcp-servers/agentcore-gateway/fda-ecfr/` — deploy it first.
-For ICH guidelines, set up a Bedrock Knowledge Base per `mcp-servers/agentcore-gateway/ich-guidelines/README.md` and use the existing awslabs MCP server.
+For ICH guidelines, set up a Bedrock Knowledge Base per `references/ich-knowledge-base-setup.md` and use the existing awslabs bedrock-kb-retrieval-mcp-server.
 
 ## Workflow: Protocol Drafting from Grant Document
 

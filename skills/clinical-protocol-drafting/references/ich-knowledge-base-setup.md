@@ -1,12 +1,12 @@
-# ICH Guidelines — Bedrock Knowledge Base Setup
+# ICH Guidelines Knowledge Base Setup
 
-ICH guideline search uses the existing [awslabs Bedrock KB Retrieval MCP Server](https://github.com/awslabs/mcp/tree/main/src/bedrock-kb-retrieval-mcp-server) rather than a custom Lambda deployment. This directory provides the data and setup instructions.
+The clinical-protocol-drafting skill queries ICH guidelines (E6, E8, E9) through the existing [awslabs Bedrock KB Retrieval MCP Server](https://github.com/awslabs/mcp/tree/main/src/bedrock-kb-retrieval-mcp-server). This guide covers building the Knowledge Base the skill retrieves from.
 
-## Tools Available (via awslabs.bedrock-kb-retrieval-mcp-server)
+## Tool Used
 
-| Tool | What it does |
-|------|-------------|
-| `retrieve` | Search ICH guidelines for regulatory guidance on clinical trial design and conduct |
+| MCP Server | Tool | What it does |
+|------------|------|-------------|
+| `awslabs.bedrock-kb-retrieval-mcp-server` | `retrieve` | Search ICH guidelines for regulatory guidance on clinical trial design and conduct |
 
 ### Example Queries
 
@@ -40,23 +40,23 @@ S3 Bucket (ICH PDF documents)
 All documents are publicly downloadable from the FDA website:
 https://www.fda.gov/science-research/clinical-trials-and-human-subject-protection/ich-guidance-documents
 
-| Guideline | Title |
-|-----------|-------|
-| ICH E6(R2) | Good Clinical Practice, Integrated Addendum |
-| ICH E8(R1) | General Considerations for Clinical Studies |
-| ICH E9 | Statistical Principles for Clinical Trials |
+| Guideline | Title | Source |
+|-----------|-------|--------|
+| ICH E6(R2) | Good Clinical Practice, Integrated Addendum | [FDA.gov](https://www.fda.gov/regulatory-information/search-fda-guidance-documents/e6r2-good-clinical-practice-integrated-addendum-ich-e6r1) |
+| ICH E8(R1) | General Considerations for Clinical Studies | [FDA.gov](https://www.fda.gov/regulatory-information/search-fda-guidance-documents/e8r1-general-considerations-clinical-studies) |
+| ICH E9 | Statistical Principles for Clinical Trials | [FDA.gov](https://www.fda.gov/regulatory-information/search-fda-guidance-documents/e9-statistical-principles-clinical-trials) |
 
-The `data/` directory contains these PDFs for the Knowledge Base.
+These documents are published by the FDA and are in the **public domain** (U.S. Government work). The ICH guidelines are developed by the International Council for Harmonisation and adopted by FDA as guidance documents.
 
 ## Setup
 
 ### Step 1: Create the Knowledge Base
 
-1. Create an S3 bucket and upload the ICH PDFs:
+1. Download the three ICH PDFs from the FDA links above and upload them to an S3 bucket:
    ```bash
    BUCKET="ich-guidelines-${AWS_ACCOUNT_ID}-${AWS_REGION}"
    aws s3 mb s3://$BUCKET
-   aws s3 cp data/ s3://$BUCKET/ --recursive --exclude "README.md"
+   aws s3 cp ./ich-pdfs/ s3://$BUCKET/ --recursive
    ```
 
 2. Create a Bedrock Knowledge Base via the console or CLI:
@@ -70,8 +70,6 @@ The `data/` directory contains these PDFs for the Knowledge Base.
 4. Note the Knowledge Base ID for the next step
 
 ### Step 2: Configure the MCP Server
-
-Add to your MCP client configuration:
 
 #### Kiro (`~/.kiro/settings/mcp.json`)
 
@@ -109,17 +107,10 @@ Set `KNOWLEDGE_BASE_ID` in your environment before launching.
 | Bedrock KB | Created per Step 1 above |
 | Region | `us-east-1` or `us-west-2` (Bedrock KB availability) |
 
-## Why Not a Custom Gateway?
-
-The existing `awslabs.bedrock-kb-retrieval-mcp-server` already provides Bedrock KB retrieval as an MCP tool. Using it avoids maintaining a separate Lambda, Cognito stack, and AgentCore Gateway registration for what is a standard retrieve operation. The fda-ecfr server still needs a custom gateway because it wraps a public REST API with custom parsing logic.
-
 ## Cleanup
 
 ```bash
-# Delete the S3 bucket
 aws s3 rb s3://ich-guidelines-${AWS_ACCOUNT_ID}-${AWS_REGION} --force
-
-# Delete the Knowledge Base via console or CLI
 aws bedrock-agent delete-knowledge-base --knowledge-base-id <YOUR_KB_ID>
 ```
 
