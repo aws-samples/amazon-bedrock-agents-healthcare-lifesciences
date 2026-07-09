@@ -1,0 +1,22 @@
+{
+  "name": "connected-care-infrastructure",
+  "version": "1.0.0",
+  "description": "CDK infrastructure for Connected Care Platform",
+  "scripts": {
+    "build": "tsc",
+    "deploy": "npm run build && npx cdk deploy --require-approval never",
+    "destroy": "npx cdk destroy --force",
+    "synth": "npm run build && npx cdk synth",
+    "diff": "npm run build && npx cdk diff"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "aws-cdk": "^2.170.0",
+    "typescript": "~5.4.0"
+  },
+  "dependencies": {
+    "@aws-cdk/aws-bedrock-agentcore-alpha": "^2.244.0-alpha.0",
+    "aws-cdk-lib": "^2.170.0",
+    "constructs": "^10.0.0"
+  }
+}
