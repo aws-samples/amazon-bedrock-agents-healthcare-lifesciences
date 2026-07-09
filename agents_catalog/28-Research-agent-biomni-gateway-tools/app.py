@@ -2,12 +2,18 @@ import json
 import re
 import time
 import uuid
+import sys
+import os
 from typing import Dict, Iterator, List
+import asyncio
 
 import boto3
 import streamlit as st
 from streamlit.logger import get_logger
 
+# Add agent directory to path
+sys.path.append(os.path.join(os.path.dirname(__file__), 'agent'))
+from agent.agent_config.agent import agent_task, update_agent_model
 
 logger = get_logger(__name__)
 logger.setLevel("INFO")
@@ -242,127 +248,51 @@ def parse_streaming_chunk(chunk: str) -> str:
         return chunk
 
 
-def invoke_agent_streaming(
+def invoke_agent_with_model(
     prompt: str,
-    agent_arn: str,
-    runtime_session_id: str,
-    region: str = "us-east-1",
+    session_id: str,
+    model_id: str,
     show_tool: bool = True,
 ) -> Iterator[str]:
-    """Invoke agent and yield streaming response chunks"""
+    """Invoke agent with selected model using agent_task - streams chunks as they arrive"""
     try:
-        agentcore_client = boto3.client("bedrock-agentcore", region_name=region)
-
-        boto3_response = agentcore_client.invoke_agent_runtime(
-            agentRuntimeArn=agent_arn,
-            qualifier="DEFAULT",
-            runtimeSessionId=runtime_session_id,
-            payload=json.dumps({"prompt": prompt}),
+        # Get or create event loop - handle both cases
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_closed():
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        
+        # Create async generator
+        async_gen = agent_task(
+            user_message=prompt,
+            session_id=session_id,
+            actor_id="streamlit-user",
+            use_semantic_search=False,
+            model_id=model_id
         )
-
-        logger.debug(f"contentType: {boto3_response.get('contentType', 'NOT_FOUND')}")
-
-        if "text/event-stream" in boto3_response.get("contentType", ""):
-            logger.debug("Using streaming response path")
-            # Handle streaming response
-            for line in boto3_response["response"].iter_lines(chunk_size=1):
-                if line:
-                    line = line.decode("utf-8")
-                    logger.debug(f"Raw line: {line}")
-                    if line.startswith("data: "):
-                        line = line[6:]
-                        logger.debug(f"Line after removing 'data: ': {line}")
-                        # Parse and clean each chunk
-                        parsed_chunk = parse_streaming_chunk(line)
-                        if parsed_chunk.strip():  # Only yield non-empty chunks
-                            if "🔧 Using tool:" in parsed_chunk and not show_tool:
-                                yield ""
-                            elif "🔧 Tool input:" in parsed_chunk and not show_tool:
-                                yield ""
-                            elif "🔧 Tool result:" in parsed_chunk and not show_tool:
-                                yield ""
-                            else:
-                                yield parsed_chunk
-                    else:
-                        logger.debug(
-                            f"Line doesn't start with 'data: ', skipping: {line}"
-                        )
-        else:
-            logger.debug("Using non-streaming response path")
-            # Handle non-streaming JSON response
+        
+        # Stream chunks as they arrive instead of collecting them all first
+        while True:
             try:
-                response_obj = boto3_response.get("response")
-                logger.debug(f"response_obj type: {type(response_obj)}")
-
-                if hasattr(response_obj, "read"):
-                    # Read the response content
-                    content = response_obj.read()
-                    if isinstance(content, bytes):
-                        content = content.decode("utf-8")
-
-                    logger.debug(f"Raw content: {content}")
-
-                    try:
-                        # Try to parse as JSON and extract text
-                        response_data = json.loads(content)
-                        logger.debug(f"Parsed JSON: {response_data}")
-
-                        # Handle the specific format we're seeing
-                        if isinstance(response_data, dict):
-                            # Check for 'result' wrapper first
-                            if "result" in response_data:
-                                actual_data = response_data["result"]
-                            else:
-                                actual_data = response_data
-
-                            # Extract text from the nested structure
-                            if "role" in actual_data and "content" in actual_data:
-                                content_list = actual_data["content"]
-                                if (
-                                    isinstance(content_list, list)
-                                    and len(content_list) > 0
-                                ):
-                                    first_item = content_list[0]
-                                    if (
-                                        isinstance(first_item, dict)
-                                        and "text" in first_item
-                                    ):
-                                        extracted_text = first_item["text"]
-                                        logger.debug(
-                                            f"Extracted text: {extracted_text}"
-                                        )
-                                        yield extracted_text
-                                    else:
-                                        yield str(first_item)
-                                else:
-                                    yield str(content_list)
-                            else:
-                                # Use general extraction
-                                text = extract_text_from_response(actual_data)
-                                yield text
-                        else:
-                            yield str(response_data)
-
-                    except json.JSONDecodeError as e:
-                        logger.error(f"JSON decode error: {e}")
-                        # If not JSON, yield raw content
-                        yield content
-                elif isinstance(response_obj, dict):
-                    # Direct dict response
-                    text = extract_text_from_response(response_obj)
-                    yield text
-                else:
-                    logger.debug(f"Unexpected response_obj type: {type(response_obj)}")
-                    yield "No response content"
-
-            except Exception as e:
-                logger.error(f"Exception in non-streaming: {e}")
-                yield f"Error reading response: {e}"
-
+                # Get next chunk from async generator
+                chunk = loop.run_until_complete(async_gen.__anext__())
+                
+                # Filter out tool usage if requested
+                if not show_tool and "🔧" in chunk:
+                    continue
+                    
+                yield chunk
+                
+            except StopAsyncIteration:
+                # Async generator is exhausted
+                break
+            
     except Exception as e:
-        yield f"Error invoking agent: {e}"
-
-
+        logger.error(f"Error invoking agent: {e}")
 def main():
     st.logo("static/agentcore-service-icon.png", size="large")
     st.title("Amazon Bedrock AgentCore Chat")
@@ -501,6 +431,34 @@ def main():
         if runtime_session_id != st.session_state.runtime_session_id:
             st.session_state.runtime_session_id = runtime_session_id
 
+        # Model Selection
+        st.subheader("Model Selection")
+        
+        model_options = {
+            "Haiku 4.5": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+            "Sonnet 4.5": "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+            "Sonnet 4": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+            "Nova Premier": "us.amazon.nova-premier-v1:0",
+            "Nova Lite": "us.amazon.nova-lite-v1:0"
+        }
+        
+        # Initialize selected model in session state
+        if "selected_model" not in st.session_state:
+            st.session_state.selected_model = "us.anthropic.claude-sonnet-4-20250514-v1:0"
+        
+        selected_model_name = st.selectbox(
+            "Choose Model",
+            options=list(model_options.keys()),
+            index=list(model_options.values()).index(st.session_state.selected_model),
+            help="Select the foundation model to use for responses"
+        )
+        
+        # Update session state if model changed
+        new_model_id = model_options[selected_model_name]
+        if new_model_id != st.session_state.selected_model:
+            st.session_state.selected_model = new_model_id
+            st.info(f"Model updated to: {selected_model_name}")
+
         # Response formatting options
         st.subheader("Display Options")
         auto_format = st.checkbox(
@@ -564,12 +522,11 @@ def main():
             chunk_buffer = ""
 
             try:
-                # Stream the response
-                for chunk in invoke_agent_streaming(
+                # Stream the response with selected model
+                for chunk in invoke_agent_with_model(
                     prompt,
-                    agent_arn,
                     st.session_state.runtime_session_id,
-                    region,
+                    st.session_state.selected_model,
                     show_tools,
                 ):
                     # Let's see what we get
