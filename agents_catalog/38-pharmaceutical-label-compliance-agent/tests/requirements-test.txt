@@ -1,0 +1,8 @@
+pytest>=7.4.0
+pytest-cov>=4.1.0
+moto[s3,dynamodb]>=5.0.0
+Pillow>=12.1.0
+strands-agents>=1.34.0
+aws-cdk-lib>=2.150.0
+aws-cdk.aws-bedrock-agentcore-alpha
+constructs>=10.0.0
