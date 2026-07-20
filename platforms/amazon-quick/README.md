@@ -25,6 +25,7 @@ Skills teach Amazon Quick *which tools to use* for different biomedical question
 | Biomarker Database Analysis | `skills/biomarker-database-analysis/SKILL.md` | Biomarker discovery, target profiles |
 | Deep Literature Review | `skills/research-deep-literature-review/SKILL.md` | Systematic literature search and evidence synthesis |
 | Genomics Variant Interpretation | `skills/genomics-variant-interpretation/SKILL.md` | VCF interpretation, pathogenicity classification |
+| Clinical Protocol Drafting | `skills/clinical-protocol-drafting/SKILL.md` | Draft protocol sections grounded in ICH guidelines and 21 CFR |
 
 Alternatively, copy skills to the Amazon Quick skills directory:
 
@@ -76,6 +77,9 @@ For stdio-based servers:
 | Server | Command |
 |--------|---------|
 | AWS HealthOmics | `uvx awslabs.aws-healthomics-mcp-server@latest` |
+| Bedrock KB Retrieval (ICH guidelines) | `uvx awslabs.bedrock-kb-retrieval-mcp-server@latest` (set `KNOWLEDGE_BASE_ID`) |
+
+For the clinical protocol drafting use case, also add the `fda-ecfr` gateway server (HTTP, `Bearer $FDA_ECFR_TOKEN`). Deploy it from `mcp-servers/agentcore-gateway/fda-ecfr/` and set up the ICH Knowledge Base per `skills/clinical-protocol-drafting/references/ich-knowledge-base-setup.md`.
 
 ### Step 5: Test
 
@@ -87,6 +91,7 @@ Ask these natural questions. Skills route Amazon Quick to the correct tools auto
 | agentcore-runtime | "What are the children of seizure (HP:0001250) in HPO?" | Uses OLS → get_term_children, returns seizure subtypes |
 | aws-public | "Find AWS documentation about Bedrock AgentCore" | Uses AWS Knowledge tools, returns doc links |
 | third-party | "What diseases are associated with EGFR?" | Uses Open Targets tools, returns cancer associations |
+| clinical-protocol | "Draft the objectives section from this study synopsis" | Uses fda-ecfr + ICH KB retrieval, returns an ICH-compliant draft |
 
 You should NOT need to name the MCP server or tool — the skill handles routing.
 

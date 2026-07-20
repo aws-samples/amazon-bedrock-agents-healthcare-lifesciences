@@ -82,6 +82,48 @@ cp platforms/kiro/POWER.md .kiro/POWER.md
 
 The `mcp-proxy-for-aws` wrapper handles token refresh transparently. If using direct HTTP transport, tokens expire in 60 minutes and you must update the config manually.
 
+## Use Case: Clinical Trial Protocol Drafting
+
+The `clinical-protocol-drafting` skill uses the `fda-ecfr` gateway server (FDA regulations) plus the existing `awslabs.bedrock-kb-retrieval-mcp-server` (ICH guideline search) to draft protocol sections from a grant document or study synopsis.
+
+### MCP servers
+
+Add to `.kiro/settings/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "fda-ecfr": {
+      "command": "npx",
+      "args": [
+        "mcp-proxy-for-aws@latest",
+        "--endpoint", "YOUR_FDA_ECFR_GATEWAY_URL",
+        "--ssm-prefix", "/app/fda-ecfr/agentcore"
+      ]
+    },
+    "bedrock-kb-retrieval": {
+      "command": "uvx",
+      "args": ["awslabs.bedrock-kb-retrieval-mcp-server@latest"],
+      "env": {
+        "KNOWLEDGE_BASE_ID": "YOUR_ICH_KB_ID",
+        "AWS_REGION": "us-east-1",
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      }
+    }
+  }
+}
+```
+
+Deploy `fda-ecfr` from `mcp-servers/agentcore-gateway/fda-ecfr/`. For the ICH Knowledge Base, follow `skills/clinical-protocol-drafting/references/ich-knowledge-base-setup.md`.
+
+### Skill
+
+```bash
+cp -r skills/clinical-protocol-drafting .kiro/skills/
+```
+
+Then ask Kiro naturally, e.g. "Draft the objectives and study design sections from this grant" — the skill routes to the eCFR and ICH tools automatically.
+
 ## Reference
 
 - [AWS Agent Toolkit pattern](https://github.com/aws/agent-toolkit-for-aws)
