@@ -1,0 +1,48 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: FDA eCFR MCP Server - Lambda function for querying public eCFR API
+
+Parameters:
+  AppName:
+    Type: String
+    Default: fda-ecfr
+    Description: Application name used for resource naming
+
+Resources:
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${AppName}-lambda-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  FdaEcfrFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AppName}-handler'
+      Runtime: python3.12
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 30
+      MemorySize: 256
+      Code:
+        ZipFile: |
+          # Placeholder — deploy.sh packages index.py into this function
+          def handler(event, context):
+              return {"error": "Not deployed. Run deploy.sh to package code."}
+
+Outputs:
+  FunctionArn:
+    Description: Lambda function ARN for AgentCore Gateway target
+    Value: !GetAtt FdaEcfrFunction.Arn
+    Export:
+      Name: !Sub '${AppName}-function-arn'
+  FunctionName:
+    Description: Lambda function name
+    Value: !Ref FdaEcfrFunction

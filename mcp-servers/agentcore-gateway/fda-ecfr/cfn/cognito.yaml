@@ -1,0 +1,55 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: FDA eCFR MCP Server - Cognito User Pool for M2M authentication
+
+Parameters:
+  AppName:
+    Type: String
+    Default: fda-ecfr
+    Description: Application name used for resource naming
+
+Resources:
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub '${AppName}-pool'
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true
+
+  ResourceServer:
+    Type: AWS::Cognito::UserPoolResourceServer
+    Properties:
+      UserPoolId: !Ref UserPool
+      Identifier: !Sub '${AppName}-api'
+      Name: !Sub '${AppName} API'
+      Scopes:
+        - ScopeName: invoke
+          ScopeDescription: Invoke MCP tools
+
+  UserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: !Sub '${AppName}-${AWS::AccountId}'
+      UserPoolId: !Ref UserPool
+
+  MachineClient:
+    Type: AWS::Cognito::UserPoolClient
+    DependsOn: ResourceServer
+    Properties:
+      ClientName: !Sub '${AppName}-machine'
+      UserPoolId: !Ref UserPool
+      GenerateSecret: true
+      AllowedOAuthFlows:
+        - client_credentials
+      AllowedOAuthScopes:
+        - !Sub '${AppName}-api/invoke'
+      AllowedOAuthFlowsUserPoolClient: true
+
+Outputs:
+  UserPoolId:
+    Value: !Ref UserPool
+  ClientId:
+    Value: !Ref MachineClient
+  CognitoDomain:
+    Value: !Sub '${AppName}-${AWS::AccountId}.auth.${AWS::Region}.amazoncognito.com'
+  TokenUrl:
+    Value: !Sub 'https://${AppName}-${AWS::AccountId}.auth.${AWS::Region}.amazoncognito.com/oauth2/token'
