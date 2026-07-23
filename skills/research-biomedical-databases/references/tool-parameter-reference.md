@@ -1,6 +1,6 @@
 # Tool Parameter Reference
 
-Complete parameter schemas for all 28 Biomni Gateway tools. Most tools accept a natural language `prompt` (required) plus optional parameters for direct API access.
+Parameter schemas for the Biomni Gateway database tools. Most tools accept a natural language `prompt` (required) plus optional parameters for direct API access. The gateway may expose additional tools over time; use semantic search to discover the current set.
 
 ## Common Pattern
 

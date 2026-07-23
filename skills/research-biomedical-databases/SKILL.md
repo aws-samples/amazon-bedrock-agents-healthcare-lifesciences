@@ -19,7 +19,7 @@ This skill does nothing on its own. The `biomni-research` MCP server (an Amazon 
 
 ## Architecture
 
-The Biomni Research Tools are accessed through **Amazon Bedrock AgentCore Gateway** as an MCP server. The gateway exposes 28 database query tools via a single endpoint, with optional **semantic search** to select the most relevant tools per query.
+The Biomni Research Tools are accessed through **Amazon Bedrock AgentCore Gateway** as an MCP server. The gateway exposes a suite of database query tools via a single endpoint, with optional **semantic search** to select the most relevant tools per query. The tool set may grow over time; use semantic search to discover what is currently available rather than assuming a fixed count.
 
 ```
 User Query
@@ -29,7 +29,7 @@ User Query
     → Structured results returned
 ```
 
-The MCP server name is `biomni-research`. All 28 tools are available through this single server.
+The MCP server name is `biomni-research`. All tools are available through this single server.
 
 **Gateway tool naming:** Tools are exposed with a target prefix: `DatabaseLambda___query_uniprot`, `DatabaseLambda___query_clinvar`, etc. When calling tools via the gateway MCP endpoint, use the full prefixed name. In this skill's documentation, tools are referenced by their short name (`query_uniprot`) for readability — prepend `DatabaseLambda___` when invoking via the gateway.
 
@@ -49,7 +49,7 @@ If unsure which workflow applies, use semantic search first — it returns the m
 
 ## Semantic Search: Tool Discovery
 
-The gateway provides a built-in meta-tool for discovering relevant database tools. This is a **gateway-level capability** (not a Lambda-backed database tool) — it's injected automatically by AgentCore Gateway when semantic search is configured. It appears in the MCP tool list alongside the 28 database tools.
+The gateway provides a built-in meta-tool for discovering relevant database tools. This is a **gateway-level capability** (not a Lambda-backed database tool) — it's injected automatically by AgentCore Gateway when semantic search is configured. It appears in the MCP tool list alongside the database tools.
 
 Use it when:
 - The user's question spans multiple domains
@@ -64,11 +64,13 @@ Returns: ranked list of tools with name, description, and inputSchema
 
 Example: User asks "tell me about HER2 variant rs1136201"
 → Semantic search returns: `query_ensembl`, `query_gwas_catalog`, `query_clinvar`, `query_dbsnp`
-→ Use those tools in sequence rather than loading all 28.
+→ Use those tools in sequence rather than loading the full tool set.
 
 If semantic search is unavailable (gateway configured without `searchType: SEMANTIC`), fall back to selecting tools manually from the Tool Categories table below.
 
-## Tool Categories (28 tools total)
+## Tool Categories
+
+Representative tools by category (not exhaustive; the gateway may expose more, so use semantic search to discover the full current set).
 
 | Category | Tools | Primary use |
 |----------|-------|-------------|
