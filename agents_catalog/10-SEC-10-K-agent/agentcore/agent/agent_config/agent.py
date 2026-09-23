@@ -5,7 +5,7 @@ import logging
 import os
 import re
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 import boto3
 import numpy as np
@@ -110,7 +110,6 @@ def find_relevant_tags(query: str) -> str:
     # Compute semantic search
     bedrock_runtime = boto3.client("bedrock-runtime")
     embeddings = np.load(embeddings_path)
-    descriptions = [i["description"] for i in available_facts if i["description"] is not None]
 
     query_embedding = _get_embedding(bedrock_runtime, query)
     similarities = cosine_similarity(query_embedding.reshape(1, -1), embeddings)[0]
@@ -132,7 +131,8 @@ def get_company_concept(company_name: str, tag: str) -> str:
         tag: SEC EDGAR tag identifier, e.g. 'EntityCommonStockSharesOutstanding'.
 
     Returns:
-        JSON string with entity name, label, unit, and 10-K filing data.
+        JSON string with entity name, label, and a units array (one entry per
+        unit of measure, each with its 10-K filing data).
     """
     cik_file = os.environ.get("CIK_FILE", "cik-ref.json")
     cik_info = _get_cik(company_name, cik_file)
@@ -148,17 +148,21 @@ def get_company_concept(company_name: str, tag: str) -> str:
         logger.error(f"Error retrieving company concept: {e}")
         return json.dumps({"error": f"Error retrieving concept: {e}"})
 
-    unit, data = next(iter(concept.get("units", {}).items()), ("", []))
-    short_data = [
-        {"date": i.get("end", ""), "value": i.get("val", 0)}
-        for i in data
-        if i.get("form", "") == "10-K" and "frame" in i
+    units = [
+        {
+            "unit": unit,
+            "data": [
+                {"date": i.get("end", ""), "value": i.get("val", 0)}
+                for i in data
+                if i.get("form", "") == "10-K" and "frame" in i
+            ],
+        }
+        for unit, data in concept.get("units", {}).items()
     ]
     formatted = {
         "entity_name": concept.get("entityName", ""),
         "label": concept.get("label", ""),
-        "unit": unit,
-        "data": short_data,
+        "units": units,
     }
     return json.dumps(formatted, separators=(",", ":"))
 
