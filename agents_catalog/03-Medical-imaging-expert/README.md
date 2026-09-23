@@ -1,5 +1,8 @@
 # Medical imaging Agent
 
+> [!NOTE]
+> **Legacy / reference only.** This notebook-based Amazon Bedrock Agent has been superseded by the AgentCore + Strands implementation at [`multi_agent_collaboration/cancer_biomarker_discovery/strands_agentcore/medical_imaging_agent.py`](../../multi_agent_collaboration/cancer_biomarker_discovery/strands_agentcore/medical_imaging_agent.py). Prefer the AgentCore version for new work; this directory is retained as a reference of the original Bedrock Agent pattern.
+
 This agent is a collaborator agent used by a supervisor agent for Cancer biomarker discovery. You can find details of its deployment and usage in multi-agent collaboration mode in [Cancer Biomarker Discovery Example](../../multi_agent_collaboration/cancer_biomarker_discovery/README.md).
 
 This agent analyzes Processes CT scans using asynchronous workflows. It Use Amazon SageMaker jobs to augment agents with the capability to trigger asynchronous jobs with an ephemeral cluster to process CT scan images.

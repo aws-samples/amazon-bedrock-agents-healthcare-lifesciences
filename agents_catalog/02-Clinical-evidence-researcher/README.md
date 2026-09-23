@@ -1,5 +1,8 @@
 # Clinical evidence researcher Agent
 
+> [!NOTE]
+> **Legacy / reference only.** This notebook-based Amazon Bedrock Agent has been superseded by the AgentCore + Strands implementation at [`multi_agent_collaboration/cancer_biomarker_discovery/strands_agentcore/clinical_research_agent.py`](../../multi_agent_collaboration/cancer_biomarker_discovery/strands_agentcore/clinical_research_agent.py). Prefer the AgentCore version for new work; this directory is retained as a reference of the original Bedrock Agent pattern.
+
 This agent is a collaborator agent used by a supervisor agent for Cancer biomarker discovery. You can find details of its deployment and usage in multi-agent collaboration mode in [Cancer Biomarker Discovery Example](../../multi_agent_collaboration/cancer_biomarker_discovery/README.md).
 
 This agent retrieves and summarize insights from scientific literature. PubMed APIs to search biomedical literature for external evidence. Use Amazon Bedrock Knowledge Bases for Retrieval Augmented Generation (RAG) to deliver responses from internal literature evidence.
