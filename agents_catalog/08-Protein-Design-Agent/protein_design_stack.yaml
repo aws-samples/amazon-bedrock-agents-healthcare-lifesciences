@@ -2,18 +2,13 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: 'Template for ECR repository, HealthOmics workflow, and Lambda trigger'
 
 Parameters:
-  WorkflowPath:
-    Type: String
-    Description: Path to the Nextflow workflow files
-    Default: workflow
-
   S3BucketName:
     Type: String
     Description: S3 bucket for storing workflow definition files
 
   StackPrefix:
     Type: String
-    Description: Prefix for stack resources
+    Description: Prefix for stack resources (must be unique per deployment to avoid IAM role name collisions)
     Default: protein-design
 
   ApplicationName:
@@ -32,6 +27,8 @@ Resources:
     Type: AWS::ECR::Repository
     Properties:
       RepositoryName: !Sub ${StackPrefix}-evoprotgrad
+      EncryptionConfiguration:
+        EncryptionType: KMS
       ImageScanningConfiguration:
         ScanOnPush: true
       ImageTagMutability: IMMUTABLE
@@ -291,7 +288,7 @@ Resources:
               commands:
                 - echo Build started on `date`
                 - echo Building the Docker image...
-                - docker build -t $REPOSITORY_URI:latest .
+                - docker build --build-arg AWS_DEFAULT_REGION=$AWS_REGION -t $REPOSITORY_URI:latest .
             post_build:
               commands:
                 - echo Build completed on `date`
@@ -1074,6 +1071,7 @@ Resources:
                   return function_response
       Timeout: 900
       MemorySize: 128
+      ReservedConcurrentExecutions: 5
 
   WorkflowTriggerRole:
     Type: AWS::IAM::Role
@@ -1383,6 +1381,7 @@ Resources:
                   return format_error_response(f"Error monitoring workflow: {str(e)}", action_group, function_name, message_version)
       Timeout: 30  # Reduced timeout since we're not waiting for completion
       MemorySize: 256
+      ReservedConcurrentExecutions: 5
 
 Outputs:
   ECRRepositoryUri:
