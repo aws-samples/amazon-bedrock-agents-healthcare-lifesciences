@@ -5,7 +5,7 @@
 ruff==0.14.1
 
 # CDK infrastructure deployment
-aws-cdk-lib==2.220.0
+aws-cdk-lib==2.253.0
 constructs==10.0.79
 pyyaml==6.0.1
 
