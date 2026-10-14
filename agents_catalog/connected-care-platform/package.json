@@ -1,0 +1,15 @@
+{
+  "name": "connected-care-platform",
+  "version": "1.0.0",
+  "description": "Connected Care Platform - Agentic AI Architecture",
+  "private": true,
+  "scripts": {
+    "deploy": "cd infrastructure && npm run deploy",
+    "destroy": "cd infrastructure && npm run destroy",
+    "synth": "cd infrastructure && npm run synth",
+    "build:frontend": "cd frontend && npm run build",
+    "dev:frontend": "cd frontend && npm run dev"
+  },
+  "author": "Connected Care Team",
+  "license": "UNLICENSED"
+}

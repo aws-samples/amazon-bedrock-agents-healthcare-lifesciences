@@ -1,0 +1,62 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+
+# Build outputs
+dist/
+cdk.out/
+*.zip
+
+# CDK compiled JS (keep .ts source)
+infrastructure/lib/*.js
+infrastructure/lib/*.d.ts
+infrastructure/bin/*.js
+infrastructure/bin/*.d.ts
+
+# Environment (account-specific)
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# CDK
+cdk.context.json
+
+# Agent build markers
+.build-timestamp
+
+# Downloaded data (use scripts/setup/download-guidelines.py)
+guidelines-data/
+
+# IDE
+.idea/
+.vscode/
+
+# Test artifacts
+test-prompts/
+
+# Generated diagrams and images
+generated-diagrams/
+architecture.png
+template.png
+AWS_Architecture.drawio
+AWS_Architecture.jpg
+connected_care_architecture.png
+
+# Content and media (not functional)
+video_scripts/
+videos/
+blog/
+
+# Internal strategy and demo docs (not needed for repo)
+medtech-benefits.md
+demo-scripts.md
+demo.txt
+docs/GUIDED_DEMO.md
+docs/FALL_PREVENTION_DEMO.md
+docs/PRESSURE_INJURY_DEMO.md
+docs/BIOMED_ENGINEER_DEMO.md
+docs/automatic_triggers.md
