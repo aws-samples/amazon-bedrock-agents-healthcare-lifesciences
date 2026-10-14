@@ -48,6 +48,8 @@ def invoke_bedrock_model(
 ):
     """Invoke Bedrock model using Converse API."""
     try:
+        # Note: newer Claude models (e.g. Sonnet 4.6) reject specifying both
+        # temperature and topP in a single Converse call. Send only temperature.
         response = client.converse(
             modelId=model_id,
             system=[{"text": system_prompt}],
@@ -55,7 +57,6 @@ def invoke_bedrock_model(
             inferenceConfig={
                 "temperature": temperature,
                 "maxTokens": max_tokens,
-                "topP": top_p,
             },
         )
         print("response is")
