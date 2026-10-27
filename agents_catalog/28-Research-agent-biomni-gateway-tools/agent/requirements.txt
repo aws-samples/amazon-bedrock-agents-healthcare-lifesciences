@@ -13,7 +13,7 @@ streamlit
 streamlit-cookies-controller
 PyJWT
 uv
-mcp
+mcp<2
 aws-opentelemetry-distro
 defusedxml
 requests>=2.31.0
