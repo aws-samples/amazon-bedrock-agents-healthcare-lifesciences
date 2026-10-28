@@ -1233,12 +1233,11 @@ Resources:
             build:
               commands:
                 - echo "Starting build phase"
-                - echo "Downloading NCBI article..."
-                - wget --user-agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36" https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5749594/pdf/radiol.2017161845.pdf -O ncbi_article.pdf
-                - echo "Downloading NCBI article from S3 to local..."
-                - aws s3 cp s3://aws-hcls-ml/literature/ncbi_article.pdf ncbi_article_s3.pdf
+                - echo "Downloading NCBI article from PMC Open Access dataset..."
+                - wget -q https://pmc-oa-opendata.s3.amazonaws.com/PMC5749594.1/PMC5749594.1.pdf -O ncbi_article.pdf
+                - head -c 5 ncbi_article.pdf | grep -q '%PDF-' || { echo "Downloaded file is not a PDF"; exit 1; }
                 - echo "Uploading NCBI article to destination S3 bucket..."
-                - aws s3 cp ncbi_article_s3.pdf s3://${S3Bucket}/ncbi_article.pdf
+                - aws s3 cp ncbi_article.pdf s3://${S3Bucket}/ncbi_article.pdf
                 - echo "NCBI article uploaded to S3"
                 - echo "Cloning Git repository..."
                 - GIT_LFS_SKIP_SMUDGE=1 git clone -b main --single-branch ${GithubLink} repo
@@ -1502,13 +1501,6 @@ Resources:
                 Resource:
                   - !GetAtt S3Bucket.Arn
                   - !Sub "${S3Bucket.Arn}/*"
-              - Effect: Allow
-                Action:
-                  - s3:GetObject
-                  - s3:ListBucket
-                Resource:
-                  - "arn:aws:s3:::aws-hcls-ml"
-                  - "arn:aws:s3:::aws-hcls-ml/*"
         - PolicyName: CloudWatchLogs
           PolicyDocument:
             Version: "2012-10-17"
