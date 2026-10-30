@@ -35,9 +35,13 @@ class MemoryHook(HookProvider):
                     for message in turn:
                         role = "assistant" if message["role"] == "ASSISTANT" else "user"
                         content = message["content"]["text"]
-                        context_messages.append(
-                            {"role": role, "content": [{"text": content}]}
-                        )
+                        
+                        # Only add messages that don't reference tool usage
+                        # This prevents incomplete tool execution records when switching models
+                        if not self._contains_tool_references(content):
+                            context_messages.append(
+                                {"role": role, "content": [{"text": content}]}
+                            )
 
                 # context = "\n".join(context_messages)
                 # Add context to agent's system prompt.
@@ -101,6 +105,17 @@ class MemoryHook(HookProvider):
 
         except Exception as e:
             raise RuntimeError(f"Memory save error: {e}")
+
+    def _contains_tool_references(self, content: str) -> bool:
+        """Check if content contains references to tool usage that might be incomplete"""
+        tool_indicators = [
+            "🔧 Using tool:",
+            "tool_use",
+            "tooluse_",
+            "tool_result",
+            "toolResult"
+        ]
+        return any(indicator in content for indicator in tool_indicators)
 
     def register_hooks(self, registry: HookRegistry):
         registry.add_callback(MessageAddedEvent, self.on_message_added)
