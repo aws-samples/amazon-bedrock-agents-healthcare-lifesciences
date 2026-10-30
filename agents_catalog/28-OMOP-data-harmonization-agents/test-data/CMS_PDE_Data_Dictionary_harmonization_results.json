@@ -1,0 +1,298 @@
+[
+  {
+    "row_index": 1,
+    "input_label": "Beneficiary Code",
+    "input_table_description": "CMS Prescription Drug Events (PDE) DE-SynPUF",
+    "source": "Beneficiary Code:CMS Prescription Drug Events (PDE) DE-SynPUF",
+    "embedding_matches": [
+      {
+        "id": "c1c8fb04-2043-4304-ab36-de24616190e60",
+        "fieldName": "drug_source_concept_id",
+        "tableName": "drug_exposure",
+        "enrichedText": "Field: drug_source_concept_id\n    Table: drug_exposure\n    Field Description: This is the concept representing the drug source value and may not necessarily be standard. This field is discouraged from use in analysis because it is not required to contain Standard Concepts that are used across the OHDSI community, and should only be used when Standard Concepts do not adequately represent the source detail for the Drug necessary for a given analytic use case. Consider using DRUG_CONCEPT_ID instead to enable standardized analytics that can be consistent across the network.\n    Table Description: This table captures records about the exposure to a Drug ingested or otherwise introduced into the body. A Drug is a biochemical substance formulated in such a way that when administered to a Person it will exert a certain biochemical effect on the metabolism. Drugs include prescription and over-the-counter medicines, vaccines, and large-molecule biologic therapies. Radiological devices ingested or applied locally do not count as Drugs.\n    ETL Conventions: If the DRUG_SOURCE_VALUE is coded in the source data using an OMOP supported vocabulary put the concept id representing the source value here. If unavailable, set to 0.\n    Data Type: integer",
+        "score": 1.499777
+      },
+      {
+        "id": "27953d30-d989-466b-8bcc-59fee5f59d770",
+        "fieldName": "dea",
+        "tableName": "provider",
+        "enrichedText": "Field: dea\n    Table: provider\n    Field Description: This is the identifier issued by the DEA, a US federal agency, that allows a provider to write prescriptions for controlled substances.\n    Table Description: The PROVIDER table contains a list of uniquely identified healthcare providers. These are individuals providing hands-on healthcare to patients, such as physicians, nurses, midwives, physical therapists etc.\n    ETL Conventions: nan\n    Data Type: varchar(20)",
+        "score": 1.429551
+      },
+      {
+        "id": "3c020827-5458-4de4-945b-d825d0c0be3c0",
+        "fieldName": "drug_exposure_id",
+        "tableName": "drug_exposure",
+        "enrichedText": "Field: drug_exposure_id\n    Table: drug_exposure\n    Field Description: The unique key given to records of drug dispensings or administrations for a person. Refer to the ETL for how duplicate drugs during the same visit were handled.\n    Table Description: This table captures records about the exposure to a Drug ingested or otherwise introduced into the body. A Drug is a biochemical substance formulated in such a way that when administered to a Person it will exert a certain biochemical effect on the metabolism. Drugs include prescription and over-the-counter medicines, vaccines, and large-molecule biologic therapies. Radiological devices ingested or applied locally do not count as Drugs.\n    ETL Conventions: Each instance of a drug dispensing or administration present in the source data should be assigned this unique key. In some cases, a person can have multiple records of the same drug within the same visit. It is valid to keep these duplicates and assign them individual, unique, DRUG_EXPOSURE_IDs, though it is up to the ETL how they should be handled.\n    Data Type: bigint",
+        "score": 1.418395
+      }
+    ],
+    "harmonization_response": {
+      "source": "Beneficiary Code",
+      "target": "person.person_source_value",
+      "explanation": "The Beneficiary Code from CMS PDE data represents a unique identifier for a patient/beneficiary. In OMOP CDM, patient identifiers from source systems should be mapped to person_source_value in the person table. This field is specifically designed to store original patient identifiers while maintaining traceability to the source data. This is a more appropriate mapping than the embedding suggestions which focused on drug-related fields.",
+      "foreign_key": "Links to person table primary key",
+      "foreign_key_table": "person",
+      "foreign_key_field": "person_id"
+    }
+  },
+  {
+    "row_index": 2,
+    "input_label": "Part D Event Number",
+    "input_table_description": "CMS Prescription Drug Events (PDE) DE-SynPUF",
+    "source": "Part D Event Number:CMS Prescription Drug Events (PDE) DE-SynPUF",
+    "embedding_matches": [
+      {
+        "id": "62069028-565c-4b7c-a4b5-01246734ea1d0",
+        "fieldName": "drug_exposure_end_date",
+        "tableName": "drug_exposure",
+        "enrichedText": "Field: drug_exposure_end_date\n    Table: drug_exposure\n    Field Description: The DRUG_EXPOSURE_END_DATE denotes the day the drug exposure ended for the patient.\n    Table Description: This table captures records about the exposure to a Drug ingested or otherwise introduced into the body. A Drug is a biochemical substance formulated in such a way that when administered to a Person it will exert a certain biochemical effect on the metabolism. Drugs include prescription and over-the-counter medicines, vaccines, and large-molecule biologic therapies. Radiological devices ingested or applied locally do not count as Drugs.\n    ETL Conventions: If this information is not explicitly available in the data, infer the end date from start date and duration.<br>For detailed conventions for how to populate this field, please see the [THEMIS repository](https://ohdsi.github.io/Themis/tag_drug_exposure.html).\n    Data Type: date",
+        "score": 1.342325
+      },
+      {
+        "id": "2f0d3fb0-c9ab-4e74-82aa-60f6dfe3c99b0",
+        "fieldName": "drug_exposure_end_datetime",
+        "tableName": "drug_exposure",
+        "enrichedText": "Field: drug_exposure_end_datetime\n    Table: drug_exposure\n    Field Description: nan\n    Table Description: This table captures records about the exposure to a Drug ingested or otherwise introduced into the body. A Drug is a biochemical substance formulated in such a way that when administered to a Person it will exert a certain biochemical effect on the metabolism. Drugs include prescription and over-the-counter medicines, vaccines, and large-molecule biologic therapies. Radiological devices ingested or applied locally do not count as Drugs.\n    ETL Conventions: This is not required, though it is in v6. If a source does not specify datetime the convention is to set the time to midnight (00:00:0000)\n    Data Type: datetime",
+        "score": 1.325735
+      },
+      {
+        "id": "3c020827-5458-4de4-945b-d825d0c0be3c0",
+        "fieldName": "drug_exposure_id",
+        "tableName": "drug_exposure",
+        "enrichedText": "Field: drug_exposure_id\n    Table: drug_exposure\n    Field Description: The unique key given to records of drug dispensings or administrations for a person. Refer to the ETL for how duplicate drugs during the same visit were handled.\n    Table Description: This table captures records about the exposure to a Drug ingested or otherwise introduced into the body. A Drug is a biochemical substance formulated in such a way that when administered to a Person it will exert a certain biochemical effect on the metabolism. Drugs include prescription and over-the-counter medicines, vaccines, and large-molecule biologic therapies. Radiological devices ingested or applied locally do not count as Drugs.\n    ETL Conventions: Each instance of a drug dispensing or administration present in the source data should be assigned this unique key. In some cases, a person can have multiple records of the same drug within the same visit. It is valid to keep these duplicates and assign them individual, unique, DRUG_EXPOSURE_IDs, though it is up to the ETL how they should be handled.\n    Data Type: bigint",
+        "score": 1.303127
+      }
+    ],
+    "harmonization_response": {
+      "source": "Part D Event Number",
+      "target": "drug_exposure.drug_exposure_id",
+      "explanation": "This is the optimal mapping because both fields serve as unique identifiers for prescription drug events. The Part D Event Number uniquely identifies each prescription drug event in the CMS PDE data, which directly corresponds to OMOP's drug_exposure_id that uniquely identifies each drug dispensing record. The semantic purpose and technical role (primary key identifier) are perfectly aligned between source and target.",
+      "foreign_key": "",
+      "foreign_key_table": "",
+      "foreign_key_field": ""
+    }
+  },
+  {
+    "row_index": 3,
+    "input_label": "RX Service Date",
+    "input_table_description": "CMS Prescription Drug Events (PDE) DE-SynPUF",
+    "source": "RX Service Date:CMS Prescription Drug Events (PDE) DE-SynPUF",
+    "embedding_matches": [
+      {
+        "id": "2f0d3fb0-c9ab-4e74-82aa-60f6dfe3c99b0",
+        "fieldName": "drug_exposure_end_datetime",
+        "tableName": "drug_exposure",
+        "enrichedText": "Field: drug_exposure_end_datetime\n    Table: drug_exposure\n    Field Description: nan\n    Table Description: This table captures records about the exposure to a Drug ingested or otherwise introduced into the body. A Drug is a biochemical substance formulated in such a way that when administered to a Person it will exert a certain biochemical effect on the metabolism. Drugs include prescription and over-the-counter medicines, vaccines, and large-molecule biologic therapies. Radiological devices ingested or applied locally do not count as Drugs.\n    ETL Conventions: This is not required, though it is in v6. If a source does not specify datetime the convention is to set the time to midnight (00:00:0000)\n    Data Type: datetime",
+        "score": 1.264094
+      },
+      {
+        "id": "0714ca64-69f0-4898-b452-7d70074593a90",
+        "fieldName": "drug_exposure_start_date",
+        "tableName": "drug_exposure",
+        "enrichedText": "Field: drug_exposure_start_date\n    Table: drug_exposure\n    Field Description: Use this date to determine the start date of the drug record.\n    Table Description: This table captures records about the exposure to a Drug ingested or otherwise introduced into the body. A Drug is a biochemical substance formulated in such a way that when administered to a Person it will exert a certain biochemical effect on the metabolism. Drugs include prescription and over-the-counter medicines, vaccines, and large-molecule biologic therapies. Radiological devices ingested or applied locally do not count as Drugs.\n    ETL Conventions: Valid entries include a start date of a prescription, the date a prescription was filled, or the date on which a Drug administration was recorded. It is a valid ETL choice to use the date the drug was ordered as the DRUG_EXPOSURE_START_DATE.\n    Data Type: date",
+        "score": 1.233861
+      },
+      {
+        "id": "62069028-565c-4b7c-a4b5-01246734ea1d0",
+        "fieldName": "drug_exposure_end_date",
+        "tableName": "drug_exposure",
+        "enrichedText": "Field: drug_exposure_end_date\n    Table: drug_exposure\n    Field Description: The DRUG_EXPOSURE_END_DATE denotes the day the drug exposure ended for the patient.\n    Table Description: This table captures records about the exposure to a Drug ingested or otherwise introduced into the body. A Drug is a biochemical substance formulated in such a way that when administered to a Person it will exert a certain biochemical effect on the metabolism. Drugs include prescription and over-the-counter medicines, vaccines, and large-molecule biologic therapies. Radiological devices ingested or applied locally do not count as Drugs.\n    ETL Conventions: If this information is not explicitly available in the data, infer the end date from start date and duration.<br>For detailed conventions for how to populate this field, please see the [THEMIS repository](https://ohdsi.github.io/Themis/tag_drug_exposure.html).\n    Data Type: date",
+        "score": 1.217657
+      }
+    ],
+    "harmonization_response": {
+      "source": "RX Service Date",
+      "target": "drug_exposure.drug_exposure_start_date",
+      "explanation": "This is the optimal mapping because:\n1. The RX Service Date represents when a prescription was filled/dispensed, which is explicitly mentioned in the drug_exposure_start_date ETL conventions as a valid use case\n2. In the CMS PDE context, this date represents the beginning of drug exposure from the pharmacy dispensing event\n3. This field has the second-highest similarity score (1.233861) and semantically aligns with the source field's meaning\n4. The field is designed to capture prescription fill dates as per the ETL conventions",
+      "foreign_key": "",
+      "foreign_key_table": "",
+      "foreign_key_field": ""
+    }
+  },
+  {
+    "row_index": 4,
+    "input_label": "Product Service ID",
+    "input_table_description": "CMS Prescription Drug Events (PDE) DE-SynPUF",
+    "source": "Product Service ID:CMS Prescription Drug Events (PDE) DE-SynPUF",
+    "embedding_matches": [
+      {
+        "id": "b2fe2b18-7bf1-4712-a008-0f48c418f8e50",
+        "fieldName": "refills",
+        "tableName": "drug_exposure",
+        "enrichedText": "Field: refills\n    Table: drug_exposure\n    Field Description: This is only filled in when the record is coming from a prescription written this field is meant to represent intended refills at time of the prescription.\n    Table Description: This table captures records about the exposure to a Drug ingested or otherwise introduced into the body. A Drug is a biochemical substance formulated in such a way that when administered to a Person it will exert a certain biochemical effect on the metabolism. Drugs include prescription and over-the-counter medicines, vaccines, and large-molecule biologic therapies. Radiological devices ingested or applied locally do not count as Drugs.\n    ETL Conventions: nan\n    Data Type: integer",
+        "score": 1.407168
+      },
+      {
+        "id": "27953d30-d989-466b-8bcc-59fee5f59d770",
+        "fieldName": "dea",
+        "tableName": "provider",
+        "enrichedText": "Field: dea\n    Table: provider\n    Field Description: This is the identifier issued by the DEA, a US federal agency, that allows a provider to write prescriptions for controlled substances.\n    Table Description: The PROVIDER table contains a list of uniquely identified healthcare providers. These are individuals providing hands-on healthcare to patients, such as physicians, nurses, midwives, physical therapists etc.\n    ETL Conventions: nan\n    Data Type: varchar(20)",
+        "score": 1.378489
+      },
+      {
+        "id": "3c020827-5458-4de4-945b-d825d0c0be3c0",
+        "fieldName": "drug_exposure_id",
+        "tableName": "drug_exposure",
+        "enrichedText": "Field: drug_exposure_id\n    Table: drug_exposure\n    Field Description: The unique key given to records of drug dispensings or administrations for a person. Refer to the ETL for how duplicate drugs during the same visit were handled.\n    Table Description: This table captures records about the exposure to a Drug ingested or otherwise introduced into the body. A Drug is a biochemical substance formulated in such a way that when administered to a Person it will exert a certain biochemical effect on the metabolism. Drugs include prescription and over-the-counter medicines, vaccines, and large-molecule biologic therapies. Radiological devices ingested or applied locally do not count as Drugs.\n    ETL Conventions: Each instance of a drug dispensing or administration present in the source data should be assigned this unique key. In some cases, a person can have multiple records of the same drug within the same visit. It is valid to keep these duplicates and assign them individual, unique, DRUG_EXPOSURE_IDs, though it is up to the ETL how they should be handled.\n    Data Type: bigint",
+        "score": 1.289135
+      }
+    ],
+    "harmonization_response": {
+      "source": "Product Service ID",
+      "target": "drug_exposure.drug_concept_id",
+      "explanation": "The Product Service ID from CMS PDE data represents the unique identifier for the prescribed medication. In OMOP CDM, prescribed medications are mapped to standard concepts and recorded in drug_exposure.drug_concept_id. This field maintains referential integrity to the concept table where standardized drug information is stored.",
+      "foreign_key": "References standard drug concepts",
+      "foreign_key_table": "concept",
+      "foreign_key_field": "concept_id"
+    }
+  },
+  {
+    "row_index": 5,
+    "input_label": "Quantity Dispensed",
+    "input_table_description": "CMS Prescription Drug Events (PDE) DE-SynPUF",
+    "source": "Quantity Dispensed:CMS Prescription Drug Events (PDE) DE-SynPUF",
+    "embedding_matches": [
+      {
+        "id": "b2fe2b18-7bf1-4712-a008-0f48c418f8e50",
+        "fieldName": "refills",
+        "tableName": "drug_exposure",
+        "enrichedText": "Field: refills\n    Table: drug_exposure\n    Field Description: This is only filled in when the record is coming from a prescription written this field is meant to represent intended refills at time of the prescription.\n    Table Description: This table captures records about the exposure to a Drug ingested or otherwise introduced into the body. A Drug is a biochemical substance formulated in such a way that when administered to a Person it will exert a certain biochemical effect on the metabolism. Drugs include prescription and over-the-counter medicines, vaccines, and large-molecule biologic therapies. Radiological devices ingested or applied locally do not count as Drugs.\n    ETL Conventions: nan\n    Data Type: integer",
+        "score": 1.384363
+      },
+      {
+        "id": "3c020827-5458-4de4-945b-d825d0c0be3c0",
+        "fieldName": "drug_exposure_id",
+        "tableName": "drug_exposure",
+        "enrichedText": "Field: drug_exposure_id\n    Table: drug_exposure\n    Field Description: The unique key given to records of drug dispensings or administrations for a person. Refer to the ETL for how duplicate drugs during the same visit were handled.\n    Table Description: This table captures records about the exposure to a Drug ingested or otherwise introduced into the body. A Drug is a biochemical substance formulated in such a way that when administered to a Person it will exert a certain biochemical effect on the metabolism. Drugs include prescription and over-the-counter medicines, vaccines, and large-molecule biologic therapies. Radiological devices ingested or applied locally do not count as Drugs.\n    ETL Conventions: Each instance of a drug dispensing or administration present in the source data should be assigned this unique key. In some cases, a person can have multiple records of the same drug within the same visit. It is valid to keep these duplicates and assign them individual, unique, DRUG_EXPOSURE_IDs, though it is up to the ETL how they should be handled.\n    Data Type: bigint",
+        "score": 1.377707
+      },
+      {
+        "id": "43cad681-5a14-4ff7-9779-0273da9e61ee0",
+        "fieldName": "quantity",
+        "tableName": "drug_exposure",
+        "enrichedText": "Field: quantity\n    Table: drug_exposure\n    Field Description: nan\n    Table Description: This table captures records about the exposure to a Drug ingested or otherwise introduced into the body. A Drug is a biochemical substance formulated in such a way that when administered to a Person it will exert a certain biochemical effect on the metabolism. Drugs include prescription and over-the-counter medicines, vaccines, and large-molecule biologic therapies. Radiological devices ingested or applied locally do not count as Drugs.\n    ETL Conventions: To find the dose form of a drug the RELATIONSHIP table can be used where the relationship_id is 'Has dose form'. If liquid, quantity stands for the total amount dispensed or ordered of ingredient in the units given by the drug_strength table. If the unit from the source data does not align with the unit in the DRUG_STRENGTH table the quantity should be converted to the correct unit given in DRUG_STRENGTH. For clinical drugs with fixed dose forms (tablets etc.) the quantity is the number of units/tablets/capsules prescribed or dispensed (can be partial, but then only 1/2 or 1/3, not 0.01). Clinical drugs with divisible dose forms (injections) the quantity is the amount of ingredient the patient got. For example, if the injection is 2mg/mL but the patient got 80mL then quantity is reported as 160.\r\nQuantified clinical drugs with divisible dose forms (prefilled syringes), the quantity is the amount of ingredient similar to clinical drugs. Please see [how to calculate drug dose](https://ohdsi.github.io/CommonDataModel/drug_dose.html) for more information.\r\n\n    Data Type: float",
+        "score": 1.293519
+      }
+    ],
+    "harmonization_response": {
+      "source": "Quantity Dispensed",
+      "target": "drug_exposure.quantity",
+      "explanation": "This is the optimal mapping because the drug_exposure.quantity field is specifically designed to capture the amount of medication dispensed. The ETL conventions clearly describe how to handle different medication forms (tablets, liquids, injections) and their quantities. For tablets/capsules, it represents the number of units dispensed, and for liquids/injections, it represents the total amount of active ingredient. This aligns perfectly with the PDE source context where quantity dispensed needs to be recorded for prescription drugs.",
+      "foreign_key": "",
+      "foreign_key_table": "",
+      "foreign_key_field": ""
+    }
+  },
+  {
+    "row_index": 6,
+    "input_label": "Days Supply",
+    "input_table_description": "CMS Prescription Drug Events (PDE) DE-SynPUF",
+    "source": "Days Supply:CMS Prescription Drug Events (PDE) DE-SynPUF",
+    "embedding_matches": [
+      {
+        "id": "2f0d3fb0-c9ab-4e74-82aa-60f6dfe3c99b0",
+        "fieldName": "drug_exposure_end_datetime",
+        "tableName": "drug_exposure",
+        "enrichedText": "Field: drug_exposure_end_datetime\n    Table: drug_exposure\n    Field Description: nan\n    Table Description: This table captures records about the exposure to a Drug ingested or otherwise introduced into the body. A Drug is a biochemical substance formulated in such a way that when administered to a Person it will exert a certain biochemical effect on the metabolism. Drugs include prescription and over-the-counter medicines, vaccines, and large-molecule biologic therapies. Radiological devices ingested or applied locally do not count as Drugs.\n    ETL Conventions: This is not required, though it is in v6. If a source does not specify datetime the convention is to set the time to midnight (00:00:0000)\n    Data Type: datetime",
+        "score": 1.318772
+      },
+      {
+        "id": "62069028-565c-4b7c-a4b5-01246734ea1d0",
+        "fieldName": "drug_exposure_end_date",
+        "tableName": "drug_exposure",
+        "enrichedText": "Field: drug_exposure_end_date\n    Table: drug_exposure\n    Field Description: The DRUG_EXPOSURE_END_DATE denotes the day the drug exposure ended for the patient.\n    Table Description: This table captures records about the exposure to a Drug ingested or otherwise introduced into the body. A Drug is a biochemical substance formulated in such a way that when administered to a Person it will exert a certain biochemical effect on the metabolism. Drugs include prescription and over-the-counter medicines, vaccines, and large-molecule biologic therapies. Radiological devices ingested or applied locally do not count as Drugs.\n    ETL Conventions: If this information is not explicitly available in the data, infer the end date from start date and duration.<br>For detailed conventions for how to populate this field, please see the [THEMIS repository](https://ohdsi.github.io/Themis/tag_drug_exposure.html).\n    Data Type: date",
+        "score": 1.297193
+      },
+      {
+        "id": "d726737f-9267-4dae-85a2-cd0dfdb87e3b0",
+        "fieldName": "days_supply",
+        "tableName": "drug_exposure",
+        "enrichedText": "Field: days_supply\n    Table: drug_exposure\n    Field Description: The number of days of supply of the medication as recorded in the original prescription or dispensing record. Days supply can differ from actual drug duration (i.e. prescribed days supply vs actual exposure).\n    Table Description: This table captures records about the exposure to a Drug ingested or otherwise introduced into the body. A Drug is a biochemical substance formulated in such a way that when administered to a Person it will exert a certain biochemical effect on the metabolism. Drugs include prescription and over-the-counter medicines, vaccines, and large-molecule biologic therapies. Radiological devices ingested or applied locally do not count as Drugs.\n    ETL Conventions: The field should be left empty if the source data does not contain a verbatim days_supply, and should not be calculated from other fields.\u000b\u000bNegative values are not allowed. Several actions are possible: 1) record is not trustworthy and we remove the record entirely. 2) we trust the record and leave days_supply empty or 3) record needs to be combined with other record (e.g. reversal of prescription). High values (>365 days) should be investigated. If considered an error in the source data (e.g. typo), the value needs to be excluded to prevent creation of unrealistic long eras.\n    Data Type: integer",
+        "score": 1.024385
+      }
+    ],
+    "harmonization_response": {
+      "source": "Days Supply",
+      "target": "drug_exposure.days_supply",
+      "explanation": "This is a direct semantic match for prescription days supply. The OMOP field is specifically designed to capture the number of days of medication supply as recorded in prescription/dispensing records, which exactly matches the CMS PDE source context. The field description and ETL conventions explicitly state this field should contain verbatim days supply values from source data.",
+      "foreign_key": "",
+      "foreign_key_table": "",
+      "foreign_key_field": ""
+    }
+  },
+  {
+    "row_index": 7,
+    "input_label": "Patient Pay Amount",
+    "input_table_description": "CMS Prescription Drug Events (PDE) DE-SynPUF",
+    "source": "Patient Pay Amount:CMS Prescription Drug Events (PDE) DE-SynPUF",
+    "embedding_matches": [
+      {
+        "id": "9aa97389-7910-470d-8a86-ca3f168e65970",
+        "fieldName": "payer_source_value",
+        "tableName": "payer_plan_period",
+        "enrichedText": "Field: payer_source_value\n    Table: payer_plan_period\n    Field Description: This is the Payer as it appears in the source data.\n    Table Description: The PAYER_PLAN_PERIOD table captures details of the period of time that a Person is continuously enrolled under a specific health Plan benefit structure from a given Payer. Each Person receiving healthcare is typically covered by a health benefit plan, which pays for (fully or partially), or directly provides, the care. These benefit plans are provided by payers, such as health insurances or state or government agencies. In each plan the details of the health benefits are defined for the Person or her family, and the health benefit Plan might change over time typically with increasing utilization (reaching certain cost thresholds such as deductibles), plan availability and purchasing choices of the Person. The unique combinations of Payer organizations, health benefit Plans and time periods in which they are valid for a Person are recorded in this table.\n    ETL Conventions: nan\n    Data Type: varchar(50)",
+        "score": 1.546411
+      },
+      {
+        "id": "b2fe2b18-7bf1-4712-a008-0f48c418f8e50",
+        "fieldName": "refills",
+        "tableName": "drug_exposure",
+        "enrichedText": "Field: refills\n    Table: drug_exposure\n    Field Description: This is only filled in when the record is coming from a prescription written this field is meant to represent intended refills at time of the prescription.\n    Table Description: This table captures records about the exposure to a Drug ingested or otherwise introduced into the body. A Drug is a biochemical substance formulated in such a way that when administered to a Person it will exert a certain biochemical effect on the metabolism. Drugs include prescription and over-the-counter medicines, vaccines, and large-molecule biologic therapies. Radiological devices ingested or applied locally do not count as Drugs.\n    ETL Conventions: nan\n    Data Type: integer",
+        "score": 1.527945
+      },
+      {
+        "id": "3c020827-5458-4de4-945b-d825d0c0be3c0",
+        "fieldName": "drug_exposure_id",
+        "tableName": "drug_exposure",
+        "enrichedText": "Field: drug_exposure_id\n    Table: drug_exposure\n    Field Description: The unique key given to records of drug dispensings or administrations for a person. Refer to the ETL for how duplicate drugs during the same visit were handled.\n    Table Description: This table captures records about the exposure to a Drug ingested or otherwise introduced into the body. A Drug is a biochemical substance formulated in such a way that when administered to a Person it will exert a certain biochemical effect on the metabolism. Drugs include prescription and over-the-counter medicines, vaccines, and large-molecule biologic therapies. Radiological devices ingested or applied locally do not count as Drugs.\n    ETL Conventions: Each instance of a drug dispensing or administration present in the source data should be assigned this unique key. In some cases, a person can have multiple records of the same drug within the same visit. It is valid to keep these duplicates and assign them individual, unique, DRUG_EXPOSURE_IDs, though it is up to the ETL how they should be handled.\n    Data Type: bigint",
+        "score": 1.524406
+      }
+    ],
+    "harmonization_response": {
+      "source": "Patient Pay Amount",
+      "target": "cost.paid_by_patient",
+      "explanation": "This field represents the amount paid by the patient for a prescription drug, which directly maps to the paid_by_patient field in the COST table. The COST table is specifically designed to capture various cost components of healthcare services, including patient out-of-pocket expenses. Since this is coming from a Prescription Drug Events dataset, this mapping will capture the patient's payment portion for medication costs.",
+      "foreign_key": "The cost record links to the drug_exposure record for the prescription",
+      "foreign_key_table": "drug_exposure",
+      "foreign_key_field": "drug_exposure_id"
+    }
+  },
+  {
+    "row_index": 8,
+    "input_label": "Gross Drug Cost",
+    "input_table_description": "CMS Prescription Drug Events (PDE) DE-SynPUF",
+    "source": "Gross Drug Cost:CMS Prescription Drug Events (PDE) DE-SynPUF",
+    "embedding_matches": [
+      {
+        "id": "62c417a2-9f6a-4881-969e-2d71dc47ba2f0",
+        "fieldName": "drug_exposure_count",
+        "tableName": "drug_era",
+        "enrichedText": "Field: drug_exposure_count\n    Table: drug_era\n    Field Description: The count of grouped DRUG_EXPOSURE records that were included in the DRUG_ERA row.\n    Table Description: A Drug Era is defined as a span of time when the Person is assumed to be exposed to a particular active ingredient. A Drug Era is not the same as a Drug Exposure: Exposures are individual records corresponding to the source when Drug was delivered to the Person, while successive periods of Drug Exposures are combined under certain rules to produce continuous Drug Eras.\n    ETL Conventions: nan\n    Data Type: integer",
+        "score": 1.517922
+      },
+      {
+        "id": "3c020827-5458-4de4-945b-d825d0c0be3c0",
+        "fieldName": "drug_exposure_id",
+        "tableName": "drug_exposure",
+        "enrichedText": "Field: drug_exposure_id\n    Table: drug_exposure\n    Field Description: The unique key given to records of drug dispensings or administrations for a person. Refer to the ETL for how duplicate drugs during the same visit were handled.\n    Table Description: This table captures records about the exposure to a Drug ingested or otherwise introduced into the body. A Drug is a biochemical substance formulated in such a way that when administered to a Person it will exert a certain biochemical effect on the metabolism. Drugs include prescription and over-the-counter medicines, vaccines, and large-molecule biologic therapies. Radiological devices ingested or applied locally do not count as Drugs.\n    ETL Conventions: Each instance of a drug dispensing or administration present in the source data should be assigned this unique key. In some cases, a person can have multiple records of the same drug within the same visit. It is valid to keep these duplicates and assign them individual, unique, DRUG_EXPOSURE_IDs, though it is up to the ETL how they should be handled.\n    Data Type: bigint",
+        "score": 1.494045
+      },
+      {
+        "id": "3f40f455-d119-44a0-a2f2-a7511a41a1140",
+        "fieldName": "dose_unit_source_value",
+        "tableName": "drug_exposure",
+        "enrichedText": "Field: dose_unit_source_value\n    Table: drug_exposure\n    Field Description: This field houses the verbatim value from the source data representing the dose unit of the drug given.\n    Table Description: This table captures records about the exposure to a Drug ingested or otherwise introduced into the body. A Drug is a biochemical substance formulated in such a way that when administered to a Person it will exert a certain biochemical effect on the metabolism. Drugs include prescription and over-the-counter medicines, vaccines, and large-molecule biologic therapies. Radiological devices ingested or applied locally do not count as Drugs.\n    ETL Conventions: This information may be called something different in the source data but the field is meant to contain a value indicating the unit of dosage of drug given to the patient. This is an older column and will be deprecated in an upcoming version.\n    Data Type: varchar(50)",
+        "score": 1.452512
+      }
+    ],
+    "harmonization_response": {
+      "source": "Gross Drug Cost",
+      "target": "cost.paid_by_payer",
+      "explanation": "The source field 'Gross Drug Cost' from CMS PDE data represents the total cost of the drug. In OMOP CDM, drug-related costs are stored in the COST table, which is linked to DRUG_EXPOSURE. The paid_by_payer field in the cost table is the most appropriate match as it captures the gross payment amount for a drug. This mapping requires linking to the drug_exposure table since the cost table is dependent on drug_exposure records.",
+      "foreign_key": "The cost table has a foreign key relationship to drug_exposure",
+      "foreign_key_table": "drug_exposure",
+      "foreign_key_field": "drug_exposure_id"
+    }
+  }
+]

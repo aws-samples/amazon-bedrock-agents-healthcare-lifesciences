@@ -1,0 +1,20 @@
+{
+  "version": "48.0.0",
+  "files": {
+    "96326550ef611cc0fd6a8c594614c98863777a2e3a3838e3b90c45905b48fa29": {
+      "displayName": "OMOPOntologyStack Template",
+      "source": {
+        "path": "OMOPOntologyStack.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "current_account-current_region-aba9c408": {
+          "bucketName": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}",
+          "objectKey": "96326550ef611cc0fd6a8c594614c98863777a2e3a3838e3b90c45905b48fa29.json",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/cdk-hnb659fds-file-publishing-role-${AWS::AccountId}-${AWS::Region}"
+        }
+      }
+    }
+  },
+  "dockerImages": {}
+}
