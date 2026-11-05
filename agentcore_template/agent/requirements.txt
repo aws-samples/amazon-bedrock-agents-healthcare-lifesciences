@@ -1,5 +1,5 @@
 strands-agents
-strands-agents-tools
+strands-agents-tools<0.9
 requests
 PyYAML
 fastmcp
@@ -12,5 +12,5 @@ boto3
 streamlit
 streamlit-cookies-controller
 PyJWT
-mcp
+mcp<2
 aws-opentelemetry-distro
