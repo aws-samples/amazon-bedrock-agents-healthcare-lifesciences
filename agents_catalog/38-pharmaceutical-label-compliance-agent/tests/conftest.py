@@ -130,14 +130,37 @@ def fake_lambda_context():
     return ctx
 
 
+USER_A_SUB = "11111111-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+USER_B_SUB = "22222222-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+KB_ADMIN_GROUP = "kb-admins"
+
+
+def make_apigw_event(path, method="POST", body=None, sub=USER_A_SUB, groups=None, raw_body=None):
+    """Build an API Gateway v2 HTTP event as delivered after the Cognito JWT authorizer.
+
+    `sub` is the caller's Cognito user ID. Pass `sub=None` to simulate a request
+    that reached the Lambda without verified claims. `groups` mirrors the
+    `cognito:groups` claim; HTTP APIs deliver it as a string like "[a b]".
+    """
+    request_context = {"http": {"method": method}}
+    if sub is not None:
+        claims = {"sub": sub, "email": f"{sub[:8]}@example.com", "token_use": "id"}
+        if groups:
+            claims["cognito:groups"] = "[" + " ".join(groups) + "]"
+        request_context["authorizer"] = {"jwt": {"claims": claims, "scopes": None}}
+    if raw_body is not None:
+        body_str = raw_body
+    else:
+        body_str = json.dumps(body) if body else "{}"
+    return {
+        "rawPath": path,
+        "requestContext": request_context,
+        "headers": {"origin": "https://d123.cloudfront.net"},
+        "body": body_str,
+    }
+
+
 @pytest.fixture
 def apigw_event_factory():
-    """Factory for creating API Gateway v2 HTTP events."""
-    def _make(path: str, method: str = "POST", body: dict = None):
-        return {
-            "rawPath": path,
-            "requestContext": {"http": {"method": method}},
-            "headers": {"origin": "https://d123.cloudfront.net"},
-            "body": json.dumps(body) if body else "{}",
-        }
-    return _make
+    """Factory for creating API Gateway v2 HTTP events (defaults to user A, no groups)."""
+    return make_apigw_event

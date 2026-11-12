@@ -6,6 +6,11 @@ import sys
 import pytest
 from decimal import Decimal
 from unittest.mock import patch, MagicMock
+from urllib.parse import parse_qs
+
+from botocore.exceptions import ClientError
+
+from tests.conftest import USER_A_SUB, USER_B_SUB
 
 
 @pytest.fixture(autouse=True)
@@ -41,22 +46,37 @@ def frontend_module():
         yield frontend, mock_s3_client.return_value, mock_table
 
 
+def owned_by(sub, **fields):
+    """A DynamoDB get_item response for a project owned by `sub`."""
+    return {"Item": {"projectId": "proj-1", "ownerSub": sub, **fields}}
+
+
+def conditional_check_failed(operation):
+    return ClientError(
+        {"Error": {"Code": "ConditionalCheckFailedException", "Message": "The conditional request failed"}},
+        operation,
+    )
+
+
 # ============================================================
 # Request Routing Tests
 # ============================================================
 
 class TestRequestRouting:
     def test_routes_to_upload(self, frontend_module, apigw_event_factory):
-        frontend, mock_s3, _ = frontend_module
+        frontend, mock_s3, mock_table = frontend_module
+        mock_table.get_item.return_value = owned_by(USER_A_SUB)
         mock_s3.generate_presigned_url.return_value = "https://presigned.url"
-        event = apigw_event_factory("/upload", body={"filename": "test.png", "contentType": "image/png"})
+        event = apigw_event_factory("/upload", body={
+            "filename": "test.png", "contentType": "image/png", "projectId": "proj-1"
+        })
         result = frontend.lambda_handler(event, None)
         assert result["statusCode"] == 200
 
     def test_routes_to_check(self, frontend_module, apigw_event_factory):
         frontend, _, mock_table = frontend_module
-        mock_table.get_item.return_value = {"Item": {"status": "processing", "progress": {}}}
-        event = apigw_event_factory("/check", body={"projectId": "p1"})
+        mock_table.get_item.return_value = owned_by(USER_A_SUB, status="processing", progress={})
+        event = apigw_event_factory("/check", body={"projectId": "proj-1"})
         result = frontend.lambda_handler(event, None)
         assert result["statusCode"] == 200
 
@@ -86,11 +106,59 @@ class TestRequestRouting:
         assert "Access-Control-Allow-Origin" in result["headers"]
 
     def test_internal_error_returns_500(self, frontend_module, apigw_event_factory):
-        frontend, mock_s3, _ = frontend_module
+        frontend, mock_s3, mock_table = frontend_module
+        mock_table.get_item.return_value = owned_by(USER_A_SUB)
         mock_s3.generate_presigned_url.side_effect = Exception("boom")
-        event = apigw_event_factory("/upload", body={"filename": "test.png", "contentType": "image/png"})
+        event = apigw_event_factory("/upload", body={
+            "filename": "test.png", "contentType": "image/png", "projectId": "proj-1"
+        })
         result = frontend.lambda_handler(event, None)
         assert result["statusCode"] == 500
+
+    def test_invalid_json_returns_400(self, frontend_module, apigw_event_factory):
+        frontend, _, _ = frontend_module
+        event = apigw_event_factory("/projects/save", raw_body="{not json")
+        result = frontend.lambda_handler(event, None)
+        assert result["statusCode"] == 400
+
+
+# ============================================================
+# Caller identity (authentication context) Tests
+# ============================================================
+
+class TestCallerIdentity:
+    @pytest.mark.parametrize("path", [
+        "/upload", "/check", "/projects/list", "/projects/save", "/projects/delete",
+    ])
+    def test_rejects_request_without_verified_identity(self, frontend_module, apigw_event_factory, path):
+        frontend, mock_s3, mock_table = frontend_module
+        event = apigw_event_factory(path, body={"projectId": "proj-1", "id": "proj-1"}, sub=None)
+        result = frontend.lambda_handler(event, None)
+        assert result["statusCode"] == 401
+        # Nothing is read or written without an identity.
+        mock_table.get_item.assert_not_called()
+        mock_table.scan.assert_not_called()
+        mock_table.update_item.assert_not_called()
+        mock_table.delete_item.assert_not_called()
+        mock_s3.generate_presigned_url.assert_not_called()
+
+    def test_rejects_empty_sub(self, frontend_module, apigw_event_factory):
+        frontend, _, _ = frontend_module
+        event = apigw_event_factory("/projects/list", sub="")
+        result = frontend.lambda_handler(event, None)
+        assert result["statusCode"] == 401
+
+    def test_options_does_not_require_identity(self, frontend_module, apigw_event_factory):
+        frontend, _, _ = frontend_module
+        event = apigw_event_factory("/projects/list", method="OPTIONS", sub=None)
+        result = frontend.lambda_handler(event, None)
+        assert result["statusCode"] == 200
+
+    def test_get_caller_sub_reads_jwt_claims(self, frontend_module, apigw_event_factory):
+        frontend, _, _ = frontend_module
+        assert frontend._get_caller_sub(apigw_event_factory("/x", sub=USER_B_SUB)) == USER_B_SUB
+        assert frontend._get_caller_sub(apigw_event_factory("/x", sub=None)) is None
+        assert frontend._get_caller_sub({}) is None
 
 
 # ============================================================
@@ -99,7 +167,8 @@ class TestRequestRouting:
 
 class TestHandleUpload:
     def test_generates_presigned_url(self, frontend_module, apigw_event_factory):
-        frontend, mock_s3, _ = frontend_module
+        frontend, mock_s3, mock_table = frontend_module
+        mock_table.get_item.return_value = owned_by(USER_A_SUB)
         mock_s3.generate_presigned_url.return_value = "https://presigned.url/test"
         event = apigw_event_factory("/upload", body={
             "filename": "label.png",
@@ -115,28 +184,49 @@ class TestHandleUpload:
 
     def test_rejects_missing_content_type(self, frontend_module, apigw_event_factory):
         frontend, _, _ = frontend_module
-        event = apigw_event_factory("/upload", body={"filename": "test.png"})
+        event = apigw_event_factory("/upload", body={"filename": "test.png", "projectId": "proj-1"})
         result = frontend.lambda_handler(event, None)
         assert result["statusCode"] == 400
 
     def test_rejects_invalid_content_type(self, frontend_module, apigw_event_factory):
         frontend, _, _ = frontend_module
         event = apigw_event_factory("/upload", body={
-            "filename": "doc.pdf", "contentType": "application/pdf"
+            "filename": "doc.pdf", "contentType": "application/pdf", "projectId": "proj-1"
         })
         result = frontend.lambda_handler(event, None)
         assert result["statusCode"] == 400
         assert "JPEG and PNG" in json.loads(result["body"])["error"]
 
-    def test_defaults_invalid_region_to_us_fda(self, frontend_module, apigw_event_factory):
+    def test_rejects_missing_project_id(self, frontend_module, apigw_event_factory):
         frontend, mock_s3, _ = frontend_module
+        event = apigw_event_factory("/upload", body={"filename": "label.png", "contentType": "image/png"})
+        result = frontend.lambda_handler(event, None)
+        assert result["statusCode"] == 400
+        mock_s3.generate_presigned_url.assert_not_called()
+
+    def test_defaults_invalid_region_to_us_fda(self, frontend_module, apigw_event_factory):
+        frontend, mock_s3, mock_table = frontend_module
+        mock_table.get_item.return_value = owned_by(USER_A_SUB)
         mock_s3.generate_presigned_url.return_value = "https://url"
         event = apigw_event_factory("/upload", body={
-            "filename": "label.png", "contentType": "image/png", "region": "INVALID"
+            "filename": "label.png", "contentType": "image/png", "region": "INVALID", "projectId": "proj-1"
         })
         result = frontend.lambda_handler(event, None)
         body = json.loads(result["body"])
         assert body["region"] == "US_FDA"
+
+    def test_tagging_is_url_encoded(self, frontend_module, apigw_event_factory):
+        """A projectId containing '&' or '=' cannot inject extra S3 object tags."""
+        frontend, mock_s3, mock_table = frontend_module
+        mock_table.get_item.return_value = owned_by(USER_A_SUB)
+        mock_s3.generate_presigned_url.return_value = "https://url"
+        tricky_id = "proj-1&regulatory_region=UK_MHRA"
+        event = apigw_event_factory("/upload", body={
+            "filename": "label.png", "contentType": "image/png", "region": "US_FDA", "projectId": tricky_id
+        })
+        frontend.lambda_handler(event, None)
+        tagging = mock_s3.generate_presigned_url.call_args.kwargs["Params"]["Tagging"]
+        assert parse_qs(tagging) == {"regulatory_region": ["US_FDA"], "project_id": [tricky_id]}
 
 
 # ============================================================
@@ -146,15 +236,14 @@ class TestHandleUpload:
 class TestHandleCheck:
     def test_returns_completed_from_dynamodb(self, frontend_module, apigw_event_factory):
         frontend, _, mock_table = frontend_module
-        mock_table.get_item.return_value = {
-            "Item": {
-                "status": "complete",
-                "annotatedImageUrl": "https://d123.cloudfront.net/annotated.png",
-                "complianceReport": "The label has issues",
-                "formattedViolations": [{"title": "V1"}],
-                "progress": {"step1": True, "step2": True, "step3": True},
-            }
-        }
+        mock_table.get_item.return_value = owned_by(
+            USER_A_SUB,
+            status="complete",
+            annotatedImageUrl="https://d123.cloudfront.net/annotated.png",
+            complianceReport="The label has issues",
+            formattedViolations=[{"title": "V1"}],
+            progress={"step1": True, "step2": True, "step3": True},
+        )
         event = apigw_event_factory("/check", body={"projectId": "proj-1"})
         result = frontend.lambda_handler(event, None)
         body = json.loads(result["body"])
@@ -163,29 +252,62 @@ class TestHandleCheck:
 
     def test_returns_processing_from_dynamodb(self, frontend_module, apigw_event_factory):
         frontend, _, mock_table = frontend_module
-        mock_table.get_item.return_value = {
-            "Item": {
-                "status": "processing",
-                "progress": {"step1": True, "step2": False, "step3": False},
-            }
-        }
+        mock_table.get_item.return_value = owned_by(
+            USER_A_SUB,
+            status="processing",
+            progress={"step1": True, "step2": False, "step3": False},
+        )
         event = apigw_event_factory("/check", body={"projectId": "proj-1"})
         result = frontend.lambda_handler(event, None)
         body = json.loads(result["body"])
         assert body["status"] == "processing"
         assert body["progress"]["step1"] is True
 
-    def test_fallback_to_processing_when_no_project_id_or_key(self, frontend_module, apigw_event_factory):
-        frontend, _, _ = frontend_module
-        event = apigw_event_factory("/check", body={})
+    def test_rejects_missing_project_id(self, frontend_module, apigw_event_factory):
+        frontend, mock_s3, _ = frontend_module
+        event = apigw_event_factory("/check", body={"key": "labels/US_FDA/x.png"})
         result = frontend.lambda_handler(event, None)
-        body = json.loads(result["body"])
-        assert body["status"] == "processing"
+        assert result["statusCode"] == 400
+        # The old S3 lookup by image key (which had no ownership check) is gone.
+        mock_s3.list_objects_v2.assert_not_called()
+        mock_s3.get_object.assert_not_called()
+
+    def test_returns_404_for_unknown_project(self, frontend_module, apigw_event_factory):
+        frontend, _, mock_table = frontend_module
+        mock_table.get_item.return_value = {}
+        event = apigw_event_factory("/check", body={"projectId": "missing"})
+        result = frontend.lambda_handler(event, None)
+        assert result["statusCode"] == 404
 
 
 # ============================================================
 # Projects CRUD Tests
 # ============================================================
+
+class TestHandleProjectsList:
+    def test_filters_scan_to_caller(self, frontend_module, apigw_event_factory):
+        frontend, _, mock_table = frontend_module
+        mock_table.scan.return_value = {"Items": []}
+        frontend.lambda_handler(apigw_event_factory("/projects/list", sub=USER_B_SUB), None)
+        kwargs = mock_table.scan.call_args.kwargs
+        assert kwargs["ConsistentRead"] is True
+        expr = kwargs["FilterExpression"].get_expression()
+        assert expr["operator"] == "="
+        assert expr["values"][0].name == "ownerSub"
+        assert expr["values"][1] == USER_B_SUB
+
+    def test_paginates_with_same_filter(self, frontend_module, apigw_event_factory):
+        frontend, _, mock_table = frontend_module
+        mock_table.scan.side_effect = [
+            {"Items": [{"projectId": "p1", "ownerSub": USER_A_SUB}], "LastEvaluatedKey": {"projectId": "p1"}},
+            {"Items": [{"projectId": "p2", "ownerSub": USER_A_SUB}]},
+        ]
+        result = frontend.lambda_handler(apigw_event_factory("/projects/list"), None)
+        assert [p["projectId"] for p in json.loads(result["body"])] == ["p1", "p2"]
+        second = mock_table.scan.call_args_list[1].kwargs
+        assert second["ExclusiveStartKey"] == {"projectId": "p1"}
+        assert second["FilterExpression"].get_expression()["values"][1] == USER_A_SUB
+
 
 class TestHandleProjectsSave:
     def test_saves_project(self, frontend_module, apigw_event_factory):
@@ -197,6 +319,49 @@ class TestHandleProjectsSave:
         body = json.loads(result["body"])
         assert body["saved"] == "proj-1"
         mock_table.update_item.assert_called_once()
+
+    def test_save_is_conditional_on_ownership(self, frontend_module, apigw_event_factory):
+        frontend, _, mock_table = frontend_module
+        event = apigw_event_factory("/projects/save", body={"project": {"id": "proj-1", "name": "X"}})
+        frontend.lambda_handler(event, None)
+        kwargs = mock_table.update_item.call_args.kwargs
+        assert kwargs["Key"] == {"projectId": "proj-1"}
+        assert kwargs["ConditionExpression"] == "attribute_not_exists(projectId) OR #owner = :owner"
+        assert kwargs["ExpressionAttributeNames"]["#owner"] == "ownerSub"
+        assert kwargs["ExpressionAttributeValues"][":owner"] == USER_A_SUB
+        assert "#owner = :owner" in kwargs["UpdateExpression"]
+
+    def test_client_cannot_set_owner_or_key(self, frontend_module, apigw_event_factory):
+        """ownerSub and projectId in the body are ignored; the owner comes from the token."""
+        frontend, _, mock_table = frontend_module
+        event = apigw_event_factory("/projects/save", sub=USER_B_SUB, body={
+            "project": {"id": "proj-1", "name": "X", "ownerSub": USER_A_SUB, "projectId": "other"}
+        })
+        frontend.lambda_handler(event, None)
+        kwargs = mock_table.update_item.call_args.kwargs
+        assert kwargs["Key"] == {"projectId": "proj-1"}
+        assert kwargs["ExpressionAttributeValues"][":owner"] == USER_B_SUB
+        assert USER_A_SUB not in kwargs["ExpressionAttributeValues"].values()
+        user_fields = [v for k, v in kwargs["ExpressionAttributeNames"].items() if k != "#owner"]
+        assert user_fields == ["name"]
+
+    def test_returns_404_when_project_owned_by_another_user(self, frontend_module, apigw_event_factory):
+        frontend, _, mock_table = frontend_module
+        mock_table.update_item.side_effect = conditional_check_failed("UpdateItem")
+        event = apigw_event_factory("/projects/save", sub=USER_B_SUB, body={
+            "project": {"id": "proj-1", "name": "Hijacked"}
+        })
+        result = frontend.lambda_handler(event, None)
+        assert result["statusCode"] == 404
+
+    def test_other_dynamodb_errors_return_500(self, frontend_module, apigw_event_factory):
+        frontend, _, mock_table = frontend_module
+        mock_table.update_item.side_effect = ClientError(
+            {"Error": {"Code": "ProvisionedThroughputExceededException"}}, "UpdateItem"
+        )
+        event = apigw_event_factory("/projects/save", body={"project": {"id": "proj-1", "name": "X"}})
+        result = frontend.lambda_handler(event, None)
+        assert result["statusCode"] == 500
 
     def test_rejects_missing_project(self, frontend_module, apigw_event_factory):
         frontend, _, _ = frontend_module
@@ -211,11 +376,22 @@ class TestHandleProjectsSave:
         assert result["statusCode"] == 400
 
     def test_handles_empty_item_after_id_pop(self, frontend_module, apigw_event_factory):
-        frontend, _, _ = frontend_module
+        frontend, _, mock_table = frontend_module
         event = apigw_event_factory("/projects/save", body={"project": {"id": "proj-1"}})
         result = frontend.lambda_handler(event, None)
         body = json.loads(result["body"])
         assert body["saved"] == "proj-1"
+        # No write, so an ID-only save cannot create a stub record or change anyone's project.
+        mock_table.update_item.assert_not_called()
+
+    def test_id_only_save_ignores_client_owner_field(self, frontend_module, apigw_event_factory):
+        frontend, _, mock_table = frontend_module
+        event = apigw_event_factory("/projects/save", sub=USER_B_SUB, body={
+            "project": {"id": "proj-1", "ownerSub": USER_B_SUB}
+        })
+        result = frontend.lambda_handler(event, None)
+        assert result["statusCode"] == 200
+        mock_table.update_item.assert_not_called()
 
 
 class TestHandleProjectsDelete:
@@ -225,13 +401,76 @@ class TestHandleProjectsDelete:
         result = frontend.lambda_handler(event, None)
         body = json.loads(result["body"])
         assert body["deleted"] == "proj-1"
-        mock_table.delete_item.assert_called_once_with(Key={"projectId": "proj-1"})
+        mock_table.delete_item.assert_called_once_with(
+            Key={"projectId": "proj-1"},
+            ConditionExpression="#owner = :owner",
+            ExpressionAttributeNames={"#owner": "ownerSub"},
+            ExpressionAttributeValues={":owner": USER_A_SUB},
+        )
+
+    def test_returns_404_when_project_owned_by_another_user(self, frontend_module, apigw_event_factory):
+        frontend, _, mock_table = frontend_module
+        mock_table.delete_item.side_effect = conditional_check_failed("DeleteItem")
+        event = apigw_event_factory("/projects/delete", sub=USER_B_SUB, body={"id": "proj-1"})
+        result = frontend.lambda_handler(event, None)
+        assert result["statusCode"] == 404
 
     def test_rejects_missing_id(self, frontend_module, apigw_event_factory):
         frontend, _, _ = frontend_module
         event = apigw_event_factory("/projects/delete", body={})
         result = frontend.lambda_handler(event, None)
         assert result["statusCode"] == 400
+
+
+# ============================================================
+# Cross-user access (user B targets user A's project)
+# ============================================================
+
+class TestCrossUserAccess:
+    def test_check_on_other_users_project_returns_404_without_data(self, frontend_module, apigw_event_factory):
+        frontend, _, mock_table = frontend_module
+        mock_table.get_item.return_value = owned_by(
+            USER_A_SUB, status="complete", complianceReport="SECRET REPORT",
+            annotatedImageUrl="https://d123.cloudfront.net/secret.png",
+        )
+        event = apigw_event_factory("/check", sub=USER_B_SUB, body={"projectId": "proj-1"})
+        result = frontend.lambda_handler(event, None)
+        assert result["statusCode"] == 404
+        assert "SECRET" not in result["body"]
+        assert "secret.png" not in result["body"]
+
+    def test_upload_into_other_users_project_is_refused(self, frontend_module, apigw_event_factory):
+        frontend, mock_s3, mock_table = frontend_module
+        mock_table.get_item.return_value = owned_by(USER_A_SUB)
+        event = apigw_event_factory("/upload", sub=USER_B_SUB, body={
+            "filename": "label.png", "contentType": "image/png", "projectId": "proj-1"
+        })
+        result = frontend.lambda_handler(event, None)
+        assert result["statusCode"] == 404
+        mock_s3.generate_presigned_url.assert_not_called()
+
+    def test_upload_into_unknown_project_is_refused(self, frontend_module, apigw_event_factory):
+        frontend, mock_s3, mock_table = frontend_module
+        mock_table.get_item.return_value = {}
+        event = apigw_event_factory("/upload", body={
+            "filename": "label.png", "contentType": "image/png", "projectId": "does-not-exist"
+        })
+        result = frontend.lambda_handler(event, None)
+        assert result["statusCode"] == 404
+        mock_s3.generate_presigned_url.assert_not_called()
+
+    def test_legacy_project_without_owner_is_not_accessible(self, frontend_module, apigw_event_factory):
+        frontend, mock_s3, mock_table = frontend_module
+        mock_table.get_item.return_value = {"Item": {"projectId": "proj-1", "status": "complete"}}
+        check = frontend.lambda_handler(
+            apigw_event_factory("/check", body={"projectId": "proj-1"}), None
+        )
+        upload = frontend.lambda_handler(apigw_event_factory("/upload", body={
+            "filename": "label.png", "contentType": "image/png", "projectId": "proj-1"
+        }), None)
+        assert check["statusCode"] == 404
+        assert upload["statusCode"] == 404
+        mock_s3.generate_presigned_url.assert_not_called()
 
 
 # ============================================================

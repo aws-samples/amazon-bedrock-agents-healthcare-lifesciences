@@ -36,6 +36,9 @@ from constructs import Construct
 
 class PharmaLabelStack(Stack):
 
+    # Cognito group allowed to change the regulatory knowledge base.
+    KB_ADMIN_GROUP = "kb-admins"
+
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
@@ -930,6 +933,7 @@ class PharmaLabelStack(Stack):
             environment={
                 "KB_BUCKET": self.kb_bucket.bucket_name,
                 "KNOWLEDGE_BASE_ID": self.knowledge_base_id,
+                "KB_ADMIN_GROUP": self.KB_ADMIN_GROUP,
                 "FRONTEND_ORIGIN": self.frontend_origin,
                 "LOG_LEVEL": "WARNING",
             },
@@ -1163,6 +1167,25 @@ class PharmaLabelStack(Stack):
                 cognito.CfnUserPoolUser.AttributeTypeProperty(name="email_verified", value="true"),
             ],
         )
+
+        # Only members of this group may change the shared regulatory knowledge base
+        self.kb_admin_group = cognito.CfnUserPoolGroup(
+            self,
+            "KbAdminGroup",
+            user_pool_id=self.user_pool.user_pool_id,
+            group_name=self.KB_ADMIN_GROUP,
+            description="Can upload, delete, and sync regulatory knowledge base documents",
+        )
+
+        # The deployer's user is the knowledge base administrator.
+        admin_group_attachment = cognito.CfnUserPoolUserToGroupAttachment(
+            self,
+            "AdminUserKbAdminGroup",
+            user_pool_id=self.user_pool.user_pool_id,
+            group_name=self.kb_admin_group.ref,
+            username=self.admin_email,
+        )
+        admin_group_attachment.node.add_dependency(self.admin_user)
 
         ## --- AMAZON API GATEWAY --- ##
 

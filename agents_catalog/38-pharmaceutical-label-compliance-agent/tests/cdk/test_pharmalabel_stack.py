@@ -92,6 +92,39 @@ class TestApiGateway:
         assert len(resources) >= 5
 
 
+class TestAuthorization:
+    def test_all_routes_require_jwt_authorizer(self, template):
+        routes = template.find_resources("AWS::ApiGatewayV2::Route")
+        assert routes
+        for logical_id, resource in routes.items():
+            props = resource["Properties"]
+            assert props.get("AuthorizationType") == "JWT", f"{logical_id} is not JWT-protected"
+            assert props.get("AuthorizerId"), f"{logical_id} has no authorizer"
+
+    def test_self_sign_up_disabled(self, template):
+        template.has_resource_properties("AWS::Cognito::UserPool", {
+            "AdminCreateUserConfig": Match.object_like({"AllowAdminCreateUserOnly": True}),
+        })
+
+    def test_creates_kb_admin_group(self, template):
+        template.resource_count_is("AWS::Cognito::UserPoolGroup", 1)
+        template.has_resource_properties("AWS::Cognito::UserPoolGroup", {
+            "GroupName": "kb-admins",
+        })
+
+    def test_admin_user_is_in_kb_admin_group(self, template):
+        template.has_resource_properties("AWS::Cognito::UserPoolUserToGroupAttachment", {
+            "Username": "test@example.com",
+            "GroupName": {"Ref": Match.string_like_regexp("KbAdminGroup.*")},
+        })
+
+    def test_doc_management_lambda_knows_admin_group(self, template):
+        template.has_resource_properties("AWS::Lambda::Function", Match.object_like({
+            "FunctionName": "PharmaLabel-DocumentManagement",
+            "Environment": {"Variables": Match.object_like({"KB_ADMIN_GROUP": "kb-admins"})},
+        }))
+
+
 class TestAgentCoreRuntime:
     # Amazon Bedrock AgentCore
     def test_creates_agent_runtime(self, template):

@@ -7,6 +7,8 @@ import pytest
 from unittest.mock import patch, MagicMock
 from botocore.exceptions import ClientError
 
+from tests.conftest import KB_ADMIN_GROUP, USER_A_SUB
+
 
 @pytest.fixture(autouse=True)
 def docmgmt_env(monkeypatch):
@@ -64,11 +66,17 @@ class TestDocMgmtRouting:
         )
         mock_s3.exceptions.ClientError = ClientError
         mock_s3.generate_presigned_url.return_value = "https://presigned"
-        event = apigw_event_factory("/documents/upload", body={
+        event = apigw_event_factory("/documents/upload", groups=[KB_ADMIN_GROUP], body={
             "region": "US_FDA", "filename": "test.pdf", "contentType": "application/pdf"
         })
         result = docmgmt.lambda_handler(event, None)
         assert result["statusCode"] == 200
+
+    def test_invalid_json_returns_400(self, docmgmt_module, apigw_event_factory):
+        docmgmt, _, _ = docmgmt_module
+        event = apigw_event_factory("/documents/list", raw_body="{not json")
+        result = docmgmt.lambda_handler(event, None)
+        assert result["statusCode"] == 400
 
     def test_returns_404_for_unknown_path(self, docmgmt_module, apigw_event_factory):
         docmgmt, _, _ = docmgmt_module
@@ -87,6 +95,117 @@ class TestDocMgmtRouting:
         result = docmgmt.lambda_handler(event, None)
         assert result["statusCode"] == 200
         assert "Access-Control-Allow-Origin" in result["headers"]
+
+
+# ============================================================
+# Authorization Tests (identity + kb-admins role gate)
+# ============================================================
+
+ADMIN_ROUTE_BODIES = {
+    "/documents/upload": {"region": "US_FDA", "filename": "fake.pdf", "contentType": "application/pdf"},
+    "/documents/delete": {"region": "US_FDA", "key": "US_FDA/real.pdf"},
+    "/documents/sync": {"region": "US_FDA"},
+}
+
+
+class TestKnowledgeBaseAuthorization:
+    @pytest.mark.parametrize("path", [
+        "/documents/list", "/documents/download", *ADMIN_ROUTE_BODIES,
+    ])
+    def test_rejects_request_without_verified_identity(self, docmgmt_module, apigw_event_factory, path):
+        docmgmt, mock_s3, mock_bedrock = docmgmt_module
+        event = apigw_event_factory(path, body={"region": "US_FDA", "key": "US_FDA/a.pdf"}, sub=None)
+        result = docmgmt.lambda_handler(event, None)
+        assert result["statusCode"] == 401
+        mock_s3.list_objects_v2.assert_not_called()
+        mock_s3.generate_presigned_url.assert_not_called()
+        mock_s3.delete_object.assert_not_called()
+        mock_bedrock.start_ingestion_job.assert_not_called()
+
+    @pytest.mark.parametrize("path,body", list(ADMIN_ROUTE_BODIES.items()))
+    def test_non_admin_cannot_change_knowledge_base(self, docmgmt_module, apigw_event_factory, path, body):
+        docmgmt, mock_s3, mock_bedrock = docmgmt_module
+        event = apigw_event_factory(path, body=body, groups=["some-other-group"])
+        result = docmgmt.lambda_handler(event, None)
+        assert result["statusCode"] == 403
+        assert "administrators" in json.loads(result["body"])["error"]
+        # The handler never reached S3 or Bedrock.
+        mock_s3.head_object.assert_not_called()
+        mock_s3.generate_presigned_url.assert_not_called()
+        mock_s3.delete_object.assert_not_called()
+        mock_bedrock.start_ingestion_job.assert_not_called()
+
+    @pytest.mark.parametrize("path", list(ADMIN_ROUTE_BODIES))
+    def test_user_with_no_groups_cannot_change_knowledge_base(self, docmgmt_module, apigw_event_factory, path):
+        docmgmt, _, _ = docmgmt_module
+        event = apigw_event_factory(path, body=ADMIN_ROUTE_BODIES[path], groups=None)
+        result = docmgmt.lambda_handler(event, None)
+        assert result["statusCode"] == 403
+
+    def test_admin_can_delete(self, docmgmt_module, apigw_event_factory):
+        docmgmt, mock_s3, _ = docmgmt_module
+        mock_s3.head_object.return_value = {}
+        mock_s3.exceptions.ClientError = ClientError
+        event = apigw_event_factory("/documents/delete", groups=[KB_ADMIN_GROUP],
+                                    body=ADMIN_ROUTE_BODIES["/documents/delete"])
+        result = docmgmt.lambda_handler(event, None)
+        assert result["statusCode"] == 200
+        mock_s3.delete_object.assert_called_once()
+
+    def test_admin_can_sync(self, docmgmt_module, apigw_event_factory):
+        docmgmt, _, mock_bedrock = docmgmt_module
+        mock_bedrock.list_data_sources.return_value = {
+            "dataSourceSummaries": [{"name": "US-FDA-Regulatory-Documents", "dataSourceId": "ds-1"}]
+        }
+        mock_bedrock.start_ingestion_job.return_value = {"ingestionJob": {"ingestionJobId": "j1"}}
+        event = apigw_event_factory("/documents/sync", groups=["other", KB_ADMIN_GROUP],
+                                    body={"region": "US_FDA"})
+        result = docmgmt.lambda_handler(event, None)
+        assert result["statusCode"] == 200
+        mock_bedrock.start_ingestion_job.assert_called_once()
+
+    def test_non_admin_can_list(self, docmgmt_module, apigw_event_factory):
+        docmgmt, mock_s3, _ = docmgmt_module
+        mock_s3.list_objects_v2.return_value = {"Contents": [], "IsTruncated": False}
+        result = docmgmt.lambda_handler(apigw_event_factory("/documents/list"), None)
+        assert result["statusCode"] == 200
+
+    def test_non_admin_can_download(self, docmgmt_module, apigw_event_factory):
+        docmgmt, mock_s3, _ = docmgmt_module
+        mock_s3.head_object.return_value = {}
+        mock_s3.exceptions.ClientError = ClientError
+        mock_s3.generate_presigned_url.return_value = "https://download.url"
+        event = apigw_event_factory("/documents/download", body={"region": "US_FDA", "key": "US_FDA/a.pdf"})
+        result = docmgmt.lambda_handler(event, None)
+        assert result["statusCode"] == 200
+
+    def test_group_name_must_match_exactly(self, docmgmt_module, apigw_event_factory):
+        docmgmt, _, _ = docmgmt_module
+        event = apigw_event_factory("/documents/sync", groups=["kb-admins-readonly", "not-kb-admins"],
+                                    body={"region": "US_FDA"})
+        result = docmgmt.lambda_handler(event, None)
+        assert result["statusCode"] == 403
+
+    @pytest.mark.parametrize("raw_groups,expected", [
+        ("[kb-admins]", {"kb-admins"}),
+        ("[viewers kb-admins]", {"viewers", "kb-admins"}),
+        ('["viewers","kb-admins"]', {"viewers", "kb-admins"}),
+        (["kb-admins", "viewers"], {"kb-admins", "viewers"}),
+        ("", set()),
+        ("[]", set()),
+    ])
+    def test_parses_cognito_groups_claim_formats(self, docmgmt_module, raw_groups, expected):
+        docmgmt, _, _ = docmgmt_module
+        event = {"requestContext": {"authorizer": {"jwt": {"claims": {
+            "sub": USER_A_SUB, "cognito:groups": raw_groups,
+        }}}}}
+        assert docmgmt._get_caller(event) == (USER_A_SUB, expected)
+
+    def test_admin_group_is_configurable(self, docmgmt_module, apigw_event_factory, monkeypatch):
+        docmgmt, _, _ = docmgmt_module
+        monkeypatch.setattr(docmgmt, "KB_ADMIN_GROUP", "regulatory-editors")
+        event = apigw_event_factory("/documents/sync", groups=[KB_ADMIN_GROUP], body={"region": "US_FDA"})
+        assert docmgmt.lambda_handler(event, None)["statusCode"] == 403
 
 
 # ============================================================
