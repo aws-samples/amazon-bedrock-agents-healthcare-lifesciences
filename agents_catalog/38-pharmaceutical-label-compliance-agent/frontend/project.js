@@ -326,7 +326,7 @@ function renderEvaluationHistory() {
     <div class="history-list">
       ${evaluations.map((ev, index) => `
         <div class="history-item ${ev.id === currentProject.currentEvaluationId ? 'active' : ''}"
-             onclick="loadEvaluation('${escapeHtml(ev.id)}')">
+             data-click="loadEvaluation" data-eval-id="${escapeHtml(ev.id)}">
           <div class="history-marker">${index === 0 ? 'Latest' : `#${Number(evaluations.length - index)}`}</div>
           <div class="history-info">
             <div class="history-date">${escapeHtml(new Date(ev.timestamp).toLocaleString())}</div>
@@ -458,6 +458,14 @@ function toggleFullscreen() {
   if (img.requestFullscreen) img.requestFullscreen();
   else if (img.webkitRequestFullscreen) img.webkitRequestFullscreen();
 }
+
+// Handlers for data-click attributes (see actions.js).
+Actions.on('cancelAnalysis', () => cancelAnalysis());
+Actions.on('confirmAnalysis', () => confirmAnalysis());
+Actions.on('showReupload', () => showReupload());
+Actions.on('downloadImage', () => downloadImage());
+Actions.on('toggleFullscreen', () => toggleFullscreen());
+Actions.on('loadEvaluation', (event, el) => loadEvaluation(el.dataset.evalId));
 
 document.addEventListener('DOMContentLoaded', async () => {
   if (window.__authReady && !(await window.__authReady)) return;

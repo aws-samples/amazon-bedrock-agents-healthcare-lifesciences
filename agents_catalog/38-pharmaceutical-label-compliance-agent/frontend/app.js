@@ -33,8 +33,8 @@ function renderProjects() {
     const score = Number(project.complianceScore);
     const evalCount = project.evaluations ? Number(project.evaluations.length) : 0;
     return `
-    <div class="project-card" onclick="openProject('${safeId}')">
-      <button class="project-delete" onclick="deleteProject(event, '${safeId}')" aria-label="Delete project">
+    <div class="project-card" data-click="openProject" data-id="${safeId}">
+      <button class="project-delete" data-click="deleteProject" data-id="${safeId}" aria-label="Delete project">
         <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
           <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"/>
         </svg>
@@ -122,6 +122,13 @@ async function deleteProject(event, id) {
   renderProjects();
   renderAnalytics();
 }
+
+// Handlers for data-click / data-submit attributes (see actions.js).
+Actions.on('openCreateModal', () => openCreateModal());
+Actions.on('closeCreateModal', () => closeCreateModal());
+Actions.on('createProject', (event) => createProject(event));
+Actions.on('openProject', (event, el) => openProject(el.dataset.id));
+Actions.on('deleteProject', (event, el) => deleteProject(event, el.dataset.id));
 
 // === Analytics Functions ===
 

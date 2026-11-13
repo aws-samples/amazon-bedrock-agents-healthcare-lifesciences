@@ -103,13 +103,13 @@ const Comparison = (function () {
         <div class="comparison-header">
           <h3>Evaluation Comparison</h3>
           <div class="comparison-header-actions">
-            <button class="btn-swap-comparison" onclick="Comparison.swapComparison()" aria-label="Swap baseline and comparison">
+            <button class="btn-swap-comparison" data-click="swapComparison" aria-label="Swap baseline and comparison">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/>
               </svg>
               Swap
             </button>
-            <button class="btn-exit-comparison" onclick="Comparison.exitComparison()" aria-label="Exit comparison view">
+            <button class="btn-exit-comparison" data-click="exitComparison" aria-label="Exit comparison view">
               Exit Comparison
             </button>
           </div>
@@ -203,12 +203,12 @@ const Comparison = (function () {
             return `
               <label style="display:flex;align-items:center;gap:0.5rem;padding:0.375rem 0;font-size:0.8125rem;cursor:pointer;">
                 <input type="checkbox" name="compare-eval" value="${escapeHtml(ev.id)}"
-                  onchange="Comparison._onSelectionChange()" style="cursor:pointer;">
+                  data-change="compareSelectionChange" style="cursor:pointer;">
                 <span>${escapeHtml(label)} (${date}${scoreText})</span>
               </label>`;
           }).join('')}
         </div>
-        <button class="btn-compare" onclick="Comparison._onCompareClick()" disabled aria-label="Compare selected evaluations">
+        <button class="btn-compare" data-click="compareSelected" disabled aria-label="Compare selected evaluations">
           Compare Selected
         </button>
       </div>`);
@@ -234,6 +234,11 @@ const Comparison = (function () {
     if (checked.length !== 2) return;
     startComparison(checked[0].value, checked[1].value);
   }
+
+  Actions.on('swapComparison', () => swapComparison());
+  Actions.on('exitComparison', () => exitComparison());
+  Actions.on('compareSelectionChange', () => _onSelectionChange());
+  Actions.on('compareSelected', () => _onCompareClick());
 
   return {
     shouldShowCompareButton,

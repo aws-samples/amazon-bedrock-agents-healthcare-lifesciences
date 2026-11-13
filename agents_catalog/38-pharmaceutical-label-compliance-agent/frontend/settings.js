@@ -78,7 +78,7 @@ const Settings = (function () {
       html += '<div class="settings-card-header">';
       html += '<div><h2>' + meta.flag + ' ' + meta.label + '</h2>';
       html += '<p>' + docs.length + ' document' + (docs.length !== 1 ? 's' : '') + ' in knowledge base</p></div>';
-      html += '<button class="btn-primary btn-sm" onclick="Settings.showUploadModal(\'' + regionKey + '\')">';
+      html += '<button class="btn-primary btn-sm" data-click="showUploadModal" data-region="' + escapeHtml(regionKey) + '">';
       html += '<svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/></svg>';
       html += ' Add Document</button></div>';
       if (docs.length === 0) {
@@ -93,8 +93,8 @@ const Settings = (function () {
           html += '<div class="doc-item-desc">' + sizeKB + ' KB · Uploaded ' + escapeHtml(date) + '</div>';
           html += '</div><div class="doc-item-meta">';
           html += '<span class="doc-status-badge active">Active</span>';
-          html += '<button class="doc-action-btn" onclick="Settings.downloadDoc(\'' + regionKey + '\',\'' + escapeAttr(doc.key) + '\')" title="Download" aria-label="Download document">⬇</button>';
-          html += '<button class="doc-remove-btn" onclick="Settings.deleteDoc(\'' + regionKey + '\',\'' + escapeAttr(doc.key) + '\')" title="Delete">✕</button>';
+          html += '<button class="doc-action-btn" data-click="downloadDoc" data-region="' + escapeHtml(regionKey) + '" data-key="' + escapeHtml(doc.key) + '" title="Download" aria-label="Download document">⬇</button>';
+          html += '<button class="doc-remove-btn" data-click="deleteDoc" data-region="' + escapeHtml(regionKey) + '" data-key="' + escapeHtml(doc.key) + '" title="Delete">✕</button>';
           html += '</div></div>';
         });
         html += '</div>';
@@ -226,15 +226,11 @@ const Settings = (function () {
   // Safely render a trusted-but-dynamic HTML string into an element without using the
   // `.innerHTML` setter. The markup is parsed in an inert document (scripts are not run)
   // and the resulting nodes replace the element's children. All dynamic values embedded
-  // in the markup are still escaped via escapeHtml()/escapeAttr() at the call sites.
+  // in the markup are still escaped via escapeHtml() at the call sites.
   function setSafeHTML(element, htmlString) {
     if (!element) return;
     var parsed = new DOMParser().parseFromString(String(htmlString), 'text/html');
     element.replaceChildren.apply(element, Array.prototype.slice.call(parsed.body.childNodes));
-  }
-
-  function escapeAttr(str) {
-    return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
   }
 
   function showToast(message) {
@@ -250,6 +246,16 @@ const Settings = (function () {
       setTimeout(function () { toast.remove(); }, 300);
     }, 2000);
   }
+
+  // Handlers for data-click / data-submit attributes (see actions.js).
+  Actions.on('signOut', function () { window.signOut(); });
+  Actions.on('switchTab', function (event, el) { switchTab(el.dataset.tab); });
+  Actions.on('saveProfile', function (event) { saveProfile(event); });
+  Actions.on('showUploadModal', function (event, el) { showUploadModal(el.dataset.region); });
+  Actions.on('closeUploadModal', function () { closeUploadModal(); });
+  Actions.on('confirmUpload', function () { confirmUpload(); });
+  Actions.on('downloadDoc', function (event, el) { downloadDoc(el.dataset.region, el.dataset.key); });
+  Actions.on('deleteDoc', function (event, el) { deleteDoc(el.dataset.region, el.dataset.key); });
 
   // Init 
   document.addEventListener('DOMContentLoaded', async function () {

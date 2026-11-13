@@ -31,6 +31,7 @@ The backend AWS Lambda functions also **authorize** every request, using the ver
 - Requests that reach a Lambda function without a verified identity are rejected with `401 Unauthorized`.
 - **Label images and results are private.** The results bucket has no public distribution. The API returns annotated images to the project owner as presigned Amazon S3 URLs that expire after one hour. Deleting a project also deletes its uploaded label images and pipeline results.
 - **Project IDs are random UUIDs**, so other users can't guess or claim them.
+- **The frontend sends a strict Content Security Policy.** CloudFront adds a `Content-Security-Policy` header that only runs scripts served by the site itself, so injected markup can't run code or read the Cognito tokens the browser holds. The page also can't connect to anything except the app's own API, Cognito domain, and buckets, and can't be framed by other sites. The frontend uses no inline scripts or inline event handlers (see `frontend/actions.js`).
 - **Requests are attributable.** API Gateway access logs record the caller's Cognito user ID (`sub`) for every request, and the Lambda functions log the user ID when they deny a request.
 
 If you add users to the user pool, each one sees only their own projects. Add a user to `kb-admins` only if they should be able to change the regulatory rules the agent checks labels against. Projects created before this ownership model was added have no owner, so no user can see or change them.

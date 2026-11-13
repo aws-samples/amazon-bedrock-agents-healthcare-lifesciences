@@ -100,7 +100,7 @@ function escapeHtml(str) {
 // Safely render a trusted-but-dynamic HTML string into an element without using the
 // `.innerHTML` setter. The markup is parsed in an inert document (scripts are not run)
 // and the resulting nodes replace the element's children. All dynamic values embedded
-// in the markup are still escaped via escapeHtml()/escapeAttr() at the call sites.
+// in the markup are still escaped via escapeHtml() at the call sites.
 function setSafeHTML(element, htmlString) {
   if (!element) return;
   const parsed = new DOMParser().parseFromString(String(htmlString), 'text/html');

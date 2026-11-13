@@ -251,6 +251,50 @@ class PharmaLabelStack(Stack):
         )
         self.cf_logs_emptier.node.add_dependency(self.cf_logs_bucket)
 
+        # Security response headers for the frontend.
+        def s3_host(bucket):
+            # Global and regional virtual-hosted endpoints used by presigned URLs.
+            return f"https://{bucket}.s3.amazonaws.com https://{bucket}.s3.{cdk.Aws.REGION}.amazonaws.com"
+
+        frontend_csp = "; ".join([
+            "default-src 'none'",
+            "script-src 'self'",
+            # Inline style attributes are used throughout the markup. Styles cannot run script.
+            "style-src 'self' 'unsafe-inline'",
+            # data: for the local preview of a label before upload.
+            f"img-src 'self' data: {s3_host(f'pharmalabel-processed-results-{unique_suffix}')}",
+            "font-src 'self'",
+            "connect-src 'self' "
+            f"https://*.execute-api.{cdk.Aws.REGION}.amazonaws.com "
+            f"https://pharmalabel-{unique_suffix}.auth.{cdk.Aws.REGION}.amazoncognito.com "
+            f"{s3_host(f'pharmalabel-incoming-labels-{unique_suffix}')} "
+            f"{s3_host(f'pharmalabel-knowledge-base-{unique_suffix}')}",
+            "object-src 'none'",
+            "base-uri 'none'",
+            "form-action 'self'",
+            "frame-ancestors 'none'",
+        ])
+        self.frontend_headers_policy = cloudfront.ResponseHeadersPolicy(
+            self,
+            "FrontendSecurityHeaders",
+            comment="PharmaLabel frontend security headers",
+            security_headers_behavior=cloudfront.ResponseSecurityHeadersBehavior(
+                content_security_policy=cloudfront.ResponseHeadersContentSecurityPolicy(
+                    content_security_policy=frontend_csp, override=True,
+                ),
+                strict_transport_security=cloudfront.ResponseHeadersStrictTransportSecurity(
+                    access_control_max_age=cdk.Duration.days(365), include_subdomains=True, override=True,
+                ),
+                content_type_options=cloudfront.ResponseHeadersContentTypeOptions(override=True),
+                frame_options=cloudfront.ResponseHeadersFrameOptions(
+                    frame_option=cloudfront.HeadersFrameOption.DENY, override=True,
+                ),
+                referrer_policy=cloudfront.ResponseHeadersReferrerPolicy(
+                    referrer_policy=cloudfront.HeadersReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN, override=True,
+                ),
+            ),
+        )
+
         # Frontend Amazon CloudFront Distribution: serves static frontend from Frontend Bucket
         self.frontend_cf = cloudfront.Distribution(
             self,
@@ -260,6 +304,7 @@ class PharmaLabelStack(Stack):
                     self.frontend_bucket
                 ),
                 viewer_protocol_policy=cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+                response_headers_policy=self.frontend_headers_policy,
             ),
             default_root_object="index.html",
             web_acl_id=self.web_acl.attr_arn,

@@ -116,7 +116,7 @@ const Checklist = (function () {
       html += '<div class="checklist-category" data-category-id="' + safeCatId + '">';
 
       // Header row
-      html += '<div class="checklist-category-header" onclick="Checklist.toggleCategory(\'' + safeCatId + '\')" ' +
+      html += '<div class="checklist-category-header" data-click="toggleCategory" data-category="' + safeCatId + '" ' +
         'role="button" tabindex="0" aria-expanded="false" ' +
         'aria-label="' + escapeHtml(cat.name) + ' — ' + escapeHtml(st.status) + '">';
       html += statusIcon(st.status);
@@ -156,6 +156,8 @@ const Checklist = (function () {
       header.setAttribute('aria-expanded', String(!isExpanded));
     }
   }
+
+  Actions.on('toggleCategory', function (event, el) { toggleCategory(el.dataset.category); });
 
   // Public API
   return {

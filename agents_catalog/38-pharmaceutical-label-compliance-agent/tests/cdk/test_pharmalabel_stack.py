@@ -85,6 +85,51 @@ class TestCloudFront:
         template.resource_count_is("AWS::CloudFront::Distribution", 1)
 
 
+class TestFrontendSecurityHeaders:
+    @staticmethod
+    def _headers(template):
+        policies = template.find_resources("AWS::CloudFront::ResponseHeadersPolicy")
+        assert len(policies) == 1
+        return next(iter(policies.values()))["Properties"]["ResponseHeadersPolicyConfig"]["SecurityHeadersConfig"]
+
+    @classmethod
+    def _csp(cls, template):
+        value = cls._headers(template)["ContentSecurityPolicy"]["ContentSecurityPolicy"]
+        # Region is a token, so the policy is an Fn::Join; render it as text.
+        if isinstance(value, dict):
+            value = "".join(p if isinstance(p, str) else "${Region}" for p in value["Fn::Join"][1])
+        return {d.split(" ", 1)[0]: d.split(" ", 1)[1] if " " in d else "" for d in value.split("; ")}
+
+    def test_policy_is_attached_to_frontend(self, template):
+        dist = next(iter(template.find_resources("AWS::CloudFront::Distribution").values()))
+        behavior = dist["Properties"]["DistributionConfig"]["DefaultCacheBehavior"]
+        assert behavior["ResponseHeadersPolicyId"]["Ref"].startswith("FrontendSecurityHeaders")
+
+    def test_csp_allows_only_same_origin_scripts(self, template):
+        csp = self._csp(template)
+        assert csp["script-src"] == "'self'"
+        assert csp["default-src"] == "'none'"
+        assert csp["object-src"] == "'none'"
+        assert csp["base-uri"] == "'none'"
+        assert csp["frame-ancestors"] == "'none'"
+
+    def test_csp_allows_only_the_apps_own_backends(self, template):
+        csp = self._csp(template)
+        assert "*" not in csp["img-src"]
+        assert "pharmalabel-processed-results-" in csp["img-src"]
+        connect = csp["connect-src"].split()
+        assert "https://*.execute-api.${Region}.amazonaws.com" in connect
+        hosts = [h for h in connect if h != "'self'" and "execute-api" not in h]
+        assert hosts and all(h.startswith("https://pharmalabel-") for h in hosts)
+
+    def test_other_security_headers(self, template):
+        headers = self._headers(template)
+        assert headers["FrameOptions"]["FrameOption"] == "DENY"
+        assert headers["ContentTypeOptions"]["Override"] is True
+        assert headers["StrictTransportSecurity"]["AccessControlMaxAgeSec"] == 31536000
+        assert headers["ReferrerPolicy"]["ReferrerPolicy"] == "strict-origin-when-cross-origin"
+
+
 class TestPrivateResults:
     @staticmethod
     def _function(template, name):
