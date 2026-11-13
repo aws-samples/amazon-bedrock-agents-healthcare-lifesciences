@@ -113,7 +113,6 @@ def mock_env_vars(monkeypatch):
     monkeypatch.setenv("KB_BUCKET", "amzn-s3-demo-bucket2")
     monkeypatch.setenv("KNOWLEDGE_BASE_ID", "KB-TEST-123")
     monkeypatch.setenv("PROJECTS_TABLE", "pharmalabel-projects-test")
-    monkeypatch.setenv("CLOUDFRONT_URL", "https://d123.cloudfront.net")
     monkeypatch.setenv("AGENT_ARN", "arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/test-runtime")
     monkeypatch.setenv("FRONTEND_ORIGIN", "https://d123.cloudfront.net")
     monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")

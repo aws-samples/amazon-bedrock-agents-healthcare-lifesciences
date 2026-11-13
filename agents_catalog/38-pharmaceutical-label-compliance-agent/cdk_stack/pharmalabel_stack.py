@@ -251,22 +251,6 @@ class PharmaLabelStack(Stack):
         )
         self.cf_logs_emptier.node.add_dependency(self.cf_logs_bucket)
 
-        # Results Amazon CloudFront Distribution: serves processed results from Results Bucket
-        self.results_cf = cloudfront.Distribution(
-            self,
-            "ResultsDistribution",
-            default_behavior=cloudfront.BehaviorOptions(
-                origin=origins.S3BucketOrigin.with_origin_access_control(   # Uses OAC for secure Amazon S3 access
-                    self.results_bucket
-                ),
-                viewer_protocol_policy=cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-            ),
-            web_acl_id=self.web_acl.attr_arn,
-            enable_logging=True,
-            log_bucket=self.cf_logs_bucket,
-            log_file_prefix="results/",
-        )
-
         # Frontend Amazon CloudFront Distribution: serves static frontend from Frontend Bucket
         self.frontend_cf = cloudfront.Distribution(
             self,
@@ -284,10 +268,9 @@ class PharmaLabelStack(Stack):
             log_file_prefix="frontend/",
         )
 
-        # Force both distributions to be deleted before the emptier runs, so
+        # Force the distribution to be deleted before the emptier runs, so
         # CloudFront has stopped generating new logs by the time we drain the
         # bucket. (Delete order is the reverse of dependency order.)
-        self.results_cf.node.add_dependency(self.cf_logs_emptier)
         self.frontend_cf.node.add_dependency(self.cf_logs_emptier)
 
         # Build the frontend origin URL for cross-origin resource sharing (CORS) (used by Amazon S3 buckets and API Gateway)
@@ -777,7 +760,6 @@ class PharmaLabelStack(Stack):
                 "FRONTEND_BUCKET": self.frontend_bucket.bucket_name,
                 "KNOWLEDGE_BASE_ID": self.knowledge_base_id,
                 "PROJECTS_TABLE": self.projects_table.table_name,
-                "CLOUDFRONT_URL": cdk.Fn.join("", ["https://", self.results_cf.distribution_domain_name]),
                 "AWS_DEFAULT_REGION": cdk.Aws.REGION,
                 "LOG_LEVEL": "WARNING",
                 "GUARDRAIL_ID": self.guardrail.attr_guardrail_id,
@@ -896,7 +878,6 @@ class PharmaLabelStack(Stack):
             environment={
                 "INCOMING_BUCKET": self.incoming_bucket.bucket_name,
                 "RESULTS_BUCKET": self.results_bucket.bucket_name,
-                "CLOUDFRONT_URL": cdk.Fn.join("", ["https://", self.results_cf.distribution_domain_name]),
                 "PROJECTS_TABLE": self.projects_table.table_name,
                 "FRONTEND_ORIGIN": self.frontend_origin,
                 "LOG_LEVEL": "WARNING",
@@ -912,8 +893,12 @@ class PharmaLabelStack(Stack):
             )
         )
 
-        # IAM: read on Results Bucket
+        # IAM: read on Results Bucket (presigned GET URLs for annotated images)
         self.results_bucket.grant_read(self.compliancelambda)
+
+        # IAM: delete a project's label uploads and pipeline results with the project
+        self.incoming_bucket.grant_delete(self.compliancelambda)
+        self.results_bucket.grant_delete(self.compliancelambda)
 
         # IAM: read/write on Projects DynamoDB table
         self.projects_table.grant_read_write_data(self.compliancelambda)
@@ -1241,6 +1226,8 @@ class PharmaLabelStack(Stack):
                 destination_arn=self.api_log_group.log_group_arn,
                 format=json.dumps({
                     "requestId": "$context.requestId",
+                    # Cognito user ID of the caller, so every request can be attributed.
+                    "sub": "$context.authorizer.claims.sub",
                     "ip": "$context.identity.sourceIp",
                     "requestTime": "$context.requestTime",
                     "httpMethod": "$context.httpMethod",
@@ -1352,7 +1339,6 @@ class PharmaLabelStack(Stack):
         cdk.CfnOutput(self, "ResultsBucketName", value=self.results_bucket.bucket_name)
         cdk.CfnOutput(self, "KnowledgeBaseBucketName", value=self.kb_bucket.bucket_name)
         cdk.CfnOutput(self, "ApiGatewayEndpoint", value=cdk.Fn.sub("https://${ApiId}.execute-api.${AWS::Region}.amazonaws.com", {"ApiId": self.api.ref}))
-        cdk.CfnOutput(self, "ResultsCloudFrontDomain", value=self.results_cf.distribution_domain_name)
         cdk.CfnOutput(self, "AdminUserEmail", value=self.admin_email)
         cdk.CfnOutput(self, "UserPoolId", value=self.user_pool.user_pool_id)
         cdk.CfnOutput(self, "CognitoHostedUiDomain", value=cdk.Fn.sub(f"https://pharmalabel-{unique_suffix}.auth.${{AWS::Region}}.amazoncognito.com"))

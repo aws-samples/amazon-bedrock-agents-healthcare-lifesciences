@@ -18,7 +18,6 @@ sys.modules['agent3_validation'] = MagicMock()
 def mock_orchestrator_env(monkeypatch):
     monkeypatch.setenv("RESULTS_BUCKET", "amzn-s3-demo-destination-bucket")
     monkeypatch.setenv("PROJECTS_TABLE", "pharmalabel-projects-test")
-    monkeypatch.setenv("CLOUDFRONT_URL", "https://d123.cloudfront.net")
 
 
 @pytest.fixture
@@ -34,7 +33,6 @@ def orchestrator_module():
         orchestrator.amazon_dynamodb = mock_resource.return_value
         orchestrator.results_bucket = "amzn-s3-demo-destination-bucket"
         orchestrator.projects_table_name = "pharmalabel-projects-test"
-        orchestrator.cloudfront_url = "https://d123.cloudfront.net"
         yield orchestrator
 
 
@@ -170,6 +168,7 @@ class TestRunPipeline:
         assert result["attempts"] == 1
         assert "compliance-report-001.json" in result["compliance_report"]
         mock_finalize.assert_called_once()
+        assert mock_finalize.call_args.kwargs["artifact_keys"] == ["annotated-001.png", "validation-001.json"]
 
     def test_retry_on_rejection_then_succeed(self, orchestrator_module):
         mock_s3 = MagicMock()
@@ -282,6 +281,106 @@ class TestRunPipeline:
 
         # Must NOT fall back to listing/grabbing an arbitrary report.
         mock_s3.list_objects_v2.assert_not_called()
+
+    # --- No bucket-wide fallback for Agents 2 and 3 --- #
+
+    @staticmethod
+    def _body(data):
+        return {"Body": MagicMock(read=MagicMock(return_value=json.dumps(data).encode()))}
+
+    def _run(self, orchestrator_module, mock_s3, agent2_responses, agent3_responses, max_retries=3):
+        orchestrator_module.amazon_s3 = mock_s3
+        mock_agent1 = MagicMock(return_value="s3://amzn-s3-demo-destination-bucket/compliance-report-001.json")
+        mock_agent2 = MagicMock(side_effect=agent2_responses)
+        mock_agent3 = MagicMock(side_effect=agent3_responses)
+        with patch("orchestrator.get_compliance_agent", return_value=mock_agent1), \
+             patch("orchestrator.get_annotation_agent", return_value=mock_agent2), \
+             patch("orchestrator.get_validation_agent", return_value=mock_agent3), \
+             patch("orchestrator._update_project"), \
+             patch("orchestrator._finalize_project") as mock_finalize:
+            result = orchestrator_module.run_pipeline(
+                "amzn-s3-demo-source-bucket", "labels/US_FDA/proj-1/test.png", max_retries=max_retries
+            )
+        return result, mock_finalize, mock_agent3
+
+    def test_missing_annotation_key_skips_attempt_without_listing_bucket(self, orchestrator_module):
+        mock_s3 = MagicMock()
+        image = {"Body": MagicMock(read=MagicMock(return_value=b"\x89PNG\r\n"))}
+        mock_s3.get_object.side_effect = [image, self._body({"validation_status": "APPROVED", "issues_found": []})]
+
+        result, mock_finalize, mock_agent3 = self._run(
+            orchestrator_module, mock_s3,
+            agent2_responses=["I drew the boxes.", "s3://amzn-s3-demo-destination-bucket/annotated-002.png"],
+            agent3_responses=["s3://amzn-s3-demo-destination-bucket/validation-002.json"],
+        )
+
+        assert result["status"] == "success"
+        assert result["annotated_image"].endswith("/annotated-002.png")
+        mock_s3.list_objects_v2.assert_not_called()
+        assert mock_agent3.call_count == 1  # attempt 1 was skipped before validation
+        assert mock_finalize.call_args.kwargs["artifact_keys"] == ["annotated-002.png", "validation-002.json"]
+
+    def test_missing_validation_key_skips_attempt_without_listing_bucket(self, orchestrator_module):
+        mock_s3 = MagicMock()
+        image = {"Body": MagicMock(read=MagicMock(return_value=b"\x89PNG\r\n"))}
+        mock_s3.get_object.side_effect = [image, self._body({"validation_status": "APPROVED", "issues_found": []})]
+
+        result, mock_finalize, _ = self._run(
+            orchestrator_module, mock_s3,
+            agent2_responses=[
+                "s3://amzn-s3-demo-destination-bucket/annotated-001.png",
+                "s3://amzn-s3-demo-destination-bucket/annotated-002.png",
+            ],
+            agent3_responses=["Validation complete.", "s3://amzn-s3-demo-destination-bucket/validation-002.json"],
+        )
+
+        assert result["status"] == "success"
+        assert result["annotated_image"].endswith("/annotated-002.png")
+        mock_s3.list_objects_v2.assert_not_called()
+        # The unvalidated attempt-1 image is still recorded so it is deleted with the project.
+        assert mock_finalize.call_args.kwargs["artifact_keys"] == [
+            "annotated-001.png", "annotated-002.png", "validation-002.json"
+        ]
+
+    def test_fails_when_no_attempt_reports_its_keys(self, orchestrator_module):
+        mock_s3 = MagicMock()
+        image = {"Body": MagicMock(read=MagicMock(return_value=b"\x89PNG\r\n"))}
+        mock_s3.get_object.side_effect = [image]
+
+        with pytest.raises(Exception, match="No annotation attempt produced"):
+            self._run(
+                orchestrator_module, mock_s3,
+                agent2_responses=["no key"] * 3,
+                agent3_responses=[],
+            )
+        mock_s3.list_objects_v2.assert_not_called()
+
+    def test_ignores_other_s3_uris_in_agent_response(self, orchestrator_module):
+        """A response that cites the source label first still yields the annotated key."""
+        mock_s3 = MagicMock()
+        image = {"Body": MagicMock(read=MagicMock(return_value=b"\x89PNG\r\n"))}
+        mock_s3.get_object.side_effect = [image, self._body({"validation_status": "APPROVED", "issues_found": []})]
+
+        result, _, _ = self._run(
+            orchestrator_module, mock_s3,
+            agent2_responses=[
+                "Read s3://amzn-s3-demo-source-bucket/labels/US_FDA/proj-1/test.png and "
+                "saved s3://amzn-s3-demo-destination-bucket/annotated-009.png."
+            ],
+            agent3_responses=["Wrote `s3://amzn-s3-demo-destination-bucket/validation-009.json`"],
+            max_retries=1,
+        )
+        assert result["annotated_image"].endswith("/annotated-009.png")
+        assert result["validation_report"].endswith("/validation-009.json")
+
+    def test_rejects_key_of_the_wrong_type(self, orchestrator_module):
+        """Agent 2 returning the report key is not accepted as an annotated image."""
+        assert orchestrator_module.extract_result_key(
+            "s3://b/compliance-report-001.json", "annotated-") is None
+        assert orchestrator_module.extract_result_key(
+            "s3://b/nested/annotated-001.png", "annotated-") is None
+        assert orchestrator_module.extract_result_key(
+            "s3://b/annotated-001.png", "annotated-") == "annotated-001.png"
 
 
 # ============================================================

@@ -33,3 +33,6 @@ custom_resources/aoss_index_creator/*
 custom_resources/runtime_resource_policy/*
 !custom_resources/runtime_resource_policy/index.py
 !custom_resources/runtime_resource_policy/requirements.txt
+# The parent agents_catalog/.gitignore ignores *.js (for compiled CDK output).
+# The frontend's JavaScript is source code and must be committed.
+!frontend/*.js

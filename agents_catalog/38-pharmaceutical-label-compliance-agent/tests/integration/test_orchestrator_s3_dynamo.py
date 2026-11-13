@@ -26,7 +26,6 @@ def aws_env(monkeypatch):
     monkeypatch.setenv("AWS_SESSION_TOKEN", "SESSION_TOKEN_EXAMPLE")
     monkeypatch.setenv("RESULTS_BUCKET", "amzn-s3-demo-destination-bucket")
     monkeypatch.setenv("PROJECTS_TABLE", "pharmalabel-projects-test")
-    monkeypatch.setenv("CLOUDFRONT_URL", "https://d123.cloudfront.net")
 
 
 @mock_aws
@@ -116,29 +115,49 @@ class TestFinalizeProject:
         orchestrator.amazon_dynamodb = dynamodb
         orchestrator.results_bucket = "amzn-s3-demo-destination-bucket"
         orchestrator.projects_table_name = "pharmalabel-projects-test"
-        orchestrator.cloudfront_url = "https://d123.cloudfront.net"
+
+        # A record from before images were private still has a public URL.
+        table = dynamodb.Table("pharmalabel-projects-test")
+        table.put_item(Item={
+            "projectId": "proj-1",
+            "ownerSub": "owner-sub",
+            "annotatedImageUrl": "https://d123.cloudfront.net/annotated-old.png",
+        })
 
         orchestrator._finalize_project(
             project_id="proj-1",
-            image_key="labels/US_FDA/test.png",
+            image_key="labels/US_FDA/proj-1/test.png",
             report_key="compliance-report-001.json",
             annotated_key="annotated-001.png",
             validation_key="validation-001.json",
             attempts=2,
+            artifact_keys=["annotated-000.png", "validation-000.json", "annotated-001.png", "validation-001.json"],
         )
 
         # Verify DynamoDB
-        table = dynamodb.Table("pharmalabel-projects-test")
         resp = table.get_item(Key={"projectId": "proj-1"})
         item = resp["Item"]
         assert item["status"] == "complete"
-        assert item["annotatedImageUrl"] == "https://d123.cloudfront.net/annotated-001.png"
         assert item["pipelineAttempts"] == 2
+        assert item["annotatedKey"] == "annotated-001.png"
+        assert item["ownerSub"] == "owner-sub"
+        # Images are stored by key only; the stale public URL is removed.
+        assert "annotatedImageUrl" not in item
 
         # Verify S3 completion marker
         objects = s3.list_objects_v2(Bucket="amzn-s3-demo-destination-bucket", Prefix="completion-")
         assert objects["KeyCount"] == 1
         marker_key = objects["Contents"][0]["Key"]
+
+        # The evaluation records every object the run wrote, so deleting the
+        # project can remove them (including rejected attempts and the marker).
+        evaluation = item["evaluations"][0]
+        assert evaluation["annotatedKey"] == "annotated-001.png"
+        assert "annotatedImageUrl" not in evaluation
+        assert evaluation["artifactKeys"] == sorted([
+            "annotated-000.png", "annotated-001.png", "compliance-report-001.json",
+            "validation-000.json", "validation-001.json", marker_key,
+        ])
         marker = json.loads(s3.get_object(Bucket="amzn-s3-demo-destination-bucket", Key=marker_key)["Body"].read())
         assert marker["status"] == "completed"
         assert marker["annotated_key"] == "annotated-001.png"

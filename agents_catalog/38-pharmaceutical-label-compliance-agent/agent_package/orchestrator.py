@@ -25,7 +25,6 @@ amazon_dynamodb = boto3.resource('dynamodb')
 
 results_bucket = os.environ['RESULTS_BUCKET']
 projects_table_name = os.environ.get('PROJECTS_TABLE', '')
-cloudfront_url = os.environ.get('CLOUDFRONT_URL', '')
 
 def _update_project(project_id, updates):
     """Update project record in DynamoDB."""
@@ -52,9 +51,10 @@ def _update_project(project_id, updates):
     except Exception as e:
         logger.warning(f"DynamoDB update failed: {e}")
 
-def _finalize_project(project_id, image_key, report_key, annotated_key, validation_key, attempts):
+def _finalize_project(project_id, image_key, report_key, annotated_key, validation_key, attempts, artifact_keys=()):
     """Write final pipeline results to DynamoDB and S3 completion marker."""
-    annotated_url = f"{cloudfront_url}/{annotated_key}" if cloudfront_url else f"s3://{results_bucket}/{annotated_key}"
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    marker_key = f"completion-{timestamp}-{image_key.replace('labels/', '').replace('/', '-')}.json"
 
     # Read compliance report to get violations and narrative
     compliance_report = ''
@@ -78,11 +78,16 @@ def _finalize_project(project_id, image_key, report_key, annotated_key, validati
     evaluation = {
         'id': eval_id,
         'timestamp': int(time.time() * 1000),
-        'annotatedImageUrl': annotated_url,
+        'annotatedKey': annotated_key,
+        'reportKey': report_key,
+        'validationKey': validation_key,
         'complianceReport': compliance_report,
         'formattedViolations': violations,
         'complianceScore': compliance_score,
         'imageKey': image_key,
+        'artifactKeys': sorted(
+            {k for k in (report_key, annotated_key, validation_key, marker_key, *artifact_keys) if k}
+        ),
     }
 
     if project_id and projects_table_name:
@@ -91,18 +96,18 @@ def _finalize_project(project_id, image_key, report_key, annotated_key, validati
             table.update_item(
                 Key={'projectId': project_id},
                 UpdateExpression=(
-                    "SET #status = :status, annotatedImageUrl = :url, "
+                    "SET #status = :status, "
                     "complianceReport = :report, formattedViolations = :violations, "
                     "complianceScore = :score, imageKey = :imageKey, reportKey = :reportKey, "
                     "annotatedKey = :annotatedKey, validationKey = :validationKey, "
                     "pipelineAttempts = :attempts, completedAt = :completedAt, "
                     "progress = :progress, currentEvaluationId = :evalId, "
-                    "evaluations = list_append(:ev, if_not_exists(evaluations, :empty))"
+                    "evaluations = list_append(:ev, if_not_exists(evaluations, :empty)) "
+                    "REMOVE annotatedImageUrl"
                 ),
                 ExpressionAttributeNames={'#status': 'status'},
                 ExpressionAttributeValues={
                     ':status': 'complete',
-                    ':url': annotated_url,
                     ':report': compliance_report,
                     ':violations': violations,
                     ':score': compliance_score,
@@ -122,8 +127,6 @@ def _finalize_project(project_id, image_key, report_key, annotated_key, validati
         except Exception as e:
             logger.warning(f"DynamoDB finalize failed: {e}")
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    marker_key = f"completion-{timestamp}-{image_key.replace('labels/', '').replace('/', '-')}.json"
     amazon_s3.put_object(
         Bucket=results_bucket,
         Key=marker_key,
@@ -145,6 +148,19 @@ def _finalize_project(project_id, image_key, report_key, annotated_key, validati
 def extract_key(text):
     match = re.search(r's3://[^/]+/([^\s`]+)', str(text))
     return match.group(1) if match else None
+
+
+def extract_result_key(text, prefix):
+    """First top-level results-bucket key with `prefix` in an agent response, or None.
+
+    Agents can mention other S3 objects (for example the source label), so the
+    key must match the object type the agent was asked to produce.
+    """
+    for key in re.findall(r's3://[^/\s`]+/([^\s`]+)', str(text)):
+        key = key.rstrip('.,;:)\'"')
+        if key.startswith(prefix) and '/' not in key:
+            return key
+    return None
 
 def run_pipeline(image_bucket, image_key, max_retries=3, regulatory_region='US_FDA', project_id=''):
     
@@ -178,7 +194,7 @@ def run_pipeline(image_bucket, image_key, max_retries=3, regulatory_region='US_F
     agent1 = get_compliance_agent(regulatory_region)
     agent1_response = agent1(agent1_prompt)
 
-    report_key = extract_key(agent1_response)
+    report_key = extract_result_key(agent1_response, 'compliance-report-')
     
     if not report_key:
         # Exception for when Agent 1 does not return a report key for this run.
@@ -196,7 +212,9 @@ def run_pipeline(image_bucket, image_key, max_retries=3, regulatory_region='US_F
 
     validation_key = None
     attempts_history = []  # Track all attempts with their issue counts
-    
+    run_keys = []  # Every results-bucket object this run produced
+
+    # An attempt whose agent does not report its output key is skipped.
     for attempt in range(1, max_retries + 1):
         logger.info(f"\n🎨 STEP 2: Image Annotation (Attempt {attempt}/{max_retries})...")
         
@@ -215,10 +233,11 @@ def run_pipeline(image_bucket, image_key, max_retries=3, regulatory_region='US_F
         agent2 = get_annotation_agent()
         agent2_response = agent2(agent2_query)
         
-        annotated_key = extract_key(agent2_response)
+        annotated_key = extract_result_key(agent2_response, 'annotated-')
         if not annotated_key:
-            response = amazon_s3.list_objects_v2(Bucket=results_bucket, Prefix='annotated-')
-            annotated_key = sorted([obj['Key'] for obj in response.get('Contents', [])], reverse=True)[0]
+            logger.warning(f"Agent 2 returned no annotated image key on attempt {attempt}; skipping attempt")
+            continue
+        run_keys.append(annotated_key)
         logger.info(f"✅ Annotated: s3://{results_bucket}/{annotated_key}")
 
         _update_project(project_id, {
@@ -235,12 +254,13 @@ def run_pipeline(image_bucket, image_key, max_retries=3, regulatory_region='US_F
         agent3 = get_validation_agent()
         agent3_response = agent3(agent3_query)
         
-        validation_key = extract_key(agent3_response)
-        if not validation_key:
-            time.sleep(2)
-            response = amazon_s3.list_objects_v2(Bucket=results_bucket, Prefix='validation-')
-            validation_key = sorted([obj['Key'] for obj in response.get('Contents', [])], reverse=True)[0]
-        
+        attempt_validation_key = extract_result_key(agent3_response, 'validation-')
+        if not attempt_validation_key:
+            logger.warning(f"Agent 3 returned no validation key on attempt {attempt}; skipping attempt")
+            continue
+        validation_key = attempt_validation_key
+        run_keys.append(validation_key)
+
         logger.info(f"📄 Validation: s3://{results_bucket}/{validation_key}")
         
         validation_obj = amazon_s3.get_object(Bucket=results_bucket, Key=validation_key)
@@ -258,7 +278,8 @@ def run_pipeline(image_bucket, image_key, max_retries=3, regulatory_region='US_F
         
         if validation_data['validation_status'] == 'APPROVED':
             logger.info(f"\n✅ APPROVED on attempt {attempt}!")
-            _finalize_project(project_id, image_key, report_key, annotated_key, validation_key, attempt)
+            _finalize_project(project_id, image_key, report_key, annotated_key, validation_key, attempt,
+                              artifact_keys=run_keys)
             
             return {
                 'status': 'success',
@@ -267,25 +288,30 @@ def run_pipeline(image_bucket, image_key, max_retries=3, regulatory_region='US_F
                 'validation_report': f"s3://{results_bucket}/{validation_key}",
                 'attempts': attempt
             }
-        else:
-            logger.info(f"\n❌ REJECTED -> Issues: {issue_count}")
-            if attempt == max_retries:
-                logger.info("\n⚠️ Max retries reached -> selecting best attempt")
-                best_attempt = min(attempts_history, key=lambda x: x['issue_count'])
-                logger.info(f"🏆 Best attempt: #{best_attempt['attempt']} with {best_attempt['issue_count']} issues")
-                _finalize_project(project_id, image_key, report_key, best_attempt['annotated_key'], best_attempt['validation_key'], max_retries)
-                
-                return {
-                    'status': 'partial_success',
-                    'compliance_report': f"s3://{results_bucket}/{report_key}",
-                    'annotated_image': f"s3://{results_bucket}/{best_attempt['annotated_key']}",
-                    'validation_report': f"s3://{results_bucket}/{best_attempt['validation_key']}",
-                    'attempts': max_retries,
-                    'best_of_attempts': True,
-                    'issue_count': best_attempt['issue_count']
-                }
-    
-    return {'status': 'failed'}
+        logger.info(f"\n❌ REJECTED -> Issues: {issue_count}")
+
+    if not attempts_history:
+        raise Exception(
+            f"No annotation attempt produced both an annotated image and a validation "
+            f"result in {max_retries} attempts. Aborting instead of guessing which "
+            f"results belong to this run."
+        )
+
+    logger.info("\n⚠️ Max retries reached -> selecting best attempt")
+    best_attempt = min(attempts_history, key=lambda x: x['issue_count'])
+    logger.info(f"🏆 Best attempt: #{best_attempt['attempt']} with {best_attempt['issue_count']} issues")
+    _finalize_project(project_id, image_key, report_key, best_attempt['annotated_key'], best_attempt['validation_key'],
+                      max_retries, artifact_keys=run_keys)
+
+    return {
+        'status': 'partial_success',
+        'compliance_report': f"s3://{results_bucket}/{report_key}",
+        'annotated_image': f"s3://{results_bucket}/{best_attempt['annotated_key']}",
+        'validation_report': f"s3://{results_bucket}/{best_attempt['validation_key']}",
+        'attempts': max_retries,
+        'best_of_attempts': True,
+        'issue_count': best_attempt['issue_count']
+    }
 
 app = BedrockAgentCoreApp()
 

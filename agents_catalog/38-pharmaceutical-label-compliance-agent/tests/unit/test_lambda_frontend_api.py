@@ -17,7 +17,6 @@ from tests.conftest import USER_A_SUB, USER_B_SUB
 def frontend_env(monkeypatch):
     monkeypatch.setenv("INCOMING_BUCKET", "amzn-s3-demo-source-bucket")
     monkeypatch.setenv("RESULTS_BUCKET", "amzn-s3-demo-destination-bucket")
-    monkeypatch.setenv("CLOUDFRONT_URL", "https://d123.cloudfront.net")
     monkeypatch.setenv("PROJECTS_TABLE", "pharmalabel-projects-test")
     monkeypatch.setenv("FRONTEND_ORIGIN", "https://d123.cloudfront.net")
 
@@ -42,6 +41,7 @@ def frontend_module():
         sys.path.pop(0)
 
         frontend.amazon_s3 = mock_s3_client.return_value
+        frontend.amazon_s3_signer = mock_s3_client.return_value
         frontend.projects_table = mock_table
         yield frontend, mock_s3_client.return_value, mock_table
 
@@ -215,18 +215,40 @@ class TestHandleUpload:
         body = json.loads(result["body"])
         assert body["region"] == "US_FDA"
 
-    def test_tagging_is_url_encoded(self, frontend_module, apigw_event_factory):
-        """A projectId containing '&' or '=' cannot inject extra S3 object tags."""
+    def test_tagging_carries_region_and_project(self, frontend_module, apigw_event_factory):
         frontend, mock_s3, mock_table = frontend_module
         mock_table.get_item.return_value = owned_by(USER_A_SUB)
         mock_s3.generate_presigned_url.return_value = "https://url"
-        tricky_id = "proj-1&regulatory_region=UK_MHRA"
         event = apigw_event_factory("/upload", body={
-            "filename": "label.png", "contentType": "image/png", "region": "US_FDA", "projectId": tricky_id
+            "filename": "label.png", "contentType": "image/png", "region": "UK_MHRA", "projectId": "proj-1"
         })
         frontend.lambda_handler(event, None)
         tagging = mock_s3.generate_presigned_url.call_args.kwargs["Params"]["Tagging"]
-        assert parse_qs(tagging) == {"regulatory_region": ["US_FDA"], "project_id": [tricky_id]}
+        assert parse_qs(tagging) == {"regulatory_region": ["UK_MHRA"], "project_id": ["proj-1"]}
+
+    def test_upload_key_is_grouped_under_project(self, frontend_module, apigw_event_factory):
+        frontend, mock_s3, mock_table = frontend_module
+        mock_table.get_item.return_value = owned_by(USER_A_SUB)
+        mock_s3.generate_presigned_url.return_value = "https://url"
+        event = apigw_event_factory("/upload", body={
+            "filename": "../label.png", "contentType": "image/png", "region": "US_FDA", "projectId": "proj-1"
+        })
+        body = json.loads(frontend.lambda_handler(event, None)["body"])
+        assert body["key"].startswith("labels/US_FDA/proj-1/")
+        assert body["key"].endswith("_label.png")
+
+    @pytest.mark.parametrize("bad_id", [
+        "proj-1&regulatory_region=UK_MHRA", "../other", "a/b", "x" * 65, "", 123, None,
+    ])
+    def test_rejects_unsafe_project_id(self, frontend_module, apigw_event_factory, bad_id):
+        """Project IDs become part of S3 keys and tags, so only [A-Za-z0-9-] is accepted."""
+        frontend, mock_s3, mock_table = frontend_module
+        event = apigw_event_factory("/upload", body={
+            "filename": "label.png", "contentType": "image/png", "projectId": bad_id
+        })
+        assert frontend.lambda_handler(event, None)["statusCode"] == 400
+        mock_table.get_item.assert_not_called()
+        mock_s3.generate_presigned_url.assert_not_called()
 
 
 # ============================================================
@@ -235,11 +257,13 @@ class TestHandleUpload:
 
 class TestHandleCheck:
     def test_returns_completed_from_dynamodb(self, frontend_module, apigw_event_factory):
-        frontend, _, mock_table = frontend_module
+        frontend, mock_s3, mock_table = frontend_module
+        mock_s3.generate_presigned_url.return_value = "https://presigned/annotated-001.png"
         mock_table.get_item.return_value = owned_by(
             USER_A_SUB,
             status="complete",
-            annotatedImageUrl="https://d123.cloudfront.net/annotated.png",
+            annotatedKey="annotated-001.png",
+            annotatedImageUrl="https://d123.cloudfront.net/annotated-001.png",  # legacy public URL
             complianceReport="The label has issues",
             formattedViolations=[{"title": "V1"}],
             progress={"step1": True, "step2": True, "step3": True},
@@ -248,7 +272,13 @@ class TestHandleCheck:
         result = frontend.lambda_handler(event, None)
         body = json.loads(result["body"])
         assert body["status"] == "completed"
-        assert body["annotatedImageUrl"] == "https://d123.cloudfront.net/annotated.png"
+        # A fresh presigned URL, never the stored public URL.
+        assert body["annotatedImageUrl"] == "https://presigned/annotated-001.png"
+        mock_s3.generate_presigned_url.assert_called_once_with(
+            "get_object",
+            Params={"Bucket": "amzn-s3-demo-destination-bucket", "Key": "annotated-001.png"},
+            ExpiresIn=3600,
+        )
 
     def test_returns_processing_from_dynamodb(self, frontend_module, apigw_event_factory):
         frontend, _, mock_table = frontend_module
@@ -296,6 +326,35 @@ class TestHandleProjectsList:
         assert expr["values"][0].name == "ownerSub"
         assert expr["values"][1] == USER_B_SUB
 
+    def test_returns_presigned_urls_for_project_and_evaluations(self, frontend_module, apigw_event_factory):
+        frontend, mock_s3, mock_table = frontend_module
+        mock_s3.generate_presigned_url.side_effect = lambda op, Params, ExpiresIn: f"https://signed/{Params['Key']}"
+        mock_table.scan.return_value = {"Items": [{
+            "projectId": "p1", "ownerSub": USER_A_SUB,
+            "annotatedKey": "annotated-new.png",
+            "annotatedImageUrl": "https://d123.cloudfront.net/annotated-stale.png",
+            "evaluations": [
+                {"id": "e2", "annotatedKey": "annotated-new.png"},
+                {"id": "e1", "annotatedImageUrl": "https://d123.cloudfront.net/annotated-old.png"},  # legacy
+                {"id": "e0", "annotatedImageUrl": "https://d123.cloudfront.net/compliance-report-x.json"},
+            ],
+        }]}
+        project = json.loads(frontend.lambda_handler(apigw_event_factory("/projects/list"), None)["body"])[0]
+        assert project["annotatedImageUrl"] == "https://signed/annotated-new.png"
+        assert [e["annotatedImageUrl"] for e in project["evaluations"]] == [
+            "https://signed/annotated-new.png", "https://signed/annotated-old.png", "",
+        ]
+        assert "cloudfront" not in json.dumps(project)
+
+    def test_project_without_image_has_no_image_url(self, frontend_module, apigw_event_factory):
+        frontend, mock_s3, mock_table = frontend_module
+        mock_table.scan.return_value = {"Items": [{
+            "projectId": "p1", "ownerSub": USER_A_SUB, "annotatedImageUrl": "https://evil.example/x.png",
+        }]}
+        project = json.loads(frontend.lambda_handler(apigw_event_factory("/projects/list"), None)["body"])[0]
+        assert "annotatedImageUrl" not in project
+        mock_s3.generate_presigned_url.assert_not_called()
+
     def test_paginates_with_same_filter(self, frontend_module, apigw_event_factory):
         frontend, _, mock_table = frontend_module
         mock_table.scan.side_effect = [
@@ -330,6 +389,25 @@ class TestHandleProjectsSave:
         assert kwargs["ExpressionAttributeNames"]["#owner"] == "ownerSub"
         assert kwargs["ExpressionAttributeValues"][":owner"] == USER_A_SUB
         assert "#owner = :owner" in kwargs["UpdateExpression"]
+
+    def test_client_cannot_set_server_owned_fields(self, frontend_module, apigw_event_factory):
+        """S3 keys and image URLs are written only by the pipeline, so a client
+        cannot point its own project at another user's objects."""
+        frontend, _, mock_table = frontend_module
+        event = apigw_event_factory("/projects/save", body={"project": {
+            "id": "proj-1",
+            "name": "Mine",
+            "annotatedKey": "annotated-of-another-user.png",
+            "reportKey": "compliance-report-x.json",
+            "validationKey": "validation-x.json",
+            "imageKey": "labels/US_FDA/other/x.png",
+            "annotatedImageUrl": "https://evil.example/x.png",
+            "evaluations": [{"annotatedKey": "annotated-of-another-user.png"}],
+        }})
+        frontend.lambda_handler(event, None)
+        written = [v for k, v in mock_table.update_item.call_args.kwargs["ExpressionAttributeNames"].items()
+                   if k != "#owner"]
+        assert written == ["name"]
 
     def test_client_cannot_set_owner_or_key(self, frontend_module, apigw_event_factory):
         """ownerSub and projectId in the body are ignored; the owner comes from the token."""
@@ -397,6 +475,7 @@ class TestHandleProjectsSave:
 class TestHandleProjectsDelete:
     def test_deletes_project(self, frontend_module, apigw_event_factory):
         frontend, _, mock_table = frontend_module
+        mock_table.delete_item.return_value = {}
         event = apigw_event_factory("/projects/delete", body={"id": "proj-1"})
         result = frontend.lambda_handler(event, None)
         body = json.loads(result["body"])
@@ -406,7 +485,23 @@ class TestHandleProjectsDelete:
             ConditionExpression="#owner = :owner",
             ExpressionAttributeNames={"#owner": "ownerSub"},
             ExpressionAttributeValues={":owner": USER_A_SUB},
+            ReturnValues="ALL_OLD",
         )
+
+    def test_cleanup_failure_does_not_fail_delete(self, frontend_module, apigw_event_factory):
+        frontend, mock_s3, mock_table = frontend_module
+        mock_table.delete_item.return_value = {"Attributes": {"annotatedKey": "annotated-1.png"}}
+        mock_s3.delete_objects.side_effect = Exception("throttled")
+        event = apigw_event_factory("/projects/delete", body={"id": "proj-1"})
+        assert frontend.lambda_handler(event, None)["statusCode"] == 200
+
+    def test_cross_user_delete_touches_no_objects(self, frontend_module, apigw_event_factory):
+        frontend, mock_s3, mock_table = frontend_module
+        mock_table.delete_item.side_effect = conditional_check_failed("DeleteItem")
+        event = apigw_event_factory("/projects/delete", sub=USER_B_SUB, body={"id": "proj-1"})
+        assert frontend.lambda_handler(event, None)["statusCode"] == 404
+        mock_s3.delete_objects.assert_not_called()
+        mock_s3.get_paginator.assert_not_called()
 
     def test_returns_404_when_project_owned_by_another_user(self, frontend_module, apigw_event_factory):
         frontend, _, mock_table = frontend_module
@@ -476,6 +571,33 @@ class TestCrossUserAccess:
 # ============================================================
 # Pure Helper Tests
 # ============================================================
+
+class TestImageUrlHelpers:
+    @pytest.mark.parametrize("key", [
+        "compliance-report-1.json", "validation-1.json", "labels/US_FDA/p/x.png",
+        "annotated-1.png/../secret", "nested/annotated-1.png", "annotated-1.jpg", None, 5,
+    ])
+    def test_only_annotated_images_are_presigned(self, frontend_module, key):
+        frontend, mock_s3, _ = frontend_module
+        assert frontend._annotated_image_url(key) == ""
+        mock_s3.generate_presigned_url.assert_not_called()
+
+    def test_legacy_key_from_cloudfront_url(self, frontend_module):
+        frontend, _, _ = frontend_module
+        assert frontend._legacy_annotated_key("https://d1.cloudfront.net/annotated-20260101_1-ab.png") \
+            == "annotated-20260101_1-ab.png"
+        assert frontend._legacy_annotated_key("https://d1.cloudfront.net/x/annotated-1.png") is None
+        assert frontend._legacy_annotated_key(None) is None
+
+
+class TestDenialLogging:
+    def test_cross_user_denial_logs_caller_sub(self, frontend_module, apigw_event_factory, caplog):
+        frontend, _, mock_table = frontend_module
+        mock_table.get_item.return_value = owned_by(USER_A_SUB)
+        with caplog.at_level("WARNING"):
+            frontend.lambda_handler(apigw_event_factory("/check", sub=USER_B_SUB, body={"projectId": "proj-1"}), None)
+        assert any(USER_B_SUB in r.getMessage() and "proj-1" in r.getMessage() for r in caplog.records)
+
 
 class TestSanitizeFilename:
     def test_strips_path_separators(self, frontend_module):

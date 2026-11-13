@@ -98,10 +98,10 @@ def lambda_handler(event, context):
     if not caller:
         logger.warning("Rejected request without caller identity: %s %s", http_method, path)
         return response(401, {'error': 'Unauthorized'})
-    _, groups = caller
+    caller_sub, groups = caller
 
     if path in ADMIN_ROUTES and KB_ADMIN_GROUP not in groups:
-        logger.warning("Rejected non-admin request: %s %s", http_method, path)
+        logger.warning("Rejected non-admin request: %s %s sub=%s", http_method, path, caller_sub)
         return response(403, {
             'error': 'Only knowledge base administrators can change regulatory documents'
         })

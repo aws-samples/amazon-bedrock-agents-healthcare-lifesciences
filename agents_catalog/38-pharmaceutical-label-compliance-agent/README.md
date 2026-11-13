@@ -20,7 +20,7 @@ This solution analyzes medicine labels against regulatory requirements for illus
 
 ## Security
 
-This solution follows AWS Lambda best practices by using AWS Identity and Access Management (IAM) roles for authentication rather than storing credentials in environment variables. AWS Lambda environment variables contain only resource identifiers (bucket names, table names, Amazon CloudFront URLs), with no secrets, application programming interface (API) keys, or passwords. All service-to-service authentication is handled through IAM roles with least-privilege policies.
+This solution follows AWS Lambda best practices by using AWS Identity and Access Management (IAM) roles for authentication rather than storing credentials in environment variables. AWS Lambda environment variables contain only resource identifiers (bucket names, table names, Amazon CloudFront URLs, the Cognito group name), with no secrets, application programming interface (API) keys, or passwords. All service-to-service authentication is handled through IAM roles with least-privilege policies.
 
 User access to the API is gated by **Amazon Cognito**: every Amazon API Gateway route requires a valid Cognito JSON Web Token (JWT), obtained through the OAuth 2.0 Authorization Code flow with Proof Key for Code Exchange (PKCE) via the Cognito Hosted user interface (UI), so the API rejects unauthenticated callers. Self sign-up is disabled and the only user is created from the `admin_email` provided at deploy time; credentials are delivered by email and never stored in the repository.
 
@@ -29,8 +29,18 @@ The backend AWS Lambda functions also **authorize** every request, using the ver
 - **Projects belong to the user who created them.** Each project record stores the creator's Cognito user ID (`sub`), set by the server and never taken from the request. Listing, checking results, saving, deleting, and uploading a label all apply only to the caller's own projects. Requests for another user's project return `404 Not Found`. Saves and deletes use Amazon DynamoDB conditional writes, so the ownership check and the write happen in one step.
 - **Only knowledge base administrators can change the regulatory documents.** Uploading, deleting, and syncing knowledge base documents requires membership in the `kb-admins` Cognito group. The stack creates this group and adds the `admin_email` user to it. Any signed-in user can list and download the documents.
 - Requests that reach a Lambda function without a verified identity are rejected with `401 Unauthorized`.
+- **Label images and results are private.** The results bucket has no public distribution. The API returns annotated images to the project owner as presigned Amazon S3 URLs that expire after one hour. Deleting a project also deletes its uploaded label images and pipeline results.
+- **Project IDs are random UUIDs**, so other users can't guess or claim them.
+- **Requests are attributable.** API Gateway access logs record the caller's Cognito user ID (`sub`) for every request, and the Lambda functions log the user ID when they deny a request.
 
 If you add users to the user pool, each one sees only their own projects. Add a user to `kb-admins` only if they should be able to change the regulatory rules the agent checks labels against. Projects created before this ownership model was added have no owner, so no user can see or change them.
+
+When you remove a user from `kb-admins`, also sign them out. Their existing ID token still lists the group until it expires (up to one hour):
+
+```bash
+aws cognito-idp admin-remove-user-from-group --user-pool-id <UserPoolId> --username <email> --group-name kb-admins
+aws cognito-idp admin-user-global-sign-out --user-pool-id <UserPoolId> --username <email>
+```
 
 ## How It Works
 

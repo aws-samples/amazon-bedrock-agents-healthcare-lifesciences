@@ -5,13 +5,16 @@ import boto3
 import logging
 from datetime import datetime
 from decimal import Decimal
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 
 from boto3.dynamodb.conditions import Attr
+from botocore.config import Config
 from botocore.exceptions import ClientError
 
 # Amazon S3 client for presigned URLs and object access
 amazon_s3 = boto3.client('s3')
+# Signs the annotated-image download URLs with Signature Version 4.
+amazon_s3_signer = boto3.client('s3', config=Config(signature_version='s3v4'))
 # Amazon DynamoDB resource for project persistence
 amazon_dynamodb = boto3.resource('dynamodb')
 
@@ -22,12 +25,27 @@ logger.setLevel(LOG_LEVEL)
 
 INCOMING_BUCKET = os.environ['INCOMING_BUCKET']
 RESULTS_BUCKET = os.environ['RESULTS_BUCKET']
-CLOUDFRONT_URL = os.environ['CLOUDFRONT_URL']
 PROJECTS_TABLE = os.environ['PROJECTS_TABLE']
 
 projects_table = amazon_dynamodb.Table(PROJECTS_TABLE)
 
 OWNER_ATTR = 'ownerSub'
+VALID_REGIONS = ('US_FDA', 'UK_MHRA')
+
+# Project IDs become part of S3 keys (labels/<region>/<projectId>/...), so they
+# are limited to letters, digits, and hyphens (UUIDs and legacy numeric IDs).
+PROJECT_ID_RE = re.compile(r'^[A-Za-z0-9-]{1,64}$')
+
+SERVER_OWNED_FIELDS = (
+    'projectId', OWNER_ATTR, 'evaluations', 'imageKey', 'reportKey',
+    'annotatedKey', 'validationKey', 'annotatedImageUrl',
+)
+
+# Annotated images are private. The API returns short-lived presigned GET URLs
+# for them, and only after the ownership check.
+ANNOTATED_KEY_RE = re.compile(r'^annotated-[A-Za-z0-9_.-]+\.png$')
+RESULT_KEY_RE = re.compile(r'^(annotated|validation|compliance-report|completion)-[A-Za-z0-9_.-]+$')
+IMAGE_URL_TTL_SECONDS = 3600
 
 
 class DecimalEncoder(json.JSONEncoder):
@@ -49,6 +67,58 @@ def _not_found(headers):
     # Used for both "does not exist" and "belongs to another user", so callers
     # cannot discover which project IDs exist.
     return _json_response(404, headers, {'error': 'Project not found'})
+
+
+def _denied(headers, caller_sub, action, project_id):
+    # Logged with the caller's sub so cross-user attempts can be attributed.
+    logger.warning("Denied %s: project %s not found or not owned by sub=%s", action, project_id, caller_sub)
+    return _not_found(headers)
+
+
+def _valid_project_id(project_id):
+    return isinstance(project_id, str) and bool(PROJECT_ID_RE.match(project_id))
+
+
+def _annotated_image_url(key):
+    """Presigned GET URL for an annotated image key, or '' if the key is not one."""
+    if not isinstance(key, str) or not ANNOTATED_KEY_RE.match(key):
+        return ''
+    return amazon_s3_signer.generate_presigned_url(
+        'get_object',
+        Params={'Bucket': RESULTS_BUCKET, 'Key': key},
+        ExpiresIn=IMAGE_URL_TTL_SECONDS,
+    )
+
+
+def _legacy_annotated_key(url):
+    """Annotated image key from a stored URL (evaluations written before keys were stored)."""
+    if not isinstance(url, str):
+        return None
+    path = urlparse(url).path.lstrip('/')
+    return path if ANNOTATED_KEY_RE.match(path) else None
+
+
+def _evaluation_annotated_key(evaluation):
+    return evaluation.get('annotatedKey') or _legacy_annotated_key(evaluation.get('annotatedImageUrl'))
+
+
+def _with_image_urls(item):
+    """Copy of a project record with fresh presigned URLs for its annotated images."""
+    out = dict(item)
+    url = _annotated_image_url(item.get('annotatedKey'))
+    if url:
+        out['annotatedImageUrl'] = url
+    else:
+        out.pop('annotatedImageUrl', None)
+    if isinstance(item.get('evaluations'), list):
+        evaluations = []
+        for evaluation in item['evaluations']:
+            if isinstance(evaluation, dict):
+                evaluation = dict(evaluation)
+                evaluation['annotatedImageUrl'] = _annotated_image_url(_evaluation_annotated_key(evaluation))
+            evaluations.append(evaluation)
+        out['evaluations'] = evaluations
+    return out
 
 
 def _get_caller_sub(event):
@@ -153,21 +223,20 @@ def handle_upload(body, headers, caller_sub):
     if content_type not in allowed_types:
         return _json_response(400, headers, {'error': 'Only JPEG and PNG images are allowed'})
 
-    # The pipeline writes its results into the project named here, so the caller
-    # must own it. Otherwise one user could overwrite another user's results.
-    if not project_id or not isinstance(project_id, str):
+    # The pipeline writes its results into the project named here, so the caller must own it.
+    if not _valid_project_id(project_id):
         return _json_response(400, headers, {'error': 'projectId is required'})
     if not _get_owned_project(project_id, caller_sub):
-        return _not_found(headers)
+        return _denied(headers, caller_sub, 'upload', project_id)
 
     # Validate region
-    valid_regions = ['US_FDA', 'UK_MHRA']
-    if region not in valid_regions:
+    if region not in VALID_REGIONS:
         logger.warning("Invalid region '%s', defaulting to US_FDA", region)
         region = 'US_FDA'
 
+    # Uploads are grouped under the project ID so they can be deleted with the project.
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    key = f"labels/{region}/{timestamp}_{filename}"
+    key = f"labels/{region}/{project_id}/{timestamp}_{filename}"
 
     logger.info("Generating upload URL for: %s", key)
     logger.info("Region: %s, Project: %s", region, project_id)
@@ -193,17 +262,17 @@ def handle_upload(body, headers, caller_sub):
 
 def handle_check(body, headers, caller_sub):
     project_id = body.get('projectId')
-    if not project_id or not isinstance(project_id, str):
+    if not _valid_project_id(project_id):
         return _json_response(400, headers, {'error': 'projectId is required'})
 
     item = _get_owned_project(project_id, caller_sub)
     if not item:
-        return _not_found(headers)
+        return _denied(headers, caller_sub, 'check', project_id)
 
     if item.get('status') == 'complete':
         return _json_response(200, headers, {
             'status': 'completed',
-            'annotatedImageUrl': item.get('annotatedImageUrl', ''),
+            'annotatedImageUrl': _annotated_image_url(item.get('annotatedKey')),
             'complianceReport': item.get('complianceReport', ''),
             'violations': item.get('formattedViolations', []),
             'progress': item.get('progress', {
@@ -250,20 +319,19 @@ def handle_projects_list(headers, caller_sub):
             **scan_kwargs,
         )
         items.extend(response.get('Items', []))
-    return _json_response(200, headers, items)
+    return _json_response(200, headers, [_with_image_urls(item) for item in items])
 
 
 def handle_projects_save(body, headers, caller_sub):
     """Create a project owned by the caller, or merge into one the caller owns."""
     project = body.get('project')
-    if not isinstance(project, dict) or not project.get('id') or not isinstance(project.get('id'), str):
+    if not isinstance(project, dict) or not _valid_project_id(project.get('id')):
         return _json_response(400, headers, {'error': 'project with id is required'})
     item = _convert_floats(project)
     project_id = item.pop('id')
-    item.pop('evaluations', None)
-    # Never let the client set the key or the owner.
-    item.pop('projectId', None)
-    item.pop(OWNER_ATTR, None)
+    # Never let the client set the key, the owner, or any S3 key the API acts on.
+    for field in SERVER_OWNED_FIELDS:
+        item.pop(field, None)
 
     if not item:
         # Nothing to write. The response is the same whoever owns the ID, so it
@@ -294,25 +362,79 @@ def handle_projects_save(body, headers, caller_sub):
         )
     except ClientError as e:
         if _is_conditional_check_failure(e):
-            return _not_found(headers)
+            return _denied(headers, caller_sub, 'save', project_id)
         raise
     return _json_response(200, headers, {'saved': project_id})
 
 
 def handle_projects_delete(body, headers, caller_sub):
-    """Delete a project the caller owns."""
+    """Delete a project the caller owns, then its label uploads and pipeline results."""
     project_id = body.get('id')
-    if not project_id or not isinstance(project_id, str):
+    if not _valid_project_id(project_id):
         return _json_response(400, headers, {'error': 'id is required'})
     try:
-        projects_table.delete_item(
+        resp = projects_table.delete_item(
             Key={'projectId': project_id},
             ConditionExpression="#owner = :owner",
             ExpressionAttributeNames={'#owner': OWNER_ATTR},
             ExpressionAttributeValues={':owner': caller_sub},
+            ReturnValues='ALL_OLD',
         )
     except ClientError as e:
         if _is_conditional_check_failure(e):
-            return _not_found(headers)
+            return _denied(headers, caller_sub, 'delete', project_id)
         raise
+
+    # The record is already gone, so a cleanup failure must not fail the request.
+    # Leftover objects are unreachable: the API no longer references them.
+    try:
+        _delete_project_objects(project_id, resp.get('Attributes') or {})
+    except Exception as e:
+        logger.error("Could not delete S3 objects for project %s: %s", project_id, e)
     return _json_response(200, headers, {'deleted': project_id})
+
+
+def _delete_keys(bucket, keys):
+    keys = sorted(set(keys))
+    for start in range(0, len(keys), 1000):
+        amazon_s3.delete_objects(
+            Bucket=bucket,
+            Delete={'Objects': [{'Key': k} for k in keys[start:start + 1000]], 'Quiet': True},
+        )
+
+
+def _delete_project_objects(project_id, item):
+    """Delete a project's label uploads and pipeline results.
+
+    Only keys from server-written fields are used, and every key is checked
+    against the expected naming pattern before deletion.
+    """
+    evaluations = [e for e in (item.get('evaluations') or []) if isinstance(e, dict)]
+
+    # Pipeline results (results bucket).
+    result_keys = {item.get('annotatedKey'), item.get('reportKey'), item.get('validationKey')}
+    for evaluation in evaluations:
+        result_keys.add(_evaluation_annotated_key(evaluation))
+        result_keys.update(evaluation.get('artifactKeys') or [])
+    _delete_keys(RESULTS_BUCKET, [k for k in result_keys if isinstance(k, str) and RESULT_KEY_RE.match(k)])
+
+    # Label uploads (incoming bucket): everything under the project's prefix.
+    incoming_keys = set()
+    paginator = amazon_s3.get_paginator('list_objects_v2')
+    for region in VALID_REGIONS:
+        for page in paginator.paginate(Bucket=INCOMING_BUCKET, Prefix=f"labels/{region}/{project_id}/"):
+            incoming_keys.update(obj['Key'] for obj in page.get('Contents', []))
+
+    # Uploads made before keys included the project ID. Delete only those whose
+    # signed project_id tag matches this project.
+    legacy_keys = {item.get('imageKey')} | {e.get('imageKey') for e in evaluations}
+    for key in legacy_keys:
+        if not isinstance(key, str) or not key.startswith('labels/') or key in incoming_keys:
+            continue
+        try:
+            tags = amazon_s3.get_object_tagging(Bucket=INCOMING_BUCKET, Key=key).get('TagSet', [])
+        except ClientError:
+            continue
+        if any(t.get('Key') == 'project_id' and t.get('Value') == project_id for t in tags):
+            incoming_keys.add(key)
+    _delete_keys(INCOMING_BUCKET, incoming_keys)

@@ -1,5 +1,7 @@
 """CDK infrastructure tests."""
 
+import json
+
 import pytest
 import aws_cdk as cdk
 from aws_cdk.assertions import Template, Match
@@ -78,8 +80,39 @@ class TestLambdaFunctions:
 
 
 class TestCloudFront:
-    def test_creates_two_distributions(self, template):
-        template.resource_count_is("AWS::CloudFront::Distribution", 2)
+    def test_only_frontend_is_distributed(self, template):
+        # Results are private: no public distribution in front of the results bucket.
+        template.resource_count_is("AWS::CloudFront::Distribution", 1)
+
+
+class TestPrivateResults:
+    @staticmethod
+    def _function(template, name):
+        return next(r for r in template.find_resources("AWS::Lambda::Function").values()
+                    if r["Properties"].get("FunctionName") == name)
+
+    def test_no_public_results_url_in_config(self, template):
+        rendered = json.dumps(template.to_json())
+        assert "CLOUDFRONT_URL" not in rendered
+        assert "ResultsDistribution" not in rendered
+
+    def test_compliance_api_can_delete_project_objects(self, template):
+        role_ref = self._function(template, "PharmaLabel-ComplianceApi")["Properties"]["Role"]["Fn::GetAtt"][0]
+        statements = [
+            s
+            for p in template.find_resources("AWS::IAM::Policy").values()
+            if {"Ref": role_ref} in p["Properties"]["Roles"]
+            for s in p["Properties"]["PolicyDocument"]["Statement"]
+        ]
+        delete_resources = json.dumps([s["Resource"] for s in statements
+                                       if "s3:DeleteObject*" in json.dumps(s["Action"])])
+        assert "IncomingBucket" in delete_resources
+        assert "ResultsBucket" in delete_resources
+
+    def test_access_logs_record_caller_sub(self, template):
+        stage = next(iter(template.find_resources("AWS::ApiGatewayV2::Stage").values()))
+        log_format = json.loads(stage["Properties"]["AccessLogSettings"]["Format"])
+        assert log_format["sub"] == "$context.authorizer.claims.sub"
 
 
 class TestApiGateway:
