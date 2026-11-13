@@ -86,6 +86,7 @@ pip install \
   --implementation cp \
   --python-version 3.12 \
   --only-binary=:all: \
+  --upgrade \
   --target agent_package/ \
   -r agent_runtime_requirements.txt
 
