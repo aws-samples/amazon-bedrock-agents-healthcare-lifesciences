@@ -17,6 +17,9 @@ logger.setLevel(LOG_LEVEL)
 
 KB_BUCKET = os.environ['KB_BUCKET']
 KNOWLEDGE_BASE_ID = os.environ.get('KNOWLEDGE_BASE_ID', '')
+KB_ADMIN_GROUP = os.environ.get('KB_ADMIN_GROUP', 'kb-admins')
+
+ADMIN_ROUTES = {'/documents/upload', '/documents/delete', '/documents/sync'}
 
 # Region config: Amazon S3 prefix and display name (kb_id and ds_id resolved dynamically)
 REGION_CONFIG = {
@@ -56,6 +59,30 @@ HEADERS = {
 }
 
 
+def _get_caller(event):
+    """Return (sub, groups) for the caller from the verified JWT claims, or None.
+
+    API Gateway's JWT authorizer validates the token before invoking this
+    function. HTTP APIs pass array claims such as `cognito:groups` as a string
+    like "[kb-admins other-group]", so both string and list forms are accepted.
+    """
+    claims = (
+        (event.get('requestContext') or {})
+        .get('authorizer', {})
+        .get('jwt', {})
+        .get('claims')
+    ) or {}
+    sub = claims.get('sub')
+    if not isinstance(sub, str) or not sub:
+        return None
+
+    raw_groups = claims.get('cognito:groups', [])
+    if isinstance(raw_groups, str):
+        raw_groups = raw_groups.strip().strip('[]').replace(',', ' ').split()
+    groups = {g.strip().strip('"') for g in raw_groups if isinstance(g, str) and g.strip()}
+    return sub, groups
+
+
 def lambda_handler(event, context):
     path = event.get('rawPath') or event.get('path', '')
     http_method = (
@@ -66,15 +93,30 @@ def lambda_handler(event, context):
     if http_method == 'OPTIONS':
         return {'statusCode': 200, 'headers': HEADERS, 'body': ''}
 
-    body_str = event.get('body', '{}')
-    if isinstance(body_str, str):
-        body = json.loads(body_str) if body_str else {}
-    else:
-        body = body_str
+    # Fail closed if the verified identity is missing.
+    caller = _get_caller(event)
+    if not caller:
+        logger.warning("Rejected request without caller identity: %s %s", http_method, path)
+        return response(401, {'error': 'Unauthorized'})
+    caller_sub, groups = caller
+
+    if path in ADMIN_ROUTES and KB_ADMIN_GROUP not in groups:
+        logger.warning("Rejected non-admin request: %s %s sub=%s", http_method, path, caller_sub)
+        return response(403, {
+            'error': 'Only knowledge base administrators can change regulatory documents'
+        })
 
     logger.info("Request: %s %s", http_method, path)
 
     try:
+        body_str = event.get('body', '{}')
+        if isinstance(body_str, str):
+            body = json.loads(body_str) if body_str else {}
+        else:
+            body = body_str
+        if not isinstance(body, dict):
+            return response(400, {'error': 'Request body must be a JSON object'})
+
         if path == '/documents/list':
             return handle_list(body)
         elif path == '/documents/upload':
@@ -87,6 +129,8 @@ def lambda_handler(event, context):
             return handle_sync(body)
         else:
             return response(404, {'error': f'Not found: {path}'})
+    except json.JSONDecodeError:
+        return response(400, {'error': 'Invalid JSON body'})
     except Exception as e:
         logger.error("Error handling request: %s", e)
         return response(500, {'error': 'Internal server error'})

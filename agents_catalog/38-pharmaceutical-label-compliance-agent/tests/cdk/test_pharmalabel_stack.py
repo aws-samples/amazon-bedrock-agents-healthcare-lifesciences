@@ -1,5 +1,7 @@
 """CDK infrastructure tests."""
 
+import json
+
 import pytest
 import aws_cdk as cdk
 from aws_cdk.assertions import Template, Match
@@ -78,8 +80,84 @@ class TestLambdaFunctions:
 
 
 class TestCloudFront:
-    def test_creates_two_distributions(self, template):
-        template.resource_count_is("AWS::CloudFront::Distribution", 2)
+    def test_only_frontend_is_distributed(self, template):
+        # Results are private: no public distribution in front of the results bucket.
+        template.resource_count_is("AWS::CloudFront::Distribution", 1)
+
+
+class TestFrontendSecurityHeaders:
+    @staticmethod
+    def _headers(template):
+        policies = template.find_resources("AWS::CloudFront::ResponseHeadersPolicy")
+        assert len(policies) == 1
+        return next(iter(policies.values()))["Properties"]["ResponseHeadersPolicyConfig"]["SecurityHeadersConfig"]
+
+    @classmethod
+    def _csp(cls, template):
+        value = cls._headers(template)["ContentSecurityPolicy"]["ContentSecurityPolicy"]
+        # Region is a token, so the policy is an Fn::Join; render it as text.
+        if isinstance(value, dict):
+            value = "".join(p if isinstance(p, str) else "${Region}" for p in value["Fn::Join"][1])
+        return {d.split(" ", 1)[0]: d.split(" ", 1)[1] if " " in d else "" for d in value.split("; ")}
+
+    def test_policy_is_attached_to_frontend(self, template):
+        dist = next(iter(template.find_resources("AWS::CloudFront::Distribution").values()))
+        behavior = dist["Properties"]["DistributionConfig"]["DefaultCacheBehavior"]
+        assert behavior["ResponseHeadersPolicyId"]["Ref"].startswith("FrontendSecurityHeaders")
+
+    def test_csp_allows_only_same_origin_scripts(self, template):
+        csp = self._csp(template)
+        assert csp["script-src"] == "'self'"
+        assert csp["default-src"] == "'none'"
+        assert csp["object-src"] == "'none'"
+        assert csp["base-uri"] == "'none'"
+        assert csp["frame-ancestors"] == "'none'"
+
+    def test_csp_allows_only_the_apps_own_backends(self, template):
+        csp = self._csp(template)
+        assert "*" not in csp["img-src"]
+        assert "pharmalabel-processed-results-" in csp["img-src"]
+        connect = csp["connect-src"].split()
+        assert "https://*.execute-api.${Region}.amazonaws.com" in connect
+        hosts = [h for h in connect if h != "'self'" and "execute-api" not in h]
+        assert hosts and all(h.startswith("https://pharmalabel-") for h in hosts)
+
+    def test_other_security_headers(self, template):
+        headers = self._headers(template)
+        assert headers["FrameOptions"]["FrameOption"] == "DENY"
+        assert headers["ContentTypeOptions"]["Override"] is True
+        assert headers["StrictTransportSecurity"]["AccessControlMaxAgeSec"] == 31536000
+        assert headers["ReferrerPolicy"]["ReferrerPolicy"] == "strict-origin-when-cross-origin"
+
+
+class TestPrivateResults:
+    @staticmethod
+    def _function(template, name):
+        return next(r for r in template.find_resources("AWS::Lambda::Function").values()
+                    if r["Properties"].get("FunctionName") == name)
+
+    def test_no_public_results_url_in_config(self, template):
+        rendered = json.dumps(template.to_json())
+        assert "CLOUDFRONT_URL" not in rendered
+        assert "ResultsDistribution" not in rendered
+
+    def test_compliance_api_can_delete_project_objects(self, template):
+        role_ref = self._function(template, "PharmaLabel-ComplianceApi")["Properties"]["Role"]["Fn::GetAtt"][0]
+        statements = [
+            s
+            for p in template.find_resources("AWS::IAM::Policy").values()
+            if {"Ref": role_ref} in p["Properties"]["Roles"]
+            for s in p["Properties"]["PolicyDocument"]["Statement"]
+        ]
+        delete_resources = json.dumps([s["Resource"] for s in statements
+                                       if "s3:DeleteObject*" in json.dumps(s["Action"])])
+        assert "IncomingBucket" in delete_resources
+        assert "ResultsBucket" in delete_resources
+
+    def test_access_logs_record_caller_sub(self, template):
+        stage = next(iter(template.find_resources("AWS::ApiGatewayV2::Stage").values()))
+        log_format = json.loads(stage["Properties"]["AccessLogSettings"]["Format"])
+        assert log_format["sub"] == "$context.authorizer.claims.sub"
 
 
 class TestApiGateway:
@@ -90,6 +168,39 @@ class TestApiGateway:
         resources = template.find_resources("AWS::ApiGatewayV2::Route")
         # Should have routes for compliance API + document management API
         assert len(resources) >= 5
+
+
+class TestAuthorization:
+    def test_all_routes_require_jwt_authorizer(self, template):
+        routes = template.find_resources("AWS::ApiGatewayV2::Route")
+        assert routes
+        for logical_id, resource in routes.items():
+            props = resource["Properties"]
+            assert props.get("AuthorizationType") == "JWT", f"{logical_id} is not JWT-protected"
+            assert props.get("AuthorizerId"), f"{logical_id} has no authorizer"
+
+    def test_self_sign_up_disabled(self, template):
+        template.has_resource_properties("AWS::Cognito::UserPool", {
+            "AdminCreateUserConfig": Match.object_like({"AllowAdminCreateUserOnly": True}),
+        })
+
+    def test_creates_kb_admin_group(self, template):
+        template.resource_count_is("AWS::Cognito::UserPoolGroup", 1)
+        template.has_resource_properties("AWS::Cognito::UserPoolGroup", {
+            "GroupName": "kb-admins",
+        })
+
+    def test_admin_user_is_in_kb_admin_group(self, template):
+        template.has_resource_properties("AWS::Cognito::UserPoolUserToGroupAttachment", {
+            "Username": "test@example.com",
+            "GroupName": {"Ref": Match.string_like_regexp("KbAdminGroup.*")},
+        })
+
+    def test_doc_management_lambda_knows_admin_group(self, template):
+        template.has_resource_properties("AWS::Lambda::Function", Match.object_like({
+            "FunctionName": "PharmaLabel-DocumentManagement",
+            "Environment": {"Variables": Match.object_like({"KB_ADMIN_GROUP": "kb-admins"})},
+        }))
 
 
 class TestAgentCoreRuntime:

@@ -4,8 +4,11 @@ import json
 import os
 import sys
 import pytest
+from urllib.parse import parse_qs, urlparse
 from moto import mock_aws
 import boto3
+
+from tests.conftest import USER_A_SUB, USER_B_SUB, make_apigw_event
 
 
 @pytest.fixture
@@ -18,153 +21,331 @@ def aws_env(monkeypatch):
     monkeypatch.setenv("AWS_SESSION_TOKEN", "SESSION_TOKEN_EXAMPLE")
     monkeypatch.setenv("INCOMING_BUCKET", "amzn-s3-demo-source-bucket")
     monkeypatch.setenv("RESULTS_BUCKET", "amzn-s3-demo-destination-bucket")
-    monkeypatch.setenv("CLOUDFRONT_URL", "https://d123.cloudfront.net")
     monkeypatch.setenv("PROJECTS_TABLE", "pharmalabel-projects-test")
     monkeypatch.setenv("FRONTEND_ORIGIN", "*")
 
 
+def _setup_aws():
+    s3 = boto3.client("s3", region_name="us-east-1")
+    s3.create_bucket(Bucket="amzn-s3-demo-source-bucket")
+    s3.create_bucket(Bucket="amzn-s3-demo-destination-bucket")
+    dynamodb = boto3.resource("dynamodb", region_name="us-east-1")
+    table = dynamodb.create_table(
+        TableName="pharmalabel-projects-test",
+        KeySchema=[{"AttributeName": "projectId", "KeyType": "HASH"}],
+        AttributeDefinitions=[{"AttributeName": "projectId", "AttributeType": "S"}],
+        BillingMode="PAY_PER_REQUEST",
+    )
+    return s3, table
+
+
+def _import_handler():
+    frontend_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+        "lambda_functions", "frontend_api"
+    )
+    sys.path.insert(0, frontend_path)
+    if "index" in sys.modules:
+        del sys.modules["index"]
+    import index as frontend
+    sys.path.pop(0)
+    return frontend
+
+
+def _call(frontend, path, body=None, sub=USER_A_SUB):
+    result = frontend.lambda_handler(make_apigw_event(path, body=body, sub=sub), None)
+    return result["statusCode"], json.loads(result["body"]) if result["body"] else None
+
+
 @mock_aws
 class TestProjectsCRUDFlow:
-    def _setup_aws(self):
-        s3 = boto3.client("s3", region_name="us-east-1")
-        s3.create_bucket(Bucket="amzn-s3-demo-source-bucket")
-        s3.create_bucket(Bucket="amzn-s3-demo-destination-bucket")
-        dynamodb = boto3.resource("dynamodb", region_name="us-east-1")
-        dynamodb.create_table(
-            TableName="pharmalabel-projects-test",
-            KeySchema=[{"AttributeName": "projectId", "KeyType": "HASH"}],
-            AttributeDefinitions=[{"AttributeName": "projectId", "AttributeType": "S"}],
-            BillingMode="PAY_PER_REQUEST",
-        )
-        return s3, dynamodb
-
-    def _import_handler(self):
-        frontend_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-            "lambda_functions", "frontend_api"
-        )
-        sys.path.insert(0, frontend_path)
-        if "index" in sys.modules:
-            del sys.modules["index"]
-        import index as frontend
-        sys.path.pop(0)
-        return frontend
-
-    def _make_event(self, path, body=None):
-        return {
-            "rawPath": path,
-            "requestContext": {"http": {"method": "POST"}},
-            "headers": {"origin": "*"},
-            "body": json.dumps(body or {}),
-        }
-
     def test_save_then_list_returns_project(self, aws_env):
-        self._setup_aws()
-        frontend = self._import_handler()
+        _, table = _setup_aws()
+        frontend = _import_handler()
 
-        # Save a project
-        save_event = self._make_event("/projects/save", {
+        status, _ = _call(frontend, "/projects/save", {
             "project": {"id": "proj-1", "name": "Test", "region": "US_FDA"}
         })
-        save_result = frontend.lambda_handler(save_event, None)
-        assert save_result["statusCode"] == 200
+        assert status == 200
 
-        # List projects
-        list_event = self._make_event("/projects/list")
-        list_result = frontend.lambda_handler(list_event, None)
-        items = json.loads(list_result["body"])
+        status, items = _call(frontend, "/projects/list")
         assert len(items) == 1
         assert items[0]["projectId"] == "proj-1"
         assert items[0]["name"] == "Test"
+        # Owner recorded server-side from the token.
+        assert table.get_item(Key={"projectId": "proj-1"})["Item"]["ownerSub"] == USER_A_SUB
 
     def test_save_merge_does_not_overwrite_existing_fields(self, aws_env):
-        self._setup_aws()
-        frontend = self._import_handler()
+        _setup_aws()
+        frontend = _import_handler()
 
-        # Save initial project with name + region
-        frontend.lambda_handler(self._make_event("/projects/save", {
+        _call(frontend, "/projects/save", {
             "project": {"id": "proj-1", "name": "Original", "region": "US_FDA"}
-        }), None)
-
-        # Save again with different field only
-        frontend.lambda_handler(self._make_event("/projects/save", {
+        })
+        _call(frontend, "/projects/save", {
             "project": {"id": "proj-1", "status": "processing"}
-        }), None)
+        })
 
-        # List and verify original fields preserved
-        list_result = frontend.lambda_handler(self._make_event("/projects/list"), None)
-        items = json.loads(list_result["body"])
+        _, items = _call(frontend, "/projects/list")
         proj = items[0]
         assert proj["name"] == "Original"  # not overwritten
         assert proj["region"] == "US_FDA"  # not overwritten
         assert proj["status"] == "processing"  # newly added
 
     def test_delete_removes_from_table(self, aws_env):
-        self._setup_aws()
-        frontend = self._import_handler()
+        _setup_aws()
+        frontend = _import_handler()
 
-        # Create then delete
-        frontend.lambda_handler(self._make_event("/projects/save", {
-            "project": {"id": "proj-1", "name": "To Delete"}
-        }), None)
+        _call(frontend, "/projects/save", {"project": {"id": "proj-1", "name": "To Delete"}})
 
-        delete_result = frontend.lambda_handler(
-            self._make_event("/projects/delete", {"id": "proj-1"}), None
-        )
-        assert json.loads(delete_result["body"])["deleted"] == "proj-1"
+        status, body = _call(frontend, "/projects/delete", {"id": "proj-1"})
+        assert status == 200
+        assert body["deleted"] == "proj-1"
 
-        # Verify empty
-        list_result = frontend.lambda_handler(self._make_event("/projects/list"), None)
-        assert json.loads(list_result["body"]) == []
+        _, items = _call(frontend, "/projects/list")
+        assert items == []
+
+    def test_upload_for_own_project_tags_object_with_project_id(self, aws_env):
+        _setup_aws()
+        frontend = _import_handler()
+        _call(frontend, "/projects/save", {"project": {"id": "proj-1", "name": "Mine"}})
+
+        status, body = _call(frontend, "/upload", {
+            "filename": "label.png", "contentType": "image/png", "region": "US_FDA", "projectId": "proj-1"
+        })
+        assert status == 200
+        query = parse_qs(urlparse(body["uploadUrl"]).query)
+        tags = parse_qs(query["x-amz-tagging"][0])
+        assert tags == {"regulatory_region": ["US_FDA"], "project_id": ["proj-1"]}
 
 
 @mock_aws
 class TestCheckFlowDynamo:
-    def _setup(self, aws_env):
-        s3 = boto3.client("s3", region_name="us-east-1")
-        s3.create_bucket(Bucket="amzn-s3-demo-source-bucket")
-        s3.create_bucket(Bucket="amzn-s3-demo-destination-bucket")
-        dynamodb = boto3.resource("dynamodb", region_name="us-east-1")
-        table = dynamodb.create_table(
-            TableName="pharmalabel-projects-test",
-            KeySchema=[{"AttributeName": "projectId", "KeyType": "HASH"}],
-            AttributeDefinitions=[{"AttributeName": "projectId", "AttributeType": "S"}],
-            BillingMode="PAY_PER_REQUEST",
-        )
-        return s3, table
-
-    def _import_handler(self):
-        frontend_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-            "lambda_functions", "frontend_api"
-        )
-        sys.path.insert(0, frontend_path)
-        if "index" in sys.modules:
-            del sys.modules["index"]
-        import index as frontend
-        sys.path.pop(0)
-        return frontend
-
     def test_complete_project_returns_all_fields(self, aws_env):
-        _, table = self._setup(aws_env)
+        _, table = _setup_aws()
         table.put_item(Item={
             "projectId": "proj-1",
+            "ownerSub": USER_A_SUB,
             "status": "complete",
-            "annotatedImageUrl": "https://d123.cloudfront.net/annotated.png",
+            "annotatedKey": "annotated-001.png",
             "complianceReport": "Analysis text",
             "formattedViolations": [{"title": "V1", "severity": "high"}],
             "progress": {"step1": True, "step2": True, "step3": True},
         })
 
-        frontend = self._import_handler()
-        event = {
-            "rawPath": "/check",
-            "requestContext": {"http": {"method": "POST"}},
-            "headers": {},
-            "body": json.dumps({"projectId": "proj-1"}),
-        }
-        result = frontend.lambda_handler(event, None)
-        body = json.loads(result["body"])
+        frontend = _import_handler()
+        status, body = _call(frontend, "/check", {"projectId": "proj-1"})
+        assert status == 200
         assert body["status"] == "completed"
-        assert body["annotatedImageUrl"] == "https://d123.cloudfront.net/annotated.png"
+        url = urlparse(body["annotatedImageUrl"])
+        assert "amzn-s3-demo-destination-bucket" in url.netloc + url.path
+        assert url.path.endswith("/annotated-001.png")
+        query = parse_qs(url.query)
+        assert query["X-Amz-Expires"] == ["3600"]
+        assert "X-Amz-Signature" in query
         assert len(body["violations"]) == 1
+
+
+RESULTS = "amzn-s3-demo-destination-bucket"
+INCOMING = "amzn-s3-demo-source-bucket"
+
+
+@mock_aws
+class TestProjectDeleteCleanup:
+    """Deleting a project removes its uploads and results, and nothing else."""
+
+    def _seed(self, s3, table):
+        # User A's project with two evaluations (one written before keys were stored).
+        table.put_item(Item={
+            "projectId": "proj-a", "ownerSub": USER_A_SUB, "status": "complete",
+            "annotatedKey": "annotated-a2.png", "reportKey": "compliance-report-a2.json",
+            "validationKey": "validation-a2.json", "imageKey": "labels/US_FDA/proj-a/2_label.png",
+            "evaluations": [
+                {"id": "2", "annotatedKey": "annotated-a2.png", "imageKey": "labels/US_FDA/proj-a/2_label.png",
+                 "artifactKeys": ["annotated-a2.png", "annotated-a2-rejected.png", "compliance-report-a2.json",
+                                  "validation-a2.json", "completion-a2.json"]},
+                {"id": "1", "annotatedImageUrl": "https://d123.cloudfront.net/annotated-a1.png",
+                 "imageKey": "labels/US_FDA/1_old_layout.png"},
+            ],
+        })
+        for key in ["annotated-a2.png", "annotated-a2-rejected.png", "compliance-report-a2.json",
+                    "validation-a2.json", "completion-a2.json", "annotated-a1.png",
+                    "annotated-b1.png", "compliance-report-b1.json"]:  # last two belong to user B
+            s3.put_object(Bucket=RESULTS, Key=key, Body=b"x")
+        # Uploads: new layout under A's prefix, a legacy upload tagged for A, one tagged for B.
+        s3.put_object(Bucket=INCOMING, Key="labels/US_FDA/proj-a/2_label.png", Body=b"x")
+        s3.put_object(Bucket=INCOMING, Key="labels/UK_MHRA/proj-a/3_retry.png", Body=b"x")
+        s3.put_object(Bucket=INCOMING, Key="labels/US_FDA/1_old_layout.png", Body=b"x",
+                      Tagging="regulatory_region=US_FDA&project_id=proj-a")
+        s3.put_object(Bucket=INCOMING, Key="labels/US_FDA/1_b_label.png", Body=b"x",
+                      Tagging="regulatory_region=US_FDA&project_id=proj-b")
+        s3.put_object(Bucket=INCOMING, Key="labels/US_FDA/proj-ab/1_label.png", Body=b"x")
+
+    @staticmethod
+    def _keys(s3, bucket):
+        return sorted(o["Key"] for o in s3.list_objects_v2(Bucket=bucket).get("Contents", []))
+
+    def test_delete_removes_only_the_projects_objects(self, aws_env):
+        s3, table = _setup_aws()
+        self._seed(s3, table)
+        frontend = _import_handler()
+
+        status, _ = _call(frontend, "/projects/delete", {"id": "proj-a"})
+        assert status == 200
+
+        assert self._keys(s3, RESULTS) == ["annotated-b1.png", "compliance-report-b1.json"]
+        assert self._keys(s3, INCOMING) == ["labels/US_FDA/1_b_label.png", "labels/US_FDA/proj-ab/1_label.png"]
+
+    def test_other_user_delete_leaves_objects(self, aws_env):
+        s3, table = _setup_aws()
+        self._seed(s3, table)
+        frontend = _import_handler()
+        before = (self._keys(s3, RESULTS), self._keys(s3, INCOMING))
+
+        status, _ = _call(frontend, "/projects/delete", {"id": "proj-a"}, sub=USER_B_SUB)
+        assert status == 404
+        assert (self._keys(s3, RESULTS), self._keys(s3, INCOMING)) == before
+
+    def test_forged_keys_in_save_cannot_target_other_objects(self, aws_env):
+        """B saves its own project pointing at A's objects; nothing of A's is exposed or deleted."""
+        s3, table = _setup_aws()
+        self._seed(s3, table)
+        frontend = _import_handler()
+
+        _call(frontend, "/projects/save", {"project": {
+            "id": "proj-b", "name": "B",
+            "annotatedKey": "annotated-a2.png", "imageKey": "labels/US_FDA/proj-a/2_label.png",
+        }}, sub=USER_B_SUB)
+        _, items = _call(frontend, "/projects/list", sub=USER_B_SUB)
+        assert "annotatedImageUrl" not in items[0]
+
+        _call(frontend, "/projects/delete", {"id": "proj-b"}, sub=USER_B_SUB)
+        assert "annotated-a2.png" in self._keys(s3, RESULTS)
+        assert "labels/US_FDA/proj-a/2_label.png" in self._keys(s3, INCOMING)
+
+
+@mock_aws
+class TestTenantIsolation:
+    """User B attempts every project operation against user A's project."""
+
+    def _seed_user_a_project(self, frontend, table):
+        status, _ = _call(frontend, "/projects/save", {
+            "project": {"id": "proj-a", "name": "A's label", "region": "US_FDA"}
+        }, sub=USER_A_SUB)
+        assert status == 200
+        # Simulate the pipeline having finished for A's project.
+        table.update_item(
+            Key={"projectId": "proj-a"},
+            UpdateExpression="SET #s = :s, complianceReport = :r, annotatedImageUrl = :u",
+            ExpressionAttributeNames={"#s": "status"},
+            ExpressionAttributeValues={
+                ":s": "complete",
+                ":r": "CONFIDENTIAL REPORT FOR A",
+                ":u": "https://d123.cloudfront.net/a.png",
+            },
+        )
+
+    def test_list_only_returns_callers_projects(self, aws_env):
+        _, table = _setup_aws()
+        frontend = _import_handler()
+        self._seed_user_a_project(frontend, table)
+        _call(frontend, "/projects/save", {"project": {"id": "proj-b", "name": "B's label"}}, sub=USER_B_SUB)
+
+        _, a_items = _call(frontend, "/projects/list", sub=USER_A_SUB)
+        _, b_items = _call(frontend, "/projects/list", sub=USER_B_SUB)
+        assert [p["projectId"] for p in a_items] == ["proj-a"]
+        assert [p["projectId"] for p in b_items] == ["proj-b"]
+
+    def test_other_user_cannot_read_results(self, aws_env):
+        _, table = _setup_aws()
+        frontend = _import_handler()
+        self._seed_user_a_project(frontend, table)
+
+        status, body = _call(frontend, "/check", {"projectId": "proj-a"}, sub=USER_B_SUB)
+        assert status == 404
+        assert "CONFIDENTIAL" not in json.dumps(body)
+
+    def test_other_user_cannot_modify(self, aws_env):
+        _, table = _setup_aws()
+        frontend = _import_handler()
+        self._seed_user_a_project(frontend, table)
+
+        status, _ = _call(frontend, "/projects/save", {
+            "project": {"id": "proj-a", "name": "Tampered", "status": "complete", "complianceScore": 100}
+        }, sub=USER_B_SUB)
+        assert status == 404
+
+        item = table.get_item(Key={"projectId": "proj-a"})["Item"]
+        assert item["name"] == "A's label"
+        assert item["ownerSub"] == USER_A_SUB
+        assert "complianceScore" not in item
+
+    def test_other_user_cannot_take_ownership(self, aws_env):
+        _, table = _setup_aws()
+        frontend = _import_handler()
+        self._seed_user_a_project(frontend, table)
+
+        # Write attempt that also tries to set the owner field.
+        status, _ = _call(frontend, "/projects/save", {
+            "project": {"id": "proj-a", "name": "Mine now", "ownerSub": USER_B_SUB}
+        }, sub=USER_B_SUB)
+        assert status == 404
+
+        # Owner field alone is ignored, so nothing is written.
+        _call(frontend, "/projects/save", {
+            "project": {"id": "proj-a", "ownerSub": USER_B_SUB}
+        }, sub=USER_B_SUB)
+
+        item = table.get_item(Key={"projectId": "proj-a"})["Item"]
+        assert item["ownerSub"] == USER_A_SUB
+        assert item["name"] == "A's label"
+
+    def test_other_user_cannot_delete(self, aws_env):
+        _, table = _setup_aws()
+        frontend = _import_handler()
+        self._seed_user_a_project(frontend, table)
+
+        status, _ = _call(frontend, "/projects/delete", {"id": "proj-a"}, sub=USER_B_SUB)
+        assert status == 404
+        assert "Item" in table.get_item(Key={"projectId": "proj-a"})
+
+    def test_other_user_cannot_upload_into_project(self, aws_env):
+        _, table = _setup_aws()
+        frontend = _import_handler()
+        self._seed_user_a_project(frontend, table)
+
+        status, body = _call(frontend, "/upload", {
+            "filename": "label.png", "contentType": "image/png", "projectId": "proj-a"
+        }, sub=USER_B_SUB)
+        assert status == 404
+        assert "uploadUrl" not in body
+
+    def test_owner_still_has_full_access(self, aws_env):
+        _, table = _setup_aws()
+        frontend = _import_handler()
+        self._seed_user_a_project(frontend, table)
+
+        status, body = _call(frontend, "/check", {"projectId": "proj-a"}, sub=USER_A_SUB)
+        assert status == 200
+        assert body["complianceReport"] == "CONFIDENTIAL REPORT FOR A"
+        assert _call(frontend, "/projects/save", {"project": {"id": "proj-a", "name": "Renamed"}})[0] == 200
+        assert _call(frontend, "/projects/delete", {"id": "proj-a"})[0] == 200
+
+    def test_deleting_missing_project_returns_404(self, aws_env):
+        _setup_aws()
+        frontend = _import_handler()
+        status, _ = _call(frontend, "/projects/delete", {"id": "never-existed"})
+        assert status == 404
+
+    def test_legacy_records_without_owner_are_hidden_and_locked(self, aws_env):
+        """Records created before ownership was added are not visible to or claimable by anyone."""
+        _, table = _setup_aws()
+        table.put_item(Item={"projectId": "legacy", "name": "Old", "status": "complete"})
+        frontend = _import_handler()
+
+        _, items = _call(frontend, "/projects/list")
+        assert items == []
+        assert _call(frontend, "/check", {"projectId": "legacy"})[0] == 404
+        assert _call(frontend, "/projects/save", {"project": {"id": "legacy", "name": "Mine now"}})[0] == 404
+        assert _call(frontend, "/projects/delete", {"id": "legacy"})[0] == 404
+        assert "ownerSub" not in table.get_item(Key={"projectId": "legacy"})["Item"]

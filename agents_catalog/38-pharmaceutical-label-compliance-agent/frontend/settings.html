@@ -21,14 +21,14 @@
           <span class="breadcrumb-separator">/</span>
           <span class="breadcrumb-current">Settings</span>
         </div>
-        <button class="btn-secondary" onclick="signOut()" aria-label="Sign out" style="margin-left:auto;">Sign Out</button>
+        <button class="btn-secondary" data-click="signOut" aria-label="Sign out" style="margin-left:auto;">Sign Out</button>
       </div>
     </header>
 
     <main class="main-content" role="main">
       <div class="settings-tabs">
-        <button class="settings-tab active" data-tab="profile" onclick="Settings.switchTab('profile')">Profile</button>
-        <button class="settings-tab" data-tab="documents" onclick="Settings.switchTab('documents')">Knowledge Base Documents</button>
+        <button class="settings-tab active" data-tab="profile" data-click="switchTab">Profile</button>
+        <button class="settings-tab" data-tab="documents" data-click="switchTab">Knowledge Base Documents</button>
       </div>
 
       <!-- Profile Tab -->
@@ -40,7 +40,7 @@
               <p>Manage your account information</p>
             </div>
           </div>
-          <form id="profileForm" onsubmit="Settings.saveProfile(event)">
+          <form id="profileForm" data-submit="saveProfile">
             <div class="settings-form-grid">
               <div class="form-group">
                 <label for="settingsName">Full Name</label>
@@ -81,11 +81,11 @@
 
   <!-- Upload Document Modal -->
   <div id="uploadDocModal" class="modal">
-    <div class="modal-overlay" onclick="Settings.closeUploadModal()"></div>
+    <div class="modal-overlay" data-click="closeUploadModal"></div>
     <div class="modal-content">
       <div class="modal-header">
         <h3>Upload Document</h3>
-        <button class="modal-close" onclick="Settings.closeUploadModal()" aria-label="Close">
+        <button class="modal-close" data-click="closeUploadModal" aria-label="Close">
           <svg width="24" height="24" viewBox="0 0 20 20" fill="currentColor">
             <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"/>
           </svg>
@@ -114,8 +114,8 @@
         </div>
       </div>
       <div class="modal-actions">
-        <button type="button" class="btn-secondary" onclick="Settings.closeUploadModal()">Cancel</button>
-        <button type="button" class="btn-primary" id="docUploadBtn" onclick="Settings.confirmUpload()" disabled>Upload</button>
+        <button type="button" class="btn-secondary" data-click="closeUploadModal">Cancel</button>
+        <button type="button" class="btn-primary" id="docUploadBtn" data-click="confirmUpload" disabled>Upload</button>
       </div>
     </div>
   </div>
@@ -124,8 +124,9 @@
     <p><strong>Disclaimer:</strong> This is a demonstration tool that uses generative AI to produce automated, informational analysis of medicine label images. Its output is <strong>not legal, regulatory, medical, or professional advice</strong>, may be incomplete or inaccurate, and does not guarantee compliance with the US FDA, UK MHRA, or any other authority. Always consult qualified regulatory and legal professionals and the official source regulations before making any labeling or compliance decisions.</p>
   </footer>
 
-  <script src="config.js?v=6"></script>
-  <script src="auth.js?v=6"></script>
-  <script src="settings.js?v=6"></script>
+  <script src="config.js?v=7"></script>
+  <script src="auth.js?v=7"></script>
+  <script src="actions.js?v=7"></script>
+  <script src="settings.js?v=7"></script>
 </body>
 </html>

@@ -80,13 +80,13 @@
             </div>
             
             <div class="confirmation-actions">
-              <button class="btn-cancel" onclick="cancelAnalysis()" aria-label="Cancel analysis">
+              <button class="btn-cancel" data-click="cancelAnalysis" aria-label="Cancel analysis">
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
                   <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"/>
                 </svg>
                 Cancel
               </button>
-              <button class="btn-confirm" onclick="confirmAnalysis()" aria-label="Start compliance analysis">
+              <button class="btn-confirm" data-click="confirmAnalysis" aria-label="Start compliance analysis">
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
                   <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/>
                 </svg>
@@ -177,7 +177,7 @@
 
         <!-- Re-upload Button -->
         <div class="reupload-section">
-          <button class="btn-reupload" onclick="showReupload()" aria-label="Re-upload medicine label">
+          <button class="btn-reupload" data-click="showReupload" aria-label="Re-upload medicine label">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
             </svg>
@@ -230,12 +230,12 @@
                 Annotated Label
               </h3>
               <div class="panel-actions">
-                <button class="action-btn" onclick="downloadImage()" title="Download" aria-label="Download annotated image">
+                <button class="action-btn" data-click="downloadImage" title="Download" aria-label="Download annotated image">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
                   </svg>
                 </button>
-                <button class="action-btn" onclick="toggleFullscreen()" title="Fullscreen" aria-label="Toggle fullscreen view">
+                <button class="action-btn" data-click="toggleFullscreen" title="Fullscreen" aria-label="Toggle fullscreen view">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/>
                   </svg>
@@ -272,12 +272,13 @@
     <p><strong>Disclaimer:</strong> This is a demonstration tool that uses generative AI to produce automated, informational analysis of medicine label images. Its output is <strong>not legal, regulatory, medical, or professional advice</strong>, may be incomplete or inaccurate, and does not guarantee compliance with the US FDA, UK MHRA, or any other authority. Always consult qualified regulatory and legal professionals and the official source regulations before making any labeling or compliance decisions.</p>
   </footer>
 
-  <script src="config.js?v=6"></script>
-  <script src="auth.js?v=6"></script>
-  <script src="db.js?v=6"></script>
-  <script src="regulatory-info.js?v=6"></script>
-  <script src="checklist.js?v=6"></script>
-  <script src="comparison.js?v=6"></script>
-  <script src="project.js?v=6"></script>
+  <script src="config.js?v=7"></script>
+  <script src="auth.js?v=7"></script>
+  <script src="actions.js?v=7"></script>
+  <script src="db.js?v=7"></script>
+  <script src="regulatory-info.js?v=7"></script>
+  <script src="checklist.js?v=7"></script>
+  <script src="comparison.js?v=7"></script>
+  <script src="project.js?v=7"></script>
 </body>
 </html>

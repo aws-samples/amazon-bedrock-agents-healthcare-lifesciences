@@ -26,7 +26,7 @@
           </div>
         </div>
         <div class="header-actions">
-          <button class="btn-create" onclick="openCreateModal()" aria-label="New Analysis">
+          <button class="btn-create" data-click="openCreateModal" aria-label="New Analysis">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
               <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/>
             </svg>
@@ -109,17 +109,17 @@
 
   <!-- Create Modal -->
   <div id="createModal" class="modal">
-    <div class="modal-overlay" onclick="closeCreateModal()"></div>
+    <div class="modal-overlay" data-click="closeCreateModal"></div>
     <div class="modal-content">
       <div class="modal-header">
         <h3>Create New Project</h3>
-        <button class="modal-close" onclick="closeCreateModal()" aria-label="Close modal">
+        <button class="modal-close" data-click="closeCreateModal" aria-label="Close modal">
           <svg width="24" height="24" viewBox="0 0 20 20" fill="currentColor">
             <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"/>
           </svg>
         </button>
       </div>
-      <form onsubmit="createProject(event)">
+      <form data-submit="createProject">
         <div class="form-group">
           <label>Project Name</label>
           <input type="text" id="projectName" required placeholder="e.g., Label Review Q1 2026" aria-label="Project name">
@@ -136,7 +136,7 @@
           <textarea id="projectDescription" rows="3" placeholder="Brief description of this compliance analysis" aria-label="Project description"></textarea>
         </div>
         <div class="modal-actions">
-          <button type="button" class="btn-secondary" onclick="closeCreateModal()">Cancel</button>
+          <button type="button" class="btn-secondary" data-click="closeCreateModal">Cancel</button>
           <button type="submit" class="btn-primary">Create Project</button>
         </div>
       </form>
@@ -147,9 +147,10 @@
     <p><strong>Disclaimer:</strong> This is a demonstration tool that uses generative AI to produce automated, informational analysis of medicine label images. Its output is <strong>not legal, regulatory, medical, or professional advice</strong>, may be incomplete or inaccurate, and does not guarantee compliance with the US FDA, UK MHRA, or any other authority. Always consult qualified regulatory and legal professionals and the official source regulations before making any labeling or compliance decisions.</p>
   </footer>
 
-  <script src="config.js?v=6"></script>
-  <script src="auth.js?v=6"></script>
-  <script src="db.js?v=6"></script>
-  <script src="app.js?v=6"></script>
+  <script src="config.js?v=7"></script>
+  <script src="auth.js?v=7"></script>
+  <script src="actions.js?v=7"></script>
+  <script src="db.js?v=7"></script>
+  <script src="app.js?v=7"></script>
 </body>
 </html>

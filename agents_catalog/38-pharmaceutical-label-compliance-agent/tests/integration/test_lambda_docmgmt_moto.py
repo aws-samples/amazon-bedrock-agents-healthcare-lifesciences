@@ -7,6 +7,8 @@ import pytest
 from moto import mock_aws
 import boto3
 
+from tests.conftest import KB_ADMIN_GROUP, USER_A_SUB, make_apigw_event
+
 
 @pytest.fixture
 def aws_env(monkeypatch):
@@ -43,13 +45,9 @@ class TestDocumentLifecycle:
         sys.path.pop(0)
         return docmgmt
 
-    def _make_event(self, path, body=None):
-        return {
-            "rawPath": path,
-            "requestContext": {"http": {"method": "POST"}},
-            "headers": {},
-            "body": json.dumps(body or {}),
-        }
+    def _make_event(self, path, body=None, groups=(KB_ADMIN_GROUP,)):
+        # Defaults to a knowledge base administrator; pass groups=() for a regular user.
+        return make_apigw_event(path, body=body or {}, sub=USER_A_SUB, groups=list(groups))
 
     def test_list_returns_seeded_documents(self, aws_env):
         self._setup_aws()
@@ -133,3 +131,55 @@ class TestDocumentLifecycle:
             "region": "US_FDA",
         }), None)
         assert result["statusCode"] == 404
+
+    # --- Regular (non-admin) users cannot change the shared knowledge base --- #
+
+    def test_regular_user_cannot_delete_document(self, aws_env):
+        s3 = self._setup_aws()
+        docmgmt = self._import_handler()
+
+        result = docmgmt.lambda_handler(self._make_event("/documents/delete", {
+            "key": "US_FDA/existing_doc.pdf",
+            "region": "US_FDA",
+        }, groups=()), None)
+        assert result["statusCode"] == 403
+
+        # Document is still in the bucket.
+        s3.head_object(Bucket="amzn-s3-demo-bucket2", Key="US_FDA/existing_doc.pdf")
+
+    def test_regular_user_cannot_get_upload_url(self, aws_env):
+        self._setup_aws()
+        docmgmt = self._import_handler()
+
+        result = docmgmt.lambda_handler(self._make_event("/documents/upload", {
+            "region": "US_FDA",
+            "filename": "poisoned_regulation.pdf",
+            "contentType": "application/pdf",
+        }, groups=()), None)
+        assert result["statusCode"] == 403
+        assert "uploadUrl" not in json.loads(result["body"])
+
+    def test_regular_user_cannot_sync(self, aws_env):
+        self._setup_aws()
+        docmgmt = self._import_handler()
+
+        result = docmgmt.lambda_handler(
+            self._make_event("/documents/sync", {"region": "US_FDA"}, groups=()), None
+        )
+        assert result["statusCode"] == 403
+
+    def test_regular_user_can_list_and_download(self, aws_env):
+        self._setup_aws()
+        docmgmt = self._import_handler()
+
+        listed = docmgmt.lambda_handler(
+            self._make_event("/documents/list", {"region": "US_FDA"}, groups=()), None
+        )
+        assert listed["statusCode"] == 200
+        assert len(json.loads(listed["body"])["US_FDA"]["documents"]) == 1
+
+        downloaded = docmgmt.lambda_handler(self._make_event("/documents/download", {
+            "key": "US_FDA/existing_doc.pdf",
+            "region": "US_FDA",
+        }, groups=()), None)
+        assert downloaded["statusCode"] == 200
