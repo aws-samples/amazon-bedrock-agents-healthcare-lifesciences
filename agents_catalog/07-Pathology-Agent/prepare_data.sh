@@ -31,17 +31,22 @@ fi
 
 echo "Using bucket: $TARGET_BUCKET"
 
-# Check if the bucket exists
-if aws s3 ls "s3://$TARGET_BUCKET" --profile "$AWS_PROFILE" 2>&1 | grep -q 'NoSuchBucket'
+# Check the bucket exists and is owned by this account. The default bucket name is
+# predictable, so another account could create it first. Never upload code
+# artifacts to a bucket this account does not own.
+if [ -z "$ACCOUNT_ID" ]; then
+    ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text --profile "$AWS_PROFILE")
+fi
+if HEAD_ERR=$(aws s3api head-bucket --bucket "$TARGET_BUCKET" --expected-bucket-owner "$ACCOUNT_ID" --profile "$AWS_PROFILE" 2>&1 >/dev/null)
+then
+    echo "Bucket $TARGET_BUCKET already exists and is owned by account $ACCOUNT_ID"
+elif echo "$HEAD_ERR" | grep -q "(404)"
 then
     echo "Bucket does not exist. Creating bucket $TARGET_BUCKET"
-    
+
     # Create the bucket
     # Note: By default, this creates the bucket in the default region configured in your AWS CLI
-    aws s3 mb "s3://$TARGET_BUCKET" --profile "$AWS_PROFILE" 
-    
-    # Check if bucket creation was successful
-    if [ $? -eq 0 ]
+    if aws s3 mb "s3://$TARGET_BUCKET" --profile "$AWS_PROFILE"
     then
         echo "Bucket created successfully"
     else
@@ -49,7 +54,9 @@ then
         exit 1
     fi
 else
-    echo "Bucket $TARGET_BUCKET already exists"
+    echo "Error: bucket $TARGET_BUCKET exists but is not owned by account $ACCOUNT_ID, or cannot be checked: $HEAD_ERR"
+    echo "Refusing to upload artifacts to it. Choose a different bucket name."
+    exit 1
 fi
 
 # Array of file IDs to download from TCGA

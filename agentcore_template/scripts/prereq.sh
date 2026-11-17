@@ -16,18 +16,23 @@ ZIP_FILE="lambda.zip"
 LAMBDA_SRC="prerequisite/lambda/python"
 S3_KEY="${ZIP_FILE}"
 
-# ----- 1. Create S3 bucket -----
-echo "🪣 Using S3 bucket: $FULL_BUCKET_NAME"
-if [ "$REGION" = "us-east-1" ]; then
-  aws s3api create-bucket \
-    --bucket "$FULL_BUCKET_NAME" \
-    2>/dev/null || echo "ℹ️ Bucket may already exist or be owned by you."
+# ----- 1. Ensure S3 bucket exists and is owned by this account -----
+# The bucket name is predictable, so another account could create it first.
+# Never upload Lambda code to a bucket this account does not own.
+echo "🪣 Ensuring S3 bucket: $FULL_BUCKET_NAME"
+if head_err=$(aws s3api head-bucket --bucket "$FULL_BUCKET_NAME" \
+      --expected-bucket-owner "$ACCOUNT_ID" --region "$REGION" 2>&1 >/dev/null); then
+  echo "ℹ Bucket exists and is owned by account $ACCOUNT_ID."
+elif echo "$head_err" | grep -q "(404)"; then
+  # If another account creates the name first, mb fails and set -e stops the script.
+  aws s3 mb "s3://$FULL_BUCKET_NAME" --region "$REGION"
+  aws s3api wait bucket-exists --bucket "$FULL_BUCKET_NAME" \
+    --expected-bucket-owner "$ACCOUNT_ID" --region "$REGION"
 else
-  aws s3api create-bucket \
-    --bucket "$FULL_BUCKET_NAME" \
-    --region "$REGION" \
-    --create-bucket-configuration LocationConstraint="$REGION" \
-    2>/dev/null || echo "ℹ️ Bucket may already exist or be owned by you."
+  echo "❌ Bucket $FULL_BUCKET_NAME exists but is not owned by account $ACCOUNT_ID," >&2
+  echo "   or cannot be checked: $head_err" >&2
+  echo "   Refusing to upload Lambda code. Re-run with a different bucket name." >&2
+  exit 1
 fi
 
 # ----- 2. Zip Lambda code -----
@@ -37,8 +42,10 @@ zip -r "../../../$ZIP_FILE" . > /dev/null
 cd - > /dev/null
 
 # ----- 3. Upload to S3 -----
-echo "☁️ Uploading $ZIP_FILE to s3://$FULL_BUCKET_NAME/$S3_KEY..."
-aws s3 cp "$ZIP_FILE" "s3://$FULL_BUCKET_NAME/$S3_KEY"
+# s3api put-object checks the bucket owner on the write (aws s3 cp cannot).
+echo "☁ Uploading $ZIP_FILE to s3://$FULL_BUCKET_NAME/$S3_KEY..."
+aws s3api put-object --bucket "$FULL_BUCKET_NAME" --key "$S3_KEY" --body "$ZIP_FILE" \
+  --expected-bucket-owner "$ACCOUNT_ID" --region "$REGION" >/dev/null
 
 # ----- 4. Deploy CloudFormation -----
 deploy_stack() {

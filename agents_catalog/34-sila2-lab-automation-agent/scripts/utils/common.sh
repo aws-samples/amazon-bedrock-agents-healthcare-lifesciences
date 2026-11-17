@@ -64,15 +64,26 @@ package_custom_resource() {
   cd "${original_dir}" || exit 1
 }
 
-# Create S3 bucket
+# Create S3 bucket, or confirm an existing one is owned by this account.
+# The bucket name is predictable, so another account could create it first.
+# Exits the script rather than upload code to a bucket this account does not own.
 create_deployment_bucket() {
   local bucket=$1
-  
-  if aws s3 ls "s3://${bucket}" 2>/dev/null; then
-    echo "Bucket ${bucket} already exists"
-  else
+  local head_err
+
+  if head_err=$(aws s3api head-bucket --bucket "${bucket}" \
+        --expected-bucket-owner "${ACCOUNT_ID}" --region "${DEFAULT_REGION}" 2>&1 >/dev/null); then
+    echo "Bucket ${bucket} already exists and is owned by account ${ACCOUNT_ID}"
+  elif echo "${head_err}" | grep -q "(404)"; then
     echo "Creating bucket ${bucket}..."
-    aws s3 mb "s3://${bucket}" --region "${DEFAULT_REGION}"
+    aws s3 mb "s3://${bucket}" --region "${DEFAULT_REGION}" || exit 1
+    aws s3api wait bucket-exists --bucket "${bucket}" \
+      --expected-bucket-owner "${ACCOUNT_ID}" --region "${DEFAULT_REGION}" || exit 1
+  else
+    echo "Error: bucket ${bucket} exists but is not owned by account ${ACCOUNT_ID}," >&2
+    echo "  or cannot be checked: ${head_err}" >&2
+    echo "  Refusing to upload deployment artifacts to it." >&2
+    exit 1
   fi
 }
 

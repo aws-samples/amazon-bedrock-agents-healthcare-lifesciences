@@ -58,11 +58,25 @@ else
   echo "✅ Schema files already present ($(ls "$SCHEMA_DIR" | wc -l | tr -d ' ') files)"
 fi
 
-# ----- 1. Create S3 bucket -----
+# ----- 1. Ensure S3 bucket exists and is owned by this account -----
+# The bucket name is predictable, so another account could create it first.
+# Never upload Lambda code to a bucket this account does not own.
 echo ""
-echo "🪣 Creating S3 bucket: $FULL_BUCKET_NAME"
-aws s3 mb "s3://$FULL_BUCKET_NAME" --region "$REGION" 2>/dev/null || \
-  echo "  Bucket already exists."
+echo "🪣 Ensuring S3 bucket: $FULL_BUCKET_NAME"
+if head_err=$(aws s3api head-bucket --bucket "$FULL_BUCKET_NAME" \
+      --expected-bucket-owner "$ACCOUNT_ID" --region "$REGION" 2>&1 >/dev/null); then
+  echo "  Bucket exists and is owned by account $ACCOUNT_ID."
+elif echo "$head_err" | grep -q "(404)"; then
+  # If another account creates the name first, mb fails and set -e stops the script.
+  aws s3 mb "s3://$FULL_BUCKET_NAME" --region "$REGION"
+  aws s3api wait bucket-exists --bucket "$FULL_BUCKET_NAME" \
+    --expected-bucket-owner "$ACCOUNT_ID" --region "$REGION"
+else
+  echo "❌ Bucket $FULL_BUCKET_NAME exists but is not owned by account $ACCOUNT_ID," >&2
+  echo "   or cannot be checked: $head_err" >&2
+  echo "   Refusing to upload Lambda code. Re-run with a different APP_NAME." >&2
+  exit 1
+fi
 
 # ----- 2. Build Lambda packages -----
 echo ""
@@ -89,10 +103,16 @@ LIT_API_S3_KEY="api-specs/literature-api-spec.json"
 # ----- 3. Upload to S3 -----
 echo ""
 echo "☁️  Uploading to S3..."
-aws s3 cp "$DB_ZIP_FILE" "s3://$FULL_BUCKET_NAME/$DB_S3_KEY"
-aws s3 cp "$LIT_ZIP_FILE" "s3://$FULL_BUCKET_NAME/$LIT_S3_KEY"
-aws s3 cp "$DB_API_SPEC_FILE" "s3://$FULL_BUCKET_NAME/$DB_API_S3_KEY"
-aws s3 cp "$LIT_API_SPEC_FILE" "s3://$FULL_BUCKET_NAME/$LIT_API_S3_KEY"
+# s3api put-object checks the bucket owner on every write (aws s3 cp cannot).
+upload() {
+  echo "  $1 -> s3://$FULL_BUCKET_NAME/$2"
+  aws s3api put-object --bucket "$FULL_BUCKET_NAME" --key "$2" --body "$1" \
+    --expected-bucket-owner "$ACCOUNT_ID" --region "$REGION" >/dev/null
+}
+upload "$DB_ZIP_FILE" "$DB_S3_KEY"
+upload "$LIT_ZIP_FILE" "$LIT_S3_KEY"
+upload "$DB_API_SPEC_FILE" "$DB_API_S3_KEY"
+upload "$LIT_API_SPEC_FILE" "$LIT_API_S3_KEY"
 echo "✅ Uploaded all artifacts"
 
 # ----- 4. Deploy CloudFormation stacks -----
