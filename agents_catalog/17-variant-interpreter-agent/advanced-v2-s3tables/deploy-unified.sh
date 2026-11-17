@@ -49,6 +49,24 @@ print_error() { echo -e "${RED}✗ $1${NC}"; }
 print_info() { echo -e "${BLUE}ℹ $1${NC}"; }
 print_warning() { echo -e "${YELLOW}⚠ $1${NC}"; }
 
+# Returns 0 if the bucket exists and this account owns it, 1 if it does not exist.
+# Exits if the bucket exists under another account or cannot be checked. The bucket
+# names below are predictable, so another account could create them first.
+check_bucket_owner() {
+    local bucket=$1
+    local account=${AWS_ACCOUNT_ID:-$(aws sts get-caller-identity --query Account --output text)}
+    local head_err
+    if head_err=$(aws s3api head-bucket --bucket "${bucket}" \
+            --expected-bucket-owner "${account}" --region "${AWS_REGION}" 2>&1 >/dev/null); then
+        return 0
+    elif echo "${head_err}" | grep -q "(404)"; then
+        return 1
+    fi
+    print_error "Bucket ${bucket} exists but is not owned by account ${account}, or cannot be checked: ${head_err}"
+    print_error "Refusing to upload data to it."
+    exit 1
+}
+
 # ============================================================================
 # Prerequisites Check
 # ============================================================================
@@ -170,7 +188,7 @@ setup_vep_cache() {
 
     # Create S3 bucket for VEP cache
     print_info "Creating S3 bucket: ${VEP_CACHE_BUCKET}"
-    if aws s3 ls "s3://${VEP_CACHE_BUCKET}" 2>&1 | grep -q 'NoSuchBucket'; then
+    if ! check_bucket_owner "${VEP_CACHE_BUCKET}"; then
         aws s3 mb "s3://${VEP_CACHE_BUCKET}" --region ${AWS_REGION}
 
         # Enable versioning
@@ -277,7 +295,7 @@ setup_clinvar_data() {
 
     # Create S3 bucket for ClinVar
     print_info "Creating S3 bucket: ${CLINVAR_BUCKET}"
-    if aws s3 ls "s3://${CLINVAR_BUCKET}" 2>&1 | grep -q 'NoSuchBucket'; then
+    if ! check_bucket_owner "${CLINVAR_BUCKET}"; then
         aws s3 mb "s3://${CLINVAR_BUCKET}" --region ${AWS_REGION}
 
         # Enable versioning
@@ -371,7 +389,7 @@ setup_reference_store() {
     # Create temporary bucket for reference import
     TEMP_REF_BUCKET="genomics-ref-temp-${AWS_ACCOUNT_ID}-${AWS_REGION}"
     print_info "Creating temporary S3 bucket for reference import: ${TEMP_REF_BUCKET}"
-    if aws s3 ls "s3://${TEMP_REF_BUCKET}" 2>&1 | grep -q 'NoSuchBucket'; then
+    if ! check_bucket_owner "${TEMP_REF_BUCKET}"; then
         aws s3 mb "s3://${TEMP_REF_BUCKET}" --region ${AWS_REGION}
     fi
 
