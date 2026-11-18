@@ -9,11 +9,11 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@aws-sdk/client-bedrock": "^3.772.0",
-    "@aws-sdk/client-bedrock-agent": "^3.772.0",
-    "@aws-sdk/client-bedrock-agent-runtime": "^3.775.0",
-    "@aws-sdk/client-bedrock-runtime": "^3.772.0",
-    "@aws-sdk/credential-providers": "^3.774.0",
+    "@aws-sdk/client-bedrock": "^3.1171.0",
+    "@aws-sdk/client-bedrock-agent": "^3.1171.0",
+    "@aws-sdk/client-bedrock-agent-runtime": "^3.1171.0",
+    "@aws-sdk/client-bedrock-runtime": "^3.1171.0",
+    "@aws-sdk/credential-providers": "^3.1171.0",
     "aws-cdk": "^2.1006.0",
     "dotenv": "^16.5.0",
     "framer-motion": "^12.5.0",
