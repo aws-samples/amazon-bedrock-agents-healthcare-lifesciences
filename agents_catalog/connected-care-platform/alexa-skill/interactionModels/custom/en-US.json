@@ -1,0 +1,127 @@
+{
+  "interactionModel": {
+    "languageModel": {
+      "invocationName": "connected care",
+      "intents": [
+        {
+          "name": "FallRiskIntent",
+          "slots": [
+            { "name": "room", "type": "RoomNumber" }
+          ],
+          "samples": [
+            "what's the fall risk for room {room}",
+            "fall risk for room {room}",
+            "is room {room} at fall risk",
+            "check fall risk room {room}",
+            "any fall risk in room {room}",
+            "what is the fall risk for {room}",
+            "fall risk {room}"
+          ]
+        },
+        {
+          "name": "PressureRiskIntent",
+          "slots": [
+            { "name": "room", "type": "RoomNumber" }
+          ],
+          "samples": [
+            "when was room {room} last repositioned",
+            "pressure risk for room {room}",
+            "repositioning status for room {room}",
+            "does room {room} need repositioning",
+            "check pressure injury risk for room {room}",
+            "when was {room} last turned",
+            "pressure status {room}"
+          ]
+        },
+        {
+          "name": "PatientStatusIntent",
+          "slots": [
+            { "name": "patient", "type": "PatientName" }
+          ],
+          "samples": [
+            "give me a status on {patient}",
+            "how is {patient} doing",
+            "patient status for {patient}",
+            "what's happening with {patient}",
+            "status report for {patient}",
+            "tell me about {patient}"
+          ]
+        },
+        {
+          "name": "AlertSummaryIntent",
+          "slots": [],
+          "samples": [
+            "any alerts right now",
+            "what alerts do I have",
+            "are there any alerts",
+            "show me current alerts",
+            "any notifications",
+            "what's going on",
+            "anything I should know about"
+          ]
+        },
+        {
+          "name": "FleetStatusIntent",
+          "slots": [],
+          "samples": [
+            "what's the fleet status",
+            "how are the devices doing",
+            "device fleet summary",
+            "any device issues",
+            "fleet health"
+          ]
+        },
+        {
+          "name": "SmartBedStatusIntent",
+          "slots": [
+            { "name": "room", "type": "RoomNumber" }
+          ],
+          "samples": [
+            "smart bed status for room {room}",
+            "what's the bed showing for room {room}",
+            "bed telemetry for {room}",
+            "what does the bed say about room {room}"
+          ]
+        },
+        {
+          "name": "AMAZON.HelpIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.StopIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.CancelIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.FallbackIntent",
+          "samples": []
+        }
+      ],
+      "types": [
+        {
+          "name": "RoomNumber",
+          "values": [
+            { "name": { "value": "ICU-412", "synonyms": ["ICU 412", "412", "I C U 412"] } },
+            { "name": { "value": "Floor3-308", "synonyms": ["Floor 3 308", "308", "three oh eight"] } },
+            { "name": { "value": "Floor2-215", "synonyms": ["Floor 2 215", "215", "two fifteen"] } },
+            { "name": { "value": "Floor1-102", "synonyms": ["Floor 1 102", "102", "one oh two"] } },
+            { "name": { "value": "Floor1-118", "synonyms": ["Floor 1 118", "118", "one eighteen"] } }
+          ]
+        },
+        {
+          "name": "PatientName",
+          "values": [
+            { "name": { "value": "Margaret Chen", "synonyms": ["Margaret", "Chen", "patient Chen"] } },
+            { "name": { "value": "James Rodriguez", "synonyms": ["James", "Rodriguez", "patient Rodriguez"] } },
+            { "name": { "value": "Aisha Patel", "synonyms": ["Aisha", "Patel", "patient Patel", "Ayesha Patel", "Ayesha", "Isha Patel", "Isha"] } },
+            { "name": { "value": "Robert Kim", "synonyms": ["Robert", "Kim", "patient Kim"] } },
+            { "name": { "value": "Linda Okafor", "synonyms": ["Linda", "Okafor", "patient Okafor"] } }
+          ]
+        }
+      ]
+    }
+  }
+}

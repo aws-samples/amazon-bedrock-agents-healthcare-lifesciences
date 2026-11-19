@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connected Care — Voice Test (Nova Sonic)</title>
+  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #0f172a; color: #e2e8f0; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; }
+    h1 { font-size: 1.5em; margin-bottom: 8px; color: #94a3b8; }
+    #status { font-size: 0.9em; color: #64748b; margin-bottom: 24px; }
+    #mic-btn { width: 80px; height: 80px; border-radius: 50%; border: 3px solid #475569; background: transparent; cursor: pointer; font-size: 2em; transition: all 0.2s; }
+    #mic-btn.listening { border-color: #ef4444; background: rgba(239,68,68,0.1); animation: pulse 1.5s ease-in-out infinite; }
+    #mic-btn.speaking { border-color: #10b981; background: rgba(16,185,129,0.1); }
+    @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+    #transcript { margin-top: 24px; max-width: 500px; text-align: center; font-size: 0.95em; line-height: 1.6; min-height: 60px; color: #cbd5e1; }
+    #log { margin-top: 16px; font-size: 0.75em; color: #475569; max-width: 500px; max-height: 200px; overflow-y: auto; }
+  </style>
+</head>
+<body>
+  <h1>Connected Care — Voice Assistant</h1>
+  <div id="status">Click the microphone to start</div>
+  <button id="mic-btn" onclick="toggleMic()">🎤</button>
+  <div id="transcript"></div>
+  <div id="log"></div>
+
+<script>
+const socket = io();
+const statusEl = document.getElementById('status');
+const micBtn = document.getElementById('mic-btn');
+const transcriptEl = document.getElementById('transcript');
+const logEl = document.getElementById('log');
+
+let audioContext, mediaStream, workletNode;
+let isStreaming = false;
+let playbackContext, playbackQueue = [], isPlaying = false;
+
+function log(msg) {
+  console.log(msg);
+  logEl.textContent = msg + '\n' + logEl.textContent;
+}
+
+// Initialize playback context for 24kHz output
+function initPlayback() {
+  if (!playbackContext) {
+    playbackContext = new AudioContext({ sampleRate: 24000 });
+  }
+}
+
+function playAudioChunk(base64Audio) {
+  if (!playbackContext) initPlayback();
+  // Resume context if suspended (autoplay policy)
+  if (playbackContext.state === 'suspended') {
+    playbackContext.resume();
+  }
+  // Decode base64 to raw bytes
+  const binaryString = atob(base64Audio);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  // Interpret as signed 16-bit PCM little-endian
+  const dataView = new DataView(bytes.buffer);
+  const numSamples = bytes.length / 2;
+  const float32 = new Float32Array(numSamples);
+  for (let i = 0; i < numSamples; i++) {
+    float32[i] = dataView.getInt16(i * 2, true) / 32768.0;
+  }
+  const buffer = playbackContext.createBuffer(1, float32.length, 24000);
+  buffer.getChannelData(0).set(float32);
+  playbackQueue.push(buffer);
+  if (!isPlaying) playNext();
+}
+
+function playNext() {
+  if (playbackQueue.length === 0) { isPlaying = false; return; }
+  isPlaying = true;
+  const buffer = playbackQueue.shift();
+  const source = playbackContext.createBufferSource();
+  source.buffer = buffer;
+  source.connect(playbackContext.destination);
+  source.onended = playNext;
+  source.start();
+}
+
+// Socket events
+socket.on('connect', () => log('Connected to server'));
+socket.on('textOutput', (data) => {
+  const text = data?.content || data?.role || JSON.stringify(data);
+  transcriptEl.textContent += text;
+  log('Text: ' + text.substring(0, 80));
+});
+socket.on('audioOutput', (data) => {
+  if (data?.content) {
+    micBtn.className = 'speaking';
+    log('Audio chunk received: ' + data.content.length + ' chars');
+    playAudioChunk(data.content);
+  }
+});
+socket.on('contentStart', (data) => {
+  if (data?.type === 'TEXT' && data?.role === 'ASSISTANT') {
+    transcriptEl.textContent = '';
+  }
+  log('contentStart: ' + (data?.type || ''));
+});
+socket.on('contentEnd', (data) => {
+  log('contentEnd: ' + (data?.type || ''));
+  if (data?.type === 'AUDIO') {
+    micBtn.className = '';
+    statusEl.textContent = 'Click the microphone to speak again';
+  }
+});
+socket.on('audioReady', () => {
+  log('Audio ready — start speaking');
+  statusEl.textContent = 'Listening... click to stop';
+  micBtn.className = 'listening';
+});
+socket.on('sessionClosed', () => {
+  log('Session closed');
+  isStreaming = false;
+  micBtn.className = '';
+  statusEl.textContent = 'Click the microphone to start';
+});
+socket.on('error', (data) => log('Error: ' + JSON.stringify(data)));
+
+async function startStreaming() {
+  initPlayback();
+  audioContext = new AudioContext({ sampleRate: 16000 });
+
+  mediaStream = await navigator.mediaDevices.getUserMedia({
+    audio: { sampleRate: 16000, channelCount: 1, echoCancellation: true, noiseSuppression: true }
+  });
+
+  // Use ScriptProcessorNode for simplicity (AudioWorklet would be better for production)
+  const source = audioContext.createMediaStreamSource(mediaStream);
+  const processor = audioContext.createScriptProcessor(2048, 1, 1);
+
+  processor.onaudioprocess = (e) => {
+    if (!isStreaming) return;
+    const float32 = e.inputBuffer.getChannelData(0);
+    const int16 = new Int16Array(float32.length);
+    for (let i = 0; i < float32.length; i++) {
+      int16[i] = Math.max(-32768, Math.min(32767, Math.round(float32[i] * 32768)));
+    }
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(int16.buffer)));
+    socket.emit('audioInput', base64);
+  };
+
+  source.connect(processor);
+  processor.connect(audioContext.destination);
+
+  // Initialize Nova Sonic session
+  statusEl.textContent = 'Connecting to Nova Sonic...';
+  socket.emit('initializeConnection', (resp) => {
+    if (!resp?.success) { log('Init failed: ' + JSON.stringify(resp)); return; }
+    log('Session initialized');
+    socket.emit('promptStart');
+    socket.emit('systemPrompt');
+    socket.emit('audioStart');
+    isStreaming = true;
+  });
+}
+
+function stopStreaming() {
+  isStreaming = false;
+  if (mediaStream) {
+    mediaStream.getTracks().forEach(t => t.stop());
+    mediaStream = null;
+  }
+  if (audioContext) {
+    audioContext.close();
+    audioContext = null;
+  }
+  socket.emit('stopAudio');
+  micBtn.className = '';
+  statusEl.textContent = 'Stopped. Click to start again.';
+}
+
+function toggleMic() {
+  if (isStreaming) {
+    stopStreaming();
+  } else {
+    startStreaming();
+  }
+}
+</script>
+</body>
+</html>

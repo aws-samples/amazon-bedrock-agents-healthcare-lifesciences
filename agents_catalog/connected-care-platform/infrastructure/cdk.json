@@ -1,0 +1,10 @@
+{
+  "app": "npx ts-node bin/app.ts",
+  "watch": {
+    "include": ["**"],
+    "exclude": ["node_modules", "dist", "cdk.out"]
+  },
+  "context": {
+    "resourcePrefix": "connected-care"
+  }
+}
