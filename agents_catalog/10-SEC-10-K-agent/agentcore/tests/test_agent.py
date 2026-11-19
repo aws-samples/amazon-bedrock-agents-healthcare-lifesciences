@@ -6,7 +6,6 @@ import sys
 from unittest.mock import MagicMock, Mock, patch
 
 import numpy as np
-import pytest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -121,7 +120,7 @@ class TestFindRelevantTags:
 
         with patch.dict(os.environ, {"DESCRIPTIONS_PATH": str(desc_file), "EMBEDDINGS_PATH": str(embed_file)}):
             with patch("os.path.exists", return_value=False):
-                result = find_relevant_tags(query="test")
+                find_relevant_tags(query="test")
 
         assert mock_s3.download_file.call_count == 2
 
@@ -149,8 +148,36 @@ class TestGetCompanyConcept:
         parsed = json.loads(result)
 
         assert parsed["entity_name"] == "AMAZON.COM, INC."
-        assert parsed["unit"] == "USD"
-        assert len(parsed["data"]) == 2  # Only 10-K with frame
+        assert len(parsed["units"]) == 1
+        assert parsed["units"][0]["unit"] == "USD"
+        assert len(parsed["units"][0]["data"]) == 2  # Only 10-K with frame
+
+    @patch("agent.agent_config.agent._get_cik")
+    @patch("agent.agent_config.agent.EdgarClient")
+    def test_returns_all_units(self, mock_edgar_cls, mock_get_cik):
+        mock_get_cik.return_value = {"cik_str": "1018724", "ticker": "AMZN", "title": "AMAZON COM INC"}
+        mock_edgar = MagicMock()
+        mock_edgar.get_company_concept.return_value = {
+            "entityName": "AMAZON.COM, INC.",
+            "label": "Revenues",
+            "units": {
+                "USD": [
+                    {"end": "2023-12-31", "val": 1000000, "form": "10-K", "frame": "CY2023"},
+                ],
+                "EUR": [
+                    {"end": "2023-12-31", "val": 920000, "form": "10-K", "frame": "CY2023"},
+                ],
+            },
+        }
+        mock_edgar_cls.return_value = mock_edgar
+
+        result = get_company_concept(company_name="Amazon", tag="Revenues")
+        parsed = json.loads(result)
+
+        units = {u["unit"]: u["data"] for u in parsed["units"]}
+        assert set(units) == {"USD", "EUR"}
+        assert units["USD"][0]["value"] == 1000000
+        assert units["EUR"][0]["value"] == 920000
 
     @patch("agent.agent_config.agent._get_cik")
     def test_company_not_found(self, mock_get_cik):
