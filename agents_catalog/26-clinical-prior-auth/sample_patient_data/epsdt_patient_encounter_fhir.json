@@ -1,0 +1,608 @@
+{
+  "resourceType": "Bundle",
+  "id": "epsdt-encounter-bundle",
+  "type": "collection",
+  "timestamp": "2025-01-15T10:30:00Z",
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "epsdt-patient-001",
+        "identifier": [
+          {
+            "use": "usual",
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                  "code": "MR",
+                  "display": "Medical Record Number"
+                }
+              ]
+            },
+            "system": "http://seattle-pediatrics.org/patient-id",
+            "value": "EP2025001"
+          },
+          {
+            "use": "official",
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                  "code": "MA",
+                  "display": "Patient Medicaid Number"
+                }
+              ]
+            },
+            "system": "http://wa.gov/medicaid",
+            "value": "WA123456789"
+          }
+        ],
+        "active": true,
+        "name": [
+          {
+            "use": "official",
+            "family": "Martinez",
+            "given": ["Emma", "Rose"]
+          }
+        ],
+        "gender": "female",
+        "birthDate": "2015-08-22",
+        "address": [
+          {
+            "use": "home",
+            "type": "both",
+            "line": ["456 Cedar Avenue"],
+            "city": "Tacoma",
+            "state": "WA",
+            "postalCode": "98402",
+            "country": "US"
+          }
+        ],
+        "contact": [
+          {
+            "relationship": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
+                    "code": "MTH",
+                    "display": "Mother"
+                  }
+                ]
+              }
+            ],
+            "name": {
+              "use": "official",
+              "family": "Martinez",
+              "given": ["Maria"]
+            },
+            "telecom": [
+              {
+                "system": "phone",
+                "value": "(253) 555-0198",
+                "use": "mobile"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Coverage",
+        "id": "epsdt-coverage-001",
+        "status": "active",
+        "type": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+              "code": "MEDICAID",
+              "display": "Medicaid"
+            }
+          ]
+        },
+        "beneficiary": {
+          "reference": "Patient/epsdt-patient-001"
+        },
+        "period": {
+          "start": "2025-01-01",
+          "end": "2025-12-31"
+        },
+        "payor": [
+          {
+            "display": "Washington State Health Care Authority"
+          }
+        ],
+        "class": [
+          {
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/coverage-class",
+                  "code": "plan",
+                  "display": "Plan"
+                }
+              ]
+            },
+            "value": "EPSDT",
+            "name": "Early and Periodic Screening, Diagnostic and Treatment"
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Encounter",
+        "id": "epsdt-encounter-001",
+        "status": "finished",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "AMB",
+          "display": "ambulatory"
+        },
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "410620009",
+                "display": "Well child visit"
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/epsdt-patient-001"
+        },
+        "period": {
+          "start": "2025-01-15T09:00:00Z",
+          "end": "2025-01-15T10:30:00Z"
+        },
+        "reasonCode": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "410620009",
+                "display": "Well child visit"
+              }
+            ],
+            "text": "EPSDT periodic screening examination"
+          }
+        ],
+        "serviceProvider": {
+          "reference": "Organization/seattle-pediatrics"
+        },
+        "participant": [
+          {
+            "type": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                    "code": "PPRF",
+                    "display": "primary performer"
+                  }
+                ]
+              }
+            ],
+            "individual": {
+              "reference": "Practitioner/dr-johnson"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Condition",
+        "id": "epsdt-screening-condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "encounter-diagnosis",
+                "display": "Encounter Diagnosis"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/icd-10-cm",
+              "code": "Z00.129",
+              "display": "Encounter for routine child health examination without abnormal findings"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/epsdt-patient-001"
+        },
+        "encounter": {
+          "reference": "Encounter/epsdt-encounter-001"
+        },
+        "recordedDate": "2025-01-15"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Procedure",
+        "id": "epsdt-comprehensive-exam",
+        "status": "completed",
+        "category": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "103693007",
+              "display": "Diagnostic procedure"
+            }
+          ]
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "http://www.ama-assn.org/go/cpt",
+              "code": "99393",
+              "display": "Periodic comprehensive preventive medicine reevaluation and management of an individual including an age and gender appropriate history, examination, counseling/anticipatory guidance/risk factor reduction interventions, and the ordering of laboratory/diagnostic procedures, established patient; late childhood (age 5 through 11 years)"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/epsdt-patient-001"
+        },
+        "encounter": {
+          "reference": "Encounter/epsdt-encounter-001"
+        },
+        "performedDateTime": "2025-01-15T09:15:00Z",
+        "performer": [
+          {
+            "actor": {
+              "reference": "Practitioner/dr-johnson"
+            }
+          }
+        ],
+        "reasonCode": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "410620009",
+                "display": "Well child visit"
+              }
+            ],
+            "text": "EPSDT periodic screening"
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Procedure",
+        "id": "epsdt-vision-screening",
+        "status": "completed",
+        "category": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "103693007",
+              "display": "Diagnostic procedure"
+            }
+          ]
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "http://www.ama-assn.org/go/cpt",
+              "code": "99173",
+              "display": "Screening test of visual acuity, quantitative, bilateral"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/epsdt-patient-001"
+        },
+        "encounter": {
+          "reference": "Encounter/epsdt-encounter-001"
+        },
+        "performedDateTime": "2025-01-15T09:30:00Z",
+        "reasonCode": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "410620009",
+                "display": "Well child visit"
+              }
+            ],
+            "text": "EPSDT vision screening"
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Procedure",
+        "id": "epsdt-hearing-screening",
+        "status": "completed",
+        "category": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "103693007",
+              "display": "Diagnostic procedure"
+            }
+          ]
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "http://www.ama-assn.org/go/cpt",
+              "code": "92551",
+              "display": "Screening test, pure tone, air only"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/epsdt-patient-001"
+        },
+        "encounter": {
+          "reference": "Encounter/epsdt-encounter-001"
+        },
+        "performedDateTime": "2025-01-15T09:45:00Z",
+        "reasonCode": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "410620009",
+                "display": "Well child visit"
+              }
+            ],
+            "text": "EPSDT hearing screening"
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Procedure",
+        "id": "epsdt-developmental-screening",
+        "status": "completed",
+        "category": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "103693007",
+              "display": "Diagnostic procedure"
+            }
+          ]
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "http://www.ama-assn.org/go/cpt",
+              "code": "96110",
+              "display": "Developmental screening (eg, developmental milestone survey, speech and language delay screen), with scoring and documentation, per standardized instrument"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/epsdt-patient-001"
+        },
+        "encounter": {
+          "reference": "Encounter/epsdt-encounter-001"
+        },
+        "performedDateTime": "2025-01-15T10:00:00Z",
+        "reasonCode": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "410620009",
+                "display": "Well child visit"
+              }
+            ],
+            "text": "EPSDT developmental screening"
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Immunization",
+        "id": "epsdt-flu-vaccine",
+        "status": "completed",
+        "vaccineCode": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/cvx",
+              "code": "141",
+              "display": "Influenza, seasonal, injectable"
+            }
+          ]
+        },
+        "patient": {
+          "reference": "Patient/epsdt-patient-001"
+        },
+        "encounter": {
+          "reference": "Encounter/epsdt-encounter-001"
+        },
+        "occurrenceDateTime": "2025-01-15T10:15:00Z",
+        "primarySource": true,
+        "reasonCode": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "410620009",
+                "display": "Well child visit"
+              }
+            ],
+            "text": "EPSDT immunization update"
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "epsdt-height-measurement",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "vital-signs",
+                "display": "Vital Signs"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "8302-2",
+              "display": "Body height"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/epsdt-patient-001"
+        },
+        "encounter": {
+          "reference": "Encounter/epsdt-encounter-001"
+        },
+        "effectiveDateTime": "2025-01-15T09:20:00Z",
+        "valueQuantity": {
+          "value": 125,
+          "unit": "cm",
+          "system": "http://unitsofmeasure.org",
+          "code": "cm"
+        }
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "epsdt-weight-measurement",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "vital-signs",
+                "display": "Vital Signs"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "29463-7",
+              "display": "Body weight"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/epsdt-patient-001"
+        },
+        "encounter": {
+          "reference": "Encounter/epsdt-encounter-001"
+        },
+        "effectiveDateTime": "2025-01-15T09:20:00Z",
+        "valueQuantity": {
+          "value": 25,
+          "unit": "kg",
+          "system": "http://unitsofmeasure.org",
+          "code": "kg"
+        }
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Organization",
+        "id": "seattle-pediatrics",
+        "active": true,
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/organization-type",
+                "code": "prov",
+                "display": "Healthcare Provider"
+              }
+            ]
+          }
+        ],
+        "name": "Seattle Pediatric Associates",
+        "telecom": [
+          {
+            "system": "phone",
+            "value": "(206) 555-0199"
+          }
+        ],
+        "address": [
+          {
+            "use": "work",
+            "line": ["789 Medical Center Drive"],
+            "city": "Seattle",
+            "state": "WA",
+            "postalCode": "98104"
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Practitioner",
+        "id": "dr-johnson",
+        "active": true,
+        "name": [
+          {
+            "use": "official",
+            "family": "Johnson",
+            "given": ["Michael"],
+            "prefix": ["Dr."]
+          }
+        ],
+        "qualification": [
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/v2-0360",
+                  "code": "MD",
+                  "display": "Doctor of Medicine"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
