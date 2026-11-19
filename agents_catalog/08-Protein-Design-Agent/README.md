@@ -1,5 +1,14 @@
 # Protein Design Agent with AWS HealthOmics Workflow
 
+> [!NOTE]
+> **AgentCore version available.** The agent layer has been migrated to Strands +
+> Amazon Bedrock AgentCore — see [`agentcore/`](./agentcore/). The AgentCore agent
+> reproduces the two action-group Lambdas as `@tool` functions
+> (`trigger_aho_workflow` → `omics.start_run`, `monitor_aho_workflow` →
+> `omics.get_run`) and calls into the same HealthOmics workflow, ECR image, and S3
+> model weights. The CloudFormation stack below is still used to provision that
+> underlying infrastructure; only the Bedrock Agent layer is superseded.
+
 This agent helps users design and optimize protein sequences using AWS HealthOmics workflows. It leverages pretrained machine 
 learning models (such as protein language models and property prediction models) to evolve protein sequences for improved properties, making it valuable for researchers in biotechnology, pharmaceuticals, and synthetic biology.
 
