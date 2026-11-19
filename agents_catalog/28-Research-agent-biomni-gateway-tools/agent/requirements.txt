@@ -1,5 +1,5 @@
 strands-agents
-strands-agents-tools
+strands-agents-tools<0.9
 requests
 pathlib2>=2.3.7
 PyYAML
@@ -13,7 +13,7 @@ streamlit
 streamlit-cookies-controller
 PyJWT
 uv
-mcp
+mcp<2
 aws-opentelemetry-distro
 defusedxml
 requests>=2.31.0
