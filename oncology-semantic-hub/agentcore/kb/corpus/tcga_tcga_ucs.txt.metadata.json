@@ -1,0 +1,8 @@
+{
+  "metadataAttributes": {
+    "source": "TCGA",
+    "project_id": "TCGA-UCS",
+    "disease": "Uterine Carcinosarcoma",
+    "primary_site": "Uterus, NOS; Corpus uteri"
+  }
+}

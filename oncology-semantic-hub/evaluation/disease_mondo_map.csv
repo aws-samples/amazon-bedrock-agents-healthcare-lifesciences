@@ -1,0 +1,10 @@
+disease_term,mondo_curie,mondo_label,graph_node_name
+breast carcinoma,MONDO:0004989,breast carcinoma,breast carcinoma
+colon adenocarcinoma,MONDO:0002271,colon adenocarcinoma,colon adenocarcinoma
+colorectal cancer,MONDO:0005575,colorectal cancer,colorectal cancer
+glioblastoma,MONDO:0018177,glioblastoma (disease),glioblastoma (disease)
+low grade glioma,MONDO:0021637,low grade glioma,low grade glioma
+lung adenocarcinoma,MONDO:0005061,lung adenocarcinoma,lung adenocarcinoma
+melanoma,MONDO:0005105,melanoma,melanoma
+ovarian serous cystadenocarcinoma,MONDO:0006046,ovarian serous cystadenocarcinoma,ovarian serous cystadenocarcinoma
+prostate cancer,MONDO:0008315,prostate cancer,prostate cancer

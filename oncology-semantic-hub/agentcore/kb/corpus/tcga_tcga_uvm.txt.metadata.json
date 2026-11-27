@@ -1,0 +1,8 @@
+{
+  "metadataAttributes": {
+    "source": "TCGA",
+    "project_id": "TCGA-UVM",
+    "disease": "Uveal Melanoma",
+    "primary_site": "Eye and adnexa"
+  }
+}

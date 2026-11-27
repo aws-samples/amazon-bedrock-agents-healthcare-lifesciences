@@ -1,0 +1,8 @@
+{
+  "metadataAttributes": {
+    "source": "TCGA",
+    "project_id": "TCGA-CHOL",
+    "disease": "Cholangiocarcinoma",
+    "primary_site": "Liver and intrahepatic bile ducts; Other and unspecified parts of biliary tract; Pancreas"
+  }
+}

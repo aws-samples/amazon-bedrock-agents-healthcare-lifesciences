@@ -1,0 +1,8 @@
+{
+  "metadataAttributes": {
+    "source": "TCGA",
+    "project_id": "TCGA-GBM",
+    "disease": "Glioblastoma Multiforme",
+    "primary_site": "Brain"
+  }
+}

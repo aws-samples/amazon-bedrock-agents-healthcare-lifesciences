@@ -1,0 +1,7 @@
+TCGA project TCGA-BLCA: Bladder Urothelial Carcinoma.
+Program: The Cancer Genome Atlas (TCGA).
+Primary site(s): Bladder.
+Disease type(s): Epithelial Neoplasms, NOS, Squamous Cell Neoplasms, Transitional Cell Papillomas and Carcinomas, Adenomas and Adenocarcinomas.
+Cases: 412. Files: 31338.
+
+This TCGA cohort (TCGA-BLCA) provides molecular and clinical data for Bladder Urothelial Carcinoma (primary site: Bladder; disease type: Epithelial Neoplasms, NOS, Squamous Cell Neoplasms, Transitional Cell Papillomas and Carcinomas, Adenomas and Adenocarcinomas). It supports biomarker, mutation, expression, and copy-number analyses in oncology research.

@@ -1,0 +1,8 @@
+strands-agents[otel]
+strands-agents-tools
+bedrock-agentcore
+aws-opentelemetry-distro
+mcp
+boto3>=1.34
+ddgs
+defusedxml>=0.7  # XXE-safe XML parsing in kb/build_corpus.py

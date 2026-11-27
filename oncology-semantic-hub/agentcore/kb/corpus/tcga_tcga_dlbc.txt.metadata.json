@@ -1,0 +1,8 @@
+{
+  "metadataAttributes": {
+    "source": "TCGA",
+    "project_id": "TCGA-DLBC",
+    "disease": "Lymphoid Neoplasm Diffuse Large B-cell Lymphoma",
+    "primary_site": "Colon; Retroperitoneum and peritoneum; Heart, mediastinum, and pleura; Breast; Bones, joints and articular cartilage of other and unspecified sites; Lymph nodes; Small intestine; Stomach; Testis; Brain; Connective, subcutaneous and other soft tissues"
+  }
+}

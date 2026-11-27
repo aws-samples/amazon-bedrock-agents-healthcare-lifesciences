@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Oncology Platform</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #06060a;
+  --surface: #0c0c12;
+  --border: #1a1a24;
+  --text: #e8e8f0;
+  --muted: #4a4a5a;
+  --red: #ff4d4d;
+  --red-glow: #ff4d4d22;
+  --teal: #2dd4bf;
+  --teal-glow: #2dd4bf22;
+  --purple: #a78bfa;
+  --amber: #fbbf24;
+  --blue: #60a5fa;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: var(--bg); color: var(--text); font-family: 'DM Mono', monospace; overflow-x: auto; }
+
+/* Header */
+header { padding: 50px 60px 30px; max-width: 1000px; }
+header h1 { font-family: 'Instrument Serif', serif; font-size: 3.5em; font-weight: 400; line-height: 1.1; letter-spacing: -0.02em; }
+header h1 em { font-style: italic; color: var(--red); }
+header p { margin-top: 14px; font-size: 0.8em; color: var(--muted); max-width: 500px; line-height: 1.6; }
+
+/* Mode switch */
+.mode-switch { position: fixed; top: 30px; right: 40px; z-index: 1000; display: flex; border-radius: 6px; overflow: hidden; border: 1px solid var(--border); }
+.mode-switch button { padding: 16px 36px; font-family: 'DM Mono', monospace; font-size: 0.95em; border: none; cursor: pointer; background: var(--surface); color: var(--muted); transition: all 0.3s; font-weight: 600; }
+.mode-switch button.on-frag { background: #1a0f0f; color: var(--red); }
+.mode-switch button.on-hub { background: #0f1a1a; color: var(--teal); }
+
+/* Horizontal scroll container */
+.scroll-container { display: flex; min-height: calc(100vh - 180px); padding: 0 60px 60px; gap: 0; align-items: stretch; }
+
+/* Columns */
+.col { min-width: 320px; padding: 30px 24px; position: relative; display: flex; flex-direction: column; }
+.col-header { margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+.col-header h2 { font-family: 'Instrument Serif', serif; font-size: 1.4em; font-weight: 400; }
+.col-header span { font-size: 0.65em; color: var(--muted); display: block; margin-top: 4px; }
+
+.col-apps .col-header h2 { color: var(--purple); }
+.col-models .col-header h2 { color: var(--amber); }
+.col-systems .col-header h2 { color: var(--blue); }
+
+/* Divider arrows between columns */
+.col-divider { display: flex; align-items: center; justify-content: center; min-width: 50px; color: var(--border); font-size: 1.5em; }
+.col-divider.lit-red { color: var(--red); }
+.col-divider.lit-teal { color: var(--teal); }
+
+/* Cards */
+.card { padding: 14px 16px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); margin-bottom: 8px; cursor: pointer; transition: all 0.25s ease; position: relative; }
+.card:hover { border-color: #333; transform: translateX(3px); }
+.card.lit { border-color: var(--red); background: #120c0c; box-shadow: 0 0 20px var(--red-glow); }
+.card.lit-hub { border-color: var(--teal); background: #0a1212; box-shadow: 0 0 20px var(--teal-glow); }
+.card .c-top { display: flex; align-items: center; gap: 8px; }
+.card .c-icon { font-size: 1.2em; }
+.card .c-name { font-size: 0.75em; font-weight: 400; }
+.card .c-desc { font-size: 0.6em; color: var(--muted); margin-top: 6px; line-height: 1.4; }
+.card .c-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.card .c-tag { font-size: 0.55em; padding: 2px 6px; border-radius: 3px; background: #14141e; border: 1px solid var(--border); color: var(--muted); }
+.card.lit .c-tag { border-color: #ff4d4d33; color: #ff9999; }
+.card.lit-hub .c-tag { border-color: #2dd4bf33; color: #80ffe8; }
+
+/* PrimeKG special */
+.card.primekg { border-color: var(--teal); border-style: dashed; }
+.card.primekg .c-name { color: var(--teal); }
+
+/* SVG overlay */
+svg.lines { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+.scroll-container { position: relative; }
+
+/* Info strip */
+.info-strip { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 1px solid var(--border); padding: 16px 60px; display: flex; align-items: center; gap: 24px; transform: translateY(100%); transition: transform 0.3s; z-index: 1000; }
+.info-strip.visible { transform: translateY(0); }
+.info-strip .is-name { font-family: 'Instrument Serif', serif; font-size: 1.2em; min-width: 200px; }
+.info-strip .is-path { font-size: 0.7em; color: var(--muted); flex: 1; }
+.info-strip .is-path b { color: var(--red); font-weight: 400; }
+.info-strip .is-path b.g { color: var(--teal); }
+.info-strip .is-stat { font-family: 'Instrument Serif', serif; font-size: 1.6em; color: var(--red); }
+.info-strip.hub-on .is-stat { color: var(--teal); }
+.info-strip.hub-on .is-path b { color: var(--teal); }
+</style>
+</head>
+<body>
+
+<header>
+<div style="font-size:0.7em; color:var(--teal); text-transform:uppercase; letter-spacing:0.15em; margin-bottom:12px;">Oncology Platform</div>
+<h1>One question,<br><em>six systems.</em></h1>
+<p>Each application must traverse incompatible data models, ontologies, and source systems. Click an application to illuminate the path.</p>
+</header>
+
+<div class="mode-switch">
+<button id="btn-frag" class="on-frag" onclick="setMode('frag')">fragmented</button>
+<button id="btn-hub" onclick="setMode('hub')">with hub</button>
+</div>
+
+<div class="scroll-container" id="container">
+<svg class="lines" id="svg"></svg>
+
+<!-- Column 1: Applications -->
+<div class="col col-apps">
+<div class="col-header"><h2>Applications</h2><span>What agents want to do</span></div>
+<div class="card" id="a-drug" onclick="pick('drug')"><div class="c-top"><span class="c-icon">💊</span><span class="c-name">Drug Repurposing</span></div><div class="c-desc">Find new therapeutic uses for existing approved drugs</div></div>
+<div class="card" id="a-biomarker" onclick="pick('biomarker')"><div class="c-top"><span class="c-icon">🎯</span><span class="c-name">Biomarker Discovery</span></div><div class="c-desc">Identify diagnostic and prognostic molecular markers</div></div>
+<div class="card" id="a-pathway" onclick="pick('pathway')"><div class="c-top"><span class="c-icon">🧠</span><span class="c-name">Pathway Analysis</span></div><div class="c-desc">Map disease mechanisms through biological networks</div></div>
+<div class="card" id="a-literature" onclick="pick('literature')"><div class="c-top"><span class="c-icon">📄</span><span class="c-name">Literature Reproduction</span></div><div class="c-desc">Validate and reproduce published research findings</div></div>
+<div class="card" id="a-clinical" onclick="pick('clinical')"><div class="c-top"><span class="c-icon">🏥</span><span class="c-name">Clinical Integration</span></div><div class="c-desc">Bridge research data to patient care systems</div></div>
+<div class="card" id="a-similarity" onclick="pick('similarity')"><div class="c-top"><span class="c-icon">🔬</span><span class="c-name">Disease Similarity</span></div><div class="c-desc">Discover shared genetic drivers across cancers</div></div>
+</div>
+
+<div class="col-divider" id="div1">→</div>
+
+<!-- Column 2: Data Models & Ontologies -->
+<div class="col col-models">
+<div class="col-header"><h2>Data Models & Ontologies</h2><span>Vocabularies that don't interoperate</span></div>
+<div class="card" id="m-ensembl"><div class="c-top"><span class="c-icon">🧬</span><span class="c-name">Ensembl</span></div><div class="c-desc">ENSG00000141510</div></div>
+<div class="card" id="m-entrez"><div class="c-top"><span class="c-icon">🔢</span><span class="c-name">Entrez Gene</span></div><div class="c-desc">7157</div></div>
+<div class="card" id="m-hugo"><div class="c-top"><span class="c-icon">🔤</span><span class="c-name">HGNC / Hugo</span></div><div class="c-desc">TP53</div></div>
+<div class="card" id="m-uniprot"><div class="c-top"><span class="c-icon">🧫</span><span class="c-name">UniProt</span></div><div class="c-desc">P04637</div></div>
+<div class="card" id="m-mondo"><div class="c-top"><span class="c-icon">🦠</span><span class="c-name">MONDO</span></div><div class="c-desc">Disease ontology</div></div>
+<div class="card" id="m-icd"><div class="c-top"><span class="c-icon">🏷️</span><span class="c-name">ICD-10</span></div><div class="c-desc">Clinical billing codes</div></div>
+<div class="card" id="m-go"><div class="c-top"><span class="c-icon">⚙️</span><span class="c-name">Gene Ontology</span></div><div class="c-desc">Biological function</div></div>
+<div class="card" id="m-hpo"><div class="c-top"><span class="c-icon">🩺</span><span class="c-name">HPO</span></div><div class="c-desc">Phenotypes</div></div>
+<div class="card" id="m-drugbank-id"><div class="c-top"><span class="c-icon">💊</span><span class="c-name">DrugBank IDs</span></div><div class="c-desc">DB12015</div></div>
+<div class="card" id="m-snomed"><div class="c-top"><span class="c-icon">📋</span><span class="c-name">SNOMED CT</span></div><div class="c-desc">Clinical terms</div></div>
+<div class="card" id="m-hgvs"><div class="c-top"><span class="c-icon">🔬</span><span class="c-name">HGVS</span></div><div class="c-desc">Variant notation</div></div>
+<div class="card" id="m-oncotree"><div class="c-top"><span class="c-icon">🌳</span><span class="c-name">OncoTree</span></div><div class="c-desc">Cancer classification</div></div>
+</div>
+
+<div class="col-divider" id="div2">→</div>
+
+<!-- Column 3: Data Systems -->
+<div class="col col-systems">
+<div class="col-header"><h2>Data Systems</h2><span>Where data lives — each with its own API & format</span></div>
+<div class="card" id="s-gdc"><div class="c-top"><span class="c-icon">🧬</span><span class="c-name">GDC / TCGA</span></div><div class="c-tags"><span class="c-tag">Mutations</span><span class="c-tag">Expression</span><span class="c-tag">CNV</span><span class="c-tag">Methylation</span><span class="c-tag">Clinical</span></div></div>
+<div class="card" id="s-cbio"><div class="c-top"><span class="c-icon">📊</span><span class="c-name">cBioPortal</span></div><div class="c-tags"><span class="c-tag">Mutations</span><span class="c-tag">CNA</span><span class="c-tag">Expression</span><span class="c-tag">Fusions</span><span class="c-tag">Survival</span></div></div>
+<div class="card" id="s-drugbank"><div class="c-top"><span class="c-icon">💊</span><span class="c-name">DrugBank</span></div><div class="c-tags"><span class="c-tag">Drug-Target</span><span class="c-tag">Interactions</span><span class="c-tag">Indications</span><span class="c-tag">Pathways</span></div></div>
+<div class="card" id="s-clinvar"><div class="c-top"><span class="c-icon">🏥</span><span class="c-name">ClinVar</span></div><div class="c-tags"><span class="c-tag">Pathogenicity</span><span class="c-tag">Gene-Disease</span><span class="c-tag">Variant Class</span></div></div>
+<div class="card" id="s-string"><div class="c-top"><span class="c-icon">🔗</span><span class="c-name">STRING</span></div><div class="c-tags"><span class="c-tag">PPI Network</span><span class="c-tag">Co-expression</span><span class="c-tag">Text Mining</span></div></div>
+<div class="card" id="s-reactome"><div class="c-top"><span class="c-icon">🔬</span><span class="c-name">Reactome</span></div><div class="c-tags"><span class="c-tag">Pathways</span><span class="c-tag">Reactions</span><span class="c-tag">Gene-Pathway</span></div></div>
+<div class="card" id="s-disgenet"><div class="c-top"><span class="c-icon">🧪</span><span class="c-name">DisGeNET</span></div><div class="c-tags"><span class="c-tag">Gene-Disease</span><span class="c-tag">Variant-Disease</span><span class="c-tag">Evidence</span></div></div>
+<div class="card" id="s-pubmed"><div class="c-top"><span class="c-icon">📄</span><span class="c-name">PubMed</span></div><div class="c-tags"><span class="c-tag">Gene-Disease</span><span class="c-tag">Drug-Gene</span><span class="c-tag">Hypotheses</span></div></div>
+<div class="card primekg" id="s-primekg"><div class="c-top"><span class="c-icon">🕸️</span><span class="c-name">PrimeKG (pre-integrated)</span></div><div class="c-tags"><span class="c-tag">174K nodes</span><span class="c-tag">4M edges</span><span class="c-tag">20 sources</span><span class="c-tag">Harmonized IDs</span></div></div>
+</div>
+
+</div>
+
+<div class="info-strip" id="info-strip">
+<div class="is-name" id="is-name"></div>
+<div class="is-path" id="is-path"></div>
+<div class="is-stat" id="is-stat"></div>
+</div>
+
+<!-- 3-Layer Architecture Section -->
+<section style="max-width:1400px; margin:80px auto 60px; padding:0 30px;">
+<h2 style="font-family:'Instrument Serif',serif; font-size:2em; font-weight:400; margin-bottom:8px;">The Solution: Three Layers, One Graph</h2>
+<p style="font-size:0.75em; color:var(--muted); margin-bottom:40px;">Each layer adds nodes, edges, and properties — building from curated knowledge to patient-level data to AI-enriched annotations.</p>
+
+<div style="display:flex; gap:16px; align-items:stretch; flex-wrap:wrap;">
+
+<!-- Layer 1 -->
+<div style="flex:1; min-width:280px; border:1px solid #2dd4bf33; border-radius:12px; padding:24px; background:#0a1212;">
+<div style="display:flex; align-items:center; gap:10px; margin-bottom:16px;">
+<span style="font-size:1.8em;">🕸️</span>
+<div>
+<div style="font-family:'Instrument Serif',serif; font-size:1.2em; color:#2dd4bf;">Layer 1: Knowledge Backbone</div>
+<div style="font-size:0.65em; color:var(--muted);">PrimeKG — 20 curated databases</div>
+</div>
+</div>
+<div style="margin-bottom:14px;">
+<div style="font-size:0.65em; color:#2dd4bf; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:6px;">Nodes</div>
+<div style="display:flex; flex-wrap:wrap; gap:4px;">
+<span style="font-size:0.6em; padding:3px 7px; border-radius:4px; background:#14241f; border:1px solid #2dd4bf22; color:#80ffe8;">gene_protein 27,671</span>
+<span style="font-size:0.6em; padding:3px 7px; border-radius:4px; background:#14241f; border:1px solid #2dd4bf22; color:#80ffe8;">disease 17,080</span>
+<span style="font-size:0.6em; padding:3px 7px; border-radius:4px; background:#14241f; border:1px solid #2dd4bf22; color:#80ffe8;">drug 7,957</span>
+<span style="font-size:0.6em; padding:3px 7px; border-radius:4px; background:#14241f; border:1px solid #2dd4bf22; color:#80ffe8;">pathway 2,516</span>
+<span style="font-size:0.6em; padding:3px 7px; border-radius:4px; background:#14241f; border:1px solid #2dd4bf22; color:#80ffe8;">phenotype 15,311</span>
+<span style="font-size:0.6em; padding:3px 7px; border-radius:4px; background:#14241f; border:1px solid #2dd4bf22; color:#80ffe8;">anatomy 14,035</span>
+</div>
+</div>
+<div style="margin-bottom:14px;">
+<div style="font-size:0.65em; color:#2dd4bf; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:6px;">Edges</div>
+<div style="display:flex; flex-wrap:wrap; gap:4px;">
+<span style="font-size:0.6em; padding:3px 7px; border-radius:4px; background:#0f1a1a; border:1px solid #1a2a2a; color:#aaa;">disease_protein 80K</span>
+<span style="font-size:0.6em; padding:3px 7px; border-radius:4px; background:#0f1a1a; border:1px solid #1a2a2a; color:#aaa;">drug_protein 25K</span>
+<span style="font-size:0.6em; padding:3px 7px; border-radius:4px; background:#0f1a1a; border:1px solid #1a2a2a; color:#aaa;">protein_protein 321K</span>
+<span style="font-size:0.6em; padding:3px 7px; border-radius:4px; background:#0f1a1a; border:1px solid #1a2a2a; color:#aaa;">indication 9K</span>
+<span style="font-size:0.6em; padding:3px 7px; border-radius:4px; background:#0f1a1a; border:1px solid #1a2a2a; color:#aaa;">pathway_protein 42K</span>
+</div>
+</div>
+<div>
+<div style="font-size:0.65em; color:#2dd4bf; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:6px;">Properties</div>
+<div style="font-size:0.6em; color:#666; line-height:1.6;">name · source · original_id (Entrez/MONDO/DrugBank)</div>
+</div>
+</div>
+
+<!-- Layer 2 -->
+<div style="flex:1; min-width:280px; border:1px solid #a78bfa33; border-radius:12px; padding:24px; background:#0f0c14;">
+<div style="display:flex; align-items:center; gap:10px; margin-bottom:16px;">
+<span style="font-size:1.8em;">🧬</span>
+<div>
+<div style="font-family:'Instrument Serif',serif; font-size:1.2em; color:#a78bfa;">Layer 2: Cancer Biomarker Overlay</div>
+<div style="font-size:0.65em; color:var(--muted);">TCGA / cBioPortal patient data</div>
+</div>
+</div>
+<div style="margin-bottom:14px;">
+<div style="font-size:0.65em; color:#a78bfa; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:6px;">Nodes Added</div>
+<div style="display:flex; flex-wrap:wrap; gap:4px;">
+<span style="font-size:0.6em; padding:3px 7px; border-radius:4px; background:#1a1424; border:1px solid #a78bfa22; color:#d4b8ff;">case 11,428</span>
+<span style="font-size:0.6em; padding:3px 7px; border-radius:4px; background:#1a1424; border:1px solid #a78bfa22; color:#d4b8ff;">sample 33,939</span>
+</div>
+</div>
+<div style="margin-bottom:14px;">
+<div style="font-size:0.65em; color:#a78bfa; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:6px;">Edges Added</div>
+<div style="display:flex; flex-wrap:wrap; gap:4px;">
+<span style="font-size:0.6em; padding:3px 7px; border-radius:4px; background:#12101a; border:1px solid #1a1a2a; color:#aaa;">case_has_diagnosis 11K</span>
+<span style="font-size:0.6em; padding:3px 7px; border-radius:4px; background:#12101a; border:1px solid #1a1a2a; color:#aaa;">sample_from_case 33K</span>
+</div>
+</div>
+<div style="margin-bottom:14px;">
+<div style="font-size:0.65em; color:#a78bfa; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:6px;">Properties Added</div>
+<div style="font-size:0.6em; color:#666; line-height:1.6;">project_id · gender · vital_status · age_at_diagnosis · sample_type · tumor_stage</div>
+</div>
+<div>
+<div style="font-size:0.65em; color:#a78bfa; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:6px;">Data Lake (Athena)</div>
+<div style="display:flex; flex-wrap:wrap; gap:4px;">
+<span style="font-size:0.6em; padding:3px 7px; border-radius:4px; background:#12101a; border:1px solid #1a1a2a; color:#aaa;">3.5M mutations</span>
+<span style="font-size:0.6em; padding:3px 7px; border-radius:4px; background:#12101a; border:1px solid #1a1a2a; color:#aaa;">CNA 12 studies</span>
+<span style="font-size:0.6em; padding:3px 7px; border-radius:4px; background:#12101a; border:1px solid #1a1a2a; color:#aaa;">Expression 32 studies</span>
+</div>
+</div>
+</div>
+
+<!-- Layer 3 -->
+<div style="flex:1; min-width:280px; border:1px solid #fbbf2433; border-radius:12px; padding:24px; background:#14120a;">
+<div style="display:flex; align-items:center; gap:10px; margin-bottom:16px;">
+<span style="font-size:1.8em;">✨</span>
+<div>
+<div style="font-family:'Instrument Serif',serif; font-size:1.2em; color:#fbbf24;">Layer 3: Enrichment & Annotations</div>
+<div style="font-size:0.65em; color:var(--muted);">ClinVar, COSMIC, MONDO, Literature</div>
+</div>
+</div>
+<div style="margin-bottom:14px;">
+<div style="font-size:0.65em; color:#fbbf24; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:6px;">Properties Enriched on Gene Nodes</div>
+<div style="display:flex; flex-wrap:wrap; gap:4px;">
+<span style="font-size:0.6em; padding:3px 7px; border-radius:4px; background:#1a1808; border:1px solid #fbbf2422; color:#ffe066;">clinvar_pathogenic_count</span>
+<span style="font-size:0.6em; padding:3px 7px; border-radius:4px; background:#1a1808; border:1px solid #fbbf2422; color:#ffe066;">cosmic_tier</span>
+</div>
+<div style="font-size:0.6em; color:#666; margin-top:4px;">6,286 genes + 74 Tier 1 drivers</div>
+</div>
+<div style="margin-bottom:14px;">
+<div style="font-size:0.65em; color:#fbbf24; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:6px;">Properties Enriched on Disease Nodes</div>
+<div style="display:flex; flex-wrap:wrap; gap:4px;">
+<span style="font-size:0.6em; padding:3px 7px; border-radius:4px; background:#1a1808; border:1px solid #fbbf2422; color:#ffe066;">icd10</span>
+<span style="font-size:0.6em; padding:3px 7px; border-radius:4px; background:#1a1808; border:1px solid #fbbf2422; color:#ffe066;">ncit</span>
+<span style="font-size:0.6em; padding:3px 7px; border-radius:4px; background:#1a1808; border:1px solid #fbbf2422; color:#ffe066;">mondo_definition</span>
+</div>
+<div style="font-size:0.6em; color:#666; margin-top:4px;">500 diseases with cross-references</div>
+</div>
+<div>
+<div style="font-size:0.65em; color:#fbbf24; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:6px;">Planned (Sprint 3+)</div>
+<div style="display:flex; flex-wrap:wrap; gap:4px;">
+<span style="font-size:0.6em; padding:3px 7px; border-radius:4px; background:#12100a; border:1px dashed #fbbf2422; color:#888;">PubMed NER triples</span>
+<span style="font-size:0.6em; padding:3px 7px; border-radius:4px; background:#12100a; border:1px dashed #fbbf2422; color:#888;">EBI OLS synonyms</span>
+<span style="font-size:0.6em; padding:3px 7px; border-radius:4px; background:#12100a; border:1px dashed #fbbf2422; color:#888;">Ensembl↔Entrez</span>
+<span style="font-size:0.6em; padding:3px 7px; border-radius:4px; background:#12100a; border:1px dashed #fbbf2422; color:#888;">Full MONDO xrefs</span>
+</div>
+</div>
+</div>
+
+</div>
+
+<!-- Totals bar -->
+<div style="display:flex; justify-content:center; gap:40px; margin-top:30px; padding:16px; border-radius:8px; background:var(--surface); border:1px solid var(--border);">
+<div style="text-align:center;"><div style="font-family:'Instrument Serif',serif; font-size:1.8em; color:#2dd4bf;">174,742</div><div style="font-size:0.65em; color:var(--muted);">Total Nodes</div></div>
+<div style="text-align:center;"><div style="font-family:'Instrument Serif',serif; font-size:1.8em; color:#a78bfa;">4,095,616</div><div style="font-size:0.65em; color:var(--muted);">Total Edges</div></div>
+<div style="text-align:center;"><div style="font-family:'Instrument Serif',serif; font-size:1.8em; color:#fbbf24;">12</div><div style="font-size:0.65em; color:var(--muted);">Node Types</div></div>
+<div style="text-align:center;"><div style="font-family:'Instrument Serif',serif; font-size:1.8em; color:#60a5fa;">32</div><div style="font-size:0.65em; color:var(--muted);">Edge Types</div></div>
+<div style="text-align:center;"><div style="font-family:'Instrument Serif',serif; font-size:1.8em; color:#fff;">~$70</div><div style="font-size:0.65em; color:var(--muted);">/month on AWS</div></div>
+</div>
+</section>
+
+<!-- Governance & Agentic AI -->
+<section style="max-width:1400px; margin:0 auto 60px; padding:0 30px; display:flex; gap:20px; flex-wrap:wrap;">
+
+<!-- Governance -->
+<div style="flex:1; min-width:320px; border:1px solid #ff4d4d22; border-radius:12px; padding:28px; background:#120a0a;">
+<div style="font-family:'Instrument Serif',serif; font-size:1.4em; color:var(--red); margin-bottom:14px;">🛡️ Governance is not an afterthought</div>
+<p style="font-size:0.75em; color:var(--muted); line-height:1.7; margin-bottom:16px;">The semantic hub doesn't just connect data — it governs access, tracks provenance, and ensures trust.</p>
+<div style="display:flex; flex-wrap:wrap; gap:8px;">
+<span style="font-size:0.65em; padding:6px 10px; border-radius:5px; background:#1a0f0f; border:1px solid #ff4d4d22; color:#ff9999;">Data lineage & provenance</span>
+<span style="font-size:0.65em; padding:6px 10px; border-radius:5px; background:#1a0f0f; border:1px solid #ff4d4d22; color:#ff9999;">Ontology versioning</span>
+<span style="font-size:0.65em; padding:6px 10px; border-radius:5px; background:#1a0f0f; border:1px solid #ff4d4d22; color:#ff9999;">Access control (ABAC)</span>
+<span style="font-size:0.65em; padding:6px 10px; border-radius:5px; background:#1a0f0f; border:1px solid #ff4d4d22; color:#ff9999;">Audit trail</span>
+<span style="font-size:0.65em; padding:6px 10px; border-radius:5px; background:#1a0f0f; border:1px solid #ff4d4d22; color:#ff9999;">Quality scoring</span>
+<span style="font-size:0.65em; padding:6px 10px; border-radius:5px; background:#1a0f0f; border:1px solid #ff4d4d22; color:#ff9999;">HITL curation flywheel</span>
+</div>
+<p style="font-size:0.65em; color:#666; margin-top:14px; font-style:italic;">"Agents interact through the semantic layer — never bypassing to raw data. Zero ungoverned facts reach the knowledge graph."</p>
+</div>
+
+<!-- Agentic AI -->
+<div style="flex:1; min-width:320px; border:1px solid #2dd4bf22; border-radius:12px; padding:28px; background:#0a1210;">
+<div style="font-family:'Instrument Serif',serif; font-size:1.4em; color:var(--teal); margin-bottom:14px;">🤖 Why now: Agentic AI needs context</div>
+<p style="font-size:0.75em; color:var(--muted); line-height:1.7; margin-bottom:16px;">AI agents can automate 75–85% of pharma workflows — but only if they have the semantic context to reason accurately.</p>
+<div style="display:flex; flex-wrap:wrap; gap:8px;">
+<span style="font-size:0.65em; padding:6px 10px; border-radius:5px; background:#0f1a1a; border:1px solid #2dd4bf22; color:#80ffe8;">Multi-hop graph reasoning</span>
+<span style="font-size:0.65em; padding:6px 10px; border-radius:5px; background:#0f1a1a; border:1px solid #2dd4bf22; color:#80ffe8;">GraphRAG (not just RAG)</span>
+<span style="font-size:0.65em; padding:6px 10px; border-radius:5px; background:#0f1a1a; border:1px solid #2dd4bf22; color:#80ffe8;">Schema discovery at runtime</span>
+<span style="font-size:0.65em; padding:6px 10px; border-radius:5px; background:#0f1a1a; border:1px solid #2dd4bf22; color:#80ffe8;">Explainable traversal paths</span>
+<span style="font-size:0.65em; padding:6px 10px; border-radius:5px; background:#0f1a1a; border:1px solid #2dd4bf22; color:#80ffe8;">Facts, not hallucinations</span>
+<span style="font-size:0.65em; padding:6px 10px; border-radius:5px; background:#0f1a1a; border:1px solid #2dd4bf22; color:#80ffe8;">Cross-domain tool orchestration</span>
+</div>
+<p style="font-size:0.65em; color:#666; margin-top:14px; font-style:italic;">"Without the semantic layer, agents lack the context to reason accurately. The hub is the prerequisite for Stages 4–6 of the research maturity model."</p>
+</div>
+
+</section>
+
+<div class="info-strip" id="info-strip">
+<div class="is-name" id="is-name"></div>
+<div class="is-path" id="is-path"></div>
+<div class="is-stat" id="is-stat"></div>
+</div>
+
+<script>
+const apps = {
+  drug:{models:['m-ensembl','m-hugo','m-uniprot','m-mondo','m-drugbank-id','m-entrez'],systems:['s-gdc','s-cbio','s-drugbank','s-clinvar','s-disgenet'],path:'GDC <b>(Ensembl)</b> → HGNC <b>(Hugo)</b> → DrugBank <b>(UniProt)</b> → ClinVar <b>(Entrez)</b>',stat:'5 translations',hubPath:'Agent → <b class="g">Hub</b> → graph traversal',hubStat:'1 query'},
+  biomarker:{models:['m-ensembl','m-hugo','m-entrez','m-mondo','m-go','m-hpo'],systems:['s-gdc','s-cbio','s-clinvar','s-disgenet','s-primekg'],path:'GDC <b>(Ensembl)</b> → cBio <b>(Hugo)</b> → ClinVar <b>(Entrez)</b> → DisGeNET <b>(UMLS)</b>',stat:'4 ontologies',hubPath:'Agent → <b class="g">Hub</b> → Neptune + Athena',hubStat:'2 queries'},
+  pathway:{models:['m-ensembl','m-uniprot','m-go','m-entrez'],systems:['s-gdc','s-string','s-reactome','s-drugbank','s-primekg'],path:'GDC <b>(Ensembl)</b> → STRING <b>(ENSP)</b> → Reactome <b>(UniProt)</b>',stat:'4 systems',hubPath:'Agent → <b class="g">Hub</b> → 4-hop traversal',hubStat:'1 query'},
+  literature:{models:['m-hugo','m-ensembl','m-entrez','m-hgvs','m-mondo','m-oncotree','m-drugbank-id'],systems:['s-pubmed','s-gdc','s-cbio','s-clinvar','s-drugbank'],path:'Paper <b>(mixed)</b> → GDC <b>(Ensembl)</b> → ClinVar <b>(HGVS)</b> → DrugBank',stat:'7 ontologies',hubPath:'Agent → <b class="g">Hub</b> → synonyms resolved',hubStat:'1 query'},
+  clinical:{models:['m-icd','m-snomed','m-mondo','m-hpo','m-entrez','m-hugo'],systems:['s-gdc','s-clinvar','s-cbio','s-primekg'],path:'EHR <b>(ICD-10)</b> → MONDO → GDC <b>(Ensembl)</b> → SNOMED',stat:'3 ontologies',hubPath:'Agent → <b class="g">Hub</b> → ICD-10 pre-mapped',hubStat:'1 query'},
+  similarity:{models:['m-mondo','m-entrez','m-hugo','m-go','m-hpo'],systems:['s-disgenet','s-reactome','s-string','s-primekg'],path:'DisGeNET <b>(UMLS)</b> → loop all diseases → compute overlap',stat:'N² queries',hubPath:'Agent → <b class="g">Hub</b> → set intersection',hubStat:'1 query'}
+};
+
+let mode='frag', active=null;
+
+function setMode(m){
+  mode=m;
+  document.getElementById('btn-frag').className=m==='frag'?'on-frag':'';
+  document.getElementById('btn-hub').className=m==='hub'?'on-hub':'';
+  if(active)pick(active); else clear();
+}
+
+function clear(){
+  document.querySelectorAll('.card').forEach(c=>c.classList.remove('lit','lit-hub'));
+  document.getElementById('svg').innerHTML='';  // nosemgrep  (archived static visualization; static in-file content, no user input)
+  document.getElementById('div1').className='col-divider';
+  document.getElementById('div2').className='col-divider';
+  document.getElementById('info-strip').classList.remove('visible','hub-on');
+}
+
+function pick(id){
+  active=id;
+  clear();
+  const a=apps[id];
+  const cls=mode==='hub'?'lit-hub':'lit';
+  document.getElementById('a-'+id).classList.add(cls);
+  if(mode==='frag'){
+    // Fragmented: light up models AND systems (you need both)
+    a.models.forEach(m=>{const e=document.getElementById(m);if(e)e.classList.add(cls);});
+    a.systems.forEach(s=>{const e=document.getElementById(s);if(e)e.classList.add(cls);});
+    document.getElementById('div1').classList.add('lit-red');
+    document.getElementById('div2').classList.add('lit-red');
+  } else {
+    // Hub: only light up systems (models are abstracted away by the hub)
+    a.systems.forEach(s=>{const e=document.getElementById(s);if(e)e.classList.add(cls);});
+    document.getElementById('div2').classList.add('lit-teal');
+  }
+
+  // Draw lines
+  const svg=document.getElementById('svg');
+  const cr=document.getElementById('container').getBoundingClientRect();
+  function ctr(el){const r=el.getBoundingClientRect();return{x:r.left-cr.left+r.width/2,y:r.top-cr.top+r.height/2};}
+  function ln(a,b,col,w,op){
+    const l=document.createElementNS('http://www.w3.org/2000/svg','line');
+    l.setAttribute('x1',a.x);l.setAttribute('y1',a.y);l.setAttribute('x2',b.x);l.setAttribute('y2',b.y);
+    l.setAttribute('stroke',col);l.setAttribute('stroke-width',w||'1.5');l.setAttribute('opacity',op||'0.7');
+    svg.appendChild(l);
+  }
+
+  const ac=ctr(document.getElementById('a-'+id));
+
+  if(mode==='hub'){
+    // HUB MODE: App → Hub (one bold line). Hub is implied at center.
+    // Only show: App → (single path) → Systems. Clean, minimal.
+    // One thick line from app straight to each system (direct access via hub)
+    a.systems.forEach(s=>{
+      const e=document.getElementById(s);
+      if(e) ln(ac,ctr(e),'#2dd4bf','2','0.8');
+    });
+  } else {
+    // FRAGMENTED MODE: App → Models → Systems (tangled mesh)
+    // App to every model it needs
+    a.models.forEach(m=>{
+      const e=document.getElementById(m);
+      if(e) ln(ac,ctr(e),'#ff4d4d','1.5','0.6');
+    });
+    // Every model to every system (the tangled web)
+    a.models.forEach(m=>{
+      const me=document.getElementById(m);
+      if(!me)return;
+      a.systems.forEach(s=>{
+        const se=document.getElementById(s);
+        if(se) ln(ctr(me),ctr(se),'#ff4d4d','1','0.35');
+      });
+    });
+  }
+
+  // Info strip
+  const strip=document.getElementById('info-strip');
+  strip.classList.add('visible');
+  strip.classList.toggle('hub-on',mode==='hub');
+  document.getElementById('is-name').textContent=(mode==='hub'?'✅ ':'❌ ')+document.getElementById('a-'+id).querySelector('.c-name').textContent;
+  document.getElementById('is-path').innerHTML=mode==='hub'?a.hubPath:a.path;  // nosemgrep  (archived static visualization; static in-file content, no user input)
+  document.getElementById('is-stat').textContent=mode==='hub'?a.hubStat:a.stat;
+}
+</script>
+</body>
+</html>

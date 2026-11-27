@@ -1,0 +1,7 @@
+TCGA project TCGA-KIRP: Kidney Renal Papillary Cell Carcinoma.
+Program: The Cancer Genome Atlas (TCGA).
+Primary site(s): Kidney.
+Disease type(s): Adenomas and Adenocarcinomas.
+Cases: 291. Files: 18618.
+
+This TCGA cohort (TCGA-KIRP) provides molecular and clinical data for Kidney Renal Papillary Cell Carcinoma (primary site: Kidney; disease type: Adenomas and Adenocarcinomas). It supports biomarker, mutation, expression, and copy-number analyses in oncology research.

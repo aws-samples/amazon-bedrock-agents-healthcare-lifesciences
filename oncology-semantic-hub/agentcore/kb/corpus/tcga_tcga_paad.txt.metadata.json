@@ -1,0 +1,8 @@
+{
+  "metadataAttributes": {
+    "source": "TCGA",
+    "project_id": "TCGA-PAAD",
+    "disease": "Pancreatic Adenocarcinoma",
+    "primary_site": "Pancreas"
+  }
+}

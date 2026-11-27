@@ -1,0 +1,7 @@
+TCGA project TCGA-UVM: Uveal Melanoma.
+Program: The Cancer Genome Atlas (TCGA).
+Primary site(s): Eye and adnexa.
+Disease type(s): Paragangliomas and Glomus Tumors, Nevi and Melanomas.
+Cases: 80. Files: 5509.
+
+This TCGA cohort (TCGA-UVM) provides molecular and clinical data for Uveal Melanoma (primary site: Eye and adnexa; disease type: Paragangliomas and Glomus Tumors, Nevi and Melanomas). It supports biomarker, mutation, expression, and copy-number analyses in oncology research.

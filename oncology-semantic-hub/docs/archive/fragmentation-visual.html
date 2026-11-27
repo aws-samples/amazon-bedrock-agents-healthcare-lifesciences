@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Oncology Semantic Hub — The Fragmentation Problem</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0d1117; color: #e6edf3; overflow-x: hidden; }
+.container { max-width: 1400px; margin: 0 auto; padding: 40px 20px; }
+h1 { font-size: 2.5em; text-align: center; margin-bottom: 10px; background: linear-gradient(135deg, #58a6ff, #a371f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+h2 { font-size: 1.8em; margin: 60px 0 20px; color: #58a6ff; }
+h3 { font-size: 1.3em; margin: 30px 0 15px; color: #a371f7; }
+.subtitle { text-align: center; color: #8b949e; font-size: 1.1em; margin-bottom: 50px; }
+.section { margin: 40px 0; padding: 30px; border-radius: 12px; border: 1px solid #30363d; background: #161b22; }
+
+/* Fragmentation diagram */
+.frag-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0; }
+.frag-box { padding: 15px; border-radius: 8px; border: 1px solid #30363d; text-align: center; transition: transform 0.2s, border-color 0.2s; }
+.frag-box:hover { transform: translateY(-3px); border-color: #58a6ff; }
+.frag-box .icon { font-size: 2em; margin-bottom: 8px; }
+.frag-box .name { font-weight: 600; font-size: 0.9em; }
+.frag-box .detail { font-size: 0.75em; color: #8b949e; margin-top: 5px; }
+
+.cat-data { background: #1a2332; border-color: #1f6feb44; }
+.cat-ontology { background: #2d1b3e; border-color: #a371f744; }
+.cat-app { background: #1b2e1b; border-color: #3fb95044; }
+.cat-id { background: #2e2a1b; border-color: #d29922aa; }
+
+/* Disconnection lines */
+.disconnect-visual { position: relative; padding: 40px 0; text-align: center; }
+.disconnect-visual::before { content: ''; position: absolute; top: 50%; left: 10%; right: 10%; height: 2px; background: repeating-linear-gradient(90deg, #f85149 0px, #f85149 8px, transparent 8px, transparent 16px); }
+.disconnect-label { background: #0d1117; padding: 5px 15px; position: relative; z-index: 1; color: #f85149; font-weight: 600; display: inline-block; }
+
+/* Solution diagram */
+.solution-wrapper { display: flex; align-items: center; gap: 30px; margin: 30px 0; flex-wrap: wrap; }
+.solution-left, .solution-right { flex: 1; min-width: 300px; }
+.solution-center { width: 200px; text-align: center; }
+.solution-center .hub-icon { font-size: 4em; animation: pulse 2s infinite; }
+@keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+
+/* Mapping table */
+.mapping-table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 0.85em; }
+.mapping-table th { background: #21262d; padding: 10px; text-align: left; border-bottom: 2px solid #30363d; }
+.mapping-table td { padding: 8px 10px; border-bottom: 1px solid #30363d; }
+.mapping-table tr:hover { background: #1c2128; }
+.status-yes { color: #3fb950; }
+.status-no { color: #f85149; }
+.status-partial { color: #d29922; }
+
+/* Agent flow */
+.agent-flow { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 30px 0; flex-wrap: wrap; }
+.flow-step { padding: 12px 20px; border-radius: 8px; font-size: 0.85em; font-weight: 600; }
+.flow-arrow { color: #58a6ff; font-size: 1.5em; }
+.flow-agent { background: #1f6feb33; border: 1px solid #1f6feb; }
+.flow-hub { background: #a371f733; border: 1px solid #a371f7; }
+.flow-data { background: #3fb95033; border: 1px solid #3fb950; }
+
+/* Stats */
+.stats-row { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin: 30px 0; }
+.stat-card { text-align: center; padding: 20px 30px; border-radius: 8px; background: #21262d; min-width: 120px; }
+.stat-card .num { font-size: 2em; font-weight: 700; color: #58a6ff; }
+.stat-card .label { font-size: 0.8em; color: #8b949e; margin-top: 5px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>The Fragmentation Problem in Oncology Data</h1>
+<p class="subtitle">Why agents need a semantic hub to discover, connect, and reason across biomedical knowledge</p>
+
+<!-- Section 1: The Problem -->
+<div class="section">
+<h2>🔴 The Problem: Fragmented Data Sources</h2>
+<p style="color:#8b949e; margin-bottom:20px;">Cancer research data is scattered across dozens of incompatible systems, each with its own schema, identifiers, and access patterns.</p>
+
+<div class="stats-row">
+<div class="stat-card"><div class="num">60%</div><div class="label">of AI project time<br>lost to data wrangling</div></div>
+<div class="stat-card"><div class="num">10M+</div><div class="label">discrete data silos<br>across biopharma</div></div>
+<div class="stat-card"><div class="num">~10 yrs</div><div class="label">avg drug development<br>at $2.6B per drug</div></div>
+<div class="stat-card"><div class="num">41%</div><div class="label">of people trust AI —<br>agents lack context</div></div>
+</div>
+
+<h3>📊 Patient & Molecular Data Sources</h3>
+<div class="frag-grid">
+<div class="frag-box cat-data"><div class="icon">🧬</div><div class="name">GDC / TCGA</div><div class="detail">86K cases · REST API · UUID identifiers · GRCh38</div></div>
+<div class="frag-box cat-data"><div class="icon">📊</div><div class="name">cBioPortal</div><div class="detail">400+ studies · Swagger API · TCGA barcodes · TSV files</div></div>
+<div class="frag-box cat-data"><div class="icon">🔬</div><div class="name">COSMIC</div><div class="detail">Somatic mutations · Registration required · COSMIC IDs</div></div>
+<div class="frag-box cat-data"><div class="icon">🏥</div><div class="name">ClinVar</div><div class="detail">Variant significance · FTP download · RCV accessions</div></div>
+<div class="frag-box cat-data"><div class="icon">💊</div><div class="name">DrugBank</div><div class="detail">14K drugs · XML download · DrugBank IDs · Academic license</div></div>
+<div class="frag-box cat-data"><div class="icon">🔗</div><div class="name">STRING</div><div class="detail">PPI network · TSV download · Ensembl protein IDs</div></div>
+<div class="frag-box cat-data"><div class="icon">🧪</div><div class="name">Reactome</div><div class="detail">Pathways · BioPAX/TSV · Reactome stable IDs</div></div>
+<div class="frag-box cat-data"><div class="icon">📋</div><div class="name">DisGeNET</div><div class="detail">Gene-disease · TSV · UMLS CUI + Entrez IDs</div></div>
+</div>
+
+<h3>📚 Ontologies & Terminologies (No Direct Mapping Between Them)</h3>
+<div class="frag-grid">
+<div class="frag-box cat-ontology"><div class="icon">🦠</div><div class="name">MONDO</div><div class="detail">Disease ontology · 26K terms · MONDO:XXXXXXX</div></div>
+<div class="frag-box cat-ontology"><div class="icon">🏷️</div><div class="name">ICD-10</div><div class="detail">Clinical coding · Billing/EHR · C50.9 format</div></div>
+<div class="frag-box cat-ontology"><div class="icon">🧬</div><div class="name">Gene Ontology</div><div class="detail">Gene function · 44K terms · GO:XXXXXXX</div></div>
+<div class="frag-box cat-ontology"><div class="icon">🔤</div><div class="name">HGNC</div><div class="detail">Gene names · Hugo Symbols · Entrez IDs</div></div>
+<div class="frag-box cat-ontology"><div class="icon">🧫</div><div class="name">HPO</div><div class="detail">Phenotypes · 15K terms · HP:XXXXXXX</div></div>
+<div class="frag-box cat-ontology"><div class="icon">🏥</div><div class="name">SNOMED CT</div><div class="detail">Clinical terms · 350K concepts · EHR standard</div></div>
+<div class="frag-box cat-ontology"><div class="icon">📖</div><div class="name">NCIt</div><div class="detail">Cancer terminology · 54K classes · NCI standard</div></div>
+<div class="frag-box cat-ontology"><div class="icon">🧪</div><div class="name">ChEBI</div><div class="detail">Chemical entities · Drug compounds · CHEBI:XXXXX</div></div>
+</div>
+
+<h3>🆔 The Identifier Chaos</h3>
+<div class="frag-grid">
+<div class="frag-box cat-id"><div class="icon">🧬</div><div class="name">Same Gene, 5 IDs</div><div class="detail">TP53 = Entrez 7157 = ENSG00000141510 = P04637 = HGNC:11998 = OMIM:191170</div></div>
+<div class="frag-box cat-id"><div class="icon">🦠</div><div class="name">Same Disease, 6 IDs</div><div class="detail">Breast cancer = MONDO:0007254 = ICD-10:C50 = SNOMED:254837009 = DOID:1612 = NCIT:C4872 = OMIM:114480</div></div>
+<div class="frag-box cat-id"><div class="icon">💊</div><div class="name">Same Drug, 4 IDs</div><div class="detail">Alpelisib = DB12015 = CHEMBL3301610 = CID:56649450 = ATC:L01XX65</div></div>
+</div>
+
+<div class="disconnect-visual">
+<span class="disconnect-label">❌ No system connects all of these together</span>
+</div>
+</div>
+
+<!-- Section 2: Each System's Metadata & Ontologies -->
+<div class="section">
+<h2>🏗️ Each System Speaks a Different Language</h2>
+<p style="color:#8b949e; margin-bottom:20px;">Every data source uses its own metadata schema, identifier system, and ontology. None are directly compatible.</p>
+
+<div style="overflow-x:auto;">
+<table class="mapping-table">
+<tr><th>System</th><th>Gene ID</th><th>Disease ID</th><th>Drug ID</th><th>Ontology</th><th>Format</th><th>Access</th></tr>
+<tr><td style="font-weight:600;">GDC / TCGA</td><td>Ensembl (ENSG...)</td><td>ICD-O-3 morphology</td><td>—</td><td>GDC Data Dictionary</td><td>JSON via REST</td><td>Open (UUID-based)</td></tr>
+<tr><td style="font-weight:600;">cBioPortal</td><td>Hugo Symbol + Entrez</td><td>OncoTree codes</td><td>—</td><td>cBioPortal schema</td><td>TSV / Swagger API</td><td>Open (study-based)</td></tr>
+<tr><td style="font-weight:600;">DrugBank</td><td>UniProt IDs</td><td>—</td><td>DrugBank IDs (DB...)</td><td>DrugBank schema</td><td>XML</td><td>Licensed</td></tr>
+<tr><td style="font-weight:600;">ClinVar</td><td>Entrez + HGVS</td><td>MedGen CUI</td><td>—</td><td>ClinVar schema</td><td>Gzipped TSV (FTP)</td><td>Open</td></tr>
+<tr><td style="font-weight:600;">COSMIC</td><td>COSMIC Gene ID</td><td>Primary site text</td><td>—</td><td>COSMIC schema</td><td>TSV</td><td>Registration</td></tr>
+<tr><td style="font-weight:600;">STRING</td><td>Ensembl Protein (ENSP...)</td><td>—</td><td>—</td><td>STRING schema</td><td>TSV</td><td>Open</td></tr>
+<tr><td style="font-weight:600;">Reactome</td><td>UniProt IDs</td><td>—</td><td>ChEBI IDs</td><td>BioPAX ontology</td><td>BioPAX XML / TSV</td><td>Open</td></tr>
+<tr><td style="font-weight:600;">DisGeNET</td><td>Entrez IDs</td><td>UMLS CUI</td><td>—</td><td>DisGeNET schema</td><td>TSV</td><td>Licensed</td></tr>
+<tr><td style="font-weight:600;">Gene Ontology</td><td>UniProt IDs</td><td>—</td><td>—</td><td>GO (OBO format)</td><td>OBO / OWL</td><td>Open</td></tr>
+<tr><td style="font-weight:600;">HPO</td><td>—</td><td>OMIM IDs</td><td>—</td><td>HPO (OBO format)</td><td>OBO / OWL</td><td>Open</td></tr>
+</table>
+</div>
+
+<p style="color:#f85149; margin-top:20px; font-weight:600; text-align:center;">⚠️ 10 systems × 10 different gene IDs × 6 different disease IDs × 4 different drug IDs = no interoperability</p>
+</div>
+
+<!-- Section 2b: Scenario Traversal -->
+<div class="section">
+<h2>🔀 Scenario Traversal: The Hidden Complexity</h2>
+<p style="color:#8b949e; margin-bottom:30px;">Each research question requires traversing multiple disconnected systems, translating identifiers at every hop.</p>
+
+<!-- Scenario 1 -->
+<h3 style="color:#58a6ff;">Scenario: "What drugs target the most mutated genes in breast cancer?"</h3>
+<div style="background:#0d1117; border:1px solid #30363d; border-radius:8px; padding:20px; margin:15px 0; overflow-x:auto;">
+<div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:0.8em;">
+<div style="padding:8px 12px; background:#1a2332; border:1px solid #1f6feb; border-radius:6px;"><strong>GDC</strong><br><span style="color:#8b949e;">Mutations<br>ID: Ensembl</span></div>
+<span style="color:#f85149; font-size:1.2em;">⟶ 🔄</span>
+<div style="padding:6px 10px; background:#2e2a1b; border:1px dashed #d29922; border-radius:4px; font-size:0.85em; color:#d29922;">Ensembl→Hugo<br>(HGNC lookup)</div>
+<span style="color:#f85149; font-size:1.2em;">⟶</span>
+<div style="padding:8px 12px; background:#1a2332; border:1px solid #1f6feb; border-radius:6px;"><strong>cBioPortal</strong><br><span style="color:#8b949e;">Frequency<br>ID: Hugo Symbol</span></div>
+<span style="color:#f85149; font-size:1.2em;">⟶ 🔄</span>
+<div style="padding:6px 10px; background:#2e2a1b; border:1px dashed #d29922; border-radius:4px; font-size:0.85em; color:#d29922;">Hugo→UniProt<br>(HGNC lookup)</div>
+<span style="color:#f85149; font-size:1.2em;">⟶</span>
+<div style="padding:8px 12px; background:#1a2332; border:1px solid #1f6feb; border-radius:6px;"><strong>DrugBank</strong><br><span style="color:#8b949e;">Drug targets<br>ID: UniProt</span></div>
+<span style="color:#f85149; font-size:1.2em;">⟶ 🔄</span>
+<div style="padding:6px 10px; background:#2e2a1b; border:1px dashed #d29922; border-radius:4px; font-size:0.85em; color:#d29922;">ICD-O-3→MONDO<br>(manual mapping)</div>
+<span style="color:#f85149; font-size:1.2em;">⟶</span>
+<div style="padding:8px 12px; background:#1a2332; border:1px solid #1f6feb; border-radius:6px;"><strong>ClinVar</strong><br><span style="color:#8b949e;">Significance<br>ID: Entrez</span></div>
+</div>
+<p style="color:#f85149; font-size:0.8em; margin-top:15px;">5 systems · 4 ID translations · 5 different APIs · Minutes to hours per query · Brittle pipeline</p>
+</div>
+
+<div style="background:#0d1117; border:1px solid #3fb950; border-radius:8px; padding:15px; margin:10px 0;">
+<p style="color:#3fb950; font-size:0.85em; margin:0;"><strong>With Semantic Hub:</strong> One openCypher query + one Athena SQL → merged in Python. Seconds. All IDs pre-harmonized.</p>
+</div>
+
+<!-- Scenario 2 -->
+<h3 style="color:#58a6ff; margin-top:30px;">Scenario: "Find drugs targeting PPI neighbors of glioblastoma genes"</h3>
+<div style="background:#0d1117; border:1px solid #30363d; border-radius:8px; padding:20px; margin:15px 0; overflow-x:auto;">
+<div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:0.8em;">
+<div style="padding:8px 12px; background:#1a2332; border:1px solid #1f6feb; border-radius:6px;"><strong>GDC</strong><br><span style="color:#8b949e;">GBM mutations<br>ID: Ensembl</span></div>
+<span style="color:#f85149; font-size:1.2em;">⟶ 🔄</span>
+<div style="padding:6px 10px; background:#2e2a1b; border:1px dashed #d29922; border-radius:4px; font-size:0.85em; color:#d29922;">Ensembl→<br>Ensembl Protein</div>
+<span style="color:#f85149; font-size:1.2em;">⟶</span>
+<div style="padding:8px 12px; background:#1a2332; border:1px solid #1f6feb; border-radius:6px;"><strong>STRING</strong><br><span style="color:#8b949e;">PPI network<br>ID: ENSP</span></div>
+<span style="color:#f85149; font-size:1.2em;">⟶ 🔄</span>
+<div style="padding:6px 10px; background:#2e2a1b; border:1px dashed #d29922; border-radius:4px; font-size:0.85em; color:#d29922;">ENSP→UniProt<br>(STRING mapping)</div>
+<span style="color:#f85149; font-size:1.2em;">⟶</span>
+<div style="padding:8px 12px; background:#1a2332; border:1px solid #1f6feb; border-radius:6px;"><strong>DrugBank</strong><br><span style="color:#8b949e;">Drug targets<br>ID: UniProt</span></div>
+<span style="color:#f85149; font-size:1.2em;">⟶ 🔄</span>
+<div style="padding:6px 10px; background:#2e2a1b; border:1px dashed #d29922; border-radius:4px; font-size:0.85em; color:#d29922;">DrugBank→ATC<br>(class lookup)</div>
+<span style="color:#f85149; font-size:1.2em;">⟶</span>
+<div style="padding:8px 12px; background:#1a2332; border:1px solid #1f6feb; border-radius:6px;"><strong>Reactome</strong><br><span style="color:#8b949e;">Pathways<br>ID: UniProt</span></div>
+</div>
+<p style="color:#f85149; font-size:0.8em; margin-top:15px;">6 systems · 5 ID translations · Network traversal impossible without pre-built graph · Days of manual work</p>
+</div>
+
+<div style="background:#0d1117; border:1px solid #3fb950; border-radius:8px; padding:15px; margin:10px 0;">
+<p style="color:#3fb950; font-size:0.85em; margin:0;"><strong>With Semantic Hub:</strong> <code>MATCH (d:disease)-[:disease_protein]-(g)-[:protein_protein]-(g2)-[:drug_protein]-(dr:drug) WHERE d.name CONTAINS 'glioblastoma' RETURN dr.name, g2.name</code> — One query. Sub-second.</p>
+</div>
+
+<!-- Scenario 3 -->
+<h3 style="color:#58a6ff; margin-top:30px;">Scenario: "Which cancers share genetic drivers with breast cancer?"</h3>
+<div style="background:#0d1117; border:1px solid #30363d; border-radius:8px; padding:20px; margin:15px 0; overflow-x:auto;">
+<div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:0.8em;">
+<div style="padding:8px 12px; background:#1a2332; border:1px solid #1f6feb; border-radius:6px;"><strong>DisGeNET</strong><br><span style="color:#8b949e;">BRCA genes<br>ID: Entrez + UMLS CUI</span></div>
+<span style="color:#f85149; font-size:1.2em;">⟶ 🔄</span>
+<div style="padding:6px 10px; background:#2e2a1b; border:1px dashed #d29922; border-radius:4px; font-size:0.85em; color:#d29922;">UMLS CUI→MONDO<br>(UMLS Metathesaurus)</div>
+<span style="color:#f85149; font-size:1.2em;">⟶</span>
+<div style="padding:8px 12px; background:#1a2332; border:1px solid #1f6feb; border-radius:6px;"><strong>MONDO</strong><br><span style="color:#8b949e;">Disease hierarchy<br>ID: MONDO</span></div>
+<span style="color:#f85149; font-size:1.2em;">⟶ 🔄</span>
+<div style="padding:6px 10px; background:#2e2a1b; border:1px dashed #d29922; border-radius:4px; font-size:0.85em; color:#d29922;">For each disease:<br>query DisGeNET again</div>
+<span style="color:#f85149; font-size:1.2em;">⟶</span>
+<div style="padding:8px 12px; background:#1a2332; border:1px solid #1f6feb; border-radius:6px;"><strong>DisGeNET</strong><br><span style="color:#8b949e;">Other disease genes<br>ID: Entrez</span></div>
+<span style="color:#f85149; font-size:1.2em;">⟶ 🔄</span>
+<div style="padding:6px 10px; background:#2e2a1b; border:1px dashed #d29922; border-radius:4px; font-size:0.85em; color:#d29922;">Compute<br>set intersection</div>
+<span style="color:#f85149; font-size:1.2em;">⟶</span>
+<div style="padding:8px 12px; background:#1a2332; border:1px solid #1f6feb; border-radius:6px;"><strong>Custom code</strong><br><span style="color:#8b949e;">Overlap analysis<br>Manual pipeline</span></div>
+</div>
+<p style="color:#f85149; font-size:0.8em; margin-top:15px;">Requires querying DisGeNET for EVERY disease, translating IDs, computing overlaps manually. Hours of work.</p>
+</div>
+
+<div style="background:#0d1117; border:1px solid #3fb950; border-radius:8px; padding:15px; margin:10px 0;">
+<p style="color:#3fb950; font-size:0.85em; margin:0;"><strong>With Semantic Hub:</strong> <code>MATCH (d1:disease)-[:disease_protein]->(g)<-[:disease_protein]-(d2:disease) WHERE d1.name CONTAINS 'breast' RETURN d2.name, count(g) ORDER BY count(g) DESC</code> — One query. Sub-second. Result: ovarian cancer shares 163 genes.</p>
+</div>
+
+<div style="margin-top:30px; padding:20px; background:#21262d; border-radius:8px; text-align:center;">
+<p style="color:#e6edf3; font-size:1.1em; margin:0;">Each <span style="color:#d29922;">🔄 yellow box</span> is a point of failure: an ID translation that can be lossy, outdated, or ambiguous.</p>
+<p style="color:#8b949e; font-size:0.9em; margin-top:10px;">The semantic hub eliminates these by pre-computing all mappings into a single connected graph.</p>
+</div>
+</div>
+
+<!-- Section: Literature Reproducibility -->
+<div class="section">
+<h2>📄 The Literature Problem: Same Biology, Different Languages</h2>
+<p style="color:#8b949e; margin-bottom:20px;">Published papers use inconsistent ontologies, gene nomenclature, and data sources — making it nearly impossible to reproduce or combine findings computationally.</p>
+
+<h3>Example: Three papers studying TP53 in breast cancer</h3>
+<div style="overflow-x:auto;">
+<table class="mapping-table">
+<tr><th></th><th>Paper A (Nature 2022)</th><th>Paper B (Cell 2023)</th><th>Paper C (JCO 2024)</th></tr>
+<tr><td style="font-weight:600;">Gene reference</td><td>TP53 (Hugo Symbol)</td><td>ENSG00000141510 (Ensembl)</td><td>7157 (Entrez Gene ID)</td></tr>
+<tr><td style="font-weight:600;">Disease term</td><td>"breast cancer"</td><td>"invasive ductal carcinoma"</td><td>"BRCA" (TCGA abbreviation)</td></tr>
+<tr><td style="font-weight:600;">Disease ontology</td><td>None (free text)</td><td>ICD-O-3: 8500/3</td><td>OncoTree: BRCA</td></tr>
+<tr><td style="font-weight:600;">Variant notation</td><td>R248W</td><td>p.Arg248Trp (HGVS)</td><td>chr17:7674220 C>T (genomic)</td></tr>
+<tr><td style="font-weight:600;">Drug reference</td><td>"Alpelisib"</td><td>BYL719 (research code)</td><td>DB12015 (DrugBank)</td></tr>
+<tr><td style="font-weight:600;">Cohort</td><td>TCGA-BRCA (n=1,098)</td><td>METABRIC (n=2,509)</td><td>MSK-IMPACT (n=5,000+)</td></tr>
+<tr><td style="font-weight:600;">Genome build</td><td>GRCh37 (hg19)</td><td>GRCh38 (hg38)</td><td>GRCh38 (hg38)</td></tr>
+<tr><td style="font-weight:600;">Mutation caller</td><td>MuTect2</td><td>Strelka2</td><td>Custom pipeline</td></tr>
+<tr><td style="font-weight:600;">Significance filter</td><td>VAF > 5%</td><td>COSMIC hotspot</td><td>OncoKB Level 1-3</td></tr>
+</table>
+</div>
+
+<p style="color:#f85149; margin-top:20px; font-weight:600;">⚠️ All three papers study the SAME mutation in the SAME gene in the SAME cancer — but use completely different identifiers, ontologies, cohorts, and filtering criteria.</p>
+
+<h3 style="margin-top:25px;">Why this makes hypothesis reproduction impossible without a semantic layer</h3>
+<div class="frag-grid" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));">
+<div class="frag-box" style="background:#1a1a2e; border-color:#f8514944; text-align:left;">
+<div class="icon">🔤</div>
+<div class="name" style="color:#f85149;">Terminology mismatch</div>
+<div class="detail">"Breast cancer" ≠ "invasive ductal carcinoma" ≠ "BRCA". A keyword search finds Paper A but misses B and C. Only ontology-aware search (MONDO hierarchy) connects them.</div>
+</div>
+<div class="frag-box" style="background:#1a1a2e; border-color:#f8514944; text-align:left;">
+<div class="icon">🧬</div>
+<div class="name" style="color:#f85149;">Gene ID fragmentation</div>
+<div class="detail">Paper A says "TP53", Paper B says "ENSG00000141510", Paper C says "7157". Without a mapping table, you can't confirm they're discussing the same gene.</div>
+</div>
+<div class="frag-box" style="background:#1a1a2e; border-color:#f8514944; text-align:left;">
+<div class="icon">💊</div>
+<div class="name" style="color:#f85149;">Drug name ambiguity</div>
+<div class="detail">"Alpelisib" = "BYL719" = "DB12015" = "Piqray" = ATC L01XX65. Five names for one drug. Literature uses all of them interchangeably.</div>
+</div>
+<div class="frag-box" style="background:#1a1a2e; border-color:#f8514944; text-align:left;">
+<div class="icon">📐</div>
+<div class="name" style="color:#f85149;">Variant representation</div>
+<div class="detail">"R248W" vs "p.Arg248Trp" vs "chr17:7674220 C>T" — same mutation, three notations. Protein-level, HGVS, and genomic coordinates don't cross-reference without tools.</div>
+</div>
+<div class="frag-box" style="background:#1a1a2e; border-color:#f8514944; text-align:left;">
+<div class="icon">📊</div>
+<div class="name" style="color:#f85149;">Cohort incompatibility</div>
+<div class="detail">TCGA, METABRIC, and MSK-IMPACT use different sequencing panels, mutation callers, and filtering thresholds. "TP53 mutated in 30%" means different things in each.</div>
+</div>
+<div class="frag-box" style="background:#1a1a2e; border-color:#f8514944; text-align:left;">
+<div class="icon">🏗️</div>
+<div class="name" style="color:#f85149;">Genome build drift</div>
+<div class="detail">Paper A uses GRCh37, Papers B/C use GRCh38. Genomic coordinates shift between builds. chr17:7674220 in hg38 ≠ the same position in hg19.</div>
+</div>
+</div>
+
+<div style="background:#0d1117; border:1px solid #3fb950; border-radius:8px; padding:20px; margin:25px 0;">
+<h3 style="color:#3fb950; margin:0 0 10px; font-size:1em;">✅ How the Semantic Hub solves this</h3>
+<div style="font-size:0.85em; color:#8b949e;">
+<p>• <strong>Ontology normalization:</strong> "breast cancer", "invasive ductal carcinoma", and "BRCA" all resolve to MONDO:0007254 via synonym matching and hierarchy traversal</p>
+<p>• <strong>ID harmonization:</strong> TP53 = ENSG00000141510 = 7157 = P04637 — all pre-mapped on the gene node</p>
+<p>• <strong>Drug resolution:</strong> Alpelisib = BYL719 = DB12015 = Piqray — all synonyms on the drug node</p>
+<p>• <strong>Variant normalization:</strong> ClinVar maps protein, HGVS, and genomic notations to a single variant record</p>
+<p>• <strong>Cohort-aware querying:</strong> Agent knows TCGA-BRCA has 1,098 cases and can compare to other cohorts in the data lake</p>
+</div>
+<p style="color:#3fb950; font-size:0.9em; margin-top:15px;"><strong>Result:</strong> An agent can find ALL papers about TP53 R248W in breast cancer regardless of which nomenclature the authors used — and reproduce their findings against the same underlying data.</p>
+</div>
+</div>
+
+<!-- Section 4: Before/After Semantic Intelligence -->
+<div class="section">
+<h2>🔄 Before vs After: Semantic Intelligence</h2>
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin:20px 0;">
+<div style="padding:20px; border-radius:8px; border:1px solid #f8514944; background:#f8514909;">
+<h3 style="color:#f85149; margin:0 0 15px; font-size:1em;">❌ Without Semantic Layer</h3>
+<div style="font-size:0.85em; color:#8b949e;">
+<p><strong style="color:#e6edf3;">AI & Agents</strong> → query raw data directly</p>
+<p><strong style="color:#e6edf3;">Data Sources</strong> → isolated: R&D, Clinical, Commercial</p>
+<p><strong style="color:#e6edf3;">Governance</strong> → afterthought: quality, lineage, compliance bolted on</p>
+<p style="margin-top:15px; color:#f85149;">Result: Agents hallucinate. No shared vocabulary. No relationship traversal. Every question requires custom ETL.</p>
+</div>
+</div>
+<div style="padding:20px; border-radius:8px; border:1px solid #3fb95044; background:#3fb95009;">
+<h3 style="color:#3fb950; margin:0 0 15px; font-size:1em;">✅ With Semantic Hub</h3>
+<div style="font-size:0.85em; color:#8b949e;">
+<p><strong style="color:#e6edf3;">AI & Agents</strong> → query through semantic layer (never bypass)</p>
+<p><strong style="color:#e6edf3;">Semantic Hub</strong> → ontology, data models, metadata, lineage, context</p>
+<p><strong style="color:#e6edf3;">Governance</strong> → built-in: quality, security, consent, audit trail</p>
+<p style="margin-top:15px; color:#3fb950;">Result: Agents get facts, not guesses. Shared vocabulary. Multi-hop reasoning. Any question answered in seconds.</p>
+</div>
+</div>
+</div>
+<p style="text-align:center; color:#a371f7; font-size:0.9em; margin-top:15px;"><em>"Agents interact with data through semantic layers — never bypassing to raw data when a semantic interface exists."</em></p>
+</div>
+
+<!-- Section 5: The Solution -->
+<div class="section">
+<h2>✅ The Semantic Hub: One Connected Knowledge Layer</h2>
+
+<div class="stats-row">
+<div class="stat-card"><div class="num">174,742</div><div class="label">Entities</div></div>
+<div class="stat-card"><div class="num">4.1M</div><div class="label">Relationships</div></div>
+<div class="stat-card"><div class="num">12</div><div class="label">Node Types</div></div>
+<div class="stat-card"><div class="num">32</div><div class="label">Edge Types</div></div>
+<div class="stat-card"><div class="num">20</div><div class="label">Integrated Sources</div></div>
+<div class="stat-card"><div class="num">2</div><div class="label">Query Languages</div></div>
+</div>
+
+<h3>How the Hub Resolves Fragmentation</h3>
+<table class="mapping-table">
+<tr><th>Problem</th><th>Without Hub</th><th>With Hub</th></tr>
+<tr><td>Gene identification</td><td class="status-no">5 different ID systems</td><td class="status-yes">Single Entrez ID, pre-mapped to Hugo/Ensembl</td></tr>
+<tr><td>Disease coding</td><td class="status-no">MONDO, ICD-10, SNOMED all separate</td><td class="status-yes">MONDO nodes with ICD-10/NCIt as properties</td></tr>
+<tr><td>Drug-gene links</td><td class="status-no">DrugBank XML + license + ID mapping</td><td class="status-yes">25,653 drug_protein edges, one hop</td></tr>
+<tr><td>Patient → Disease → Gene → Drug</td><td class="status-no">4 separate systems, manual joins</td><td class="status-yes">Single graph traversal path</td></tr>
+<tr><td>Pathway context</td><td class="status-no">Reactome BioPAX + gene ID conversion</td><td class="status-yes">42,646 pathway_protein edges</td></tr>
+<tr><td>Clinical significance</td><td class="status-no">ClinVar FTP + 500K variant filtering</td><td class="status-yes">clinvar_pathogenic_count on gene nodes</td></tr>
+<tr><td>Cross-cancer analysis</td><td class="status-no">Query GDC 33 times, aggregate manually</td><td class="status-yes">One Athena SQL query across all projects</td></tr>
+</table>
+
+<h3>Agent Query Flow: Before vs After</h3>
+
+<p style="margin:15px 0; color:#f85149;"><strong>Before (without hub):</strong></p>
+<div class="agent-flow">
+<div class="flow-step flow-agent">Agent</div><span class="flow-arrow">→</span>
+<div class="flow-step flow-data">GDC API</div><span class="flow-arrow">→</span>
+<div class="flow-step flow-data">HGNC</div><span class="flow-arrow">→</span>
+<div class="flow-step flow-data">DrugBank</div><span class="flow-arrow">→</span>
+<div class="flow-step flow-data">ClinVar</div><span class="flow-arrow">→</span>
+<div class="flow-step flow-data">Reactome</div><span class="flow-arrow">→</span>
+<div class="flow-step" style="background:#f8514933;border:1px solid #f85149;">Manual joins</div>
+</div>
+<p style="color:#8b949e; text-align:center; font-size:0.85em;">6 APIs · 6 ID systems · minutes per question · brittle · no relationship traversal</p>
+
+<p style="margin:25px 0 15px; color:#3fb950;"><strong>After (with semantic hub):</strong></p>
+<div class="agent-flow">
+<div class="flow-step flow-agent">Agent</div><span class="flow-arrow">→</span>
+<div class="flow-step flow-hub">Semantic Hub</div><span class="flow-arrow">→</span>
+<div class="flow-step flow-data">Neptune (graph)</div><span style="color:#8b949e;">+</span>
+<div class="flow-step flow-data">Athena (lake)</div>
+</div>
+<p style="color:#8b949e; text-align:center; font-size:0.85em;">2 tools · 1 ID system · seconds per question · relationship traversal · multi-hop discovery</p>
+</div>
+
+<!-- Section 4: What the Hub Enables -->
+<div class="section">
+<h2>🚀 What Becomes Possible</h2>
+
+<div class="frag-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+<div class="frag-box cat-app"><div class="icon">🎯</div><div class="name">Drug Repurposing</div><div class="detail">Traverse: mutated gene → PPI neighbors → existing drug targets. Discover indirect therapeutic opportunities in seconds.</div></div>
+<div class="frag-box cat-app"><div class="icon">🧬</div><div class="name">Pan-Cancer Biomarkers</div><div class="detail">Query mutations across 33 cancer types, find genes mutated in 20+ cancers, link to pathways and drugs.</div></div>
+<div class="frag-box cat-app"><div class="icon">🕸️</div><div class="name">Network Medicine</div><div class="detail">4-hop traversals: disease → gene → PPI → gene → drug. Find targets invisible in flat databases.</div></div>
+<div class="frag-box cat-app"><div class="icon">🔬</div><div class="name">Disease Similarity</div><div class="detail">Discover cancers sharing genetic drivers. Breast and ovarian cancer share 163 genes — enabling cross-indication insights.</div></div>
+<div class="frag-box cat-app"><div class="icon">🏥</div><div class="name">Clinical Integration</div><div class="detail">ICD-10 codes on disease nodes bridge research data to hospital EHR systems and billing codes.</div></div>
+<div class="frag-box cat-app"><div class="icon">🤖</div><div class="name">AI Agent Discovery</div><div class="detail">Agents discover available data via schema tool, then query the right system — no hardcoded API knowledge needed.</div></div>
+</div>
+</div>
+
+<!-- Section 5: Architecture -->
+<div class="section">
+<h2>🏗️ Architecture: Two Complementary Systems</h2>
+<div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin:20px 0;">
+<div style="padding:20px; border-radius:8px; background:#1f6feb11; border:1px solid #1f6feb44;">
+<h3 style="color:#58a6ff; margin:0 0 10px;">Neptune Analytics (Knowledge Graph)</h3>
+<p style="font-size:0.85em; color:#8b949e;">For: relationship traversal, multi-hop discovery, pathway analysis</p>
+<ul style="font-size:0.85em; margin-top:10px; padding-left:20px; color:#e6edf3;">
+<li>174,742 nodes (genes, diseases, drugs, pathways, patients)</li>
+<li>4.1M edges (drug targets, PPI, gene-disease, pathways)</li>
+<li>Query: openCypher</li>
+<li>Latency: sub-second</li>
+</ul>
+</div>
+<div style="padding:20px; border-radius:8px; background:#3fb95011; border:1px solid #3fb95044;">
+<h3 style="color:#3fb950; margin:0 0 10px;">S3 + Athena (Patient Data Lake)</h3>
+<p style="font-size:0.85em; color:#8b949e;">For: aggregation at scale, mutation frequencies, cross-cancer comparisons</p>
+<ul style="font-size:0.85em; margin-top:10px; padding-left:20px; color:#e6edf3;">
+<li>33 TCGA projects (somatic mutations)</li>
+<li>12 studies (copy number alterations)</li>
+<li>32 studies (gene expression)</li>
+<li>Query: SQL via Athena</li>
+</ul>
+</div>
+</div>
+<p style="text-align:center; color:#a371f7; font-weight:600; margin-top:20px;">Connected by application-layer joins — each query runs in its optimal engine</p>
+</div>
+
+<!-- Section 5: Maturity Model -->
+<div class="section">
+<h2>📈 The Inflection Point: AI-Ready Data</h2>
+<p style="color:#8b949e; margin-bottom:20px;">The Semantic Hub sits at Stage 3 of the research maturity model — the inflection point where data becomes AI-ready.</p>
+<div style="display:flex; gap:5px; align-items:flex-end; justify-content:center; margin:30px 0; flex-wrap:wrap;">
+<div style="text-align:center; padding:15px 12px; border-radius:8px; background:#21262d; width:130px;">
+<div style="font-size:0.7em; color:#8b949e;">Stage 1</div>
+<div style="font-size:0.85em; margin:5px 0;">Digital Connected Lab</div>
+<div style="height:40px; background:#30363d; border-radius:4px; margin-top:8px;"></div>
+</div>
+<div style="text-align:center; padding:15px 12px; border-radius:8px; background:#21262d; width:130px;">
+<div style="font-size:0.7em; color:#8b949e;">Stage 2</div>
+<div style="font-size:0.85em; margin:5px 0;">Data Foundations</div>
+<div style="height:60px; background:#30363d; border-radius:4px; margin-top:8px;"></div>
+</div>
+<div style="text-align:center; padding:15px 12px; border-radius:8px; background:#a371f722; border:2px solid #a371f7; width:150px;">
+<div style="font-size:0.7em; color:#a371f7; font-weight:700;">⚡ INFLECTION</div>
+<div style="font-size:0.85em; margin:5px 0; color:#a371f7; font-weight:600;">Semantic Layer & Knowledge Graphs</div>
+<div style="height:90px; background:#a371f733; border-radius:4px; margin-top:8px;"></div>
+</div>
+<div style="text-align:center; padding:15px 12px; border-radius:8px; background:#21262d; width:130px;">
+<div style="font-size:0.7em; color:#8b949e;">Stage 4</div>
+<div style="font-size:0.85em; margin:5px 0;">Foundation Models</div>
+<div style="height:120px; background:#30363d; border-radius:4px; margin-top:8px;"></div>
+</div>
+<div style="text-align:center; padding:15px 12px; border-radius:8px; background:#21262d; width:130px;">
+<div style="font-size:0.7em; color:#8b949e;">Stage 5</div>
+<div style="font-size:0.85em; margin:5px 0;">Agentic Analysis</div>
+<div style="height:150px; background:#30363d; border-radius:4px; margin-top:8px;"></div>
+</div>
+<div style="text-align:center; padding:15px 12px; border-radius:8px; background:#21262d; width:130px;">
+<div style="font-size:0.7em; color:#8b949e;">Stage 6</div>
+<div style="font-size:0.85em; margin:5px 0;">Closed Loop DBTL</div>
+<div style="height:180px; background:#30363d; border-radius:4px; margin-top:8px;"></div>
+</div>
+</div>
+<p style="text-align:center; color:#a371f7; font-size:0.9em;">Without the semantic layer (Stage 3), Stages 4-6 lack the context to reason accurately.</p>
+</div>
+
+<!-- Section 6: CONNECT → CONTEXTUALIZE → CONSUME -->
+<div class="section">
+<h2>🔗 Architecture: Connect → Contextualize → Consume</h2>
+<div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:20px; margin:20px 0;">
+<div style="padding:20px; border-radius:8px; background:#1f6feb11; border:1px solid #1f6feb44;">
+<h3 style="color:#58a6ff; margin:0 0 10px; font-size:1.1em;">CONNECT</h3>
+<p style="font-size:0.8em; color:#58a6ff; margin-bottom:10px;">Data Foundation</p>
+<ul style="font-size:0.8em; padding-left:15px; color:#8b949e;">
+<li>GDC/TCGA (86K cases)</li>
+<li>cBioPortal (400+ studies)</li>
+<li>ClinVar, COSMIC, DrugBank</li>
+<li>STRING, Reactome, DisGeNET</li>
+<li>Glue Data Catalog</li>
+</ul>
+</div>
+<div style="padding:20px; border-radius:8px; background:#a371f711; border:1px solid #a371f744;">
+<h3 style="color:#a371f7; margin:0 0 10px; font-size:1.1em;">CONTEXTUALIZE</h3>
+<p style="font-size:0.8em; color:#a371f7; margin-bottom:10px;">Semantic Foundation</p>
+<ul style="font-size:0.8em; padding-left:15px; color:#8b949e;">
+<li>MONDO ontology (diseases)</li>
+<li>Gene Ontology (functions)</li>
+<li>HPO (phenotypes)</li>
+<li>Knowledge Graph (Neptune)</li>
+<li>ID harmonization (Entrez↔Hugo↔Ensembl)</li>
+</ul>
+</div>
+<div style="padding:20px; border-radius:8px; background:#3fb95011; border:1px solid #3fb95044;">
+<h3 style="color:#3fb950; margin:0 0 10px; font-size:1.1em;">CONSUME</h3>
+<p style="font-size:0.8em; color:#3fb950; margin-bottom:10px;">Agent Infrastructure</p>
+<ul style="font-size:0.8em; padding-left:15px; color:#8b949e;">
+<li>Strands Agent (3 tools)</li>
+<li>AgentCore Harness</li>
+<li>Schema discovery (Glue)</li>
+<li>Graph traversal (openCypher)</li>
+<li>Data lake queries (Athena SQL)</li>
+</ul>
+</div>
+</div>
+<p style="text-align:center; color:#8b949e; font-size:0.85em; margin-top:15px;">Agents interact with data through the semantic layer — never bypassing to raw data when a semantic interface exists.</p>
+</div>
+
+<!-- Section 7: Ontology Mapping Complexity -->
+<div class="section">
+<h2>🗺️ The Ontology Mapping Challenge</h2>
+<p style="color:#8b949e; margin-bottom:20px;">The same biological concept has different identifiers in every system. No single ontology covers all domains.</p>
+<div style="overflow-x:auto;">
+<table class="mapping-table">
+<tr><th>Concept</th><th>MONDO</th><th>ICD-10</th><th>SNOMED CT</th><th>NCIt</th><th>OMIM</th><th>DOID</th></tr>
+<tr><td>Breast cancer</td><td class="status-yes">MONDO:0007254</td><td class="status-yes">C50</td><td class="status-yes">254837009</td><td class="status-yes">C4872</td><td class="status-yes">114480</td><td class="status-yes">1612</td></tr>
+<tr><td>Glioblastoma</td><td class="status-yes">MONDO:0018177</td><td class="status-yes">C71.9</td><td class="status-partial">393563007</td><td class="status-yes">C3058</td><td class="status-no">—</td><td class="status-yes">3068</td></tr>
+<tr><td>NSCLC</td><td class="status-yes">MONDO:0005233</td><td class="status-partial">C34.9</td><td class="status-yes">254637007</td><td class="status-yes">C2926</td><td class="status-no">—</td><td class="status-yes">3908</td></tr>
+</table>
+</div>
+<p style="color:#8b949e; font-size:0.85em; margin-top:15px;">Each row requires manual curation to establish cross-references. The semantic hub pre-computes these mappings so agents don't have to.</p>
+
+<h3>Gene Identifier Fragmentation</h3>
+<div style="overflow-x:auto;">
+<table class="mapping-table">
+<tr><th>System</th><th>ID for TP53</th><th>ID for BRCA1</th><th>Used By</th></tr>
+<tr><td>HGNC (Hugo Symbol)</td><td>TP53</td><td>BRCA1</td><td>Publications, cBioPortal</td></tr>
+<tr><td>Entrez Gene</td><td>7157</td><td>672</td><td>PrimeKG, DisGeNET, NCBI</td></tr>
+<tr><td>Ensembl</td><td>ENSG00000141510</td><td>ENSG00000012048</td><td>GDC/TCGA mutations</td></tr>
+<tr><td>UniProt</td><td>P04637</td><td>P38398</td><td>STRING, protein databases</td></tr>
+<tr><td>OMIM</td><td>191170</td><td>113705</td><td>Genetic disease databases</td></tr>
+</table>
+</div>
+<p style="color:#f85149; font-size:0.85em; margin-top:15px;">⚠️ A single gene has 5+ identifiers. Without harmonization, joining GDC mutations (Ensembl) to DrugBank targets (UniProt) requires traversing 3 mapping tables.</p>
+</div>
+
+<div style="text-align:center; padding:40px 0; color:#8b949e; font-size:0.85em;">
+<p>Oncology Biomarker Semantic Hub · Built in 48 hours with AI-assisted development</p>
+<p>Neptune Analytics · S3/Athena · Strands Agents · AgentCore Harness · us-west-2</p>
+<p style="margin-top:10px;">Reference: <em>Semantic Data Layer for Life Sciences Research</em> — AWS Life Sciences</p>
+</div>
+
+</div>
+</body>
+</html>

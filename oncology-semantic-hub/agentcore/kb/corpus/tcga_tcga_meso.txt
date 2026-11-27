@@ -1,0 +1,7 @@
+TCGA project TCGA-MESO: Mesothelioma.
+Program: The Cancer Genome Atlas (TCGA).
+Primary site(s): Bronchus and lung, Heart, mediastinum, and pleura.
+Disease type(s): Mesothelial Neoplasms.
+Cases: 87. Files: 5511.
+
+This TCGA cohort (TCGA-MESO) provides molecular and clinical data for Mesothelioma (primary site: Bronchus and lung, Heart, mediastinum, and pleura; disease type: Mesothelial Neoplasms). It supports biomarker, mutation, expression, and copy-number analyses in oncology research.

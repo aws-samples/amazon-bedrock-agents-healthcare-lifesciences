@@ -1,0 +1,7 @@
+TCGA project TCGA-ESCA: Esophageal Carcinoma.
+Program: The Cancer Genome Atlas (TCGA).
+Primary site(s): Esophagus, Stomach.
+Disease type(s): Squamous Cell Neoplasms, Cystic, Mucinous and Serous Neoplasms, Adenomas and Adenocarcinomas.
+Cases: 185. Files: 11120.
+
+This TCGA cohort (TCGA-ESCA) provides molecular and clinical data for Esophageal Carcinoma (primary site: Esophagus, Stomach; disease type: Squamous Cell Neoplasms, Cystic, Mucinous and Serous Neoplasms, Adenomas and Adenocarcinomas). It supports biomarker, mutation, expression, and copy-number analyses in oncology research.

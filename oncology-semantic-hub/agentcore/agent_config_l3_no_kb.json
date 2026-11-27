@@ -1,0 +1,9 @@
+{
+  "agent_id": "oncology_semantic_hub_l3_no_kb_431cc724-K6SXcK9NoC",
+  "agent_arn": "arn:aws:bedrock-agentcore:us-west-2:942514891246:runtime/oncology_semantic_hub_l3_no_kb_431cc724-K6SXcK9NoC",
+  "cw_log_group": "/aws/bedrock-agentcore/runtimes/oncology_semantic_hub_l3_no_kb_431cc724-K6SXcK9NoC-DEFAULT",
+  "region": "us-west-2",
+  "role_arn": "arn:aws:iam::942514891246:role/oncology_semantic_hub_l3_no_kb_431cc724_role",
+  "s3_bucket": "bedrock-agentcore-code-942514891246-us-west-2",
+  "s3_key": "oncology_semantic_hub_l3_no_kb_431cc724/deployment_package.zip"
+}

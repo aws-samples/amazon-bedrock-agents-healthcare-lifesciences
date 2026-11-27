@@ -1,0 +1,8 @@
+{
+  "metadataAttributes": {
+    "source": "TCGA",
+    "project_id": "TCGA-LUSC",
+    "disease": "Lung Squamous Cell Carcinoma",
+    "primary_site": "Bronchus and lung"
+  }
+}

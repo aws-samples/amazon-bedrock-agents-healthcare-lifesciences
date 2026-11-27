@@ -1,0 +1,7 @@
+TCGA project TCGA-TGCT: Testicular Germ Cell Tumors.
+Program: The Cancer Genome Atlas (TCGA).
+Primary site(s): Testis.
+Disease type(s): Germ Cell Neoplasms.
+Cases: 263. Files: 12851.
+
+This TCGA cohort (TCGA-TGCT) provides molecular and clinical data for Testicular Germ Cell Tumors (primary site: Testis; disease type: Germ Cell Neoplasms). It supports biomarker, mutation, expression, and copy-number analyses in oncology research.

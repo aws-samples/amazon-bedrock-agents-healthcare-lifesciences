@@ -1,0 +1,7 @@
+TCGA project TCGA-SARC: Sarcoma.
+Program: The Cancer Genome Atlas (TCGA).
+Primary site(s): Retroperitoneum and peritoneum, Colon, Other and unspecified male genital organs, Bones, joints and articular cartilage of limbs, Meninges, Stomach, Other and unspecified parts of tongue, Connective, subcutaneous and other soft tissues, Uterus, NOS, Kidney, Peripheral nerves and autonomic nervous system, Ovary, Corpus uteri.
+Disease type(s): Fibromatous Neoplasms, Myomatous Neoplasms, Nerve Sheath Tumors, Synovial-like Neoplasms, Soft Tissue Tumors and Sarcomas, NOS, Lipomatous Neoplasms.
+Cases: 261. Files: 16252.
+
+This TCGA cohort (TCGA-SARC) provides molecular and clinical data for Sarcoma (primary site: Retroperitoneum and peritoneum, Colon, Other and unspecified male genital organs, Bones, joints and articular cartilage of limbs, Meninges, Stomach, Other and unspecified parts of tongue, Connective, subcutaneous and other soft tissues, Uterus, NOS, Kidney, Peripheral nerves and autonomic nervous system, Ovary, Corpus uteri; disease type: Fibromatous Neoplasms, Myomatous Neoplasms, Nerve Sheath Tumors, Synovial-like Neoplasms, Soft Tissue Tumors and Sarcomas, NOS, Lipomatous Neoplasms). It supports biomarker, mutation, expression, and copy-number analyses in oncology research.

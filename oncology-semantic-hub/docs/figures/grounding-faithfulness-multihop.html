@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Full-hub answer — grounding & faithfulness</title>
+<style>
+  :root{
+    --ink:#0f172a; --muted:#64748b; --line:#e2e8f0;
+    --tool:#0e9f6e; --tool-bg:#e7f7f0;
+    --mem:#64748b;  --mem-bg:#f1f5f9;
+    --fab:#dc2626;  --accent:#1d4ed8;
+    --graph:#0e9f6e; --lake:#2563eb; --compute:#b45309; --roda:#0891b2;
+  }
+  *{box-sizing:border-box} html,body{margin:0}
+  body{background:#f8fafc;color:var(--ink);
+       font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  .slide{width:1280px;margin:24px auto;background:#fff;border:1px solid var(--line);
+         border-radius:22px;padding:46px 58px;box-shadow:0 10px 40px rgba(15,23,42,.06)}
+  h1{font-size:42px;line-height:1.05;margin:0 0 4px;letter-spacing:-.5px}
+  .sub{font-size:20px;color:var(--muted);margin:0 0 16px}
+  .q{font-size:19px;color:var(--muted);font-style:italic;margin:0 0 18px}
+
+  .pipe{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 8px}
+  .step{font-size:19px;font-weight:800;padding:9px 16px;border-radius:12px;color:#fff}
+  .arw{font-size:24px;color:#cbd5e1;font-weight:900}
+  .s-graph{background:var(--graph)} .s-lake{background:var(--lake)}
+  .s-comp{background:var(--compute)} .s-roda{background:var(--roda)}
+  .optnote{font-size:16px;color:var(--muted);margin:0 0 22px}
+
+  table{width:100%;border-collapse:separate;border-spacing:0;font-size:21px}
+  th{font-size:16px;letter-spacing:.4px;text-transform:uppercase;color:var(--muted);text-align:left;padding:0 14px 9px}
+  td{padding:13px 14px;border-top:2px solid var(--line);vertical-align:middle}
+  tr td:first-child{color:var(--muted);font-weight:800;width:70px}
+  .tagcell{font-weight:800;white-space:nowrap}
+  .toolname{font-size:18px;color:var(--muted)}
+  .backed{font-weight:800;white-space:nowrap}
+  .backed.y{color:var(--tool)} .backed.n{color:var(--mem)}
+  .rowtool{background:var(--tool-bg)} .rowmem{background:var(--mem-bg)}
+
+  .cards{display:grid;grid-template-columns:1fr 1fr;gap:26px;margin-top:26px}
+  .card{border:2px solid var(--line);border-radius:18px;padding:22px 28px;display:flex;align-items:center;gap:24px}
+  .card .txt{flex:1}
+  .card h2{font-size:26px;margin:0 0 4px}
+  .card .desc{font-size:17px;color:var(--muted);margin:0 0 8px}
+  .formula{font-size:24px;font-weight:800}
+  .formula .frac{color:var(--accent)}
+  .result{font-size:72px;font-weight:900;letter-spacing:-2px;line-height:.9}
+  .foot{font-size:19px;color:var(--muted);margin-top:20px}
+  .b-tool{color:var(--tool);font-weight:800}.b-fab{color:var(--fab);font-weight:800}
+</style>
+</head>
+<body>
+<div class="slide">
+  <h1>One scientific question · the semantic hub · a real computed test</h1>
+  <p class="sub">Grounding &amp; faithfulness, computed live from the answer's source tags — no ground truth.</p>
+  <p class="q">“In glioblastoma, are EGFR and PTEN mutations mutually exclusive or do they co-occur across the TCGA-GBM cohort — is it statistically significant? Are they in the same signaling pathway, and what are the treatment implications?”</p>
+
+  <div class="pipe">
+    <span class="step s-lake">Lake</span><span class="arw">→</span>
+    <span class="step s-comp">Compute</span><span class="arw">→</span>
+    <span class="step s-graph">Graph</span><span class="arw">→</span>
+    <span class="step s-roda">RODA / CIViC</span>
+  </div>
+  <p class="optnote">The question has no tool hints — the agent chose these tools on its own. (OLS ontology lookup optional; not needed here.)</p>
+
+  <table>
+    <thead><tr><th>Tag</th><th>What the step produced</th><th>Tool used</th><th>Tool-backed?</th></tr></thead>
+    <tbody>
+      <tr class="rowtool"><td class="tagcell" style="color:var(--lake)">[Lake] ×1</td><td>Mutation frequencies — EGFR 82, PTEN 116, both 30 (n=371)</td><td class="toolname">Athena · <b>query_patient_data</b></td><td class="backed y">✅ tool</td></tr>
+      <tr class="rowtool"><td class="tagcell" style="color:var(--compute)">[Compute] ×2</td><td>Fisher's exact test — <b>OR 1.36, p = 0.30</b> (not significant)</td><td class="toolname">Code Execution · <b>Python</b></td><td class="backed y">✅ tool</td></tr>
+      <tr class="rowtool"><td class="tagcell" style="color:var(--graph)">[Graph] ×4</td><td>PI3K/AKT pathway memberships · no direct EGFR–PTEN interaction · EGFR drug targets</td><td class="toolname">Neptune · <b>query_knowledge_graph</b></td><td class="backed y">✅ tool</td></tr>
+      <tr class="rowtool"><td class="tagcell" style="color:var(--roda)">[RODA] ×3</td><td>CIViC evidence — EGFRvIII→TKIs; PTEN expression predicts TKI response (PMIDs)</td><td class="toolname">Athena RODA · <b>query_variant_annotation</b></td><td class="backed y">✅ tool</td></tr>
+      <tr class="rowmem"><td class="tagcell" style="color:var(--mem)">[Model knowledge] ×3</td><td>RTK/PI3K/AKT mechanism · PTEN-loss resistance rationale · combination-therapy strategy</td><td class="toolname">— model memory</td><td class="backed n">❌ memory</td></tr>
+    </tbody>
+  </table>
+
+  <div class="cards">
+    <div class="card"><div class="txt">
+      <h2>Grounding rate</h2><p class="desc">How much is backed by tools vs. memory?</p>
+      <p class="formula">tool-backed ÷ all = <span class="frac">10 / 13</span></p>
+    </div><div class="result" style="color:var(--tool)">0.77</div></div>
+    <div class="card"><div class="txt">
+      <h2>Provenance-faithfulness</h2><p class="desc">Any source it doesn't actually have?</p>
+      <p class="formula">1 − fabricated ÷ all = 1 − <span class="frac">0 / 13</span></p>
+    </div><div class="result" style="color:var(--ink)">1.00</div></div>
+  </div>
+
+  <p class="foot"><span class="b-tool">10 of 13 claims tool-backed → 0.77 grounded</span> ·
+     <span class="b-fab">0 fabricated → 1.00 faithful</span> — graph + lake + a real Fisher's test + CIViC evidence; the rest is honestly-labeled clinical interpretation.</p>
+</div>
+</body>
+</html>

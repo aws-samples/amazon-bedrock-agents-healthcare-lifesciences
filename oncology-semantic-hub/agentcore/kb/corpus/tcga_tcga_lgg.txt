@@ -1,0 +1,7 @@
+TCGA project TCGA-LGG: Brain Lower Grade Glioma.
+Program: The Cancer Genome Atlas (TCGA).
+Primary site(s): Brain.
+Disease type(s): Gliomas.
+Cases: 516. Files: 33453.
+
+This TCGA cohort (TCGA-LGG) provides molecular and clinical data for Brain Lower Grade Glioma (primary site: Brain; disease type: Gliomas). It supports biomarker, mutation, expression, and copy-number analyses in oncology research.

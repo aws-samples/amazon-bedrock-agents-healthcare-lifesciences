@@ -1,0 +1,7 @@
+TCGA project TCGA-READ: Rectum Adenocarcinoma.
+Program: The Cancer Genome Atlas (TCGA).
+Primary site(s): Colon, Rectosigmoid junction, Rectum, Connective, subcutaneous and other soft tissues, Unknown.
+Disease type(s): Cystic, Mucinous and Serous Neoplasms, Adenomas and Adenocarcinomas.
+Cases: 172. Files: 10274.
+
+This TCGA cohort (TCGA-READ) provides molecular and clinical data for Rectum Adenocarcinoma (primary site: Colon, Rectosigmoid junction, Rectum, Connective, subcutaneous and other soft tissues, Unknown; disease type: Cystic, Mucinous and Serous Neoplasms, Adenomas and Adenocarcinomas). It supports biomarker, mutation, expression, and copy-number analyses in oncology research.

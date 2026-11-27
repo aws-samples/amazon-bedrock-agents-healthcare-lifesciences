@@ -1,0 +1,8 @@
+{
+  "metadataAttributes": {
+    "source": "TCGA",
+    "project_id": "TCGA-PRAD",
+    "disease": "Prostate Adenocarcinoma",
+    "primary_site": "Prostate gland"
+  }
+}

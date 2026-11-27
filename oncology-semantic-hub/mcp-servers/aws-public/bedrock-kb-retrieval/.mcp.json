@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "bedrock-kb-retrieval": {
+      "command": "uvx",
+      "args": ["awslabs.bedrock-kb-retrieval-mcp-server@latest"],
+      "env": {
+        "AWS_REGION": "us-west-2",
+        "KB_INCLUSION_TAG_KEY": "mcp-multirag-kb",
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      }
+    }
+  }
+}

@@ -1,0 +1,7 @@
+TCGA project TCGA-LUSC: Lung Squamous Cell Carcinoma.
+Program: The Cancer Genome Atlas (TCGA).
+Primary site(s): Bronchus and lung.
+Disease type(s): Squamous Cell Neoplasms, Adenomas and Adenocarcinomas.
+Cases: 504. Files: 32065.
+
+This TCGA cohort (TCGA-LUSC) provides molecular and clinical data for Lung Squamous Cell Carcinoma (primary site: Bronchus and lung; disease type: Squamous Cell Neoplasms, Adenomas and Adenocarcinomas). It supports biomarker, mutation, expression, and copy-number analyses in oncology research.
