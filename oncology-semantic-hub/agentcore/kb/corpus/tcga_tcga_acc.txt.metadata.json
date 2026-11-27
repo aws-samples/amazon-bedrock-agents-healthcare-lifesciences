@@ -1,0 +1,8 @@
+{
+  "metadataAttributes": {
+    "source": "TCGA",
+    "project_id": "TCGA-ACC",
+    "disease": "Adrenocortical Carcinoma",
+    "primary_site": "Adrenal gland"
+  }
+}

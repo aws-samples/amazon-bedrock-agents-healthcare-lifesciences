@@ -1,0 +1,8 @@
+{
+  "metadataAttributes": {
+    "source": "TCGA",
+    "project_id": "TCGA-SARC",
+    "disease": "Sarcoma",
+    "primary_site": "Retroperitoneum and peritoneum; Colon; Other and unspecified male genital organs; Bones, joints and articular cartilage of limbs; Meninges; Stomach; Other and unspecified parts of tongue; Connective, subcutaneous and other soft tissues; Uterus, NOS; "
+  }
+}

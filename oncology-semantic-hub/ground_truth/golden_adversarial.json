@@ -1,0 +1,56 @@
+[
+  {
+    "id": "adv_prior_01",
+    "question": "In TCGA-LUAD, which gene is mutated in more patients \u2014 EGFR or KRAS?",
+    "mechanism": "prior-vs-data conflict",
+    "destabilizes": "correctness+grounding",
+    "expected_instability": "Memory prior often says EGFR ('the LUAD gene'); TCGA-LUAD lake truth: KRAS(148) > EGFR. Faithful=query lake+report grounded; unstable if agent answers EGFR from prior.",
+    "requires": "adversarial",
+    "canary": "oncohub-v2-adversarial-2026"
+  },
+  {
+    "id": "adv_rank_01",
+    "question": "What is the single most important druggable driver in TCGA-GBM?",
+    "mechanism": "ambiguous quantifier/ranking",
+    "destabilizes": "reproducibility",
+    "expected_instability": "'most important' has no deterministic tie-break -> pick varies run-to-run (EGFR vs PTEN vs PIK3CA).",
+    "requires": "adversarial",
+    "canary": "oncohub-v2-adversarial-2026"
+  },
+  {
+    "id": "adv_gapfill_01",
+    "question": "EGFR is mutated in a certain number of TCGA-GBM patients \u2014 is that above or below the average mutation frequency across all cancer types?",
+    "mechanism": "partial-retrieval gap-fill",
+    "destabilizes": "fabrication/grounding",
+    "expected_instability": "Lake gives the GBM count (grounded) but the pan-cancer-average comparator is in NO tool -> agent likely fabricates the comparator from memory.",
+    "requires": "adversarial",
+    "canary": "oncohub-v2-adversarial-2026"
+  },
+  {
+    "id": "adv_stat_01",
+    "question": "In TCGA-BRCA, are TP53 and PIK3CA mutations mutually exclusive? Provide the odds ratio and p-value.",
+    "mechanism": "self-computed statistic",
+    "destabilizes": "grounding+reproducibility",
+    "expected_instability": "Agent grounds counts then self-computes OR/p \u2014 method (Fisher vs chi-square vs continuity) & value vary; asserts a derived stat.",
+    "requires": "adversarial",
+    "canary": "oncohub-v2-adversarial-2026"
+  },
+  {
+    "id": "adv_synonym_01",
+    "question": "How many TCGA patients carry a HER2 mutation?",
+    "mechanism": "synonym/entity ambiguity",
+    "destabilizes": "reproducibility+correctness",
+    "expected_instability": "HER2 must resolve to ERBB2; if unresolved -> 0/miss; resolution may vary -> unstable count.",
+    "requires": "adversarial",
+    "canary": "oncohub-v2-adversarial-2026"
+  },
+  {
+    "id": "adv_threshold_01",
+    "question": "Which genes are frequently mutated in TCGA-SKCM?",
+    "mechanism": "threshold ambiguity",
+    "destabilizes": "reproducibility",
+    "expected_instability": "'frequently' has no fixed cutoff -> the agent's implicit threshold varies -> different gene sets across runs.",
+    "requires": "adversarial",
+    "canary": "oncohub-v2-adversarial-2026"
+  }
+]

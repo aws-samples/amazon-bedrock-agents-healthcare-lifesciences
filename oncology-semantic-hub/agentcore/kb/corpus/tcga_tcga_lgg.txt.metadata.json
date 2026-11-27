@@ -1,0 +1,8 @@
+{
+  "metadataAttributes": {
+    "source": "TCGA",
+    "project_id": "TCGA-LGG",
+    "disease": "Brain Lower Grade Glioma",
+    "primary_site": "Brain"
+  }
+}

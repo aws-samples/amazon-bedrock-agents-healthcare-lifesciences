@@ -1,0 +1,7 @@
+TCGA project TCGA-UCS: Uterine Carcinosarcoma.
+Program: The Cancer Genome Atlas (TCGA).
+Primary site(s): Uterus, NOS, Corpus uteri.
+Disease type(s): Basal Cell Neoplasms, Complex Mixed and Stromal Neoplasms.
+Cases: 57. Files: 3720.
+
+This TCGA cohort (TCGA-UCS) provides molecular and clinical data for Uterine Carcinosarcoma (primary site: Uterus, NOS, Corpus uteri; disease type: Basal Cell Neoplasms, Complex Mixed and Stromal Neoplasms). It supports biomarker, mutation, expression, and copy-number analyses in oncology research.

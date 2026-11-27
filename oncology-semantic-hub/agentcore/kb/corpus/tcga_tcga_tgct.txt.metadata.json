@@ -1,0 +1,8 @@
+{
+  "metadataAttributes": {
+    "source": "TCGA",
+    "project_id": "TCGA-TGCT",
+    "disease": "Testicular Germ Cell Tumors",
+    "primary_site": "Testis"
+  }
+}

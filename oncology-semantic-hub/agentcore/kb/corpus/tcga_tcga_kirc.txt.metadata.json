@@ -1,0 +1,8 @@
+{
+  "metadataAttributes": {
+    "source": "TCGA",
+    "project_id": "TCGA-KIRC",
+    "disease": "Kidney Renal Clear Cell Carcinoma",
+    "primary_site": "Kidney"
+  }
+}

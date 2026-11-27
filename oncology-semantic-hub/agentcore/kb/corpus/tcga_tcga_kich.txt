@@ -1,0 +1,7 @@
+TCGA project TCGA-KICH: Kidney Chromophobe.
+Program: The Cancer Genome Atlas (TCGA).
+Primary site(s): Kidney.
+Disease type(s): Adenomas and Adenocarcinomas.
+Cases: 113. Files: 5993.
+
+This TCGA cohort (TCGA-KICH) provides molecular and clinical data for Kidney Chromophobe (primary site: Kidney; disease type: Adenomas and Adenocarcinomas). It supports biomarker, mutation, expression, and copy-number analyses in oncology research.

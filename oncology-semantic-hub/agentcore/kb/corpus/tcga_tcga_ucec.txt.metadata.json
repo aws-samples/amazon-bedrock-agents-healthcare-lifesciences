@@ -1,0 +1,8 @@
+{
+  "metadataAttributes": {
+    "source": "TCGA",
+    "project_id": "TCGA-UCEC",
+    "disease": "Uterine Corpus Endometrial Carcinoma",
+    "primary_site": "Uterus, NOS; Corpus uteri"
+  }
+}

@@ -1,0 +1,1895 @@
+[
+  {
+    "id": "v2_lake_001",
+    "question": "How many distinct TCGA-GBM patients carry a mutation in EGFR?",
+    "requires": "lake",
+    "min_layer": "L1",
+    "hops": 1,
+    "ideal": {
+      "n_patients": 82
+    },
+    "verify": "lake",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_lake_002",
+    "question": "How many distinct TCGA-GBM patients carry a mutation in TP53?",
+    "requires": "lake",
+    "min_layer": "L1",
+    "hops": 1,
+    "ideal": {
+      "n_patients": 114
+    },
+    "verify": "lake",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_lake_003",
+    "question": "How many distinct TCGA-GBM patients carry a mutation in PTEN?",
+    "requires": "lake",
+    "min_layer": "L1",
+    "hops": 1,
+    "ideal": {
+      "n_patients": 116
+    },
+    "verify": "lake",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_lake_004",
+    "question": "How many distinct TCGA-GBM patients carry a mutation in KRAS?",
+    "requires": "lake",
+    "min_layer": "L1",
+    "hops": 1,
+    "ideal": {
+      "n_patients": 2
+    },
+    "verify": "lake",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_lake_005",
+    "question": "How many distinct TCGA-BRCA patients carry a mutation in EGFR?",
+    "requires": "lake",
+    "min_layer": "L1",
+    "hops": 1,
+    "ideal": {
+      "n_patients": 9
+    },
+    "verify": "lake",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_lake_006",
+    "question": "How many distinct TCGA-BRCA patients carry a mutation in TP53?",
+    "requires": "lake",
+    "min_layer": "L1",
+    "hops": 1,
+    "ideal": {
+      "n_patients": 330
+    },
+    "verify": "lake",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_lake_007",
+    "question": "How many distinct TCGA-BRCA patients carry a mutation in PTEN?",
+    "requires": "lake",
+    "min_layer": "L1",
+    "hops": 1,
+    "ideal": {
+      "n_patients": 52
+    },
+    "verify": "lake",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_lake_008",
+    "question": "How many distinct TCGA-BRCA patients carry a mutation in KRAS?",
+    "requires": "lake",
+    "min_layer": "L1",
+    "hops": 1,
+    "ideal": {
+      "n_patients": 7
+    },
+    "verify": "lake",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_lake_009",
+    "question": "How many distinct TCGA-LUAD patients carry a mutation in EGFR?",
+    "requires": "lake",
+    "min_layer": "L1",
+    "hops": 1,
+    "ideal": {
+      "n_patients": 74
+    },
+    "verify": "lake",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_lake_010",
+    "question": "How many distinct TCGA-LUAD patients carry a mutation in TP53?",
+    "requires": "lake",
+    "min_layer": "L1",
+    "hops": 1,
+    "ideal": {
+      "n_patients": 274
+    },
+    "verify": "lake",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_lake_011",
+    "question": "How many distinct TCGA-LUAD patients carry a mutation in PTEN?",
+    "requires": "lake",
+    "min_layer": "L1",
+    "hops": 1,
+    "ideal": {
+      "n_patients": 10
+    },
+    "verify": "lake",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_lake_012",
+    "question": "How many distinct TCGA-LUAD patients carry a mutation in KRAS?",
+    "requires": "lake",
+    "min_layer": "L1",
+    "hops": 1,
+    "ideal": {
+      "n_patients": 148
+    },
+    "verify": "lake",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_lake_013",
+    "question": "How many distinct TCGA-COAD patients carry a mutation in EGFR?",
+    "requires": "lake",
+    "min_layer": "L1",
+    "hops": 1,
+    "ideal": {
+      "n_patients": 11
+    },
+    "verify": "lake",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_lake_014",
+    "question": "How many distinct TCGA-COAD patients carry a mutation in TP53?",
+    "requires": "lake",
+    "min_layer": "L1",
+    "hops": 1,
+    "ideal": {
+      "n_patients": 234
+    },
+    "verify": "lake",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_lake_015",
+    "question": "How many distinct TCGA-COAD patients carry a mutation in PTEN?",
+    "requires": "lake",
+    "min_layer": "L1",
+    "hops": 1,
+    "ideal": {
+      "n_patients": 27
+    },
+    "verify": "lake",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_lake_016",
+    "question": "How many distinct TCGA-COAD patients carry a mutation in KRAS?",
+    "requires": "lake",
+    "min_layer": "L1",
+    "hops": 1,
+    "ideal": {
+      "n_patients": 184
+    },
+    "verify": "lake",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_g1_017",
+    "question": "How many distinct drugs are known to target EGFR?",
+    "requires": "graph_1hop",
+    "min_layer": "L2",
+    "hops": 1,
+    "ideal": {
+      "gene": "EGFR",
+      "drug_count": 31
+    },
+    "verify": "graph==flat:True",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_g1_018",
+    "question": "How many distinct drugs are known to target TP53?",
+    "requires": "graph_1hop",
+    "min_layer": "L2",
+    "hops": 1,
+    "ideal": {
+      "gene": "TP53",
+      "drug_count": 8
+    },
+    "verify": "graph==flat:True",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_g1_019",
+    "question": "How many distinct drugs are known to target PTEN?",
+    "requires": "graph_1hop",
+    "min_layer": "L2",
+    "hops": 1,
+    "ideal": {
+      "gene": "PTEN",
+      "drug_count": 1
+    },
+    "verify": "graph==flat:True",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_g1_020",
+    "question": "How many distinct drugs are known to target PIK3CA?",
+    "requires": "graph_1hop",
+    "min_layer": "L2",
+    "hops": 1,
+    "ideal": {
+      "gene": "PIK3CA",
+      "drug_count": 7
+    },
+    "verify": "graph==flat:True",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_g1_021",
+    "question": "How many distinct drugs are known to target IDH1?",
+    "requires": "graph_1hop",
+    "min_layer": "L2",
+    "hops": 1,
+    "ideal": {
+      "gene": "IDH1",
+      "drug_count": 4
+    },
+    "verify": "graph==flat:True",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_g1_022",
+    "question": "How many distinct drugs are known to target PDGFRA?",
+    "requires": "graph_1hop",
+    "min_layer": "L2",
+    "hops": 1,
+    "ideal": {
+      "gene": "PDGFRA",
+      "drug_count": 16
+    },
+    "verify": "graph==flat:True",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_g1_023",
+    "question": "How many distinct drugs are known to target KRAS?",
+    "requires": "graph_1hop",
+    "min_layer": "L2",
+    "hops": 1,
+    "ideal": {
+      "gene": "KRAS",
+      "drug_count": 4
+    },
+    "verify": "graph==flat:True",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_g1_024",
+    "question": "How many distinct drugs are known to target BRAF?",
+    "requires": "graph_1hop",
+    "min_layer": "L2",
+    "hops": 1,
+    "ideal": {
+      "gene": "BRAF",
+      "drug_count": 12
+    },
+    "verify": "graph==flat:True",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_g1_025",
+    "question": "How many distinct drugs are known to target RB1?",
+    "requires": "graph_1hop",
+    "min_layer": "L2",
+    "hops": 1,
+    "ideal": {
+      "gene": "RB1",
+      "drug_count": 2
+    },
+    "verify": "graph==flat:True",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_g1_026",
+    "question": "How many distinct drugs are known to target PIK3R1?",
+    "requires": "graph_1hop",
+    "min_layer": "L2",
+    "hops": 1,
+    "ideal": {
+      "gene": "PIK3R1",
+      "drug_count": 4
+    },
+    "verify": "graph==flat:True",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_recon_027",
+    "question": "How many distinct genes are associated with the type of cancer studied in the TCGA-GBM cohort?",
+    "requires": "reconciliation",
+    "min_layer": "L3",
+    "hops": 2,
+    "ideal": {
+      "n_associated_genes": 144
+    },
+    "verify": "graph==flat:True",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_recon_028",
+    "question": "How many distinct genes are associated with the type of cancer studied in the TCGA-BRCA cohort?",
+    "requires": "reconciliation",
+    "min_layer": "L3",
+    "hops": 2,
+    "ideal": {
+      "n_associated_genes": 538
+    },
+    "verify": "graph==flat:True",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_recon_029",
+    "question": "How many distinct genes are associated with the type of cancer studied in the TCGA-LUAD cohort?",
+    "requires": "reconciliation",
+    "min_layer": "L3",
+    "hops": 2,
+    "ideal": {
+      "n_associated_genes": 206
+    },
+    "verify": "graph==flat:True",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_recon_030",
+    "question": "How many distinct genes are associated with the type of cancer studied in the TCGA-COAD cohort?",
+    "requires": "reconciliation",
+    "min_layer": "L3",
+    "hops": 2,
+    "ideal": {
+      "n_associated_genes": 819
+    },
+    "verify": "graph==flat:True",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_recon_031",
+    "question": "How many distinct genes are associated with the type of cancer studied in the TCGA-SKCM cohort?",
+    "requires": "reconciliation",
+    "min_layer": "L3",
+    "hops": 2,
+    "ideal": {
+      "n_associated_genes": 250
+    },
+    "verify": "graph==flat:True",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_recon_032",
+    "question": "How many distinct genes are associated with the type of cancer studied in the TCGA-PRAD cohort?",
+    "requires": "reconciliation",
+    "min_layer": "L3",
+    "hops": 2,
+    "ideal": {
+      "n_associated_genes": 616
+    },
+    "verify": "graph==flat:True",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_multi_033",
+    "question": "Among genes mutated in at least 10 TCGA-GBM patients, which are both associated with glioblastoma and targeted by at least one known drug? List the genes.",
+    "requires": "multi_source",
+    "min_layer": "L3",
+    "hops": 3,
+    "ideal": {
+      "genes": [
+        "EGFR",
+        "IDH1",
+        "PDGFRA",
+        "PIK3CA",
+        "PIK3R1",
+        "PTEN"
+      ],
+      "n": 6
+    },
+    "verify": "graph_assoc==flat:True",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_multi_034",
+    "question": "Among genes mutated in at least 10 TCGA-BRCA patients, which are both associated with breast carcinoma and targeted by at least one known drug? List the genes.",
+    "requires": "multi_source",
+    "min_layer": "L3",
+    "hops": 3,
+    "ideal": {
+      "genes": [
+        "AKT1",
+        "ALK",
+        "ATM",
+        "CASP8",
+        "ERBB2",
+        "ERBB3",
+        "ERBB4",
+        "FASN",
+        "FLNA",
+        "FN1",
+        "GRIK2",
+        "LEPR",
+        "MAP3K1",
+        "MAP3K13",
+        "MTOR",
+        "MYH9",
+        "NRIP1",
+        "PARP1",
+        "PIK3CA",
+        "PIK3CB",
+        "PLA2G4A",
+        "PTEN",
+        "RB1",
+        "TP53"
+      ],
+      "n": 24
+    },
+    "verify": "graph_assoc==flat:True",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_multi_035",
+    "question": "Among genes mutated in at least 10 TCGA-LUAD patients, which are both associated with lung adenocarcinoma and targeted by at least one known drug? List the genes.",
+    "requires": "multi_source",
+    "min_layer": "L3",
+    "hops": 3,
+    "ideal": {
+      "genes": [
+        "ATM",
+        "BRAF",
+        "CAMK4",
+        "EGFR",
+        "EPHA8",
+        "ERBB2",
+        "FGFR2",
+        "PAK5",
+        "PIK3CA",
+        "PPP3CA",
+        "SLC4A4",
+        "TRPM6"
+      ],
+      "n": 12
+    },
+    "verify": "graph_assoc==flat:True",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_multi_036",
+    "question": "Among genes mutated in at least 10 TCGA-COAD patients, which are both associated with colorectal cancer and targeted by at least one known drug? List the genes.",
+    "requires": "multi_source",
+    "min_layer": "L3",
+    "hops": 3,
+    "ideal": {
+      "genes": [
+        "ABCC3",
+        "ABCC5",
+        "ABCC6",
+        "ACACA",
+        "AMPD1",
+        "BRAF",
+        "CASP8",
+        "CFTR",
+        "CYP26A1",
+        "DMD",
+        "EGFR",
+        "EPHB6",
+        "ERBB2",
+        "FBN2",
+        "GUCY1A2",
+        "KCNB2",
+        "KCNQ5",
+        "LAMA1",
+        "LIG1",
+        "MMP9",
+        "MYLK3",
+        "PIK3CA",
+        "RET",
+        "SLCO1B3",
+        "SMAD2",
+        "TXNRD1"
+      ],
+      "n": 26
+    },
+    "verify": "graph_assoc==flat:True",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_multi_037",
+    "question": "Among genes mutated in at least 10 TCGA-SKCM patients, which are both associated with melanoma and targeted by at least one known drug? List the genes.",
+    "requires": "multi_source",
+    "min_layer": "L3",
+    "hops": 3,
+    "ideal": {
+      "genes": [
+        "ALK",
+        "CP",
+        "CTNNB1",
+        "ERBB4",
+        "FLT1",
+        "SF1",
+        "SLC15A2",
+        "SLC39A12",
+        "SYK"
+      ],
+      "n": 9
+    },
+    "verify": "graph_assoc==flat:True",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_multi_038",
+    "question": "Among genes mutated in at least 10 TCGA-PRAD patients, which are both associated with prostate cancer and targeted by at least one known drug? List the genes.",
+    "requires": "multi_source",
+    "min_layer": "L3",
+    "hops": 3,
+    "ideal": {
+      "genes": [
+        "ATM",
+        "PIK3CA",
+        "PTEN",
+        "TP53"
+      ],
+      "n": 4
+    },
+    "verify": "graph_assoc==flat:True",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_mh_039",
+    "question": "Among cancer-driver genes associated with glioblastoma, which are targeted by the most drugs? Give the top few with counts.",
+    "requires": "graph_multihop",
+    "min_layer": "L3",
+    "hops": 3,
+    "ideal": {
+      "top": [
+        [
+          "EGFR",
+          31
+        ],
+        [
+          "FGFR1",
+          16
+        ],
+        [
+          "MET",
+          16
+        ],
+        [
+          "PDGFRA",
+          16
+        ],
+        [
+          "BRAF",
+          12
+        ]
+      ],
+      "note": "restricted to COSMIC Cancer Gene Census Tier-1 drivers"
+    },
+    "verify": "graph: disease_protein -> cosmic_tier=1 driver -> drug_protein count",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_mh_041",
+    "question": "Among cancer-driver genes associated with lung adenocarcinoma, which are targeted by the most drugs? Give the top few with counts.",
+    "requires": "graph_multihop",
+    "min_layer": "L3",
+    "hops": 3,
+    "ideal": {
+      "top": [
+        [
+          "EGFR",
+          31
+        ],
+        [
+          "FGFR2",
+          16
+        ],
+        [
+          "ERBB2",
+          14
+        ],
+        [
+          "BRAF",
+          12
+        ],
+        [
+          "MAP2K1",
+          11
+        ]
+      ],
+      "note": "restricted to COSMIC Cancer Gene Census Tier-1 drivers"
+    },
+    "verify": "graph: disease_protein -> cosmic_tier=1 driver -> drug_protein count",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_mh_042",
+    "question": "Among cancer-driver genes associated with colorectal cancer, which are targeted by the most drugs? Give the top few with counts.",
+    "requires": "graph_multihop",
+    "min_layer": "L3",
+    "hops": 3,
+    "ideal": {
+      "top": [
+        [
+          "EGFR",
+          31
+        ],
+        [
+          "KIT",
+          21
+        ],
+        [
+          "MET",
+          16
+        ],
+        [
+          "ERBB2",
+          14
+        ],
+        [
+          "BRAF",
+          12
+        ]
+      ],
+      "note": "restricted to COSMIC Cancer Gene Census Tier-1 drivers"
+    },
+    "verify": "graph: disease_protein -> cosmic_tier=1 driver -> drug_protein count",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_mh_043",
+    "question": "Among cancer-driver genes associated with melanoma, which are targeted by the most drugs? Give the top few with counts.",
+    "requires": "graph_multihop",
+    "min_layer": "L3",
+    "hops": 3,
+    "ideal": {
+      "top": [
+        [
+          "KIT",
+          21
+        ],
+        [
+          "MET",
+          16
+        ],
+        [
+          "PDGFRA",
+          16
+        ],
+        [
+          "BRAF",
+          12
+        ],
+        [
+          "MAP2K1",
+          11
+        ]
+      ],
+      "note": "restricted to COSMIC Cancer Gene Census Tier-1 drivers"
+    },
+    "verify": "graph: disease_protein -> cosmic_tier=1 driver -> drug_protein count",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_mh_044",
+    "question": "Among cancer-driver genes associated with prostate cancer, which are targeted by the most drugs? Give the top few with counts.",
+    "requires": "graph_multihop",
+    "min_layer": "L3",
+    "hops": 3,
+    "ideal": {
+      "top": [
+        [
+          "EGFR",
+          31
+        ],
+        [
+          "MET",
+          16
+        ],
+        [
+          "ERBB2",
+          14
+        ],
+        [
+          "BRAF",
+          12
+        ],
+        [
+          "CALR",
+          12
+        ]
+      ],
+      "note": "restricted to COSMIC Cancer Gene Census Tier-1 drivers"
+    },
+    "verify": "graph: disease_protein -> cosmic_tier=1 driver -> drug_protein count",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_mh_045",
+    "question": "Which genes are in the same biological pathway as EGFR and are also associated with glioblastoma? List the genes.",
+    "requires": "graph_multihop",
+    "min_layer": "L3",
+    "hops": 3,
+    "ideal": {
+      "genes": [
+        "AKT3",
+        "CCND1",
+        "DAXX",
+        "DLL1",
+        "EGF",
+        "GDNF",
+        "H3C2",
+        "HIF1A",
+        "HRAS",
+        "IL2",
+        "IRAK1",
+        "JAG1",
+        "JAG2",
+        "MET",
+        "MMP2",
+        "MMP9",
+        "MTOR",
+        "NCOR1",
+        "NOTCH3",
+        "PDGFRA",
+        "PIK3CA",
+        "PIK3R1",
+        "PML",
+        "PRKCA",
+        "PTK2",
+        "SUZ12",
+        "TRIB3",
+        "VEGFA"
+      ],
+      "n": 28
+    },
+    "verify": "graph",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_mh_046",
+    "question": "Which genes are in the same biological pathway as KRAS and are also associated with colorectal cancer? List the genes.",
+    "requires": "graph_multihop",
+    "min_layer": "L3",
+    "hops": 3,
+    "ideal": {
+      "genes": [
+        "AKAP9",
+        "AKT1",
+        "BRAF",
+        "CCND1",
+        "CDKN1A",
+        "CNKSR2",
+        "CSF2",
+        "CTNNB1",
+        "CUX1",
+        "DLG3",
+        "EGFR",
+        "EP300",
+        "ERBB2",
+        "FGFR3",
+        "FN1",
+        "FZD2",
+        "FZD4",
+        "GNB4",
+        "GNB5",
+        "IGF2",
+        "JUN",
+        "KDR",
+        "KL",
+        "LEF1",
+        "MMP9",
+        "NF1",
+        "NFATC1",
+        "NFKB1",
+        "NOX4",
+        "NRAS",
+        "PIK3CA",
+        "PLCB1",
+        "PPP2R1B",
+        "PRKCB",
+        "PRKCE",
+        "PRKCZ",
+        "PSMA2",
+        "PSMC5",
+        "PTPN12",
+        "PTPRU",
+        "QKI",
+        "RALGDS",
+        "RASAL2",
+        "RASGRF2",
+        "RELA",
+        "RET",
+        "SPTBN2",
+        "SRC",
+        "STAT3",
+        "TCF7L2",
+        "TGFB1",
+        "VEGFA"
+      ],
+      "n": 52
+    },
+    "verify": "graph",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_mh_047",
+    "question": "Which genes are in the same biological pathway as BRAF and are also associated with melanoma? List the genes.",
+    "requires": "graph_multihop",
+    "min_layer": "L3",
+    "hops": 3,
+    "ideal": {
+      "genes": [
+        "HRAS",
+        "MAP2K1",
+        "MAP2K2",
+        "NRAS",
+        "RAF1"
+      ],
+      "n": 5
+    },
+    "verify": "graph",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_mh_048",
+    "question": "Which genes are in the same biological pathway as PIK3CA and are also associated with breast carcinoma? List the genes.",
+    "requires": "graph_multihop",
+    "min_layer": "L3",
+    "hops": 3,
+    "ideal": {
+      "genes": [
+        "AKT1",
+        "AKT2",
+        "AREG",
+        "ARF1",
+        "ARHGDIA",
+        "ARTN",
+        "BTK",
+        "CAV1",
+        "CDKN1B",
+        "CHEK1",
+        "CSF2",
+        "EDNRB",
+        "EGF",
+        "EGFR",
+        "EPOR",
+        "ERBB2",
+        "ERBB3",
+        "ERBB4",
+        "ESR1",
+        "ESR2",
+        "FGD5",
+        "FGF10",
+        "FGF3",
+        "FGF4",
+        "FGFR1",
+        "FGFR2",
+        "GNAI2",
+        "GRB7",
+        "HRAS",
+        "HSP90AA1",
+        "IGF1R",
+        "INPP4B",
+        "JAG1",
+        "KDR",
+        "KIT",
+        "KRAS",
+        "LPAR1",
+        "MMP2",
+        "MMP3",
+        "MMP9",
+        "MTOR",
+        "NFKBIA",
+        "NISCH",
+        "NMBR",
+        "NOS3",
+        "NRG1",
+        "PAK1",
+        "PDGFA",
+        "PDPK1",
+        "PIK3CB",
+        "PIM1",
+        "PTEN",
+        "RELA",
+        "RGS2",
+        "SRC",
+        "STAT3",
+        "STAT5A",
+        "SYNJ2",
+        "TFRC"
+      ],
+      "n": 59
+    },
+    "verify": "graph",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_mh_049",
+    "question": "Which direct protein-interaction partners of EGFR are associated with glioblastoma? List the genes.",
+    "requires": "graph_multihop",
+    "min_layer": "L3",
+    "hops": 2,
+    "ideal": {
+      "genes": [
+        "CCND1",
+        "CTNNB1",
+        "CTNND2",
+        "EGF",
+        "FN1",
+        "H2AX",
+        "HIF1A",
+        "IQGAP1",
+        "ITGB2",
+        "MAPK8",
+        "MAPKAPK3",
+        "MET",
+        "PCNA",
+        "PDGFRA",
+        "PIK3CA",
+        "PIK3R1",
+        "PIM1",
+        "PML",
+        "PRKCA",
+        "PRKCB",
+        "PRKN",
+        "PTCH1",
+        "PTK2",
+        "YAP1"
+      ],
+      "n": 24
+    },
+    "verify": "graph",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_mh_050",
+    "question": "Which direct protein-interaction partners of TP53 are associated with breast carcinoma? List the genes.",
+    "requires": "graph_multihop",
+    "min_layer": "L3",
+    "hops": 2,
+    "ideal": {
+      "genes": [
+        "ABL1",
+        "ACTA2",
+        "AKT1",
+        "AR",
+        "ARAF",
+        "ARID1A",
+        "ATM",
+        "AURKA",
+        "BAG1",
+        "BARD1",
+        "BAX",
+        "BCL2",
+        "BIRC5",
+        "BRCA1",
+        "BRCA2",
+        "BTK",
+        "CASP8",
+        "CCNH",
+        "CCT5",
+        "CDKN2A",
+        "CHEK1",
+        "CHEK2",
+        "CTNNB1",
+        "DHFR",
+        "DNMT1",
+        "E2F1",
+        "EEF2",
+        "EIF2S2",
+        "EP300",
+        "ERBB2",
+        "ERBB4",
+        "ESR1",
+        "ETS2",
+        "FBXW7",
+        "FOXP3",
+        "GPX2",
+        "H2AX",
+        "HERC2",
+        "HIF1A",
+        "HNRNPK",
+        "HRAS",
+        "HSP90AA1",
+        "HSPA1B",
+        "IGF1R",
+        "JAG2",
+        "JUN",
+        "LAMTOR5",
+        "MAP3K1",
+        "MDM2",
+        "MDM4",
+        "MRPS22",
+        "MTOR",
+        "NCOA1",
+        "NCOA2",
+        "NCOA3",
+        "NCOR1",
+        "NFKBIA",
+        "NOTCH4",
+        "NQO1",
+        "NQO2",
+        "PABPC1",
+        "PARP1",
+        "PHB",
+        "PIN1",
+        "PTEN",
+        "PTGS2",
+        "RAD51",
+        "RB1",
+        "RB1CC1",
+        "RELA",
+        "RPS7",
+        "SETD2",
+        "SIRT1",
+        "SMARCD1",
+        "SNAI1",
+        "SNAI2",
+        "SRC",
+        "SREBF2",
+        "TFAP2A",
+        "TOP2A",
+        "TP53BP1",
+        "TP53BP2",
+        "TP73",
+        "TXN",
+        "UBD",
+        "WT1",
+        "WWOX",
+        "YBX1"
+      ],
+      "n": 88
+    },
+    "verify": "graph",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_mh_051",
+    "question": "Which direct protein-interaction partners of KRAS are associated with colorectal cancer? List the genes.",
+    "requires": "graph_multihop",
+    "min_layer": "L3",
+    "hops": 2,
+    "ideal": {
+      "genes": [
+        "ABCD3",
+        "BCL2",
+        "BRAF",
+        "IGFBP3",
+        "IGSF21",
+        "LPAR1",
+        "MTOR",
+        "PIK3CA",
+        "RALGDS",
+        "RASGRF2",
+        "RASSF2",
+        "SERPINB5",
+        "TNFSF13"
+      ],
+      "n": 13
+    },
+    "verify": "graph",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_onto_052",
+    "question": "Which genes associated with grade IV astrocytoma are also mutated in TCGA-GBM patients? List the genes.",
+    "requires": "ontology",
+    "min_layer": "L3",
+    "hops": 2,
+    "ideal": {
+      "genes": [
+        "APC",
+        "ATRX",
+        "FAT1",
+        "MET",
+        "NOTCH3",
+        "PML",
+        "PRKCA",
+        "SRPK2",
+        "STAG2",
+        "STYK1",
+        "TRMT11"
+      ],
+      "n": 11,
+      "note": "grade IV astrocytoma == glioblastoma"
+    },
+    "verify": "graph+synonym",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_onto_053",
+    "question": "Which genes are targeted by the drug Tarceva?",
+    "requires": "ontology",
+    "min_layer": "L3",
+    "hops": 1,
+    "ideal": {
+      "generic": "Erlotinib",
+      "genes": [
+        "ABCB1",
+        "ABCG2",
+        "ALB",
+        "CYP1A1",
+        "CYP1A2",
+        "CYP1B1",
+        "CYP2C8",
+        "CYP2D6",
+        "CYP3A4",
+        "CYP3A5",
+        "EGFR",
+        "NR1I2",
+        "ORM1",
+        "SLCO2B1",
+        "UGT1A1"
+      ],
+      "n": 15,
+      "note": "Tarceva brand of Erlotinib"
+    },
+    "verify": "graph+brand",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_onto_054",
+    "question": "Which genes are targeted by the drug Iressa?",
+    "requires": "ontology",
+    "min_layer": "L3",
+    "hops": 1,
+    "ideal": {
+      "generic": "Gefitinib",
+      "genes": [
+        "ABCB1",
+        "ABCG2",
+        "ALB",
+        "CYP1A1",
+        "CYP2C19",
+        "CYP2C9",
+        "CYP2D6",
+        "CYP3A4",
+        "CYP3A5",
+        "EGFR",
+        "ORM1"
+      ],
+      "n": 11,
+      "note": "Iressa brand of Gefitinib"
+    },
+    "verify": "graph+brand",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_onto_055",
+    "question": "Which genes are targeted by the drug Tagrisso?",
+    "requires": "ontology",
+    "min_layer": "L3",
+    "hops": 1,
+    "ideal": {
+      "generic": "Osimertinib",
+      "genes": [
+        "ABCB1",
+        "ABCG2",
+        "CYP1A2",
+        "CYP3A4",
+        "EGFR"
+      ],
+      "n": 5,
+      "note": "Tagrisso brand of Osimertinib"
+    },
+    "verify": "graph+brand",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_onto_056",
+    "question": "Which genes are targeted by the drug Gleevec?",
+    "requires": "ontology",
+    "min_layer": "L3",
+    "hops": 1,
+    "ideal": {
+      "generic": "Imatinib",
+      "genes": [
+        "ABCA3",
+        "ABCB1",
+        "ABCB11",
+        "ABCG2",
+        "ABL1",
+        "ALB",
+        "BCR",
+        "CSF1R",
+        "CYP1A2",
+        "CYP2C19",
+        "CYP2C8",
+        "CYP2C9",
+        "CYP2D6",
+        "CYP3A4",
+        "CYP3A5",
+        "CYP3A7",
+        "DDR1",
+        "KIT",
+        "NTRK1",
+        "ORM1",
+        "PDGFRA",
+        "PDGFRB",
+        "PTGS1",
+        "SLC22A1",
+        "SLC22A2"
+      ],
+      "n": 25,
+      "note": "Gleevec brand of Imatinib"
+    },
+    "verify": "graph+brand",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_onto_057",
+    "question": "Which genes are targeted by the drug Herceptin?",
+    "requires": "ontology",
+    "min_layer": "L3",
+    "hops": 1,
+    "ideal": {
+      "generic": "Trastuzumab",
+      "genes": [
+        "ERBB2"
+      ],
+      "n": 1,
+      "note": "Herceptin brand of Trastuzumab"
+    },
+    "verify": "graph+brand",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_recon_058",
+    "question": "How many distinct genes are associated with breast cancer?",
+    "requires": "reconciliation",
+    "min_layer": "L3",
+    "hops": 1,
+    "ideal": {
+      "n_associated_genes": 538,
+      "note": "breast cancer -> breast carcinoma"
+    },
+    "verify": "graph",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_recon_059",
+    "question": "How many distinct genes are associated with colon cancer?",
+    "requires": "reconciliation",
+    "min_layer": "L3",
+    "hops": 1,
+    "ideal": {
+      "n_associated_genes": 819,
+      "note": "colon cancer -> colorectal cancer"
+    },
+    "verify": "graph",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_neg_060",
+    "question": "What is the AJCC tumor stage distribution of EGFR-mutant TCGA-GBM patients?",
+    "requires": "negative",
+    "min_layer": "L1",
+    "hops": 0,
+    "ideal": {
+      "answer": "cannot_determine",
+      "reason": "stage is not present in the hub"
+    },
+    "verify": "by-design",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_neg_061",
+    "question": "What is the AJCC tumor stage distribution of EGFR-mutant TCGA-BRCA patients?",
+    "requires": "negative",
+    "min_layer": "L1",
+    "hops": 0,
+    "ideal": {
+      "answer": "cannot_determine",
+      "reason": "stage is not present in the hub"
+    },
+    "verify": "by-design",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_neg_062",
+    "question": "What is the overall survival (months) of EGFR-mutant TCGA-GBM patients?",
+    "requires": "negative",
+    "min_layer": "L1",
+    "hops": 0,
+    "ideal": {
+      "answer": "cannot_determine",
+      "reason": "survival is not present in the hub"
+    },
+    "verify": "by-design",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_neg_063",
+    "question": "What is the overall survival (months) of EGFR-mutant TCGA-BRCA patients?",
+    "requires": "negative",
+    "min_layer": "L1",
+    "hops": 0,
+    "ideal": {
+      "answer": "cannot_determine",
+      "reason": "survival is not present in the hub"
+    },
+    "verify": "by-design",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_neg_064",
+    "question": "What is the protein abundance of EGFR-mutant TCGA-GBM patients?",
+    "requires": "negative",
+    "min_layer": "L1",
+    "hops": 0,
+    "ideal": {
+      "answer": "cannot_determine",
+      "reason": "proteomics is not present in the hub"
+    },
+    "verify": "by-design",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_neg_065",
+    "question": "What is the radiology imaging findings of EGFR-mutant TCGA-GBM patients?",
+    "requires": "negative",
+    "min_layer": "L1",
+    "hops": 0,
+    "ideal": {
+      "answer": "cannot_determine",
+      "reason": "imaging is not present in the hub"
+    },
+    "verify": "by-design",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "q_paper_bailey_03",
+    "category": "quantitative_precision",
+    "answer_type": "entity_and_number",
+    "complexity": 1,
+    "required_layers": [
+      "L1"
+    ],
+    "paper_reference": {
+      "authors": "Bailey et al.",
+      "title": "Comprehensive Characterization of Cancer Driver Genes and Mutations",
+      "journal": "Cell",
+      "year": 2018,
+      "pmid": "29625053",
+      "doi": "10.1016/j.cell.2018.02.060",
+      "key_finding": "TP53 is the most frequently mutated driver gene across cancer types"
+    },
+    "notes": "TP53 mutated in >90% of serous ovarian. Exact answer depends on loaded data.",
+    "_tech_note": "Which TCGA cancer type has the most distinct patients with TP53 mutations?",
+    "question": "Which TCGA cancer type has the most distinct patients with TP53 mutations, and how many?",
+    "requires": "lake",
+    "ideal": {
+      "cohort": "TCGA-LUSC",
+      "n": 393
+    },
+    "verify": "lake",
+    "_verification_hint": "SELECT project_id, COUNT(DISTINCT case_id) c FROM tcga_mutations WHERE hugo_symbol='TP53' GROUP BY project_id ORDER BY c DESC LIMIT 1",
+    "canary": "oncohub-v2-benchmark-2026",
+    "min_layer": "L3",
+    "hops": 2
+  },
+  {
+    "id": "q_paper_liu_01",
+    "category": "quantitative_precision",
+    "answer_type": "exact_number",
+    "complexity": 1,
+    "required_layers": [
+      "L1"
+    ],
+    "paper_reference": {
+      "authors": "Liu et al.",
+      "title": "An Integrated TCGA Pan-Cancer Clinical Data Resource",
+      "journal": "Cell",
+      "year": 2018,
+      "pmid": "29625055",
+      "doi": "10.1016/j.cell.2018.02.052",
+      "key_finding": "Standardized clinical + survival data for 11,160 TCGA patients"
+    },
+    "notes": "Validates our cohort size.",
+    "_tech_note": "How many total distinct patients are in our TCGA mutations data across all 33 projects?",
+    "question": "How many distinct patients are in the TCGA mutation data across all projects?",
+    "requires": "lake",
+    "ideal": {
+      "n_patients": 10094
+    },
+    "verify": "lake",
+    "_verification_hint": "SELECT COUNT(DISTINCT case_id) FROM tcga_mutations",
+    "canary": "oncohub-v2-benchmark-2026",
+    "min_layer": "L3",
+    "hops": 2
+  },
+  {
+    "id": "q_paper_liu_03",
+    "category": "quantitative_precision",
+    "answer_type": "entity_and_number",
+    "complexity": 2,
+    "required_layers": [
+      "L1"
+    ],
+    "paper_reference": {
+      "authors": "Liu et al.",
+      "title": "An Integrated TCGA Pan-Cancer Clinical Data Resource",
+      "journal": "Cell",
+      "year": 2018,
+      "pmid": "29625055",
+      "doi": "10.1016/j.cell.2018.02.052",
+      "key_finding": "Pan-cancer molecular characterization across all 33 types"
+    },
+    "notes": "Direct validation of a known pan-cancer fact.",
+    "_tech_note": "Which gene is mutated in the most distinct TCGA cancer types (appears in the most projects out of 33)?",
+    "question": "Which gene is mutated across the most TCGA cancer types, and in how many?",
+    "requires": "lake",
+    "ideal": {
+      "gene": "MUC16",
+      "n_cancer_types": 33,
+      "note": "MUC16 is a large passenger gene (broad mutation across types); correct answer to the literal question"
+    },
+    "verify": "lake",
+    "_verification_hint": "SELECT hugo_symbol, COUNT(DISTINCT project_id) n FROM tcga_mutations GROUP BY hugo_symbol ORDER BY n DESC LIMIT 1",
+    "canary": "oncohub-v2-benchmark-2026",
+    "min_layer": "L3",
+    "hops": 2
+  },
+  {
+    "id": "q_paper_bailey_01",
+    "category": "cross_system",
+    "answer_type": "exact_number",
+    "complexity": 2,
+    "required_layers": [
+      "L2"
+    ],
+    "paper_reference": {
+      "authors": "Bailey et al.",
+      "title": "Comprehensive Characterization of Cancer Driver Genes and Mutations",
+      "journal": "Cell",
+      "year": 2018,
+      "pmid": "29625053",
+      "doi": "10.1016/j.cell.2018.02.060",
+      "key_finding": "Identified 299 driver genes across 33 cancer types with >3,400 putative missense driver mutations"
+    },
+    "notes": "Requires the Bailey 299 gene list. Expected ~80-120 druggable drivers.",
+    "_tech_note": "How many of the known cancer driver genes (e.g., from Bailey et al. 2018's 299 driver list) have at least one drug-protein edge in our knowledge graph?",
+    "question": "How many confirmed cancer-driver genes are targeted by at least one drug?",
+    "requires": "multi_source",
+    "ideal": {
+      "n_druggable_drivers": 35,
+      "n_drivers_total": 74,
+      "note": "drivers = COSMIC Cancer Gene Census Tier-1"
+    },
+    "verify": "graph",
+    "_verification_hint": "MATCH (g:gene_protein)-[:drug_protein]-(d:drug) WHERE g.name IN [<bailey_299_list>] RETURN count(DISTINCT g)",
+    "canary": "oncohub-v2-benchmark-2026",
+    "min_layer": "L3",
+    "hops": 2
+  },
+  {
+    "id": "q_paper_sanchezvega_01",
+    "category": "drug_gene_relationships",
+    "answer_type": "entity_list",
+    "complexity": 2,
+    "required_layers": [
+      "L2"
+    ],
+    "paper_reference": {
+      "authors": "Sanchez-Vega et al.",
+      "title": "Oncogenic Signaling Pathways in The Cancer Genome Atlas",
+      "journal": "Cell",
+      "year": 2018,
+      "pmid": "29625050",
+      "doi": "10.1016/j.cell.2018.03.035",
+      "key_finding": "89% of tumors had at least one driver alteration in 10 canonical pathways"
+    },
+    "notes": "Validates pathway crosstalk.",
+    "_tech_note": "Which pathways in our knowledge graph are connected to both EGFR and PIK3CA via pathway_protein edges?",
+    "question": "Which biological pathways involve both EGFR and PIK3CA?",
+    "requires": "graph_multihop",
+    "ideal": {
+      "pathways": [
+        "Constitutive Signaling by Aberrant PI3K in Cancer",
+        "Constitutive Signaling by EGFRvIII",
+        "Constitutive Signaling by Ligand-Responsive EGFR Cancer Variants",
+        "Extra-nuclear estrogen signaling",
+        "GAB1 signalosome",
+        "PI3K events in ERBB2 signaling",
+        "PI5P, PP2A and IER3 Regulate PI3K/AKT Signaling",
+        "PIP3 activates AKT signaling",
+        "RAF/MAP kinase cascade",
+        "Signaling by ERBB2 ECD mutants",
+        "Signaling by ERBB2 KD Mutants"
+      ],
+      "n": 11
+    },
+    "verify": "graph",
+    "_verification_hint": "MATCH (g1:gene_protein {name:'EGFR'})-[:pathway_protein]-(p:pathway)-[:pathway_protein]-(g2:gene_protein {name:'PIK3CA'}) RETURN DISTINCT p.name",
+    "canary": "oncohub-v2-benchmark-2026",
+    "min_layer": "L3",
+    "hops": 2
+  },
+  {
+    "id": "q_paper_primekg_01",
+    "category": "drug_gene_relationships",
+    "answer_type": "exact_number",
+    "complexity": 1,
+    "required_layers": [
+      "L2"
+    ],
+    "paper_reference": {
+      "authors": "Chandak, Huang, Zitnik",
+      "title": "Building a Knowledge Graph to Enable Precision Medicine",
+      "journal": "Scientific Data",
+      "year": 2023,
+      "pmid": "36720864",
+      "doi": "10.1038/s41597-023-01960-3",
+      "key_finding": "PrimeKG contains 129K nodes, 4M edges, unique indication/contraindication edges"
+    },
+    "notes": "Validates graph matches published PrimeKG statistics.",
+    "_tech_note": "How many drug-disease indication edges exist in our knowledge graph?",
+    "question": "How many distinct drug\u2013disease indication relationships are documented in the dataset?",
+    "requires": "graph_1hop",
+    "ideal": {
+      "n_indications": 9388,
+      "note": "undirected count in the graph; flat table row-count is 2x (18776) due to bidirectional storage"
+    },
+    "verify": "graph(undirected)==flat(distinct pairs)=9388",
+    "_verification_hint": "MATCH ()-[r:indication]->() RETURN count(r)",
+    "canary": "oncohub-v2-benchmark-2026",
+    "min_layer": "L3",
+    "hops": 2
+  },
+  {
+    "id": "q_paper_primekg_02",
+    "category": "drug_gene_relationships",
+    "answer_type": "structured",
+    "complexity": 2,
+    "required_layers": [
+      "L2"
+    ],
+    "paper_reference": {
+      "authors": "Chandak, Huang, Zitnik",
+      "title": "Building a Knowledge Graph to Enable Precision Medicine",
+      "journal": "Scientific Data",
+      "year": 2023,
+      "pmid": "36720864",
+      "doi": "10.1038/s41597-023-01960-3",
+      "key_finding": "PrimeKG connects drugs to both targets and indications"
+    },
+    "notes": "Classic precision medicine query.",
+    "_tech_note": "For the drug Crizotinib, which genes does it target via drug_protein edges, and which diseases is it indicated for via indication edges?",
+    "question": "Which genes does the drug Crizotinib act on as therapeutic targets, and which diseases is it approved to treat?",
+    "requires": "multi_source",
+    "ideal": {
+      "targets": [
+        "ALK",
+        "MET"
+      ],
+      "indications": [
+        "non-small cell lung carcinoma",
+        "lung cancer"
+      ],
+      "note": "kinase targets present in hub (metabolism enzymes CYP/ABC excluded); ROS1 not represented in the hub's drug-target data"
+    },
+    "verify": "graph",
+    "_verification_hint": "MATCH (d:drug {name:'Crizotinib'})-[:drug_protein]-(g:gene_protein) RETURN g.name; MATCH (d:drug {name:'Crizotinib'})-[:indication]-(dis:disease) RETURN dis.name",
+    "canary": "oncohub-v2-benchmark-2026",
+    "min_layer": "L3",
+    "hops": 2
+  },
+  {
+    "id": "q_paper_abbvie_02",
+    "category": "cross_system",
+    "answer_type": "entity_and_number",
+    "complexity": 3,
+    "required_layers": [
+      "L1",
+      "L2"
+    ],
+    "paper_reference": {
+      "authors": "Martin et al. (AbbVie)",
+      "title": "Leveraging a Billion-Edge Knowledge Graph for Drug Re-purposing",
+      "journal": "bioRxiv",
+      "year": 2022,
+      "doi": "10.1101/2022.12.20.521235",
+      "key_finding": "Target prioritization using mutation prevalence + KG drug connectivity"
+    },
+    "notes": "LUAD is the canonical EGFR-driven cancer.",
+    "_tech_note": "For TCGA-LUAD (lung adenocarcinoma), which of the top 10 most frequently mutated genes has the most drug-protein edges in the knowledge graph?",
+    "question": "Among the 10 most frequently mutated genes in TCGA-LUAD, which is targeted by the most drugs, and how many?",
+    "requires": "multi_source",
+    "ideal": {
+      "gene": "TP53",
+      "drug_count": 8
+    },
+    "verify": "graph+lake",
+    "_verification_hint": "Lake: top-10 TCGA-LUAD. Graph: count drug_protein edges per gene. Return max.",
+    "canary": "oncohub-v2-benchmark-2026",
+    "min_layer": "L3",
+    "hops": 2
+  },
+  {
+    "id": "q_paper_karim_01",
+    "category": "cross_system",
+    "answer_type": "entity_list",
+    "complexity": 3,
+    "required_layers": [
+      "L1",
+      "L2"
+    ],
+    "paper_reference": {
+      "authors": "Karim et al.",
+      "title": "From Large Language Models to Knowledge Graphs for Biomarker Discovery in Cancer",
+      "journal": "arXiv",
+      "year": 2023,
+      "arxiv_id": "2310.08365",
+      "key_finding": "KG-grounded reasoning outperforms pure LLM for gene-disease association validation"
+    },
+    "notes": "Core biomarker discovery pattern validated against patient data.",
+    "_tech_note": "Which genes have a disease_protein edge to glioblastoma in the knowledge graph AND are mutated in >10% of TCGA-GBM patients?",
+    "question": "Which genes associated with glioblastoma are mutated in more than 10% of TCGA-GBM patients?",
+    "requires": "multi_source",
+    "ideal": {
+      "genes": [
+        "EGFR",
+        "NF1",
+        "PTEN"
+      ],
+      "n": 3
+    },
+    "verify": "graph+lake",
+    "_verification_hint": "Graph: genes linked to GBM disease node. Lake: filter to >37 patients (10% of 371). Intersect.",
+    "canary": "oncohub-v2-benchmark-2026",
+    "min_layer": "L3",
+    "hops": 2
+  },
+  {
+    "id": "q_paper_karim_02",
+    "category": "drug_gene_relationships",
+    "answer_type": "ranked_list",
+    "complexity": 3,
+    "required_layers": [
+      "L2"
+    ],
+    "paper_reference": {
+      "authors": "Karim et al.",
+      "title": "From Large Language Models to Knowledge Graphs for Biomarker Discovery in Cancer",
+      "journal": "arXiv",
+      "year": 2023,
+      "arxiv_id": "2310.08365",
+      "key_finding": "Interactive QA over cancer KG for biomarker-druggability queries"
+    },
+    "notes": "The druggable breast cancer genome query.",
+    "_tech_note": "For breast cancer, which genes with disease_protein edges have the highest number of drug_protein edges?",
+    "question": "For breast cancer, which cancer-driver genes are targeted by the most drugs? Give the top few with counts.",
+    "requires": "graph_multihop",
+    "ideal": {
+      "top": [
+        [
+          "EGFR",
+          31
+        ],
+        [
+          "KIT",
+          21
+        ],
+        [
+          "FGFR1",
+          16
+        ],
+        [
+          "FGFR2",
+          16
+        ],
+        [
+          "MET",
+          16
+        ]
+      ],
+      "note": "restricted to COSMIC Cancer Gene Census Tier-1 drivers"
+    },
+    "verify": "graph",
+    "_verification_hint": "MATCH (dis:disease)-[:disease_protein]-(g)-[:drug_protein]-(d:drug) WHERE dis.name CONTAINS 'breast' RETURN g.name, count(DISTINCT d) ORDER BY count DESC LIMIT 5",
+    "canary": "oncohub-v2-benchmark-2026",
+    "min_layer": "L3",
+    "hops": 2
+  },
+  {
+    "id": "v2_evidence_01",
+    "question": "The literature describes MET as a mechanism of resistance to EGFR-targeted therapy in glioblastoma. Is MET connected to EGFR through a shared pathway or interaction, and how many TCGA-GBM patients carry MET mutations? Cite the supporting literature.",
+    "requires": "evidence",
+    "min_layer": "L3",
+    "hops": 3,
+    "ideal": {
+      "met_egfr_connected": true,
+      "met_tcga_gbm_patients": 5,
+      "cite_pmid_from": [
+        "31564718",
+        "39956859"
+      ],
+      "chain": "KB evidence -> graph relationship -> lake count"
+    },
+    "verify": "KB(real corpus PMID)+graph(verified)+lake(verified)",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_evidence_02",
+    "question": "Literature links PTEN loss to EGFR-inhibitor resistance in glioblastoma. Is PTEN associated with glioblastoma in the hub, and in how many TCGA-GBM patients is PTEN mutated? Cite the evidence.",
+    "requires": "evidence",
+    "min_layer": "L3",
+    "hops": 3,
+    "ideal": {
+      "pten_glioblastoma_associated": true,
+      "pten_tcga_gbm_patients": 116,
+      "cite_pmid_from": [
+        "20030624",
+        "38473776"
+      ],
+      "chain": "KB -> graph disease-association -> lake"
+    },
+    "verify": "KB(real corpus PMID)+graph(verified)+lake(verified)",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_recon_lgg_misalign",
+    "question": "The TCGA-LGG cohort studies low-grade glioma. Is the disease that the hub associates with these cases the correct one?",
+    "requires": "reconciliation",
+    "min_layer": "L3",
+    "hops": 2,
+    "ideal": {
+      "answer": "No \u2014 the graph's case-level disease mapping for TCGA-LGG is mismatched; the correct disease is low grade glioma (MONDO:0021637)",
+      "correct_mondo": "MONDO:0021637"
+    },
+    "verify": "OLS+graph misalignment (demo Q6)",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_mh_vardepth_egfr",
+    "question": "How many distinct genes are within two protein-interaction steps of EGFR?",
+    "requires": "graph_multihop",
+    "min_layer": "L3",
+    "hops": 2,
+    "ideal": {
+      "n_genes_within_2_ppi_steps": 13157
+    },
+    "verify": "graph variable-length *1..2 (not expressible in flat Athena)",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_civic_01",
+    "question": "For the BRAF V600E mutation in melanoma, which targeted therapy has validated (highest-tier) clinical evidence of response, and what publication (PMID) supports it?",
+    "requires": "actionability",
+    "min_layer": "L2",
+    "hops": 2,
+    "ideal": {
+      "expect_terms": [
+        "Vemurafenib",
+        "21639808"
+      ],
+      "note": "CIViC Level A predictive, BRAF V600E skin melanoma"
+    },
+    "verify": "RODA civic_evidence (oncology_semantic_hub_roda); L3-smoke-tested 2026-08-04",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_civic_02",
+    "question": "In lung cancer, does the EGFR T790M mutation predict sensitivity or resistance to erlotinib? Cite the supporting publication.",
+    "requires": "actionability",
+    "min_layer": "L2",
+    "hops": 2,
+    "ideal": {
+      "expect_terms": [
+        "resistance",
+        "25668228"
+      ],
+      "note": "CIViC Level A, T790M confers erlotinib resistance"
+    },
+    "verify": "RODA civic_evidence (oncology_semantic_hub_roda); L3-smoke-tested 2026-08-04",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_civic_03",
+    "question": "How many genes have at least one variant with validated (highest-tier) clinical actionability evidence?",
+    "requires": "actionability",
+    "min_layer": "L2",
+    "hops": 2,
+    "ideal": {
+      "n": 69,
+      "note": "distinct genes with CIViC evidence_level A"
+    },
+    "verify": "RODA civic_evidence (oncology_semantic_hub_roda); L3-smoke-tested 2026-08-04",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_civic_04",
+    "question": "Which targeted therapies have validated (highest-tier) evidence of response for EGFR-mutant non-small cell lung cancer? List them.",
+    "requires": "actionability",
+    "min_layer": "L2",
+    "hops": 2,
+    "ideal": {
+      "genes": [
+        "Osimertinib",
+        "Erlotinib",
+        "Afatinib",
+        "Dacomitinib",
+        "Gefitinib",
+        "Amivantamab"
+      ],
+      "n": 6,
+      "note": "CIViC Level A predictive sensitivity, EGFR NSCLC (single agents)"
+    },
+    "verify": "RODA civic_evidence (oncology_semantic_hub_roda); L3-smoke-tested 2026-08-04",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_civic_05",
+    "question": "Among genes with validated (highest-tier) actionability evidence in lung cancer, which are also mutated in the TCGA lung adenocarcinoma cohort? List the genes.",
+    "requires": "actionability",
+    "min_layer": "L2",
+    "hops": 2,
+    "ideal": {
+      "genes": [
+        "BRAF",
+        "EGFR",
+        "ERBB2",
+        "KRAS",
+        "MET"
+      ],
+      "n": 5,
+      "note": "RODA CIViC Level-A lung genes INTERSECT TCGA-LUAD mutations (fusion)"
+    },
+    "verify": "RODA civic_evidence (oncology_semantic_hub_roda); L3-smoke-tested 2026-08-04",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_civic_06",
+    "question": "What is the clinical actionability evidence level for the TTN gene?",
+    "requires": "actionability",
+    "min_layer": "L2",
+    "hops": 2,
+    "ideal": {
+      "answer": "cannot_determine",
+      "reason": "TTN has no clinical actionability evidence items"
+    },
+    "verify": "RODA civic_evidence (oncology_semantic_hub_roda); L3-smoke-tested 2026-08-04",
+    "canary": "oncohub-v2-benchmark-2026"
+  },
+  {
+    "id": "v2_civic_07",
+    "question": "For the KRAS G12C mutation in lung cancer, which therapy has validated (highest-tier) response evidence, and what publication supports it?",
+    "requires": "actionability",
+    "min_layer": "L2",
+    "hops": 2,
+    "ideal": {
+      "expect_terms": [
+        "Sotorasib",
+        "34096690"
+      ],
+      "note": "CIViC Level A, KRAS G12C lung, Sotorasib"
+    },
+    "verify": "RODA civic_evidence (oncology_semantic_hub_roda); L3-smoke-tested 2026-08-04",
+    "canary": "oncohub-v2-benchmark-2026"
+  }
+]

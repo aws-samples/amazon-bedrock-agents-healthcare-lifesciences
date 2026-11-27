@@ -1,0 +1,8 @@
+# Deployment build artifacts (created by deploy.sh at runtime)
+ols_mcp_deployment/
+.deploy/
+node_modules/
+__pycache__/
+*.pyc
+.agentcore.yaml
+cdk.out/

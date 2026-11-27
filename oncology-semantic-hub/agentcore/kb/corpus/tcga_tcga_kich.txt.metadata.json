@@ -1,0 +1,8 @@
+{
+  "metadataAttributes": {
+    "source": "TCGA",
+    "project_id": "TCGA-KICH",
+    "disease": "Kidney Chromophobe",
+    "primary_site": "Kidney"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "metadataAttributes": {
+    "source": "TCGA",
+    "project_id": "TCGA-ESCA",
+    "disease": "Esophageal Carcinoma",
+    "primary_site": "Esophagus; Stomach"
+  }
+}

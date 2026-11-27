@@ -1,0 +1,9 @@
+{
+  "agent_id": "<runtime-id-from-deploy.py>",
+  "agent_arn": "arn:aws:bedrock-agentcore:<region>:<account-id>:runtime/<runtime-name>",
+  "cw_log_group": "/aws/bedrock-agentcore/runtimes/<runtime-id>-DEFAULT",
+  "region": "us-west-2",
+  "role_arn": "arn:aws:iam::<account-id>:role/<runtime-role-name>",
+  "s3_bucket": "bedrock-agentcore-code-<account-id>-<region>",
+  "s3_key": "<runtime-name>/deployment_package.zip"
+}

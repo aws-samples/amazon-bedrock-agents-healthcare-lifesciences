@@ -1,0 +1,1741 @@
+[
+  {
+    "id": "q_quant_01",
+    "input": "What are the top 5 most frequently mutated genes in TCGA-BRCA by distinct patient count? List gene symbols in order.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "TP53, PIK3CA, TTN, CDH1, GATA3",
+      "expectedTrajectory": [
+        "query_patient_data"
+      ],
+      "assertions": [
+        "TP53",
+        "PIK3CA",
+        "TTN"
+      ]
+    },
+    "metadata": {
+      "category": "quantitative_precision",
+      "answer_type": "ranked_list",
+      "required_layers": [
+        "L1"
+      ],
+      "complexity": 2,
+      "verification_method": "programmatic",
+      "verification_queries": [
+        "SELECT hugo_symbol, count(DISTINCT case_id) c FROM tcga_mutations WHERE project_id='TCGA-BRCA' GROUP BY hugo_symbol ORDER BY c DESC LIMIT 5"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "lake"
+    }
+  },
+  {
+    "id": "q_quant_02",
+    "input": "What are the top 5 most frequently mutated genes in TCGA-LUAD by distinct patient count? List gene symbols in order.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "TP53, TTN, MUC16, CSMD3, RYR2",
+      "expectedTrajectory": [
+        "query_patient_data"
+      ],
+      "assertions": [
+        "TP53",
+        "TTN",
+        "MUC16"
+      ]
+    },
+    "metadata": {
+      "category": "quantitative_precision",
+      "answer_type": "ranked_list",
+      "required_layers": [
+        "L1"
+      ],
+      "complexity": 2,
+      "verification_method": "programmatic",
+      "verification_queries": [
+        "SELECT hugo_symbol, count(DISTINCT case_id) c FROM tcga_mutations WHERE project_id='TCGA-LUAD' GROUP BY hugo_symbol ORDER BY c DESC LIMIT 5"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "lake"
+    }
+  },
+  {
+    "id": "q_quant_03",
+    "input": "What are the top 5 most frequently mutated genes in TCGA-LUSC by distinct patient count? List gene symbols in order.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "TP53, TTN, CSMD3, MUC16, RYR2",
+      "expectedTrajectory": [
+        "query_patient_data"
+      ],
+      "assertions": [
+        "TP53",
+        "TTN",
+        "CSMD3"
+      ]
+    },
+    "metadata": {
+      "category": "quantitative_precision",
+      "answer_type": "ranked_list",
+      "required_layers": [
+        "L1"
+      ],
+      "complexity": 2,
+      "verification_method": "programmatic",
+      "verification_queries": [
+        "SELECT hugo_symbol, count(DISTINCT case_id) c FROM tcga_mutations WHERE project_id='TCGA-LUSC' GROUP BY hugo_symbol ORDER BY c DESC LIMIT 5"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "lake"
+    }
+  },
+  {
+    "id": "q_quant_04",
+    "input": "What are the top 5 most frequently mutated genes in TCGA-STAD by distinct patient count? List gene symbols in order.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "TTN, TP53, MUC16, ARID1A, LRP1B",
+      "expectedTrajectory": [
+        "query_patient_data"
+      ],
+      "assertions": [
+        "TTN",
+        "TP53",
+        "MUC16"
+      ]
+    },
+    "metadata": {
+      "category": "quantitative_precision",
+      "answer_type": "ranked_list",
+      "required_layers": [
+        "L1"
+      ],
+      "complexity": 2,
+      "verification_method": "programmatic",
+      "verification_queries": [
+        "SELECT hugo_symbol, count(DISTINCT case_id) c FROM tcga_mutations WHERE project_id='TCGA-STAD' GROUP BY hugo_symbol ORDER BY c DESC LIMIT 5"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "lake"
+    }
+  },
+  {
+    "id": "q_quant_05",
+    "input": "What are the top 5 most frequently mutated genes in TCGA-GBM by distinct patient count? List gene symbols in order.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "PTEN, TP53, TTN, EGFR, MUC16",
+      "expectedTrajectory": [
+        "query_patient_data"
+      ],
+      "assertions": [
+        "PTEN",
+        "TP53",
+        "TTN"
+      ]
+    },
+    "metadata": {
+      "category": "quantitative_precision",
+      "answer_type": "ranked_list",
+      "required_layers": [
+        "L1"
+      ],
+      "complexity": 2,
+      "verification_method": "programmatic",
+      "verification_queries": [
+        "SELECT hugo_symbol, count(DISTINCT case_id) c FROM tcga_mutations WHERE project_id='TCGA-GBM' GROUP BY hugo_symbol ORDER BY c DESC LIMIT 5"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "lake"
+    }
+  },
+  {
+    "id": "q_quant_06",
+    "input": "What are the top 5 most frequently mutated genes in TCGA-COAD by distinct patient count? List gene symbols in order.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "APC, TP53, TTN, KRAS, PIK3CA",
+      "expectedTrajectory": [
+        "query_patient_data"
+      ],
+      "assertions": [
+        "APC",
+        "TP53",
+        "TTN"
+      ]
+    },
+    "metadata": {
+      "category": "quantitative_precision",
+      "answer_type": "ranked_list",
+      "required_layers": [
+        "L1"
+      ],
+      "complexity": 2,
+      "verification_method": "programmatic",
+      "verification_queries": [
+        "SELECT hugo_symbol, count(DISTINCT case_id) c FROM tcga_mutations WHERE project_id='TCGA-COAD' GROUP BY hugo_symbol ORDER BY c DESC LIMIT 5"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "lake"
+    }
+  },
+  {
+    "id": "q_quant_07",
+    "input": "What are the top 5 most frequently mutated genes in TCGA-LIHC by distinct patient count? List gene symbols in order.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "TP53, TTN, CTNNB1, MUC16, ALB",
+      "expectedTrajectory": [
+        "query_patient_data"
+      ],
+      "assertions": [
+        "TP53",
+        "TTN",
+        "CTNNB1"
+      ]
+    },
+    "metadata": {
+      "category": "quantitative_precision",
+      "answer_type": "ranked_list",
+      "required_layers": [
+        "L1"
+      ],
+      "complexity": 2,
+      "verification_method": "programmatic",
+      "verification_queries": [
+        "SELECT hugo_symbol, count(DISTINCT case_id) c FROM tcga_mutations WHERE project_id='TCGA-LIHC' GROUP BY hugo_symbol ORDER BY c DESC LIMIT 5"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "lake"
+    }
+  },
+  {
+    "id": "q_quant_08",
+    "input": "What are the top 5 most frequently mutated genes in TCGA-KIRC by distinct patient count? List gene symbols in order.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "VHL, PBRM1, TTN, SETD2, BAP1",
+      "expectedTrajectory": [
+        "query_patient_data"
+      ],
+      "assertions": [
+        "VHL",
+        "PBRM1",
+        "TTN"
+      ]
+    },
+    "metadata": {
+      "category": "quantitative_precision",
+      "answer_type": "ranked_list",
+      "required_layers": [
+        "L1"
+      ],
+      "complexity": 2,
+      "verification_method": "programmatic",
+      "verification_queries": [
+        "SELECT hugo_symbol, count(DISTINCT case_id) c FROM tcga_mutations WHERE project_id='TCGA-KIRC' GROUP BY hugo_symbol ORDER BY c DESC LIMIT 5"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "lake"
+    }
+  },
+  {
+    "id": "q_quant_09",
+    "input": "How many distinct patients have TP53 mutations in TCGA-BRCA?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "330",
+      "expectedTrajectory": [
+        "query_patient_data"
+      ],
+      "assertions": [
+        "330"
+      ]
+    },
+    "metadata": {
+      "category": "quantitative_precision",
+      "answer_type": "exact_number",
+      "required_layers": [
+        "L1"
+      ],
+      "complexity": 1,
+      "verification_method": "programmatic",
+      "verification_queries": [
+        "SELECT count(DISTINCT case_id) FROM tcga_mutations WHERE hugo_symbol='TP53' AND project_id='TCGA-BRCA'"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "lake"
+    }
+  },
+  {
+    "id": "q_quant_10",
+    "input": "How many distinct patients have PIK3CA mutations in TCGA-BRCA?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "328",
+      "expectedTrajectory": [
+        "query_patient_data"
+      ],
+      "assertions": [
+        "328"
+      ]
+    },
+    "metadata": {
+      "category": "quantitative_precision",
+      "answer_type": "exact_number",
+      "required_layers": [
+        "L1"
+      ],
+      "complexity": 1,
+      "verification_method": "programmatic",
+      "verification_queries": [
+        "SELECT count(DISTINCT case_id) FROM tcga_mutations WHERE hugo_symbol='PIK3CA' AND project_id='TCGA-BRCA'"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "lake"
+    }
+  },
+  {
+    "id": "q_quant_11",
+    "input": "How many distinct patients have CDH1 mutations in TCGA-BRCA?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "128",
+      "expectedTrajectory": [
+        "query_patient_data"
+      ],
+      "assertions": [
+        "128"
+      ]
+    },
+    "metadata": {
+      "category": "quantitative_precision",
+      "answer_type": "exact_number",
+      "required_layers": [
+        "L1"
+      ],
+      "complexity": 1,
+      "verification_method": "programmatic",
+      "verification_queries": [
+        "SELECT count(DISTINCT case_id) FROM tcga_mutations WHERE hugo_symbol='CDH1' AND project_id='TCGA-BRCA'"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "lake"
+    }
+  },
+  {
+    "id": "q_quant_12",
+    "input": "How many distinct patients have PTEN mutations in TCGA-BRCA?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "52",
+      "expectedTrajectory": [
+        "query_patient_data"
+      ],
+      "assertions": [
+        "52"
+      ]
+    },
+    "metadata": {
+      "category": "quantitative_precision",
+      "answer_type": "exact_number",
+      "required_layers": [
+        "L1"
+      ],
+      "complexity": 1,
+      "verification_method": "programmatic",
+      "verification_queries": [
+        "SELECT count(DISTINCT case_id) FROM tcga_mutations WHERE hugo_symbol='PTEN' AND project_id='TCGA-BRCA'"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "lake"
+    }
+  },
+  {
+    "id": "q_quant_13",
+    "input": "How many distinct patients have TP53 mutations in TCGA-LUAD?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "274",
+      "expectedTrajectory": [
+        "query_patient_data"
+      ],
+      "assertions": [
+        "274"
+      ]
+    },
+    "metadata": {
+      "category": "quantitative_precision",
+      "answer_type": "exact_number",
+      "required_layers": [
+        "L1"
+      ],
+      "complexity": 1,
+      "verification_method": "programmatic",
+      "verification_queries": [
+        "SELECT count(DISTINCT case_id) FROM tcga_mutations WHERE hugo_symbol='TP53' AND project_id='TCGA-LUAD'"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "lake"
+    }
+  },
+  {
+    "id": "q_quant_14",
+    "input": "How many distinct patients have KRAS mutations in TCGA-LUAD?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "148",
+      "expectedTrajectory": [
+        "query_patient_data"
+      ],
+      "assertions": [
+        "148"
+      ]
+    },
+    "metadata": {
+      "category": "quantitative_precision",
+      "answer_type": "exact_number",
+      "required_layers": [
+        "L1"
+      ],
+      "complexity": 1,
+      "verification_method": "programmatic",
+      "verification_queries": [
+        "SELECT count(DISTINCT case_id) FROM tcga_mutations WHERE hugo_symbol='KRAS' AND project_id='TCGA-LUAD'"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "lake"
+    }
+  },
+  {
+    "id": "q_quant_15",
+    "input": "How many distinct patients have TP53 mutations in TCGA-LUSC?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "393",
+      "expectedTrajectory": [
+        "query_patient_data"
+      ],
+      "assertions": [
+        "393"
+      ]
+    },
+    "metadata": {
+      "category": "quantitative_precision",
+      "answer_type": "exact_number",
+      "required_layers": [
+        "L1"
+      ],
+      "complexity": 1,
+      "verification_method": "programmatic",
+      "verification_queries": [
+        "SELECT count(DISTINCT case_id) FROM tcga_mutations WHERE hugo_symbol='TP53' AND project_id='TCGA-LUSC'"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "lake"
+    }
+  },
+  {
+    "id": "q_quant_16",
+    "input": "How many distinct patients have TP53 mutations in TCGA-STAD?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "197",
+      "expectedTrajectory": [
+        "query_patient_data"
+      ],
+      "assertions": [
+        "197"
+      ]
+    },
+    "metadata": {
+      "category": "quantitative_precision",
+      "answer_type": "exact_number",
+      "required_layers": [
+        "L1"
+      ],
+      "complexity": 1,
+      "verification_method": "programmatic",
+      "verification_queries": [
+        "SELECT count(DISTINCT case_id) FROM tcga_mutations WHERE hugo_symbol='TP53' AND project_id='TCGA-STAD'"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "lake"
+    }
+  },
+  {
+    "id": "q_quant_17",
+    "input": "How many distinct patients have ARID1A mutations in TCGA-STAD?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "116",
+      "expectedTrajectory": [
+        "query_patient_data"
+      ],
+      "assertions": [
+        "116"
+      ]
+    },
+    "metadata": {
+      "category": "quantitative_precision",
+      "answer_type": "exact_number",
+      "required_layers": [
+        "L1"
+      ],
+      "complexity": 1,
+      "verification_method": "programmatic",
+      "verification_queries": [
+        "SELECT count(DISTINCT case_id) FROM tcga_mutations WHERE hugo_symbol='ARID1A' AND project_id='TCGA-STAD'"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "lake"
+    }
+  },
+  {
+    "id": "q_quant_18",
+    "input": "How many distinct patients have PTEN mutations in TCGA-GBM?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "116",
+      "expectedTrajectory": [
+        "query_patient_data"
+      ],
+      "assertions": [
+        "116"
+      ]
+    },
+    "metadata": {
+      "category": "quantitative_precision",
+      "answer_type": "exact_number",
+      "required_layers": [
+        "L1"
+      ],
+      "complexity": 1,
+      "verification_method": "programmatic",
+      "verification_queries": [
+        "SELECT count(DISTINCT case_id) FROM tcga_mutations WHERE hugo_symbol='PTEN' AND project_id='TCGA-GBM'"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "lake"
+    }
+  },
+  {
+    "id": "q_quant_19",
+    "input": "How many distinct patients have TP53 mutations in TCGA-GBM?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "114",
+      "expectedTrajectory": [
+        "query_patient_data"
+      ],
+      "assertions": [
+        "114"
+      ]
+    },
+    "metadata": {
+      "category": "quantitative_precision",
+      "answer_type": "exact_number",
+      "required_layers": [
+        "L1"
+      ],
+      "complexity": 1,
+      "verification_method": "programmatic",
+      "verification_queries": [
+        "SELECT count(DISTINCT case_id) FROM tcga_mutations WHERE hugo_symbol='TP53' AND project_id='TCGA-GBM'"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "lake"
+    }
+  },
+  {
+    "id": "q_quant_20",
+    "input": "How many distinct patients have EGFR mutations in TCGA-GBM?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "82",
+      "expectedTrajectory": [
+        "query_patient_data"
+      ],
+      "assertions": [
+        "82"
+      ]
+    },
+    "metadata": {
+      "category": "quantitative_precision",
+      "answer_type": "exact_number",
+      "required_layers": [
+        "L1"
+      ],
+      "complexity": 1,
+      "verification_method": "programmatic",
+      "verification_queries": [
+        "SELECT count(DISTINCT case_id) FROM tcga_mutations WHERE hugo_symbol='EGFR' AND project_id='TCGA-GBM'"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "lake"
+    }
+  },
+  {
+    "id": "q_drug_01",
+    "input": "What drugs are connected to the AKT1 gene_protein node via drug_protein edges? List drug names.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "5-(5-chloro-7H-pyrrolo[2,3-d]pyrimidin-4-yl)-4,5,6,7-tetrahydro-1H-imidazo[4,5-c]pyridine, ATP, Archexin, Arsenic trioxide, Enzastaurin, Genistein, Inositol 1,3,4,5-Tetrakisphosphate, N-[2-(5-methyl-4H-1,2,4-triazol-3-yl)phenyl]-7H-pyrrolo[2,3-d]pyrimidin-4-amine, Perifosine, Resveratrol",
+      "expectedTrajectory": [
+        "get_hub_schema",
+        "query_knowledge_graph"
+      ],
+      "assertions": [
+        "5-(5-chloro-7H-pyrrolo[2,3-d]pyrimidin-4-yl)-4,5,6,7-tetrahydro-1H-imidazo[4,5-c]pyridine",
+        "ATP",
+        "Archexin"
+      ]
+    },
+    "metadata": {
+      "category": "drug_gene_relationships",
+      "answer_type": "entity_list",
+      "required_layers": [
+        "L2"
+      ],
+      "complexity": 2,
+      "verification_method": "programmatic",
+      "verification_queries": [
+        "MATCH (g:gene_protein {name:'AKT1'})-[:drug_protein]-(d:drug) RETURN d.name ORDER BY d.name"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "graph_1hop"
+    }
+  },
+  {
+    "id": "q_drug_02",
+    "input": "What drugs are connected to the ALK gene_protein node via drug_protein edges? List drug names.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "ATP, Alectinib, Brigatinib, Ceritinib, Crizotinib, Fostamatinib, Gilteritinib, Lorlatinib",
+      "expectedTrajectory": [
+        "get_hub_schema",
+        "query_knowledge_graph"
+      ],
+      "assertions": [
+        "ATP",
+        "Alectinib",
+        "Brigatinib"
+      ]
+    },
+    "metadata": {
+      "category": "drug_gene_relationships",
+      "answer_type": "entity_list",
+      "required_layers": [
+        "L2"
+      ],
+      "complexity": 2,
+      "verification_method": "programmatic",
+      "verification_queries": [
+        "MATCH (g:gene_protein {name:'ALK'})-[:drug_protein]-(d:drug) RETURN d.name ORDER BY d.name"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "graph_1hop"
+    }
+  },
+  {
+    "id": "q_drug_03",
+    "input": "What drugs are connected to the ATM gene_protein node via drug_protein edges? List drug names.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Caffeine",
+      "expectedTrajectory": [
+        "get_hub_schema",
+        "query_knowledge_graph"
+      ],
+      "assertions": [
+        "Caffeine"
+      ]
+    },
+    "metadata": {
+      "category": "drug_gene_relationships",
+      "answer_type": "entity_list",
+      "required_layers": [
+        "L2"
+      ],
+      "complexity": 2,
+      "verification_method": "programmatic",
+      "verification_queries": [
+        "MATCH (g:gene_protein {name:'ATM'})-[:drug_protein]-(d:drug) RETURN d.name ORDER BY d.name"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "graph_1hop"
+    }
+  },
+  {
+    "id": "q_drug_04",
+    "input": "What drugs are connected to the BRAF gene_protein node via drug_protein edges? List drug names.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "(1E)-5-(1-piperidin-4-yl-3-pyridin-4-yl-1H-pyrazol-4-yl)-2,3-dihydro-1H-inden-1-one oxime, Dabrafenib, Encorafenib, Fostamatinib, N-{2,4-difluoro-3-[(5-pyridin-3-yl-1H-pyrrolo[2,3-b]pyridin-3-yl)carbonyl]phenyl}ethanesulfonamide, PLX-4720, RAF-265, Regorafenib, Ripretinib, Sorafenib, Vemurafenib, XL281",
+      "expectedTrajectory": [
+        "get_hub_schema",
+        "query_knowledge_graph"
+      ],
+      "assertions": [
+        "(1E)-5-(1-piperidin-4-yl-3-pyridin-4-yl-1H-pyrazol-4-yl)-2,3-dihydro-1H-inden-1-one oxime",
+        "Dabrafenib",
+        "Encorafenib"
+      ]
+    },
+    "metadata": {
+      "category": "drug_gene_relationships",
+      "answer_type": "entity_list",
+      "required_layers": [
+        "L2"
+      ],
+      "complexity": 2,
+      "verification_method": "programmatic",
+      "verification_queries": [
+        "MATCH (g:gene_protein {name:'BRAF'})-[:drug_protein]-(d:drug) RETURN d.name ORDER BY d.name"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "graph_1hop"
+    }
+  },
+  {
+    "id": "q_drug_05",
+    "input": "What drugs are connected to the CALR gene_protein node via drug_protein edges? List drug names.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Antihemophilic factor, human recombinant, Calcium Phosphate, Calcium citrate, Calcium phosphate dihydrate, Copper, Ferric cation, Lanoteplase, Lonoctocog alfa, Melatonin, Moroctocog alfa, Tenecteplase, Tetraferric tricitrate decahydrate",
+      "expectedTrajectory": [
+        "get_hub_schema",
+        "query_knowledge_graph"
+      ],
+      "assertions": [
+        "Antihemophilic factor, human recombinant",
+        "Calcium Phosphate",
+        "Calcium citrate"
+      ]
+    },
+    "metadata": {
+      "category": "drug_gene_relationships",
+      "answer_type": "entity_list",
+      "required_layers": [
+        "L2"
+      ],
+      "complexity": 2,
+      "verification_method": "programmatic",
+      "verification_queries": [
+        "MATCH (g:gene_protein {name:'CALR'})-[:drug_protein]-(d:drug) RETURN d.name ORDER BY d.name"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "graph_1hop"
+    }
+  },
+  {
+    "id": "q_drug_06",
+    "input": "What drugs are connected to the CREBBP gene_protein node via drug_protein edges? List drug names.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "9-ACETYL-2,3,4,9-TETRAHYDRO-1H-CARBAZOL-1-ONE",
+      "expectedTrajectory": [
+        "get_hub_schema",
+        "query_knowledge_graph"
+      ],
+      "assertions": [
+        "9-ACETYL-2,3,4,9-TETRAHYDRO-1H-CARBAZOL-1-ONE"
+      ]
+    },
+    "metadata": {
+      "category": "drug_gene_relationships",
+      "answer_type": "entity_list",
+      "required_layers": [
+        "L2"
+      ],
+      "complexity": 2,
+      "verification_method": "programmatic",
+      "verification_queries": [
+        "MATCH (g:gene_protein {name:'CREBBP'})-[:drug_protein]-(d:drug) RETURN d.name ORDER BY d.name"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "graph_1hop"
+    }
+  },
+  {
+    "id": "q_drug_07",
+    "input": "What drugs are connected to the CTNNB1 gene_protein node via drug_protein edges? List drug names.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Urea",
+      "expectedTrajectory": [
+        "get_hub_schema",
+        "query_knowledge_graph"
+      ],
+      "assertions": [
+        "Urea"
+      ]
+    },
+    "metadata": {
+      "category": "drug_gene_relationships",
+      "answer_type": "entity_list",
+      "required_layers": [
+        "L2"
+      ],
+      "complexity": 2,
+      "verification_method": "programmatic",
+      "verification_queries": [
+        "MATCH (g:gene_protein {name:'CTNNB1'})-[:drug_protein]-(d:drug) RETURN d.name ORDER BY d.name"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "graph_1hop"
+    }
+  },
+  {
+    "id": "q_drug_08",
+    "input": "What drugs are connected to the DNMT3A gene_protein node via drug_protein edges? List drug names.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Decitabine, Procaine",
+      "expectedTrajectory": [
+        "get_hub_schema",
+        "query_knowledge_graph"
+      ],
+      "assertions": [
+        "Decitabine",
+        "Procaine"
+      ]
+    },
+    "metadata": {
+      "category": "drug_gene_relationships",
+      "answer_type": "entity_list",
+      "required_layers": [
+        "L2"
+      ],
+      "complexity": 2,
+      "verification_method": "programmatic",
+      "verification_queries": [
+        "MATCH (g:gene_protein {name:'DNMT3A'})-[:drug_protein]-(d:drug) RETURN d.name ORDER BY d.name"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "graph_1hop"
+    }
+  },
+  {
+    "id": "q_drug_09",
+    "input": "What drugs are connected to the EGFR gene_protein node via drug_protein edges? List drug names.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "AV-412, Abivertinib, Afatinib, Alvocidib, Brigatinib, Canertinib, Cetuximab, Dacomitinib, Depatuxizumab mafodotin, Erlotinib, Foreskin keratinocyte (neonatal), Fostamatinib, Gefitinib, IGN311, Icotinib, Lapatinib, Lidocaine, Matuzumab, Necitumumab, Neratinib, Olmutinib, Osimertinib, PD-168393, Panitumumab, Pelitinib, Rindopepimut, S-{3-[(4-ANILINOQUINAZOLIN-6-YL)AMINO]-3-OXOPROPYL}-L-CYSTEINE, Vandetanib, Varlitinib, Zalutumumab, Zanubrutinib",
+      "expectedTrajectory": [
+        "get_hub_schema",
+        "query_knowledge_graph"
+      ],
+      "assertions": [
+        "AV-412",
+        "Abivertinib",
+        "Afatinib"
+      ]
+    },
+    "metadata": {
+      "category": "drug_gene_relationships",
+      "answer_type": "entity_list",
+      "required_layers": [
+        "L2"
+      ],
+      "complexity": 2,
+      "verification_method": "programmatic",
+      "verification_queries": [
+        "MATCH (g:gene_protein {name:'EGFR'})-[:drug_protein]-(d:drug) RETURN d.name ORDER BY d.name"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "graph_1hop"
+    }
+  },
+  {
+    "id": "q_drug_10",
+    "input": "What drugs are connected to the ERBB2 gene_protein node via drug_protein edges? List drug names.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "AV-412, Afatinib, Brigatinib, Fostamatinib, IGN311, Lapatinib, Margetuximab, Pertuzumab, Tesevatinib, Trastuzumab, Trastuzumab emtansine, Tucatinib, Varlitinib, Zanubrutinib",
+      "expectedTrajectory": [
+        "get_hub_schema",
+        "query_knowledge_graph"
+      ],
+      "assertions": [
+        "AV-412",
+        "Afatinib",
+        "Brigatinib"
+      ]
+    },
+    "metadata": {
+      "category": "drug_gene_relationships",
+      "answer_type": "entity_list",
+      "required_layers": [
+        "L2"
+      ],
+      "complexity": 2,
+      "verification_method": "programmatic",
+      "verification_queries": [
+        "MATCH (g:gene_protein {name:'ERBB2'})-[:drug_protein]-(d:drug) RETURN d.name ORDER BY d.name"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "graph_1hop"
+    }
+  },
+  {
+    "id": "q_drug_11",
+    "input": "What drugs are connected to the ERBB3 gene_protein node via drug_protein edges? List drug names.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Tucatinib",
+      "expectedTrajectory": [
+        "get_hub_schema",
+        "query_knowledge_graph"
+      ],
+      "assertions": [
+        "Tucatinib"
+      ]
+    },
+    "metadata": {
+      "category": "drug_gene_relationships",
+      "answer_type": "entity_list",
+      "required_layers": [
+        "L2"
+      ],
+      "complexity": 2,
+      "verification_method": "programmatic",
+      "verification_queries": [
+        "MATCH (g:gene_protein {name:'ERBB3'})-[:drug_protein]-(d:drug) RETURN d.name ORDER BY d.name"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "graph_1hop"
+    }
+  },
+  {
+    "id": "q_drug_12",
+    "input": "What drugs are connected to the EZH2 gene_protein node via drug_protein edges? List drug names.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "CPI-1205, Tazemetostat",
+      "expectedTrajectory": [
+        "get_hub_schema",
+        "query_knowledge_graph"
+      ],
+      "assertions": [
+        "CPI-1205",
+        "Tazemetostat"
+      ]
+    },
+    "metadata": {
+      "category": "drug_gene_relationships",
+      "answer_type": "entity_list",
+      "required_layers": [
+        "L2"
+      ],
+      "complexity": 2,
+      "verification_method": "programmatic",
+      "verification_queries": [
+        "MATCH (g:gene_protein {name:'EZH2'})-[:drug_protein]-(d:drug) RETURN d.name ORDER BY d.name"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "graph_1hop"
+    }
+  },
+  {
+    "id": "q_drug_13",
+    "input": "What drugs are connected to the FGFR1 gene_protein node via drug_protein edges? List drug names.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "(E)-[4-(3,5-Difluorophenyl)-3H-pyrrolo[2,3-b]pyridin-3-ylidene](3-methoxyphenyl)methanol, 3-(3-methoxybenzyl)-1H-pyrrolo[2,3-b]pyridine, 3-[(3-(2-CARBOXYETHYL)-4-METHYLPYRROL-2-YL)METHYLENE]-2-INDOLINONE, 3-[4-(1-formylpiperazin-4-yl)-benzylidenyl]-2-indolinone, Erdafitinib, Fostamatinib, Heparin, Lenvatinib, Nintedanib, Palifermin, Pemigatinib, Ponatinib, Regorafenib, Selpercatinib, Sorafenib, XL999",
+      "expectedTrajectory": [
+        "get_hub_schema",
+        "query_knowledge_graph"
+      ],
+      "assertions": [
+        "(E)-[4-(3,5-Difluorophenyl)-3H-pyrrolo[2,3-b]pyridin-3-ylidene](3-methoxyphenyl)methanol",
+        "3-(3-methoxybenzyl)-1H-pyrrolo[2,3-b]pyridine",
+        "3-[(3-(2-CARBOXYETHYL)-4-METHYLPYRROL-2-YL)METHYLENE]-2-INDOLINONE"
+      ]
+    },
+    "metadata": {
+      "category": "drug_gene_relationships",
+      "answer_type": "entity_list",
+      "required_layers": [
+        "L2"
+      ],
+      "complexity": 2,
+      "verification_method": "programmatic",
+      "verification_queries": [
+        "MATCH (g:gene_protein {name:'FGFR1'})-[:drug_protein]-(d:drug) RETURN d.name ORDER BY d.name"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "graph_1hop"
+    }
+  },
+  {
+    "id": "q_drug_14",
+    "input": "What drugs are connected to the FGFR2 gene_protein node via drug_protein edges? List drug names.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "3-[4-(1-formylpiperazin-4-yl)-benzylidenyl]-2-indolinone, 4-[4-(1-Amino-1-Methylethyl)Phenyl]-5-Chloro-N-[4-(2-Morpholin-4-Ylethyl)Phenyl]Pyrimidin-2-Amine, Erdafitinib, Foreskin fibroblast (neonatal), Foreskin keratinocyte (neonatal), Fostamatinib, Heparin, Lenvatinib, Nintedanib, Palifermin, Pemigatinib, Ponatinib, Regorafenib, Selpercatinib, Sucrosofate, Thalidomide",
+      "expectedTrajectory": [
+        "get_hub_schema",
+        "query_knowledge_graph"
+      ],
+      "assertions": [
+        "3-[4-(1-formylpiperazin-4-yl)-benzylidenyl]-2-indolinone",
+        "4-[4-(1-Amino-1-Methylethyl)Phenyl]-5-Chloro-N-[4-(2-Morpholin-4-Ylethyl)Phenyl]Pyrimidin-2-Amine",
+        "Erdafitinib"
+      ]
+    },
+    "metadata": {
+      "category": "drug_gene_relationships",
+      "answer_type": "entity_list",
+      "required_layers": [
+        "L2"
+      ],
+      "complexity": 2,
+      "verification_method": "programmatic",
+      "verification_queries": [
+        "MATCH (g:gene_protein {name:'FGFR2'})-[:drug_protein]-(d:drug) RETURN d.name ORDER BY d.name"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "graph_1hop"
+    }
+  },
+  {
+    "id": "q_drug_15",
+    "input": "What drugs are connected to the FGFR3 gene_protein node via drug_protein edges? List drug names.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Erdafitinib, Fostamatinib, Lenvatinib, Nintedanib, Pazopanib, Pemigatinib, Ponatinib, Selpercatinib, XL999",
+      "expectedTrajectory": [
+        "get_hub_schema",
+        "query_knowledge_graph"
+      ],
+      "assertions": [
+        "Erdafitinib",
+        "Fostamatinib",
+        "Lenvatinib"
+      ]
+    },
+    "metadata": {
+      "category": "drug_gene_relationships",
+      "answer_type": "entity_list",
+      "required_layers": [
+        "L2"
+      ],
+      "complexity": 2,
+      "verification_method": "programmatic",
+      "verification_queries": [
+        "MATCH (g:gene_protein {name:'FGFR3'})-[:drug_protein]-(d:drug) RETURN d.name ORDER BY d.name"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "graph_1hop"
+    }
+  },
+  {
+    "id": "q_cross_01",
+    "input": "Among the 10 most frequently mutated genes in TCGA-BRCA (by distinct patient count), which gene has the most drugs targeting it via drug_protein edges, and how many drugs is that?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Among the top 10 mutated genes in TCGA-BRCA, TP53 has the most drug targets: 8 drugs.",
+      "expectedTrajectory": [
+        "query_patient_data",
+        "get_hub_schema",
+        "query_knowledge_graph"
+      ],
+      "assertions": [
+        "TP53",
+        "8"
+      ]
+    },
+    "metadata": {
+      "category": "cross_system",
+      "answer_type": "composite",
+      "required_layers": [
+        "L1",
+        "L2"
+      ],
+      "complexity": 3,
+      "verification_method": "programmatic",
+      "verification_queries": [
+        "SELECT hugo_symbol, count(DISTINCT case_id) c FROM tcga_mutations WHERE project_id='TCGA-BRCA' GROUP BY hugo_symbol ORDER BY c DESC LIMIT 10",
+        "for each gene: MATCH (g:gene_protein {name:<gene>})-[:drug_protein]-(d:drug) RETURN count(DISTINCT d); pick argmax"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "multi_source"
+    }
+  },
+  {
+    "id": "q_cross_02",
+    "input": "Among the 10 most frequently mutated genes in TCGA-LUAD (by distinct patient count), which gene has the most drugs targeting it via drug_protein edges, and how many drugs is that?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Among the top 10 mutated genes in TCGA-LUAD, RYR2 has the most drug targets: 5 drugs.",
+      "expectedTrajectory": [
+        "query_patient_data",
+        "get_hub_schema",
+        "query_knowledge_graph"
+      ],
+      "assertions": [
+        "RYR2",
+        "5"
+      ]
+    },
+    "metadata": {
+      "category": "cross_system",
+      "answer_type": "composite",
+      "required_layers": [
+        "L1",
+        "L2"
+      ],
+      "complexity": 3,
+      "verification_method": "programmatic",
+      "verification_queries": [
+        "SELECT hugo_symbol, count(DISTINCT case_id) c FROM tcga_mutations WHERE project_id='TCGA-LUAD' GROUP BY hugo_symbol ORDER BY c DESC LIMIT 10",
+        "for each gene: MATCH (g:gene_protein {name:<gene>})-[:drug_protein]-(d:drug) RETURN count(DISTINCT d); pick argmax"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "multi_source"
+    }
+  },
+  {
+    "id": "q_cross_03",
+    "input": "Among the 10 most frequently mutated genes in TCGA-LUSC (by distinct patient count), which gene has the most drugs targeting it via drug_protein edges, and how many drugs is that?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Among the top 10 mutated genes in TCGA-LUSC, TP53 has the most drug targets: 8 drugs.",
+      "expectedTrajectory": [
+        "query_patient_data",
+        "get_hub_schema",
+        "query_knowledge_graph"
+      ],
+      "assertions": [
+        "TP53",
+        "8"
+      ]
+    },
+    "metadata": {
+      "category": "cross_system",
+      "answer_type": "composite",
+      "required_layers": [
+        "L1",
+        "L2"
+      ],
+      "complexity": 3,
+      "verification_method": "programmatic",
+      "verification_queries": [
+        "SELECT hugo_symbol, count(DISTINCT case_id) c FROM tcga_mutations WHERE project_id='TCGA-LUSC' GROUP BY hugo_symbol ORDER BY c DESC LIMIT 10",
+        "for each gene: MATCH (g:gene_protein {name:<gene>})-[:drug_protein]-(d:drug) RETURN count(DISTINCT d); pick argmax"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "multi_source"
+    }
+  },
+  {
+    "id": "q_cross_04",
+    "input": "Among the 10 most frequently mutated genes in TCGA-STAD (by distinct patient count), which gene has the most drugs targeting it via drug_protein edges, and how many drugs is that?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Among the top 10 mutated genes in TCGA-STAD, TP53 has the most drug targets: 8 drugs.",
+      "expectedTrajectory": [
+        "query_patient_data",
+        "get_hub_schema",
+        "query_knowledge_graph"
+      ],
+      "assertions": [
+        "TP53",
+        "8"
+      ]
+    },
+    "metadata": {
+      "category": "cross_system",
+      "answer_type": "composite",
+      "required_layers": [
+        "L1",
+        "L2"
+      ],
+      "complexity": 3,
+      "verification_method": "programmatic",
+      "verification_queries": [
+        "SELECT hugo_symbol, count(DISTINCT case_id) c FROM tcga_mutations WHERE project_id='TCGA-STAD' GROUP BY hugo_symbol ORDER BY c DESC LIMIT 10",
+        "for each gene: MATCH (g:gene_protein {name:<gene>})-[:drug_protein]-(d:drug) RETURN count(DISTINCT d); pick argmax"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "multi_source"
+    }
+  },
+  {
+    "id": "q_cross_05",
+    "input": "Among the 10 most frequently mutated genes in TCGA-GBM (by distinct patient count), which gene has the most drugs targeting it via drug_protein edges, and how many drugs is that?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Among the top 10 mutated genes in TCGA-GBM, EGFR has the most drug targets: 31 drugs.",
+      "expectedTrajectory": [
+        "query_patient_data",
+        "get_hub_schema",
+        "query_knowledge_graph"
+      ],
+      "assertions": [
+        "EGFR",
+        "31"
+      ]
+    },
+    "metadata": {
+      "category": "cross_system",
+      "answer_type": "composite",
+      "required_layers": [
+        "L1",
+        "L2"
+      ],
+      "complexity": 3,
+      "verification_method": "programmatic",
+      "verification_queries": [
+        "SELECT hugo_symbol, count(DISTINCT case_id) c FROM tcga_mutations WHERE project_id='TCGA-GBM' GROUP BY hugo_symbol ORDER BY c DESC LIMIT 10",
+        "for each gene: MATCH (g:gene_protein {name:<gene>})-[:drug_protein]-(d:drug) RETURN count(DISTINCT d); pick argmax"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "multi_source"
+    }
+  },
+  {
+    "id": "q_onto_01",
+    "input": "What is the MONDO ontology identifier for the disease 'adrenal cortex carcinoma'?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "MONDO:0006639",
+      "expectedTrajectory": [
+        "ontology_lookup"
+      ],
+      "assertions": [
+        "MONDO:0006639"
+      ]
+    },
+    "metadata": {
+      "category": "ontology_resolution",
+      "answer_type": "composite",
+      "required_layers": [
+        "L2"
+      ],
+      "complexity": 2,
+      "verification_method": "ols4",
+      "verification_queries": [
+        "OLS4 search q='adrenal cortex carcinoma' ontology=mondo -> obo_id"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "ontology"
+    }
+  },
+  {
+    "id": "q_onto_02",
+    "input": "What is the MONDO ontology identifier for the disease 'bilineal acute myeloid leukemia'?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "MONDO:0011118",
+      "expectedTrajectory": [
+        "ontology_lookup"
+      ],
+      "assertions": [
+        "MONDO:0011118"
+      ]
+    },
+    "metadata": {
+      "category": "ontology_resolution",
+      "answer_type": "composite",
+      "required_layers": [
+        "L2"
+      ],
+      "complexity": 2,
+      "verification_method": "ols4",
+      "verification_queries": [
+        "OLS4 search q='bilineal acute myeloid leukemia' ontology=mondo -> obo_id"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "ontology"
+    }
+  },
+  {
+    "id": "q_onto_03",
+    "input": "What is the MONDO ontology identifier for the disease 'cervical cancer'?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "MONDO:0002974",
+      "expectedTrajectory": [
+        "ontology_lookup"
+      ],
+      "assertions": [
+        "MONDO:0002974"
+      ]
+    },
+    "metadata": {
+      "category": "ontology_resolution",
+      "answer_type": "composite",
+      "required_layers": [
+        "L2"
+      ],
+      "complexity": 2,
+      "verification_method": "ols4",
+      "verification_queries": [
+        "OLS4 search q='cervical cancer' ontology=mondo -> obo_id"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "ontology"
+    }
+  },
+  {
+    "id": "q_onto_04",
+    "input": "What is the MONDO ontology identifier for the disease 'cholangiocarcinoma, susceptibility to'?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "MONDO:0014281",
+      "expectedTrajectory": [
+        "ontology_lookup"
+      ],
+      "assertions": [
+        "MONDO:0014281"
+      ]
+    },
+    "metadata": {
+      "category": "ontology_resolution",
+      "answer_type": "composite",
+      "required_layers": [
+        "L2"
+      ],
+      "complexity": 2,
+      "verification_method": "ols4",
+      "verification_queries": [
+        "OLS4 search q='cholangiocarcinoma, susceptibility to' ontology=mondo -> obo_id"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "ontology"
+    }
+  },
+  {
+    "id": "q_onto_05",
+    "input": "What is the MONDO ontology identifier for the disease 'chromophobe renal cell carcinoma'?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "MONDO:0017885",
+      "expectedTrajectory": [
+        "ontology_lookup"
+      ],
+      "assertions": [
+        "MONDO:0017885"
+      ]
+    },
+    "metadata": {
+      "category": "ontology_resolution",
+      "answer_type": "composite",
+      "required_layers": [
+        "L2"
+      ],
+      "complexity": 2,
+      "verification_method": "ols4",
+      "verification_queries": [
+        "OLS4 search q='chromophobe renal cell carcinoma' ontology=mondo -> obo_id"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "ontology"
+    }
+  },
+  {
+    "id": "q_onto_06",
+    "input": "What is the MONDO ontology identifier for the disease 'clear cell renal carcinoma'?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "MONDO:0005005",
+      "expectedTrajectory": [
+        "ontology_lookup"
+      ],
+      "assertions": [
+        "MONDO:0005005"
+      ]
+    },
+    "metadata": {
+      "category": "ontology_resolution",
+      "answer_type": "composite",
+      "required_layers": [
+        "L2"
+      ],
+      "complexity": 2,
+      "verification_method": "ols4",
+      "verification_queries": [
+        "OLS4 search q='clear cell renal carcinoma' ontology=mondo -> obo_id"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "ontology"
+    }
+  },
+  {
+    "id": "q_onto_07",
+    "input": "What is the MONDO ontology identifier for the disease 'colon adenocarcinoma'?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "MONDO:0002271",
+      "expectedTrajectory": [
+        "ontology_lookup"
+      ],
+      "assertions": [
+        "MONDO:0002271"
+      ]
+    },
+    "metadata": {
+      "category": "ontology_resolution",
+      "answer_type": "composite",
+      "required_layers": [
+        "L2"
+      ],
+      "complexity": 2,
+      "verification_method": "ols4",
+      "verification_queries": [
+        "OLS4 search q='colon adenocarcinoma' ontology=mondo -> obo_id"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "ontology"
+    }
+  },
+  {
+    "id": "q_onto_08",
+    "input": "What is the MONDO ontology identifier for the disease 'colorectal adenocarcinoma'?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "MONDO:0005008",
+      "expectedTrajectory": [
+        "ontology_lookup"
+      ],
+      "assertions": [
+        "MONDO:0005008"
+      ]
+    },
+    "metadata": {
+      "category": "ontology_resolution",
+      "answer_type": "composite",
+      "required_layers": [
+        "L2"
+      ],
+      "complexity": 2,
+      "verification_method": "ols4",
+      "verification_queries": [
+        "OLS4 search q='colorectal adenocarcinoma' ontology=mondo -> obo_id"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "ontology"
+    }
+  },
+  {
+    "id": "q_onto_09",
+    "input": "What is the MONDO ontology identifier for the disease 'diffuse large B-cell lymphoma'?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "MONDO:0018905",
+      "expectedTrajectory": [
+        "ontology_lookup"
+      ],
+      "assertions": [
+        "MONDO:0018905"
+      ]
+    },
+    "metadata": {
+      "category": "ontology_resolution",
+      "answer_type": "composite",
+      "required_layers": [
+        "L2"
+      ],
+      "complexity": 2,
+      "verification_method": "ols4",
+      "verification_queries": [
+        "OLS4 search q='diffuse large B-cell lymphoma' ontology=mondo -> obo_id"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "ontology"
+    }
+  },
+  {
+    "id": "q_onto_10",
+    "input": "What is the MONDO ontology identifier for the disease 'embryonal rhabdomyosarcoma'?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "MONDO:0009993",
+      "expectedTrajectory": [
+        "ontology_lookup"
+      ],
+      "assertions": [
+        "MONDO:0009993"
+      ]
+    },
+    "metadata": {
+      "category": "ontology_resolution",
+      "answer_type": "composite",
+      "required_layers": [
+        "L2"
+      ],
+      "complexity": 2,
+      "verification_method": "ols4",
+      "verification_queries": [
+        "OLS4 search q='embryonal rhabdomyosarcoma' ontology=mondo -> obo_id"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "ontology"
+    }
+  },
+  {
+    "id": "q_neg_01",
+    "input": "What is the AJCC tumor stage for TCGA-STAD patients with TP53 mutations?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Cannot be determined from the hub \u2014 no such data is loaded (absent: tumor stage / AJCC stage).",
+      "expectedTrajectory": [],
+      "assertions": []
+    },
+    "metadata": {
+      "category": "negative_controls",
+      "answer_type": "negative",
+      "required_layers": [],
+      "complexity": 1,
+      "verification_method": "by_design",
+      "verification_queries": [
+        "ABSENT FROM HUB: tumor stage / AJCC stage"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "negative"
+    }
+  },
+  {
+    "id": "q_neg_02",
+    "input": "What is the measured protein abundance of EGFR protein in TCGA-LUAD tumors?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Cannot be determined from the hub \u2014 no such data is loaded (absent: proteomics / protein abundance).",
+      "expectedTrajectory": [],
+      "assertions": []
+    },
+    "metadata": {
+      "category": "negative_controls",
+      "answer_type": "negative",
+      "required_layers": [],
+      "complexity": 1,
+      "verification_method": "by_design",
+      "verification_queries": [
+        "ABSENT FROM HUB: proteomics / protein abundance"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "negative"
+    }
+  },
+  {
+    "id": "q_neg_03",
+    "input": "What tumor grade is reported from the H&E pathology images for TCGA-BRCA cases?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Cannot be determined from the hub \u2014 no such data is loaded (absent: histology imaging).",
+      "expectedTrajectory": [],
+      "assertions": []
+    },
+    "metadata": {
+      "category": "negative_controls",
+      "answer_type": "negative",
+      "required_layers": [],
+      "complexity": 1,
+      "verification_method": "by_design",
+      "verification_queries": [
+        "ABSENT FROM HUB: histology imaging"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "negative"
+    }
+  },
+  {
+    "id": "q_neg_04",
+    "input": "Which chemotherapy regimen did TCGA-COAD patients receive and did they respond?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Cannot be determined from the hub \u2014 no such data is loaded (absent: treatment / drug response).",
+      "expectedTrajectory": [],
+      "assertions": []
+    },
+    "metadata": {
+      "category": "negative_controls",
+      "answer_type": "negative",
+      "required_layers": [],
+      "complexity": 1,
+      "verification_method": "by_design",
+      "verification_queries": [
+        "ABSENT FROM HUB: treatment / drug response"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "negative"
+    }
+  },
+  {
+    "id": "q_neg_05",
+    "input": "What is the promoter methylation beta-value of MLH1 in TCGA-COAD samples?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Cannot be determined from the hub \u2014 no such data is loaded (absent: DNA methylation).",
+      "expectedTrajectory": [],
+      "assertions": []
+    },
+    "metadata": {
+      "category": "negative_controls",
+      "answer_type": "negative",
+      "required_layers": [],
+      "complexity": 1,
+      "verification_method": "by_design",
+      "verification_queries": [
+        "ABSENT FROM HUB: DNA methylation"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "negative"
+    }
+  },
+  {
+    "id": "q_misalign_01",
+    "input": "What is the correct MONDO ontology identifier for the cancer studied in TCGA project TCGA-LGG (low grade glioma)?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "MONDO:0021637",
+      "expectedTrajectory": [
+        "ontology_lookup"
+      ],
+      "assertions": [
+        "MONDO:0021637"
+      ]
+    },
+    "metadata": {
+      "category": "cross_system_misalignment",
+      "answer_type": "composite",
+      "required_layers": [
+        "L2"
+      ],
+      "complexity": 3,
+      "verification_method": "ols4",
+      "verification_queries": [
+        "OLS4 q='low grade glioma' ontology=mondo -> MONDO:0021637 (correct); graph currently maps TCGA-LGG -> 'incisors, lower central, absence of'"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "reconciliation"
+    }
+  },
+  {
+    "id": "q_misalign_02",
+    "input": "What is the correct MONDO ontology identifier for the cancer studied in TCGA project TCGA-SKCM (cutaneous melanoma)?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "MONDO:0005012",
+      "expectedTrajectory": [
+        "ontology_lookup"
+      ],
+      "assertions": [
+        "MONDO:0005012"
+      ]
+    },
+    "metadata": {
+      "category": "cross_system_misalignment",
+      "answer_type": "composite",
+      "required_layers": [
+        "L2"
+      ],
+      "complexity": 3,
+      "verification_method": "ols4",
+      "verification_queries": [
+        "OLS4 q='cutaneous melanoma' ontology=mondo -> MONDO:0005012 (correct); graph currently maps TCGA-SKCM -> 'melanoma, malignant familial intraocular'"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "reconciliation"
+    }
+  },
+  {
+    "id": "q_misalign_03",
+    "input": "What is the correct MONDO ontology identifier for the cancer studied in TCGA project TCGA-ESCA (esophageal carcinoma)?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "MONDO:0004116",
+      "expectedTrajectory": [
+        "ontology_lookup"
+      ],
+      "assertions": [
+        "MONDO:0004116"
+      ]
+    },
+    "metadata": {
+      "category": "cross_system_misalignment",
+      "answer_type": "composite",
+      "required_layers": [
+        "L2"
+      ],
+      "complexity": 3,
+      "verification_method": "ols4",
+      "verification_queries": [
+        "OLS4 q='esophageal carcinoma' ontology=mondo -> MONDO:0004116 (correct); graph currently maps TCGA-ESCA -> 'palmoplantar keratoderma-esophageal carcinoma syndrome'"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "reconciliation"
+    }
+  },
+  {
+    "id": "q_misalign_04",
+    "input": "What is the correct MONDO ontology identifier for the cancer studied in TCGA project TCGA-STAD (stomach adenocarcinoma)?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "MONDO:0005036",
+      "expectedTrajectory": [
+        "ontology_lookup"
+      ],
+      "assertions": [
+        "MONDO:0005036"
+      ]
+    },
+    "metadata": {
+      "category": "cross_system_misalignment",
+      "answer_type": "composite",
+      "required_layers": [
+        "L2"
+      ],
+      "complexity": 3,
+      "verification_method": "ols4",
+      "verification_queries": [
+        "OLS4 q='stomach adenocarcinoma' ontology=mondo -> MONDO:0005036 (correct); graph currently maps TCGA-STAD -> 'stomach carcinoma in situ'"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "reconciliation"
+    }
+  },
+  {
+    "id": "q_misalign_05",
+    "input": "The gene FO393400.1 is mutated in TCGA-BRCA. In the knowledge graph, how many drugs target FO393400.1 via drug_protein edges?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "FO393400.1 is not present as a gene_protein node in the knowledge graph (0 drug targets) \u2014 a cross-system identifier gap.",
+      "expectedTrajectory": [
+        "query_knowledge_graph"
+      ],
+      "assertions": []
+    },
+    "metadata": {
+      "category": "cross_system_misalignment",
+      "answer_type": "negative",
+      "required_layers": [
+        "L2"
+      ],
+      "complexity": 3,
+      "verification_method": "programmatic",
+      "verification_queries": [
+        "MATCH (g:gene_protein {name:'FO393400.1'}) RETURN count(g) -> 0 (absent from PrimeKG)"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "reconciliation"
+    }
+  },
+  {
+    "id": "q_misalign_06",
+    "input": "The gene STIMATE-MUSTN1 is mutated in TCGA-BRCA. In the knowledge graph, how many drugs target STIMATE-MUSTN1 via drug_protein edges?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "STIMATE-MUSTN1 is not present as a gene_protein node in the knowledge graph (0 drug targets) \u2014 a cross-system identifier gap.",
+      "expectedTrajectory": [
+        "query_knowledge_graph"
+      ],
+      "assertions": []
+    },
+    "metadata": {
+      "category": "cross_system_misalignment",
+      "answer_type": "negative",
+      "required_layers": [
+        "L2"
+      ],
+      "complexity": 3,
+      "verification_method": "programmatic",
+      "verification_queries": [
+        "MATCH (g:gene_protein {name:'STIMATE-MUSTN1'}) RETURN count(g) -> 0 (absent from PrimeKG)"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "reconciliation"
+    }
+  },
+  {
+    "id": "q_misalign_07",
+    "input": "The gene AC020907.6 is mutated in TCGA-BRCA. In the knowledge graph, how many drugs target AC020907.6 via drug_protein edges?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "AC020907.6 is not present as a gene_protein node in the knowledge graph (0 drug targets) \u2014 a cross-system identifier gap.",
+      "expectedTrajectory": [
+        "query_knowledge_graph"
+      ],
+      "assertions": []
+    },
+    "metadata": {
+      "category": "cross_system_misalignment",
+      "answer_type": "negative",
+      "required_layers": [
+        "L2"
+      ],
+      "complexity": 3,
+      "verification_method": "programmatic",
+      "verification_queries": [
+        "MATCH (g:gene_protein {name:'AC020907.6'}) RETURN count(g) -> 0 (absent from PrimeKG)"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "reconciliation"
+    }
+  },
+  {
+    "id": "q_misalign_08",
+    "input": "The gene CXorf21 is mutated in TCGA-BRCA. In the knowledge graph, how many drugs target CXorf21 via drug_protein edges?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "CXorf21 is not present as a gene_protein node in the knowledge graph (0 drug targets) \u2014 a cross-system identifier gap.",
+      "expectedTrajectory": [
+        "query_knowledge_graph"
+      ],
+      "assertions": []
+    },
+    "metadata": {
+      "category": "cross_system_misalignment",
+      "answer_type": "negative",
+      "required_layers": [
+        "L2"
+      ],
+      "complexity": 3,
+      "verification_method": "programmatic",
+      "verification_queries": [
+        "MATCH (g:gene_protein {name:'CXorf21'}) RETURN count(g) -> 0 (absent from PrimeKG)"
+      ],
+      "data_snapshot": "hub_graph_2026-07",
+      "requires": "reconciliation"
+    }
+  }
+]

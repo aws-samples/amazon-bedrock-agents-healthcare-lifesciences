@@ -1,0 +1,782 @@
+{
+  "schema": 1,
+  "applicationInfo": {
+    "name": "Threat Model Export",
+    "description": "Oncology Semantic Hub - an open-source (MIT-0) AWS solution accelerator that unifies cancer genomics (TCGA, cBioPortal), curated biomedical knowledge (PrimeKG), variant annotations (CIViC, ClinVar) and literature into a governed semantic layer queried by an agentic AI application. Accelerator 1 is a Strands agent on Amazon Bedrock AgentCore Runtime (Claude Sonnet 4.5) with env-gated tool tiers L0-L3 (Neptune knowledge-graph queries, Athena patient-data/variant SQL, Bedrock Knowledge Base retrieval, OLS ontology lookup via remote MCP, AWS-managed web search). Accelerator 2 is an agentic dataset-onboarding pipeline (Streamlit + LLM curation agent) that discovers AWS Registry of Open Data (RODA) datasets via a live MCP client, LLM-curates column-to-hub mappings, generates declarative transform specs, and executes ETL inside an AgentCore Code Interpreter sandbox to write additive *_staging tables. Data plane: Neptune Analytics, Athena/Glue/S3 (Lake Formation governed), Bedrock Knowledge Base. Shipped demo uses PUBLIC de-identified TCGA data (no PHI); a documented Bring-Your-Own-Data path lets customers substitute their own cohort, which may be PHI. Explicitly demonstrative - not for clinical use or production per the repo legal note."
+  },
+  "architecture": {
+    "description": ""
+  },
+  "dataflow": {
+    "description": ""
+  },
+  "assumptions": [
+    {
+      "id": "793aadab-c5e1-46f1-a9ac-b1da572155ca",
+      "numericId": 1,
+      "content": "The shipped/demo deployment uses only PUBLIC de-identified TCGA data (no PHI). HIPAA is latent, triggered only by the documented Bring-Your-Own-Data path where a customer substitutes their own (possibly PHI) cohort.",
+      "displayOrder": 1,
+      "metadata": []
+    },
+    {
+      "id": "37c6bc82-da88-4b46-9f6c-01a595f56d2c",
+      "numericId": 2,
+      "content": "Authentication is a single shared Cognito M2M (client_credentials) JWT; the client secret is in SSM as a plaintext String; no per-user identity or per-user data scoping; one IAM execution role runs all queries.",
+      "displayOrder": 2,
+      "metadata": []
+    },
+    {
+      "id": "d7c90394-72d6-4631-9e98-8231b88ffd3d",
+      "numericId": 3,
+      "content": "AgentCore Runtimes (agent + MCP servers + Code Interpreter) are deployed with networkMode PUBLIC and must ship with the CUSTOM_JWT authorizer.",
+      "displayOrder": 3,
+      "metadata": []
+    },
+    {
+      "id": "7d411303-999d-40bc-b914-6e0c01fa8af0",
+      "numericId": 4,
+      "content": "The IAM execution role policy grants actions on Resource:\"*\" rather than resource-scoped ARNs.",
+      "displayOrder": 4,
+      "metadata": []
+    },
+    {
+      "id": "69619f80-8ef0-4b18-a45e-29abf166305a",
+      "numericId": 5,
+      "content": "Read-only enforcement relies on least-privilege IAM plus in-process guards (hub_core/guards.py). The onboarding text-to-SQL path uses a separate regex/allowlist guard in agent.py, not hub_core.guards.",
+      "displayOrder": 5,
+      "metadata": []
+    },
+    {
+      "id": "63df3eca-6515-42b7-a7fc-aa9e131225e1",
+      "numericId": 6,
+      "content": "Data onboarding is human-in-the-loop and writes only additive *_staging tables; ETL runs the fixed dynamic.py harness (LLM emits only a declarative spec, not code) inside an AgentCore Code Interpreter sandbox.",
+      "displayOrder": 6,
+      "metadata": []
+    },
+    {
+      "id": "cc5dbb7a-3f2c-434f-9434-ae5309acc2ca",
+      "numericId": 7,
+      "content": "Python dependencies are declared unpinned in requirements.txt; the RODA MCP client runs as a uvx-spawned subprocess of awslabs.roda-mcp-server.",
+      "displayOrder": 7,
+      "metadata": []
+    },
+    {
+      "id": "ea01d4ab-5ace-4ba0-ab98-baa1aad67094",
+      "numericId": 8,
+      "content": "AWS Security Hub control BedrockAgentCore.1 states AgentCore runtimes should be configured with VPC network mode, and the AWS AI security standard requires the AgentCore Code Interpreter to use a private network configuration. This system deploys runtimes and the Code Interpreter with networkMode PUBLIC.",
+      "displayOrder": 8,
+      "metadata": []
+    },
+    {
+      "id": "b6d1760b-8527-491b-bd53-7cd6c8658e6d",
+      "numericId": 18,
+      "content": "Risk-acceptance basis: threats were Accepted only where an implemented control (read-only guards+tests, guarded onboarding SQL, fixed ETL harness+HITL, provenance-faithfulness scorer, single-tenant demo) reduces them to Low/Medium AND the shipped data is public TCGA. All Confidentiality/Integrity risks that depend on unbuilt controls (Guardrails, per-user auth/scoping, secret hardening, IAM scoping, cost caps, dep pinning, faithfulness-toggle gating, BYOD hardening) were left Open as must-fix before production or BYOD/PHI use.",
+      "displayOrder": 18,
+      "metadata": []
+    }
+  ],
+  "mitigations": [
+    {
+      "id": "f9fb027f-4d70-47e1-9333-a384606aa3d7",
+      "numericId": 1,
+      "status": "mitigationIdentified",
+      "content": "Multi-layer input validation + Amazon Bedrock Guardrails for prompt-injection defense across every agent input surface (user prompt AND tool/retrieved content).",
+      "displayOrder": 1,
+      "metadata": []
+    },
+    {
+      "id": "5d48f79c-c68f-4b90-8423-706d426d4658",
+      "numericId": 2,
+      "status": "mitigationInProgress",
+      "content": "Treat all tool outputs / retrieved passages as untrusted data: structurally delimit and label external content in the context, never execute embedded instructions, and keep the existing inline-provenance/citation discipline.",
+      "displayOrder": 2,
+      "metadata": []
+    },
+    {
+      "id": "7184d8a0-f19c-49cc-86d1-e88ef6c3af2c",
+      "numericId": 3,
+      "status": "mitigationIdentified",
+      "content": "Store the Cognito client secret in SSM SecureString (KMS) or Secrets Manager and scope ssm:GetParameter to the exact parameter ARNs; enable rotation.",
+      "displayOrder": 3,
+      "metadata": []
+    },
+    {
+      "id": "f3636623-6b74-46ea-9858-8f523b47951d",
+      "numericId": 4,
+      "status": "mitigationIdentified",
+      "content": "Replace the shared M2M identity with per-user SSO/OIDC (authorization_code) so each caller presents their own short-lived JWT (sub/email/groups).",
+      "displayOrder": 4,
+      "metadata": []
+    },
+    {
+      "id": "33fcc4fe-b930-429d-88e6-496938faa2d7",
+      "numericId": 5,
+      "status": "mitigationInProgress",
+      "content": "Enforce the CUSTOM_JWT authorizer on every PUBLIC AgentCore endpoint with a deploy-time preflight that fails if the authorizer is absent, and migrate runtimes to VPC network mode.",
+      "displayOrder": 5,
+      "metadata": []
+    },
+    {
+      "id": "de4fd113-d84f-41e8-ac8b-72e56168aaa4",
+      "numericId": 6,
+      "status": "mitigationIdentified",
+      "content": "Per-user/tenant data authorization: sts:AssumeRole with session name/tags = user, plus Lake Formation grants scoped per group; restrict cohorts/tables by the caller's claims.",
+      "displayOrder": 6,
+      "metadata": []
+    },
+    {
+      "id": "8ca1651d-5b90-4f3b-abbf-335bb3a4c3f3",
+      "numericId": 7,
+      "status": "mitigationInProgress",
+      "content": "Keep the in-process read-only guards (reject_mutations / require_select) AND explicitly deny all write actions in IAM as the authoritative backstop; unit-test guards against a bypass corpus.",
+      "displayOrder": 7,
+      "metadata": []
+    },
+    {
+      "id": "ca7b2f48-f437-4baf-83b0-cdd21630e66f",
+      "numericId": 8,
+      "status": "mitigationInProgress",
+      "content": "Harden the onboarding text-to-SQL path: reuse hub_core.guards.require_select, validate/parameterize identifiers, keep the table allowlist + mandatory LIMIT.",
+      "displayOrder": 8,
+      "metadata": []
+    },
+    {
+      "id": "6a98cbcf-f5ce-473a-adde-13f2f69b6048",
+      "numericId": 9,
+      "status": "mitigationInProgress",
+      "content": "Keep the fixed dynamic.py ETL harness + validate_spec (LLM emits only a validated declarative spec) and run the Code Interpreter with a private/VPC network configuration and tightly-scoped egress + role.",
+      "displayOrder": 9,
+      "metadata": []
+    },
+    {
+      "id": "48801236-d1cf-48f1-a874-f9b58970a7ef",
+      "numericId": 10,
+      "status": "mitigationIdentified",
+      "content": "Bound query cost/complexity: Athena workgroup per-query data-scan limits + result caps, and Neptune query timeouts / row limits.",
+      "displayOrder": 10,
+      "metadata": []
+    },
+    {
+      "id": "7441eefa-1fd1-4861-86e5-8317637a879f",
+      "numericId": 11,
+      "status": "mitigationIdentified",
+      "content": "Cap agent autonomy and spend: max tool-call iterations per turn, max tokens, loop detection, and CloudWatch cost/anomaly alarms (denial-of-wallet).",
+      "displayOrder": 11,
+      "metadata": []
+    },
+    {
+      "id": "70a7fe6c-5611-449a-b86f-6b0d14caeedf",
+      "numericId": 12,
+      "status": "mitigationInProgress",
+      "content": "Enforce session isolation: bind _SESSIONS entries to the authenticated principal, use unguessable session ids, and apply TTL/eviction so warm containers cannot leak context across users.",
+      "displayOrder": 12,
+      "metadata": []
+    },
+    {
+      "id": "917fd254-b3b7-473c-a13a-bd30034a7486",
+      "numericId": 13,
+      "status": "mitigationIdentified",
+      "content": "Observability data hygiene: redact prompts/answers/PHI from traces/logs, encrypt log groups with KMS, and least-privilege access to CloudWatch/X-Ray.",
+      "displayOrder": 13,
+      "metadata": []
+    },
+    {
+      "id": "75e3ccda-810a-4720-874b-d4511950ffc9",
+      "numericId": 14,
+      "status": "mitigationIdentified",
+      "content": "Scope the IAM execution role to specific resource ARNs and split per function (agent vs onboarding vs MCP), removing Resource:*.",
+      "displayOrder": 14,
+      "metadata": []
+    },
+    {
+      "id": "f9b96f4a-e416-43b0-bbcb-27f88abcae0b",
+      "numericId": 15,
+      "status": "mitigationIdentified",
+      "content": "Software supply-chain hardening: pin dependencies with hashes, vendor/lock the RODA MCP server version, and run SCA/dependency scanning in CI.",
+      "displayOrder": 15,
+      "metadata": []
+    },
+    {
+      "id": "ac0ae9e2-f748-4653-bc07-eb0647535c88",
+      "numericId": 16,
+      "status": "mitigationInProgress",
+      "content": "Faithfulness assurance: remove/production-gate the SEMHUB_STRIP_GUARDS toggle, and run the provenance-faithfulness / grounding scorer with alerting on fabricated grounding.",
+      "displayOrder": 16,
+      "metadata": []
+    },
+    {
+      "id": "059b466b-864e-4cdb-b829-bd81fccf1b30",
+      "numericId": 17,
+      "status": "mitigationInProgress",
+      "content": "Availability assurance for the data plane: make Lake Formation grants explicit + verified post-deploy and alarm on query failures / graph unavailability.",
+      "displayOrder": 17,
+      "metadata": []
+    },
+    {
+      "id": "944a7e91-c1df-422b-b97c-a6daed0bbe45",
+      "numericId": 18,
+      "status": "mitigationIdentified",
+      "content": "BYOD/HIPAA hardening profile: gate PHI onboarding behind a hardened configuration (BAA, VPC network mode, per-user scoping, KMS encryption, audit, log redaction) with explicit documentation.",
+      "displayOrder": 18,
+      "metadata": []
+    },
+    {
+      "id": "f6ecd589-9119-485f-9f6c-091e2d13f998",
+      "numericId": 19,
+      "status": "mitigationIdentified",
+      "content": "Edge protection on public endpoints: AWS WAF + rate limiting / throttling in front of the agent and MCP endpoints.",
+      "displayOrder": 19,
+      "metadata": []
+    }
+  ],
+  "assumptionLinks": [],
+  "mitigationLinks": [
+    {
+      "linkedId": "f70fe8dd-eea8-46f6-8f99-0414f122b78e",
+      "mitigationId": "f9fb027f-4d70-47e1-9333-a384606aa3d7"
+    },
+    {
+      "linkedId": "f70fe8dd-eea8-46f6-8f99-0414f122b78e",
+      "mitigationId": "5d48f79c-c68f-4b90-8423-706d426d4658"
+    },
+    {
+      "linkedId": "5b8dc2ca-b7df-42c8-a8f6-cf6f68eb2156",
+      "mitigationId": "f9fb027f-4d70-47e1-9333-a384606aa3d7"
+    },
+    {
+      "linkedId": "5b8dc2ca-b7df-42c8-a8f6-cf6f68eb2156",
+      "mitigationId": "5d48f79c-c68f-4b90-8423-706d426d4658"
+    },
+    {
+      "linkedId": "5b8dc2ca-b7df-42c8-a8f6-cf6f68eb2156",
+      "mitigationId": "ac0ae9e2-f748-4653-bc07-eb0647535c88"
+    },
+    {
+      "linkedId": "4cc56651-14ff-4ba1-a9b2-80b1233a326c",
+      "mitigationId": "7184d8a0-f19c-49cc-86d1-e88ef6c3af2c"
+    },
+    {
+      "linkedId": "4cc56651-14ff-4ba1-a9b2-80b1233a326c",
+      "mitigationId": "75e3ccda-810a-4720-874b-d4511950ffc9"
+    },
+    {
+      "linkedId": "ac0aa8e1-995f-4431-b75b-c0e6e3178ba8",
+      "mitigationId": "f3636623-6b74-46ea-9858-8f523b47951d"
+    },
+    {
+      "linkedId": "14a370a3-283b-44a4-bcec-fc06314e3a4c",
+      "mitigationId": "33fcc4fe-b930-429d-88e6-496938faa2d7"
+    },
+    {
+      "linkedId": "14a370a3-283b-44a4-bcec-fc06314e3a4c",
+      "mitigationId": "f6ecd589-9119-485f-9f6c-091e2d13f998"
+    },
+    {
+      "linkedId": "89d70a32-0b7e-408e-90fe-7b665ccc4672",
+      "mitigationId": "de4fd113-d84f-41e8-ac8b-72e56168aaa4"
+    },
+    {
+      "linkedId": "89d70a32-0b7e-408e-90fe-7b665ccc4672",
+      "mitigationId": "f3636623-6b74-46ea-9858-8f523b47951d"
+    },
+    {
+      "linkedId": "edec2c7a-cdd9-4b9e-8468-b54a9502516e",
+      "mitigationId": "8ca1651d-5b90-4f3b-abbf-335bb3a4c3f3"
+    },
+    {
+      "linkedId": "6fd81c81-ae87-49a3-9f6f-50780335ca34",
+      "mitigationId": "ca7b2f48-f437-4baf-83b0-cdd21630e66f"
+    },
+    {
+      "linkedId": "1d493944-ad89-4fe0-87f3-796215055a69",
+      "mitigationId": "6a98cbcf-f5ce-473a-adde-13f2f69b6048"
+    },
+    {
+      "linkedId": "e1842b95-4135-439f-9be0-2fca96d2bb23",
+      "mitigationId": "48801236-d1cf-48f1-a874-f9b58970a7ef"
+    },
+    {
+      "linkedId": "e1842b95-4135-439f-9be0-2fca96d2bb23",
+      "mitigationId": "f6ecd589-9119-485f-9f6c-091e2d13f998"
+    },
+    {
+      "linkedId": "52772134-e072-4970-9a1d-b5ed6f59b3d9",
+      "mitigationId": "7441eefa-1fd1-4861-86e5-8317637a879f"
+    },
+    {
+      "linkedId": "52772134-e072-4970-9a1d-b5ed6f59b3d9",
+      "mitigationId": "f6ecd589-9119-485f-9f6c-091e2d13f998"
+    },
+    {
+      "linkedId": "19813bb1-67cb-470e-8869-40b582a1024d",
+      "mitigationId": "70a7fe6c-5611-449a-b86f-6b0d14caeedf"
+    },
+    {
+      "linkedId": "e6c85fc5-f268-46be-adb4-a6dfdbd5bd7c",
+      "mitigationId": "917fd254-b3b7-473c-a13a-bd30034a7486"
+    },
+    {
+      "linkedId": "f67bdedb-6305-49fa-a527-c23ebade630e",
+      "mitigationId": "75e3ccda-810a-4720-874b-d4511950ffc9"
+    },
+    {
+      "linkedId": "ca5b5aee-9fa4-42f8-b3f0-bf7e04c9f8f4",
+      "mitigationId": "f9b96f4a-e416-43b0-bbcb-27f88abcae0b"
+    },
+    {
+      "linkedId": "15e81297-81f8-44a6-b8e5-64dab453c6bc",
+      "mitigationId": "f9fb027f-4d70-47e1-9333-a384606aa3d7"
+    },
+    {
+      "linkedId": "15e81297-81f8-44a6-b8e5-64dab453c6bc",
+      "mitigationId": "5d48f79c-c68f-4b90-8423-706d426d4658"
+    },
+    {
+      "linkedId": "19521d4b-15e5-476e-8fbd-e5e13c90dd50",
+      "mitigationId": "f3636623-6b74-46ea-9858-8f523b47951d"
+    },
+    {
+      "linkedId": "afc52aa4-9490-42ef-8d33-f41cc5b2924c",
+      "mitigationId": "ac0ae9e2-f748-4653-bc07-eb0647535c88"
+    },
+    {
+      "linkedId": "afc52aa4-9490-42ef-8d33-f41cc5b2924c",
+      "mitigationId": "f9fb027f-4d70-47e1-9333-a384606aa3d7"
+    },
+    {
+      "linkedId": "578ae90e-e6ea-4840-88d3-33c6df5aa33a",
+      "mitigationId": "059b466b-864e-4cdb-b829-bd81fccf1b30"
+    },
+    {
+      "linkedId": "31fed685-95af-47f4-b1be-ba28a11b48f6",
+      "mitigationId": "944a7e91-c1df-422b-b97c-a6daed0bbe45"
+    },
+    {
+      "linkedId": "31fed685-95af-47f4-b1be-ba28a11b48f6",
+      "mitigationId": "de4fd113-d84f-41e8-ac8b-72e56168aaa4"
+    },
+    {
+      "linkedId": "31fed685-95af-47f4-b1be-ba28a11b48f6",
+      "mitigationId": "917fd254-b3b7-473c-a13a-bd30034a7486"
+    }
+  ],
+  "threats": [
+    {
+      "id": "f70fe8dd-eea8-46f6-8f99-0414f122b78e",
+      "numericId": 1,
+      "threatSource": "Adversarial open-data/content author (TA013)",
+      "prerequisites": "Agent ingests external content (RODA datasets/samples, web-search results, OLS responses, KB passages) into the LLM context with no dedicated prompt-injection/content-sanitization filter on tool",
+      "threatAction": "Embed hidden instructions in third-party content that override the system prompt (indirect/LLM01 prompt injection).",
+      "threatImpact": "Agent is steered to fabricate oncology findings/citations, misroute tool calls, attempt data exfiltration, or corrupt onboarding curation/spec generation.",
+      "impactedGoal": [],
+      "impactedAssets": [
+        "A014",
+        "A011",
+        "A015"
+      ],
+      "statement": "A Adversarial open-data/content author (TA013) Agent ingests external content (RODA datasets/samples, web-search results, OLS responses, KB passages) into the LLM context with no dedicated prompt-injection/content-sanitization filter on tool can Embed hidden instructions in third-party content that override the system prompt (indirect/LLM01 prompt injection)., which leads to Agent is steered to fabricate oncology findings/citations, misroute tool calls, attempt data exfiltration, or corrupt onboarding curation/spec generation.",
+      "displayOrder": 1,
+      "status": "threatIdentified",
+      "tags": [
+        "LLM01",
+        "prompt-injection",
+        "agentic"
+      ],
+      "metadata": []
+    },
+    {
+      "id": "5b8dc2ca-b7df-42c8-a8f6-cf6f68eb2156",
+      "numericId": 2,
+      "threatSource": "Adversarial open-data/content author (TA013)",
+      "prerequisites": "Poisoned KB corpus or onboarded open-data records enter the retrieval/answer path.",
+      "threatAction": "Inject fake PMIDs / misleading records so the model cites plausible-but-false sources.",
+      "threatImpact": "Agent emits confident fabricated medical evidence with valid-looking provenance tags, defeating the grounding/faithfulness guarantee (research-misinformation risk).",
+      "impactedGoal": [],
+      "impactedAssets": [
+        "A011",
+        "A015"
+      ],
+      "statement": "A Adversarial open-data/content author (TA013) Poisoned KB corpus or onboarded open-data records enter the retrieval/answer path. can Inject fake PMIDs / misleading records so the model cites plausible-but-false sources., which leads to Agent emits confident fabricated medical evidence with valid-looking provenance tags, defeating the grounding/faithfulness guarantee (research-misinformation risk).",
+      "displayOrder": 2,
+      "status": "threatResolved",
+      "tags": [
+        "data-poisoning",
+        "faithfulness"
+      ],
+      "metadata": []
+    },
+    {
+      "id": "4cc56651-14ff-4ba1-a9b2-80b1233a326c",
+      "numericId": 3,
+      "threatSource": "Privileged user / insider / disgruntled operator (TA009/TA001/TA008)",
+      "prerequisites": "Shared Cognito M2M secret stored in SSM as a plaintext String; broad ssm:GetParameter.",
+      "threatAction": "Read the secret from SSM and mint valid JWTs.",
+      "threatImpact": "Unauthorized, unattributable access to the OLS/data MCP endpoints; secret rotation is the only remedy.",
+      "impactedGoal": [],
+      "impactedAssets": [
+        "A012",
+        "A013"
+      ],
+      "statement": "A Privileged user / insider / disgruntled operator (TA009/TA001/TA008) Shared Cognito M2M secret stored in SSM as a plaintext String; broad ssm:GetParameter. can Read the secret from SSM and mint valid JWTs., which leads to Unauthorized, unattributable access to the OLS/data MCP endpoints; secret rotation is the only remedy.",
+      "displayOrder": 3,
+      "status": "threatIdentified",
+      "tags": [
+        "secrets",
+        "SSM-plaintext"
+      ],
+      "metadata": []
+    },
+    {
+      "id": "ac0aa8e1-995f-4431-b75b-c0e6e3178ba8",
+      "numericId": 4,
+      "threatSource": "External attacker / malicious hub user (TA002/TA014)",
+      "prerequisites": "Single shared machine identity; no per-user identity or audit.",
+      "threatAction": "Present a valid shared JWT (or obtained secret) to impersonate the one machine client.",
+      "threatImpact": "Full tool access as the shared identity with no per-user attribution; misuse cannot be traced to an individual.",
+      "impactedGoal": [],
+      "impactedAssets": [
+        "A013"
+      ],
+      "statement": "A External attacker / malicious hub user (TA002/TA014) Single shared machine identity; no per-user identity or audit. can Present a valid shared JWT (or obtained secret) to impersonate the one machine client., which leads to Full tool access as the shared identity with no per-user attribution; misuse cannot be traced to an individual.",
+      "displayOrder": 4,
+      "status": "threatIdentified",
+      "tags": [
+        "auth",
+        "shared-identity"
+      ],
+      "metadata": []
+    },
+    {
+      "id": "14a370a3-283b-44a4-bcec-fc06314e3a4c",
+      "numericId": 5,
+      "threatSource": "External attacker / script kiddie (TA002/TA007)",
+      "prerequisites": "AgentCore runtimes are networkMode PUBLIC; the CUSTOM_JWT authorizer is omitted or misconfigured (the design explicitly warns against this).",
+      "threatAction": "Reach the internet-exposed agent/MCP endpoint without authentication.",
+      "threatImpact": "Unauthorized query execution, data access, and compute/cost abuse over the internet.",
+      "impactedGoal": [],
+      "impactedAssets": [
+        "A009",
+        "A010"
+      ],
+      "statement": "A External attacker / script kiddie (TA002/TA007) AgentCore runtimes are networkMode PUBLIC; the CUSTOM_JWT authorizer is omitted or misconfigured (the design explicitly warns against this). can Reach the internet-exposed agent/MCP endpoint without authentication., which leads to Unauthorized query execution, data access, and compute/cost abuse over the internet.",
+      "displayOrder": 5,
+      "status": "threatIdentified",
+      "tags": [
+        "public-endpoint",
+        "authz"
+      ],
+      "metadata": []
+    },
+    {
+      "id": "89d70a32-0b7e-408e-90fe-7b665ccc4672",
+      "numericId": 6,
+      "threatSource": "Malicious hub user (TA014)",
+      "prerequisites": "Single IAM execution role with no per-user data scoping; agent will query any table/cohort the role can reach.",
+      "threatAction": "Craft prompts that direct the agent to query data beyond the user's entitlement.",
+      "threatImpact": "Disclosure of any data the role can access; Critical under BYOD (whole PHI cohort readable by any authorized caller).",
+      "impactedGoal": [],
+      "impactedAssets": [
+        "A009",
+        "A017"
+      ],
+      "statement": "A Malicious hub user (TA014) Single IAM execution role with no per-user data scoping; agent will query any table/cohort the role can reach. can Craft prompts that direct the agent to query data beyond the user's entitlement., which leads to Disclosure of any data the role can access; Critical under BYOD (whole PHI cohort readable by any authorized caller).",
+      "displayOrder": 6,
+      "status": "threatIdentified",
+      "tags": [
+        "no-per-user-scoping",
+        "exfiltration"
+      ],
+      "metadata": []
+    },
+    {
+      "id": "edec2c7a-cdd9-4b9e-8468-b54a9502516e",
+      "numericId": 7,
+      "threatSource": "Malicious hub user / content author (TA014/TA013)",
+      "prerequisites": "Read-only enforcement depends on regex guards (reject_mutations / require_select) plus least-privilege IAM.",
+      "threatAction": "Craft Cypher/SQL that evades the regex guard (e.g. obfuscation, comment tricks, unsupported keywords).",
+      "threatImpact": "If IAM also lacked write denial, tampering; in practice IAM read-only is the backstop, so impact is limited but the guard is the sole in-process control.",
+      "impactedGoal": [],
+      "impactedAssets": [
+        "A009",
+        "A010"
+      ],
+      "statement": "A Malicious hub user / content author (TA014/TA013) Read-only enforcement depends on regex guards (reject_mutations / require_select) plus least-privilege IAM. can Craft Cypher/SQL that evades the regex guard (e.g. obfuscation, comment tricks, unsupported keywords)., which leads to If IAM also lacked write denial, tampering; in practice IAM read-only is the backstop, so impact is limited but the guard is the sole in-process control.",
+      "displayOrder": 7,
+      "status": "threatResolved",
+      "tags": [
+        "guard-bypass",
+        "defense-in-depth"
+      ],
+      "metadata": []
+    },
+    {
+      "id": "6fd81c81-ae87-49a3-9f6f-50780335ca34",
+      "numericId": 8,
+      "threatSource": "Adversarial content author / malicious user (TA013/TA014)",
+      "prerequisites": "Onboarding text-to-SQL (answer_question/answer_hub) generates SQL from NL questions + possibly poisoned schema, guarded by a separate regex/allowlist.",
+      "threatAction": "Influence generated SQL to read beyond the intended table or evade the allowlist.",
+      "threatImpact": "Unauthorized reads within the RODA database; bounded by SELECT-only + LIMIT + IAM but the guard is independently maintained from hub_core.guards.",
+      "impactedGoal": [],
+      "impactedAssets": [
+        "A014",
+        "A009"
+      ],
+      "statement": "A Adversarial content author / malicious user (TA013/TA014) Onboarding text-to-SQL (answer_question/answer_hub) generates SQL from NL questions + possibly poisoned schema, guarded by a separate regex/allowlist. can Influence generated SQL to read beyond the intended table or evade the allowlist., which leads to Unauthorized reads within the RODA database; bounded by SELECT-only + LIMIT + IAM but the guard is independently maintained from hub_core.guards.",
+      "displayOrder": 8,
+      "status": "threatResolved",
+      "tags": [
+        "text-to-sql",
+        "agentic"
+      ],
+      "metadata": []
+    },
+    {
+      "id": "1d493944-ad89-4fe0-87f3-796215055a69",
+      "numericId": 9,
+      "threatSource": "Adversarial open-data author (TA013)",
+      "prerequisites": "LLM emits a declarative transform spec from untrusted data; the fixed dynamic.py harness + validate_spec run it in the Code Interpreter sandbox.",
+      "threatAction": "Attempt to coerce a spec/ETL that writes outside staging or exfiltrates via the PUBLIC-network sandbox.",
+      "threatImpact": "Largely bounded by the fixed harness (additive staging only, allowlisted ops) + IAM; residual risk is poisoned/misleading staging data surfaced later by the agent.",
+      "impactedGoal": [],
+      "impactedAssets": [
+        "A014"
+      ],
+      "statement": "A Adversarial open-data author (TA013) LLM emits a declarative transform spec from untrusted data; the fixed dynamic.py harness + validate_spec run it in the Code Interpreter sandbox. can Attempt to coerce a spec/ETL that writes outside staging or exfiltrates via the PUBLIC-network sandbox., which leads to Largely bounded by the fixed harness (additive staging only, allowlisted ops) + IAM; residual risk is poisoned/misleading staging data surfaced later by the agent.",
+      "displayOrder": 9,
+      "status": "threatResolved",
+      "tags": [
+        "code-interpreter",
+        "etl",
+        "sandbox"
+      ],
+      "metadata": []
+    },
+    {
+      "id": "e1842b95-4135-439f-9be0-2fca96d2bb23",
+      "numericId": 10,
+      "threatSource": "Malicious hub user (TA014)",
+      "prerequisites": "Query tools accept arbitrary Cypher/Athena SQL with no cost/complexity ceiling.",
+      "threatAction": "Submit unbounded graph traversals or full-scan SQL.",
+      "threatImpact": "Excessive Athena/Neptune cost, latency, and degraded availability for other users.",
+      "impactedGoal": [],
+      "impactedAssets": [
+        "A009",
+        "A010"
+      ],
+      "statement": "A Malicious hub user (TA014) Query tools accept arbitrary Cypher/Athena SQL with no cost/complexity ceiling. can Submit unbounded graph traversals or full-scan SQL., which leads to Excessive Athena/Neptune cost, latency, and degraded availability for other users.",
+      "displayOrder": 10,
+      "status": "threatIdentified",
+      "tags": [
+        "unbounded-consumption",
+        "cost"
+      ],
+      "metadata": []
+    },
+    {
+      "id": "52772134-e072-4970-9a1d-b5ed6f59b3d9",
+      "numericId": 11,
+      "threatSource": "Malicious user / injected content (TA014/TA013)",
+      "prerequisites": "Agent autonomously chains tool calls; no hard cap on iterations/spend surfaced.",
+      "threatAction": "Adversarial prompt or injected instruction induces long tool-call loops / repeated model invocations.",
+      "threatImpact": "Denial-of-wallet: runaway Bedrock + query costs and resource exhaustion.",
+      "impactedGoal": [],
+      "impactedAssets": [
+        "A015"
+      ],
+      "statement": "A Malicious user / injected content (TA014/TA013) Agent autonomously chains tool calls; no hard cap on iterations/spend surfaced. can Adversarial prompt or injected instruction induces long tool-call loops / repeated model invocations., which leads to Denial-of-wallet: runaway Bedrock + query costs and resource exhaustion.",
+      "displayOrder": 11,
+      "status": "threatIdentified",
+      "tags": [
+        "excessive-agency",
+        "denial-of-wallet"
+      ],
+      "metadata": []
+    },
+    {
+      "id": "19813bb1-67cb-470e-8869-40b582a1024d",
+      "numericId": 12,
+      "threatSource": "Malicious hub user (TA014)",
+      "prerequisites": "Per-session Agent objects held in an in-memory _SESSIONS dict in the warm container, keyed by session_id.",
+      "threatAction": "Reuse or guess a session_id to reach another caller's cached agent/context.",
+      "threatImpact": "Cross-session leakage of prompts/answers/context between users sharing a warm container.",
+      "impactedGoal": [],
+      "impactedAssets": [
+        "A016"
+      ],
+      "statement": "A Malicious hub user (TA014) Per-session Agent objects held in an in-memory _SESSIONS dict in the warm container, keyed by session_id. can Reuse or guess a session_id to reach another caller's cached agent/context., which leads to Cross-session leakage of prompts/answers/context between users sharing a warm container.",
+      "displayOrder": 12,
+      "status": "threatResolved",
+      "tags": [
+        "session-isolation",
+        "warm-container"
+      ],
+      "metadata": []
+    },
+    {
+      "id": "e6c85fc5-f268-46be-adb4-a6dfdbd5bd7c",
+      "numericId": 13,
+      "threatSource": "Privileged user / insider (TA009/TA001)",
+      "prerequisites": "Prompts, answers, and (under BYOD) PHI may appear in OTel traces / CloudWatch logs / EMF metrics.",
+      "threatAction": "Read sensitive content from observability data.",
+      "threatImpact": "Disclosure of user queries/answers; HIPAA-relevant exposure when BYOD PHI is present.",
+      "impactedGoal": [],
+      "impactedAssets": [
+        "A015",
+        "A016",
+        "A017"
+      ],
+      "statement": "A Privileged user / insider (TA009/TA001) Prompts, answers, and (under BYOD) PHI may appear in OTel traces / CloudWatch logs / EMF metrics. can Read sensitive content from observability data., which leads to Disclosure of user queries/answers; HIPAA-relevant exposure when BYOD PHI is present.",
+      "displayOrder": 13,
+      "status": "threatIdentified",
+      "tags": [
+        "observability",
+        "log-hygiene"
+      ],
+      "metadata": []
+    },
+    {
+      "id": "f67bdedb-6305-49fa-a527-c23ebade630e",
+      "numericId": 14,
+      "threatSource": "Privileged user / compromised agent (TA009/TA014)",
+      "prerequisites": "IAM execution role policy grants actions on Resource:*.",
+      "threatAction": "Abuse or leverage a compromise of the agent/role to act across the account's Bedrock/Neptune/Athena/Glue/S3/SSM.",
+      "threatImpact": "Broad lateral movement and data access beyond the hub's intended scope.",
+      "impactedGoal": [],
+      "impactedAssets": [
+        "A009",
+        "A012"
+      ],
+      "statement": "A Privileged user / compromised agent (TA009/TA014) IAM execution role policy grants actions on Resource:*. can Abuse or leverage a compromise of the agent/role to act across the account's Bedrock/Neptune/Athena/Glue/S3/SSM., which leads to Broad lateral movement and data access beyond the hub's intended scope.",
+      "displayOrder": 14,
+      "status": "threatIdentified",
+      "tags": [
+        "iam",
+        "least-privilege"
+      ],
+      "metadata": []
+    },
+    {
+      "id": "ca5b5aee-9fa4-42f8-b3f0-bf7e04c9f8f4",
+      "numericId": 15,
+      "threatSource": "Third party / supply chain (TA010)",
+      "prerequisites": "Unpinned Python dependencies; RODA MCP server fetched/run on demand via uvx.",
+      "threatAction": "Introduce a malicious package or version that executes in the agent/onboarding process.",
+      "threatImpact": "Code execution, secret theft, or data tampering inside the trusted runtime.",
+      "impactedGoal": [],
+      "impactedAssets": [
+        "A012",
+        "A014"
+      ],
+      "statement": "A Third party / supply chain (TA010) Unpinned Python dependencies; RODA MCP server fetched/run on demand via uvx. can Introduce a malicious package or version that executes in the agent/onboarding process., which leads to Code execution, secret theft, or data tampering inside the trusted runtime.",
+      "displayOrder": 15,
+      "status": "threatIdentified",
+      "tags": [
+        "supply-chain",
+        "dependencies"
+      ],
+      "metadata": []
+    },
+    {
+      "id": "15e81297-81f8-44a6-b8e5-64dab453c6bc",
+      "numericId": 16,
+      "threatSource": "Compromised third-party service (TA010/TA013)",
+      "prerequisites": "Agent depends on external OLS / web-search / RODA services for content and availability.",
+      "threatAction": "A compromised or hostile external service returns malicious or false responses.",
+      "threatImpact": "Prompt injection or factual corruption of answers; loss of a tool degrades the hub.",
+      "impactedGoal": [],
+      "impactedAssets": [
+        "A014"
+      ],
+      "statement": "A Compromised third-party service (TA010/TA013) Agent depends on external OLS / web-search / RODA services for content and availability. can A compromised or hostile external service returns malicious or false responses., which leads to Prompt injection or factual corruption of answers; loss of a tool degrades the hub.",
+      "displayOrder": 16,
+      "status": "threatResolved",
+      "tags": [
+        "third-party",
+        "integrity"
+      ],
+      "metadata": []
+    },
+    {
+      "id": "19521d4b-15e5-476e-8fbd-e5e13c90dd50",
+      "numericId": 17,
+      "threatSource": "Malicious user / insider (TA014/TA001)",
+      "prerequisites": "All callers share one machine identity; no per-user JWT or session attribution.",
+      "threatAction": "Perform queries/actions under the shared identity.",
+      "threatImpact": "Actions are not attributable to an individual; weak forensics and non-repudiation, a compliance gap under HIPAA/production.",
+      "impactedGoal": [],
+      "impactedAssets": [
+        "A013"
+      ],
+      "statement": "A Malicious user / insider (TA014/TA001) All callers share one machine identity; no per-user JWT or session attribution. can Perform queries/actions under the shared identity., which leads to Actions are not attributable to an individual; weak forensics and non-repudiation, a compliance gap under HIPAA/production.",
+      "displayOrder": 17,
+      "status": "threatResolved",
+      "tags": [
+        "audit",
+        "non-repudiation"
+      ],
+      "metadata": []
+    },
+    {
+      "id": "afc52aa4-9490-42ef-8d33-f41cc5b2924c",
+      "numericId": 18,
+      "threatSource": "Malicious user or benign model failure (TA014)",
+      "prerequisites": "LLM can hallucinate; an experimental SEMHUB_STRIP_GUARDS toggle removes the citation-discipline/statistical-rigor guardrails.",
+      "threatAction": "Coerce (or trigger) confident, ungrounded oncology claims without honest provenance tagging.",
+      "threatImpact": "Fabricated/ungrounded medical claims presented as grounded, violating the core faithfulness NFR and risking research misinformation.",
+      "impactedGoal": [],
+      "impactedAssets": [
+        "A015"
+      ],
+      "statement": "A Malicious user or benign model failure (TA014) LLM can hallucinate; an experimental SEMHUB_STRIP_GUARDS toggle removes the citation-discipline/statistical-rigor guardrails. can Coerce (or trigger) confident, ungrounded oncology claims without honest provenance tagging., which leads to Fabricated/ungrounded medical claims presented as grounded, violating the core faithfulness NFR and risking research misinformation.",
+      "displayOrder": 18,
+      "status": "threatIdentified",
+      "tags": [
+        "hallucination",
+        "faithfulness",
+        "guardrail-strip"
+      ],
+      "metadata": []
+    },
+    {
+      "id": "578ae90e-e6ea-4840-88d3-33c6df5aa33a",
+      "numericId": 19,
+      "threatSource": "Privileged user error (TA009)",
+      "prerequisites": "Lake Formation grants are applied best-effort at deploy; graph/lake availability is unmanaged.",
+      "threatAction": "Misconfigure or revoke LF grants / graph availability.",
+      "threatImpact": "Agent queries fail (often silently), degrading hub availability and answer quality.",
+      "impactedGoal": [],
+      "impactedAssets": [
+        "A009"
+      ],
+      "statement": "A Privileged user error (TA009) Lake Formation grants are applied best-effort at deploy; graph/lake availability is unmanaged. can Misconfigure or revoke LF grants / graph availability., which leads to Agent queries fail (often silently), degrading hub availability and answer quality.",
+      "displayOrder": 19,
+      "status": "threatResolved",
+      "tags": [
+        "lake-formation",
+        "availability"
+      ],
+      "metadata": []
+    },
+    {
+      "id": "31fed685-95af-47f4-b1be-ba28a11b48f6",
+      "numericId": 20,
+      "threatSource": "Organized crime / external attacker (TA005/TA002)",
+      "prerequisites": "A customer loads BYOD PHI into the shipped demo-grade posture (single role, no per-user scoping, PUBLIC network, no BAA-aligned config).",
+      "threatAction": "Exploit any of the disclosure/exfiltration paths against real PHI.",
+      "threatImpact": "HIPAA violation and patient-privacy breach; high financial/reputational/legal impact.",
+      "impactedGoal": [],
+      "impactedAssets": [
+        "A017"
+      ],
+      "statement": "A Organized crime / external attacker (TA005/TA002) A customer loads BYOD PHI into the shipped demo-grade posture (single role, no per-user scoping, PUBLIC network, no BAA-aligned config). can Exploit any of the disclosure/exfiltration paths against real PHI., which leads to HIPAA violation and patient-privacy breach; high financial/reputational/legal impact.",
+      "displayOrder": 20,
+      "status": "threatIdentified",
+      "tags": [
+        "byod",
+        "phi",
+        "hipaa"
+      ],
+      "metadata": []
+    }
+  ]
+}

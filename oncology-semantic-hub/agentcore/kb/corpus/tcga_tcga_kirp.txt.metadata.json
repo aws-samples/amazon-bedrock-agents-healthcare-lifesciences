@@ -1,0 +1,8 @@
+{
+  "metadataAttributes": {
+    "source": "TCGA",
+    "project_id": "TCGA-KIRP",
+    "disease": "Kidney Renal Papillary Cell Carcinoma",
+    "primary_site": "Kidney"
+  }
+}

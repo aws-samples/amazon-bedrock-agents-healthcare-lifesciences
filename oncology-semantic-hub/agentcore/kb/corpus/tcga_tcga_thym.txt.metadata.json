@@ -1,0 +1,8 @@
+{
+  "metadataAttributes": {
+    "source": "TCGA",
+    "project_id": "TCGA-THYM",
+    "disease": "Thymoma",
+    "primary_site": "Thymus; Other and ill-defined sites; Heart, mediastinum, and pleura"
+  }
+}

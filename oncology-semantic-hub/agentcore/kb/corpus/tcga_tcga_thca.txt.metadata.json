@@ -1,0 +1,8 @@
+{
+  "metadataAttributes": {
+    "source": "TCGA",
+    "project_id": "TCGA-THCA",
+    "disease": "Thyroid Carcinoma",
+    "primary_site": "Thyroid gland"
+  }
+}

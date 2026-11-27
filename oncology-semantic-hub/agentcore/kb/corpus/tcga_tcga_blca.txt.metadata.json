@@ -1,0 +1,8 @@
+{
+  "metadataAttributes": {
+    "source": "TCGA",
+    "project_id": "TCGA-BLCA",
+    "disease": "Bladder Urothelial Carcinoma",
+    "primary_site": "Bladder"
+  }
+}

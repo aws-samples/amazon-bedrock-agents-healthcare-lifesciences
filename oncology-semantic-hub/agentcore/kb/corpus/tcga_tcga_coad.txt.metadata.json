@@ -1,0 +1,8 @@
+{
+  "metadataAttributes": {
+    "source": "TCGA",
+    "project_id": "TCGA-COAD",
+    "disease": "Colon Adenocarcinoma",
+    "primary_site": "Colon; Rectosigmoid junction"
+  }
+}

@@ -1,0 +1,7 @@
+TCGA project TCGA-GBM: Glioblastoma Multiforme.
+Program: The Cancer Genome Atlas (TCGA).
+Primary site(s): Brain.
+Disease type(s): Not Reported, Gliomas.
+Cases: 617. Files: 30326.
+
+This TCGA cohort (TCGA-GBM) provides molecular and clinical data for Glioblastoma Multiforme (primary site: Brain; disease type: Not Reported, Gliomas). It supports biomarker, mutation, expression, and copy-number analyses in oncology research.

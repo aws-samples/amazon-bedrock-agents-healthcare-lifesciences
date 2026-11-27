@@ -1,0 +1,7 @@
+TCGA project TCGA-PCPG: Pheochromocytoma and Paraganglioma.
+Program: The Cancer Genome Atlas (TCGA).
+Primary site(s): Adrenal gland, Retroperitoneum and peritoneum, Other endocrine glands and related structures, Other and ill-defined sites, Connective, subcutaneous and other soft tissues, Spinal cord, cranial nerves, and other parts of central nervous system, Heart, mediastinum, and pleura.
+Disease type(s): Paragangliomas and Glomus Tumors.
+Cases: 179. Files: 11823.
+
+This TCGA cohort (TCGA-PCPG) provides molecular and clinical data for Pheochromocytoma and Paraganglioma (primary site: Adrenal gland, Retroperitoneum and peritoneum, Other endocrine glands and related structures, Other and ill-defined sites, Connective, subcutaneous and other soft tissues, Spinal cord, cranial nerves, and other parts of central nervous system, Heart, mediastinum, and pleura; disease type: Paragangliomas and Glomus Tumors). It supports biomarker, mutation, expression, and copy-number analyses in oncology research.

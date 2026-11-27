@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Grounding vs Faithfulness — explainer</title>
+<style>
+  :root{
+    --ink:#0f172a; --muted:#64748b; --line:#e2e8f0;
+    --tool:#0e9f6e; --tool-bg:#e7f7f0;
+    --mem:#64748b;  --mem-bg:#f1f5f9;
+    --fab:#dc2626;
+    --accent:#1d4ed8;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:#f8fafc;color:var(--ink);
+       font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  .slide{width:1280px;margin:24px auto;background:#fff;border:1px solid var(--line);
+         border-radius:22px;padding:48px 60px;box-shadow:0 10px 40px rgba(15,23,42,.06)}
+  h1{font-size:44px;line-height:1.05;margin:0 0 4px;letter-spacing:-.5px}
+  .sub{font-size:21px;color:var(--muted);margin:0 0 20px}
+  .q{font-size:20px;color:var(--muted);font-style:italic;margin:0 0 20px}
+
+  /* breakdown table */
+  table{width:100%;border-collapse:separate;border-spacing:0;font-size:22px}
+  th{font-size:17px;letter-spacing:.4px;text-transform:uppercase;color:var(--muted);
+     text-align:left;padding:0 16px 10px}
+  td{padding:16px;border-top:2px solid var(--line);vertical-align:middle}
+  tr td:first-child{color:var(--muted);font-weight:800;width:60px}
+  .tagcell{font-weight:800;white-space:nowrap}
+  .tagcell.tool{color:var(--tool)} .tagcell.mem{color:var(--mem)}
+  .toolname{font-size:19px;color:var(--muted)}
+  .backed{font-weight:800;white-space:nowrap}
+  .backed.y{color:var(--tool)} .backed.n{color:var(--mem)}
+  .rowtool{background:var(--tool-bg)} .rowmem{background:var(--mem-bg)}
+
+  /* metric cards */
+  .cards{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:30px}
+  .card{border:2px solid var(--line);border-radius:18px;padding:24px 30px;display:flex;
+        align-items:center;gap:26px}
+  .card .txt{flex:1}
+  .card h2{font-size:27px;margin:0 0 4px}
+  .card .desc{font-size:18px;color:var(--muted);margin:0 0 10px}
+  .formula{font-size:26px;font-weight:800}
+  .formula .frac{color:var(--accent)}
+  .result{font-size:78px;font-weight:900;letter-spacing:-2px;line-height:.9;color:var(--ink)}
+  .b-tool{color:var(--tool);font-weight:800}
+  .b-fab{color:var(--fab);font-weight:800}
+</style>
+</head>
+<body>
+<div class="slide">
+  <h1>Grounding vs. Faithfulness</h1>
+  <p class="sub">Two trust scores computed live from the answer's inline source tags — no ground truth.</p>
+  <p class="q">“Is EGFR×PTEN co-occurrence in TCGA-GBM statistically significant? Give the p-value.”</p>
+
+  <table>
+    <thead>
+      <tr><th>#</th><th>Tag</th><th>What the step produced</th><th>Tool used</th><th>Tool-backed?</th></tr>
+    </thead>
+    <tbody>
+      <tr class="rowtool">
+        <td>1–4</td>
+        <td class="tagcell tool">[Lake:tcga_mutations] ×4</td>
+        <td>Cohort counts — 371 cases, 82 EGFR, 116 PTEN, 30 co-mutated</td>
+        <td class="toolname">Athena · <b>query_patient_data</b></td>
+        <td class="backed y">✅ tool</td>
+      </tr>
+      <tr class="rowtool">
+        <td>5–6</td>
+        <td class="tagcell tool">[Compute] ×2</td>
+        <td>Expected value (25.6) + Fisher's exact test (OR 1.36, p = 0.28)</td>
+        <td class="toolname">Code Execution · <b>Python</b></td>
+        <td class="backed y">✅ tool</td>
+      </tr>
+      <tr class="rowmem">
+        <td>7</td>
+        <td class="tagcell mem">[Model knowledge]</td>
+        <td>Caveat — PTEN loss is often copy-number deletion, not point mutation</td>
+        <td class="toolname">— model memory</td>
+        <td class="backed n">❌ memory</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="cards">
+    <div class="card">
+      <div class="txt">
+        <h2>Grounding rate</h2>
+        <p class="desc">How much is backed by tools vs. memory?</p>
+        <p class="formula">tool-backed ÷ all = <span class="frac">6 / 7</span></p>
+      </div>
+      <div class="result">0.86</div>
+    </div>
+    <div class="card">
+      <div class="txt">
+        <h2>Provenance-faithfulness</h2>
+        <p class="desc">Any source it doesn't actually have?</p>
+        <p class="formula">1 − fabricated ÷ all = 1 − <span class="frac">0 / 7</span></p>
+      </div>
+      <div class="result">1.00</div>
+    </div>
+  </div>
+
+  <p class="q" style="margin-top:22px">
+    <span class="b-tool">6 of 7 claims tool-backed → 0.86 grounded</span> ·
+    <span class="b-fab">0 fabricated → 1.00 faithful</span> — the honest caveat is what makes grounding &lt; 1.
+  </p>
+</div>
+</body>
+</html>

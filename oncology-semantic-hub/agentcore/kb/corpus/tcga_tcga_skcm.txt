@@ -1,0 +1,7 @@
+TCGA project TCGA-SKCM: Skin Cutaneous Melanoma.
+Program: The Cancer Genome Atlas (TCGA).
+Primary site(s): Colon, Spinal cord, cranial nerves, and other parts of central nervous system, Vulva, Skin, Vagina, Bones, joints and articular cartilage of other and unspecified sites, Small intestine, Connective, subcutaneous and other soft tissues, Nasal cavity and middle ear, Anus and anal canal, Liver and intrahepatic bile ducts, Bronchus and lung, Other and ill-defined sites, Adrenal gland, Corpus uteri, Parotid gland, Retroperitoneum and peritoneum, Breast, Lymph nodes, Brain.
+Disease type(s): Nevi and Melanomas.
+Cases: 470. Files: 28203.
+
+This TCGA cohort (TCGA-SKCM) provides molecular and clinical data for Skin Cutaneous Melanoma (primary site: Colon, Spinal cord, cranial nerves, and other parts of central nervous system, Vulva, Skin, Vagina, Bones, joints and articular cartilage of other and unspecified sites, Small intestine, Connective, subcutaneous and other soft tissues, Nasal cavity and middle ear, Anus and anal canal, Liver and intrahepatic bile ducts, Bronchus and lung, Other and ill-defined sites, Adrenal gland, Corpus uteri, Parotid gland, Retroperitoneum and peritoneum, Breast, Lymph nodes, Brain; disease type: Nevi and Melanomas). It supports biomarker, mutation, expression, and copy-number analyses in oncology research.

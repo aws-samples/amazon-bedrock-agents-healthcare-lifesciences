@@ -1,0 +1,6 @@
+# Deploy artifacts / local state (contain account ids, ARNs, build output)
+runtime_config.json
+deployment_package.zip
+deployment_package/
+__pycache__/
+*.pyc

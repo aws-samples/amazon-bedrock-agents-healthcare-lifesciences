@@ -1,0 +1,7 @@
+TCGA project TCGA-CESC: Cervical Squamous Cell Carcinoma and Endocervical Adenocarcinoma.
+Program: The Cancer Genome Atlas (TCGA).
+Primary site(s): Cervix uteri, Ovary.
+Disease type(s): Squamous Cell Neoplasms, Cystic, Mucinous and Serous Neoplasms, Complex Epithelial Neoplasms, Adenomas and Adenocarcinomas.
+Cases: 307. Files: 19315.
+
+This TCGA cohort (TCGA-CESC) provides molecular and clinical data for Cervical Squamous Cell Carcinoma and Endocervical Adenocarcinoma (primary site: Cervix uteri, Ovary; disease type: Squamous Cell Neoplasms, Cystic, Mucinous and Serous Neoplasms, Complex Epithelial Neoplasms, Adenomas and Adenocarcinomas). It supports biomarker, mutation, expression, and copy-number analyses in oncology research.

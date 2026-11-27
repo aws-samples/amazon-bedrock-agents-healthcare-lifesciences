@@ -1,0 +1,7 @@
+TCGA project TCGA-HNSC: Head and Neck Squamous Cell Carcinoma.
+Program: The Cancer Genome Atlas (TCGA).
+Primary site(s): Lip, Tonsil, Gum, Bones, joints and articular cartilage of other and unspecified sites, Palate, Other and unspecified parts of tongue, Floor of mouth, Other and ill-defined sites in lip, oral cavity and pharynx, Larynx, Base of tongue, Other and unspecified parts of mouth, Oropharynx, Hypopharynx.
+Disease type(s): Squamous Cell Neoplasms.
+Cases: 528. Files: 34816.
+
+This TCGA cohort (TCGA-HNSC) provides molecular and clinical data for Head and Neck Squamous Cell Carcinoma (primary site: Lip, Tonsil, Gum, Bones, joints and articular cartilage of other and unspecified sites, Palate, Other and unspecified parts of tongue, Floor of mouth, Other and ill-defined sites in lip, oral cavity and pharynx, Larynx, Base of tongue, Other and unspecified parts of mouth, Oropharynx, Hypopharynx; disease type: Squamous Cell Neoplasms). It supports biomarker, mutation, expression, and copy-number analyses in oncology research.

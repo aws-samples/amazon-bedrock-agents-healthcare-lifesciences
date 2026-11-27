@@ -1,0 +1,2568 @@
+{
+  "schema": 1,
+  "applicationInfo": {
+    "name": "Threat Model Export",
+    "description": "Oncology Semantic Hub - an open-source (MIT-0) AWS solution accelerator that unifies cancer genomics (TCGA, cBioPortal), curated biomedical knowledge (PrimeKG), variant annotations (CIViC, ClinVar) and literature into a governed semantic layer queried by an agentic AI application. Accelerator 1 is a Strands agent on Amazon Bedrock AgentCore Runtime (Claude Sonnet 4.5) with env-gated tool tiers L0-L3 (Neptune knowledge-graph queries, Athena patient-data/variant SQL, Bedrock Knowledge Base retrieval, OLS ontology lookup via remote MCP, AWS-managed web search). Accelerator 2 is an agentic dataset-onboarding pipeline (Streamlit + LLM curation agent) that discovers AWS Registry of Open Data (RODA) datasets via a live MCP client, LLM-curates column-to-hub mappings, generates declarative transform specs, and executes ETL inside an AgentCore Code Interpreter sandbox to write additive *_staging tables. Data plane: Neptune Analytics, Athena/Glue/S3 (Lake Formation governed), Bedrock Knowledge Base. Shipped demo uses PUBLIC de-identified TCGA data (no PHI); a documented Bring-Your-Own-Data path lets customers substitute their own cohort, which may be PHI. Explicitly demonstrative - not for clinical use or production per the repo legal note."
+  },
+  "architecture": {
+    "description": ""
+  },
+  "dataflow": {
+    "description": ""
+  },
+  "assumptions": [
+    {
+      "id": "A001",
+      "numericId": 1,
+      "content": "The shipped/demo deployment uses only PUBLIC de-identified TCGA data (no PHI). HIPAA is latent, triggered only by the documented Bring-Your-Own-Data path where a customer substitutes their own (possibly PHI) cohort.",
+      "displayOrder": 1,
+      "metadata": []
+    },
+    {
+      "id": "A002",
+      "numericId": 2,
+      "content": "Authentication is a single shared Cognito M2M (client_credentials) JWT; the client secret is in SSM as a plaintext String; no per-user identity or per-user data scoping; one IAM execution role runs all queries.",
+      "displayOrder": 2,
+      "metadata": []
+    },
+    {
+      "id": "A003",
+      "numericId": 3,
+      "content": "AgentCore Runtimes (agent + MCP servers + Code Interpreter) are deployed with networkMode PUBLIC and must ship with the CUSTOM_JWT authorizer.",
+      "displayOrder": 3,
+      "metadata": []
+    },
+    {
+      "id": "A004",
+      "numericId": 4,
+      "content": "The IAM execution role policy grants actions on Resource:\"*\" rather than resource-scoped ARNs.",
+      "displayOrder": 4,
+      "metadata": []
+    },
+    {
+      "id": "A005",
+      "numericId": 5,
+      "content": "Read-only enforcement relies on least-privilege IAM plus in-process guards (hub_core/guards.py). The onboarding text-to-SQL path uses a separate regex/allowlist guard in agent.py, not hub_core.guards.",
+      "displayOrder": 5,
+      "metadata": []
+    },
+    {
+      "id": "A006",
+      "numericId": 6,
+      "content": "Data onboarding is human-in-the-loop and writes only additive *_staging tables; ETL runs the fixed dynamic.py harness (LLM emits only a declarative spec, not code) inside an AgentCore Code Interpreter sandbox.",
+      "displayOrder": 6,
+      "metadata": []
+    },
+    {
+      "id": "A007",
+      "numericId": 7,
+      "content": "Python dependencies are declared unpinned in requirements.txt; the RODA MCP client runs as a uvx-spawned subprocess of awslabs.roda-mcp-server.",
+      "displayOrder": 7,
+      "metadata": []
+    },
+    {
+      "id": "A008",
+      "numericId": 8,
+      "content": "AWS Security Hub control BedrockAgentCore.1 states AgentCore runtimes should be configured with VPC network mode, and the AWS AI security standard requires the AgentCore Code Interpreter to use a private network configuration. This system deploys runtimes and the Code Interpreter with networkMode PUBLIC.",
+      "displayOrder": 8,
+      "metadata": []
+    },
+    {
+      "id": "A018",
+      "numericId": 18,
+      "content": "Risk-acceptance basis: threats were Accepted only where an implemented control (read-only guards+tests, guarded onboarding SQL, fixed ETL harness+HITL, provenance-faithfulness scorer, single-tenant demo) reduces them to Low/Medium AND the shipped data is public TCGA. All Confidentiality/Integrity risks that depend on unbuilt controls (Guardrails, per-user auth/scoping, secret hardening, IAM scoping, cost caps, dep pinning, faithfulness-toggle gating, BYOD hardening) were left Open as must-fix before production or BYOD/PHI use.",
+      "displayOrder": 18,
+      "metadata": []
+    }
+  ],
+  "mitigations": [
+    {
+      "id": "M001",
+      "numericId": 1,
+      "status": "mitigationIdentified",
+      "content": "Multi-layer input validation + Amazon Bedrock Guardrails for prompt-injection defense across every agent input surface (user prompt AND tool/retrieved content).",
+      "displayOrder": 1,
+      "metadata": []
+    },
+    {
+      "id": "M002",
+      "numericId": 2,
+      "status": "mitigationInProgress",
+      "content": "Treat all tool outputs / retrieved passages as untrusted data: structurally delimit and label external content in the context, never execute embedded instructions, and keep the existing inline-provenance/citation discipline.",
+      "displayOrder": 2,
+      "metadata": []
+    },
+    {
+      "id": "M003",
+      "numericId": 3,
+      "status": "mitigationIdentified",
+      "content": "Store the Cognito client secret in SSM SecureString (KMS) or Secrets Manager and scope ssm:GetParameter to the exact parameter ARNs; enable rotation.",
+      "displayOrder": 3,
+      "metadata": []
+    },
+    {
+      "id": "M004",
+      "numericId": 4,
+      "status": "mitigationIdentified",
+      "content": "Replace the shared M2M identity with per-user SSO/OIDC (authorization_code) so each caller presents their own short-lived JWT (sub/email/groups).",
+      "displayOrder": 4,
+      "metadata": []
+    },
+    {
+      "id": "M005",
+      "numericId": 5,
+      "status": "mitigationInProgress",
+      "content": "Enforce the CUSTOM_JWT authorizer on every PUBLIC AgentCore endpoint with a deploy-time preflight that fails if the authorizer is absent, and migrate runtimes to VPC network mode.",
+      "displayOrder": 5,
+      "metadata": []
+    },
+    {
+      "id": "M006",
+      "numericId": 6,
+      "status": "mitigationIdentified",
+      "content": "Per-user/tenant data authorization: sts:AssumeRole with session name/tags = user, plus Lake Formation grants scoped per group; restrict cohorts/tables by the caller's claims.",
+      "displayOrder": 6,
+      "metadata": []
+    },
+    {
+      "id": "M007",
+      "numericId": 7,
+      "status": "mitigationInProgress",
+      "content": "Keep the in-process read-only guards (reject_mutations / require_select) AND explicitly deny all write actions in IAM as the authoritative backstop; unit-test guards against a bypass corpus.",
+      "displayOrder": 7,
+      "metadata": []
+    },
+    {
+      "id": "M008",
+      "numericId": 8,
+      "status": "mitigationInProgress",
+      "content": "Harden the onboarding text-to-SQL path: reuse hub_core.guards.require_select, validate/parameterize identifiers, keep the table allowlist + mandatory LIMIT.",
+      "displayOrder": 8,
+      "metadata": []
+    },
+    {
+      "id": "M009",
+      "numericId": 9,
+      "status": "mitigationInProgress",
+      "content": "Keep the fixed dynamic.py ETL harness + validate_spec (LLM emits only a validated declarative spec) and run the Code Interpreter with a private/VPC network configuration and tightly-scoped egress + role.",
+      "displayOrder": 9,
+      "metadata": []
+    },
+    {
+      "id": "M010",
+      "numericId": 10,
+      "status": "mitigationIdentified",
+      "content": "Bound query cost/complexity: Athena workgroup per-query data-scan limits + result caps, and Neptune query timeouts / row limits.",
+      "displayOrder": 10,
+      "metadata": []
+    },
+    {
+      "id": "M011",
+      "numericId": 11,
+      "status": "mitigationIdentified",
+      "content": "Cap agent autonomy and spend: max tool-call iterations per turn, max tokens, loop detection, and CloudWatch cost/anomaly alarms (denial-of-wallet).",
+      "displayOrder": 11,
+      "metadata": []
+    },
+    {
+      "id": "M012",
+      "numericId": 12,
+      "status": "mitigationInProgress",
+      "content": "Enforce session isolation: bind _SESSIONS entries to the authenticated principal, use unguessable session ids, and apply TTL/eviction so warm containers cannot leak context across users.",
+      "displayOrder": 12,
+      "metadata": []
+    },
+    {
+      "id": "M013",
+      "numericId": 13,
+      "status": "mitigationIdentified",
+      "content": "Observability data hygiene: redact prompts/answers/PHI from traces/logs, encrypt log groups with KMS, and least-privilege access to CloudWatch/X-Ray.",
+      "displayOrder": 13,
+      "metadata": []
+    },
+    {
+      "id": "M014",
+      "numericId": 14,
+      "status": "mitigationIdentified",
+      "content": "Scope the IAM execution role to specific resource ARNs and split per function (agent vs onboarding vs MCP), removing Resource:*.",
+      "displayOrder": 14,
+      "metadata": []
+    },
+    {
+      "id": "M015",
+      "numericId": 15,
+      "status": "mitigationIdentified",
+      "content": "Software supply-chain hardening: pin dependencies with hashes, vendor/lock the RODA MCP server version, and run SCA/dependency scanning in CI.",
+      "displayOrder": 15,
+      "metadata": []
+    },
+    {
+      "id": "M016",
+      "numericId": 16,
+      "status": "mitigationInProgress",
+      "content": "Faithfulness assurance: remove/production-gate the SEMHUB_STRIP_GUARDS toggle, and run the provenance-faithfulness / grounding scorer with alerting on fabricated grounding.",
+      "displayOrder": 16,
+      "metadata": []
+    },
+    {
+      "id": "M017",
+      "numericId": 17,
+      "status": "mitigationInProgress",
+      "content": "Availability assurance for the data plane: make Lake Formation grants explicit + verified post-deploy and alarm on query failures / graph unavailability.",
+      "displayOrder": 17,
+      "metadata": []
+    },
+    {
+      "id": "M018",
+      "numericId": 18,
+      "status": "mitigationIdentified",
+      "content": "BYOD/HIPAA hardening profile: gate PHI onboarding behind a hardened configuration (BAA, VPC network mode, per-user scoping, KMS encryption, audit, log redaction) with explicit documentation.",
+      "displayOrder": 18,
+      "metadata": []
+    },
+    {
+      "id": "M019",
+      "numericId": 19,
+      "status": "mitigationIdentified",
+      "content": "Edge protection on public endpoints: AWS WAF + rate limiting / throttling in front of the agent and MCP endpoints.",
+      "displayOrder": 19,
+      "metadata": []
+    }
+  ],
+  "assumptionLinks": [],
+  "mitigationLinks": [
+    {
+      "linkedId": "T001",
+      "mitigationId": "M001"
+    },
+    {
+      "linkedId": "T001",
+      "mitigationId": "M002"
+    },
+    {
+      "linkedId": "T002",
+      "mitigationId": "M001"
+    },
+    {
+      "linkedId": "T002",
+      "mitigationId": "M002"
+    },
+    {
+      "linkedId": "T002",
+      "mitigationId": "M016"
+    },
+    {
+      "linkedId": "T003",
+      "mitigationId": "M003"
+    },
+    {
+      "linkedId": "T003",
+      "mitigationId": "M014"
+    },
+    {
+      "linkedId": "T004",
+      "mitigationId": "M004"
+    },
+    {
+      "linkedId": "T005",
+      "mitigationId": "M005"
+    },
+    {
+      "linkedId": "T005",
+      "mitigationId": "M019"
+    },
+    {
+      "linkedId": "T006",
+      "mitigationId": "M006"
+    },
+    {
+      "linkedId": "T006",
+      "mitigationId": "M004"
+    },
+    {
+      "linkedId": "T007",
+      "mitigationId": "M007"
+    },
+    {
+      "linkedId": "T008",
+      "mitigationId": "M008"
+    },
+    {
+      "linkedId": "T009",
+      "mitigationId": "M009"
+    },
+    {
+      "linkedId": "T010",
+      "mitigationId": "M010"
+    },
+    {
+      "linkedId": "T010",
+      "mitigationId": "M019"
+    },
+    {
+      "linkedId": "T011",
+      "mitigationId": "M011"
+    },
+    {
+      "linkedId": "T011",
+      "mitigationId": "M019"
+    },
+    {
+      "linkedId": "T012",
+      "mitigationId": "M012"
+    },
+    {
+      "linkedId": "T013",
+      "mitigationId": "M013"
+    },
+    {
+      "linkedId": "T014",
+      "mitigationId": "M014"
+    },
+    {
+      "linkedId": "T015",
+      "mitigationId": "M015"
+    },
+    {
+      "linkedId": "T016",
+      "mitigationId": "M001"
+    },
+    {
+      "linkedId": "T016",
+      "mitigationId": "M002"
+    },
+    {
+      "linkedId": "T017",
+      "mitigationId": "M004"
+    },
+    {
+      "linkedId": "T018",
+      "mitigationId": "M016"
+    },
+    {
+      "linkedId": "T018",
+      "mitigationId": "M001"
+    },
+    {
+      "linkedId": "T019",
+      "mitigationId": "M017"
+    },
+    {
+      "linkedId": "T020",
+      "mitigationId": "M018"
+    },
+    {
+      "linkedId": "T020",
+      "mitigationId": "M006"
+    },
+    {
+      "linkedId": "T020",
+      "mitigationId": "M013"
+    }
+  ],
+  "threats": [
+    {
+      "id": "T001",
+      "numericId": 1,
+      "threatSource": "Adversarial open-data/content author (TA013)",
+      "prerequisites": "Agent ingests external content (RODA datasets/samples, web-search results, OLS responses, KB passages) into the LLM context with no dedicated prompt-injection/content-sanitization filter on tool",
+      "threatAction": "Embed hidden instructions in third-party content that override the system prompt (indirect/LLM01 prompt injection).",
+      "threatImpact": "Agent is steered to fabricate oncology findings/citations, misroute tool calls, attempt data exfiltration, or corrupt onboarding curation/spec generation.",
+      "impactedGoal": [],
+      "impactedAssets": [
+        "A014",
+        "A011",
+        "A015"
+      ],
+      "statement": "A Adversarial open-data/content author (TA013) Agent ingests external content (RODA datasets/samples, web-search results, OLS responses, KB passages) into the LLM context with no dedicated prompt-injection/content-sanitization filter on tool can Embed hidden instructions in third-party content that override the system prompt (indirect/LLM01 prompt injection)., which leads to Agent is steered to fabricate oncology findings/citations, misroute tool calls, attempt data exfiltration, or corrupt onboarding curation/spec generation.",
+      "displayOrder": 1,
+      "status": "threatIdentified",
+      "tags": [
+        "LLM01",
+        "prompt-injection",
+        "agentic"
+      ],
+      "metadata": []
+    },
+    {
+      "id": "T002",
+      "numericId": 2,
+      "threatSource": "Adversarial open-data/content author (TA013)",
+      "prerequisites": "Poisoned KB corpus or onboarded open-data records enter the retrieval/answer path.",
+      "threatAction": "Inject fake PMIDs / misleading records so the model cites plausible-but-false sources.",
+      "threatImpact": "Agent emits confident fabricated medical evidence with valid-looking provenance tags, defeating the grounding/faithfulness guarantee (research-misinformation risk).",
+      "impactedGoal": [],
+      "impactedAssets": [
+        "A011",
+        "A015"
+      ],
+      "statement": "A Adversarial open-data/content author (TA013) Poisoned KB corpus or onboarded open-data records enter the retrieval/answer path. can Inject fake PMIDs / misleading records so the model cites plausible-but-false sources., which leads to Agent emits confident fabricated medical evidence with valid-looking provenance tags, defeating the grounding/faithfulness guarantee (research-misinformation risk).",
+      "displayOrder": 2,
+      "status": "threatResolved",
+      "tags": [
+        "data-poisoning",
+        "faithfulness"
+      ],
+      "metadata": []
+    },
+    {
+      "id": "T003",
+      "numericId": 3,
+      "threatSource": "Privileged user / insider / disgruntled operator (TA009/TA001/TA008)",
+      "prerequisites": "Shared Cognito M2M secret stored in SSM as a plaintext String; broad ssm:GetParameter.",
+      "threatAction": "Read the secret from SSM and mint valid JWTs.",
+      "threatImpact": "Unauthorized, unattributable access to the OLS/data MCP endpoints; secret rotation is the only remedy.",
+      "impactedGoal": [],
+      "impactedAssets": [
+        "A012",
+        "A013"
+      ],
+      "statement": "A Privileged user / insider / disgruntled operator (TA009/TA001/TA008) Shared Cognito M2M secret stored in SSM as a plaintext String; broad ssm:GetParameter. can Read the secret from SSM and mint valid JWTs., which leads to Unauthorized, unattributable access to the OLS/data MCP endpoints; secret rotation is the only remedy.",
+      "displayOrder": 3,
+      "status": "threatIdentified",
+      "tags": [
+        "secrets",
+        "SSM-plaintext"
+      ],
+      "metadata": []
+    },
+    {
+      "id": "T004",
+      "numericId": 4,
+      "threatSource": "External attacker / malicious hub user (TA002/TA014)",
+      "prerequisites": "Single shared machine identity; no per-user identity or audit.",
+      "threatAction": "Present a valid shared JWT (or obtained secret) to impersonate the one machine client.",
+      "threatImpact": "Full tool access as the shared identity with no per-user attribution; misuse cannot be traced to an individual.",
+      "impactedGoal": [],
+      "impactedAssets": [
+        "A013"
+      ],
+      "statement": "A External attacker / malicious hub user (TA002/TA014) Single shared machine identity; no per-user identity or audit. can Present a valid shared JWT (or obtained secret) to impersonate the one machine client., which leads to Full tool access as the shared identity with no per-user attribution; misuse cannot be traced to an individual.",
+      "displayOrder": 4,
+      "status": "threatIdentified",
+      "tags": [
+        "auth",
+        "shared-identity"
+      ],
+      "metadata": []
+    },
+    {
+      "id": "T005",
+      "numericId": 5,
+      "threatSource": "External attacker / script kiddie (TA002/TA007)",
+      "prerequisites": "AgentCore runtimes are networkMode PUBLIC; the CUSTOM_JWT authorizer is omitted or misconfigured (the design explicitly warns against this).",
+      "threatAction": "Reach the internet-exposed agent/MCP endpoint without authentication.",
+      "threatImpact": "Unauthorized query execution, data access, and compute/cost abuse over the internet.",
+      "impactedGoal": [],
+      "impactedAssets": [
+        "A009",
+        "A010"
+      ],
+      "statement": "A External attacker / script kiddie (TA002/TA007) AgentCore runtimes are networkMode PUBLIC; the CUSTOM_JWT authorizer is omitted or misconfigured (the design explicitly warns against this). can Reach the internet-exposed agent/MCP endpoint without authentication., which leads to Unauthorized query execution, data access, and compute/cost abuse over the internet.",
+      "displayOrder": 5,
+      "status": "threatIdentified",
+      "tags": [
+        "public-endpoint",
+        "authz"
+      ],
+      "metadata": []
+    },
+    {
+      "id": "T006",
+      "numericId": 6,
+      "threatSource": "Malicious hub user (TA014)",
+      "prerequisites": "Single IAM execution role with no per-user data scoping; agent will query any table/cohort the role can reach.",
+      "threatAction": "Craft prompts that direct the agent to query data beyond the user's entitlement.",
+      "threatImpact": "Disclosure of any data the role can access; Critical under BYOD (whole PHI cohort readable by any authorized caller).",
+      "impactedGoal": [],
+      "impactedAssets": [
+        "A009",
+        "A017"
+      ],
+      "statement": "A Malicious hub user (TA014) Single IAM execution role with no per-user data scoping; agent will query any table/cohort the role can reach. can Craft prompts that direct the agent to query data beyond the user's entitlement., which leads to Disclosure of any data the role can access; Critical under BYOD (whole PHI cohort readable by any authorized caller).",
+      "displayOrder": 6,
+      "status": "threatIdentified",
+      "tags": [
+        "no-per-user-scoping",
+        "exfiltration"
+      ],
+      "metadata": []
+    },
+    {
+      "id": "T007",
+      "numericId": 7,
+      "threatSource": "Malicious hub user / content author (TA014/TA013)",
+      "prerequisites": "Read-only enforcement depends on regex guards (reject_mutations / require_select) plus least-privilege IAM.",
+      "threatAction": "Craft Cypher/SQL that evades the regex guard (e.g. obfuscation, comment tricks, unsupported keywords).",
+      "threatImpact": "If IAM also lacked write denial, tampering; in practice IAM read-only is the backstop, so impact is limited but the guard is the sole in-process control.",
+      "impactedGoal": [],
+      "impactedAssets": [
+        "A009",
+        "A010"
+      ],
+      "statement": "A Malicious hub user / content author (TA014/TA013) Read-only enforcement depends on regex guards (reject_mutations / require_select) plus least-privilege IAM. can Craft Cypher/SQL that evades the regex guard (e.g. obfuscation, comment tricks, unsupported keywords)., which leads to If IAM also lacked write denial, tampering; in practice IAM read-only is the backstop, so impact is limited but the guard is the sole in-process control.",
+      "displayOrder": 7,
+      "status": "threatResolved",
+      "tags": [
+        "guard-bypass",
+        "defense-in-depth"
+      ],
+      "metadata": []
+    },
+    {
+      "id": "T008",
+      "numericId": 8,
+      "threatSource": "Adversarial content author / malicious user (TA013/TA014)",
+      "prerequisites": "Onboarding text-to-SQL (answer_question/answer_hub) generates SQL from NL questions + possibly poisoned schema, guarded by a separate regex/allowlist.",
+      "threatAction": "Influence generated SQL to read beyond the intended table or evade the allowlist.",
+      "threatImpact": "Unauthorized reads within the RODA database; bounded by SELECT-only + LIMIT + IAM but the guard is independently maintained from hub_core.guards.",
+      "impactedGoal": [],
+      "impactedAssets": [
+        "A014",
+        "A009"
+      ],
+      "statement": "A Adversarial content author / malicious user (TA013/TA014) Onboarding text-to-SQL (answer_question/answer_hub) generates SQL from NL questions + possibly poisoned schema, guarded by a separate regex/allowlist. can Influence generated SQL to read beyond the intended table or evade the allowlist., which leads to Unauthorized reads within the RODA database; bounded by SELECT-only + LIMIT + IAM but the guard is independently maintained from hub_core.guards.",
+      "displayOrder": 8,
+      "status": "threatResolved",
+      "tags": [
+        "text-to-sql",
+        "agentic"
+      ],
+      "metadata": []
+    },
+    {
+      "id": "T009",
+      "numericId": 9,
+      "threatSource": "Adversarial open-data author (TA013)",
+      "prerequisites": "LLM emits a declarative transform spec from untrusted data; the fixed dynamic.py harness + validate_spec run it in the Code Interpreter sandbox.",
+      "threatAction": "Attempt to coerce a spec/ETL that writes outside staging or exfiltrates via the PUBLIC-network sandbox.",
+      "threatImpact": "Largely bounded by the fixed harness (additive staging only, allowlisted ops) + IAM; residual risk is poisoned/misleading staging data surfaced later by the agent.",
+      "impactedGoal": [],
+      "impactedAssets": [
+        "A014"
+      ],
+      "statement": "A Adversarial open-data author (TA013) LLM emits a declarative transform spec from untrusted data; the fixed dynamic.py harness + validate_spec run it in the Code Interpreter sandbox. can Attempt to coerce a spec/ETL that writes outside staging or exfiltrates via the PUBLIC-network sandbox., which leads to Largely bounded by the fixed harness (additive staging only, allowlisted ops) + IAM; residual risk is poisoned/misleading staging data surfaced later by the agent.",
+      "displayOrder": 9,
+      "status": "threatResolved",
+      "tags": [
+        "code-interpreter",
+        "etl",
+        "sandbox"
+      ],
+      "metadata": []
+    },
+    {
+      "id": "T010",
+      "numericId": 10,
+      "threatSource": "Malicious hub user (TA014)",
+      "prerequisites": "Query tools accept arbitrary Cypher/Athena SQL with no cost/complexity ceiling.",
+      "threatAction": "Submit unbounded graph traversals or full-scan SQL.",
+      "threatImpact": "Excessive Athena/Neptune cost, latency, and degraded availability for other users.",
+      "impactedGoal": [],
+      "impactedAssets": [
+        "A009",
+        "A010"
+      ],
+      "statement": "A Malicious hub user (TA014) Query tools accept arbitrary Cypher/Athena SQL with no cost/complexity ceiling. can Submit unbounded graph traversals or full-scan SQL., which leads to Excessive Athena/Neptune cost, latency, and degraded availability for other users.",
+      "displayOrder": 10,
+      "status": "threatIdentified",
+      "tags": [
+        "unbounded-consumption",
+        "cost"
+      ],
+      "metadata": []
+    },
+    {
+      "id": "T011",
+      "numericId": 11,
+      "threatSource": "Malicious user / injected content (TA014/TA013)",
+      "prerequisites": "Agent autonomously chains tool calls; no hard cap on iterations/spend surfaced.",
+      "threatAction": "Adversarial prompt or injected instruction induces long tool-call loops / repeated model invocations.",
+      "threatImpact": "Denial-of-wallet: runaway Bedrock + query costs and resource exhaustion.",
+      "impactedGoal": [],
+      "impactedAssets": [
+        "A015"
+      ],
+      "statement": "A Malicious user / injected content (TA014/TA013) Agent autonomously chains tool calls; no hard cap on iterations/spend surfaced. can Adversarial prompt or injected instruction induces long tool-call loops / repeated model invocations., which leads to Denial-of-wallet: runaway Bedrock + query costs and resource exhaustion.",
+      "displayOrder": 11,
+      "status": "threatIdentified",
+      "tags": [
+        "excessive-agency",
+        "denial-of-wallet"
+      ],
+      "metadata": []
+    },
+    {
+      "id": "T012",
+      "numericId": 12,
+      "threatSource": "Malicious hub user (TA014)",
+      "prerequisites": "Per-session Agent objects held in an in-memory _SESSIONS dict in the warm container, keyed by session_id.",
+      "threatAction": "Reuse or guess a session_id to reach another caller's cached agent/context.",
+      "threatImpact": "Cross-session leakage of prompts/answers/context between users sharing a warm container.",
+      "impactedGoal": [],
+      "impactedAssets": [
+        "A016"
+      ],
+      "statement": "A Malicious hub user (TA014) Per-session Agent objects held in an in-memory _SESSIONS dict in the warm container, keyed by session_id. can Reuse or guess a session_id to reach another caller's cached agent/context., which leads to Cross-session leakage of prompts/answers/context between users sharing a warm container.",
+      "displayOrder": 12,
+      "status": "threatResolved",
+      "tags": [
+        "session-isolation",
+        "warm-container"
+      ],
+      "metadata": []
+    },
+    {
+      "id": "T013",
+      "numericId": 13,
+      "threatSource": "Privileged user / insider (TA009/TA001)",
+      "prerequisites": "Prompts, answers, and (under BYOD) PHI may appear in OTel traces / CloudWatch logs / EMF metrics.",
+      "threatAction": "Read sensitive content from observability data.",
+      "threatImpact": "Disclosure of user queries/answers; HIPAA-relevant exposure when BYOD PHI is present.",
+      "impactedGoal": [],
+      "impactedAssets": [
+        "A015",
+        "A016",
+        "A017"
+      ],
+      "statement": "A Privileged user / insider (TA009/TA001) Prompts, answers, and (under BYOD) PHI may appear in OTel traces / CloudWatch logs / EMF metrics. can Read sensitive content from observability data., which leads to Disclosure of user queries/answers; HIPAA-relevant exposure when BYOD PHI is present.",
+      "displayOrder": 13,
+      "status": "threatIdentified",
+      "tags": [
+        "observability",
+        "log-hygiene"
+      ],
+      "metadata": []
+    },
+    {
+      "id": "T014",
+      "numericId": 14,
+      "threatSource": "Privileged user / compromised agent (TA009/TA014)",
+      "prerequisites": "IAM execution role policy grants actions on Resource:*.",
+      "threatAction": "Abuse or leverage a compromise of the agent/role to act across the account's Bedrock/Neptune/Athena/Glue/S3/SSM.",
+      "threatImpact": "Broad lateral movement and data access beyond the hub's intended scope.",
+      "impactedGoal": [],
+      "impactedAssets": [
+        "A009",
+        "A012"
+      ],
+      "statement": "A Privileged user / compromised agent (TA009/TA014) IAM execution role policy grants actions on Resource:*. can Abuse or leverage a compromise of the agent/role to act across the account's Bedrock/Neptune/Athena/Glue/S3/SSM., which leads to Broad lateral movement and data access beyond the hub's intended scope.",
+      "displayOrder": 14,
+      "status": "threatIdentified",
+      "tags": [
+        "iam",
+        "least-privilege"
+      ],
+      "metadata": []
+    },
+    {
+      "id": "T015",
+      "numericId": 15,
+      "threatSource": "Third party / supply chain (TA010)",
+      "prerequisites": "Unpinned Python dependencies; RODA MCP server fetched/run on demand via uvx.",
+      "threatAction": "Introduce a malicious package or version that executes in the agent/onboarding process.",
+      "threatImpact": "Code execution, secret theft, or data tampering inside the trusted runtime.",
+      "impactedGoal": [],
+      "impactedAssets": [
+        "A012",
+        "A014"
+      ],
+      "statement": "A Third party / supply chain (TA010) Unpinned Python dependencies; RODA MCP server fetched/run on demand via uvx. can Introduce a malicious package or version that executes in the agent/onboarding process., which leads to Code execution, secret theft, or data tampering inside the trusted runtime.",
+      "displayOrder": 15,
+      "status": "threatIdentified",
+      "tags": [
+        "supply-chain",
+        "dependencies"
+      ],
+      "metadata": []
+    },
+    {
+      "id": "T016",
+      "numericId": 16,
+      "threatSource": "Compromised third-party service (TA010/TA013)",
+      "prerequisites": "Agent depends on external OLS / web-search / RODA services for content and availability.",
+      "threatAction": "A compromised or hostile external service returns malicious or false responses.",
+      "threatImpact": "Prompt injection or factual corruption of answers; loss of a tool degrades the hub.",
+      "impactedGoal": [],
+      "impactedAssets": [
+        "A014"
+      ],
+      "statement": "A Compromised third-party service (TA010/TA013) Agent depends on external OLS / web-search / RODA services for content and availability. can A compromised or hostile external service returns malicious or false responses., which leads to Prompt injection or factual corruption of answers; loss of a tool degrades the hub.",
+      "displayOrder": 16,
+      "status": "threatResolved",
+      "tags": [
+        "third-party",
+        "integrity"
+      ],
+      "metadata": []
+    },
+    {
+      "id": "T017",
+      "numericId": 17,
+      "threatSource": "Malicious user / insider (TA014/TA001)",
+      "prerequisites": "All callers share one machine identity; no per-user JWT or session attribution.",
+      "threatAction": "Perform queries/actions under the shared identity.",
+      "threatImpact": "Actions are not attributable to an individual; weak forensics and non-repudiation, a compliance gap under HIPAA/production.",
+      "impactedGoal": [],
+      "impactedAssets": [
+        "A013"
+      ],
+      "statement": "A Malicious user / insider (TA014/TA001) All callers share one machine identity; no per-user JWT or session attribution. can Perform queries/actions under the shared identity., which leads to Actions are not attributable to an individual; weak forensics and non-repudiation, a compliance gap under HIPAA/production.",
+      "displayOrder": 17,
+      "status": "threatResolved",
+      "tags": [
+        "audit",
+        "non-repudiation"
+      ],
+      "metadata": []
+    },
+    {
+      "id": "T018",
+      "numericId": 18,
+      "threatSource": "Malicious user or benign model failure (TA014)",
+      "prerequisites": "LLM can hallucinate; an experimental SEMHUB_STRIP_GUARDS toggle removes the citation-discipline/statistical-rigor guardrails.",
+      "threatAction": "Coerce (or trigger) confident, ungrounded oncology claims without honest provenance tagging.",
+      "threatImpact": "Fabricated/ungrounded medical claims presented as grounded, violating the core faithfulness NFR and risking research misinformation.",
+      "impactedGoal": [],
+      "impactedAssets": [
+        "A015"
+      ],
+      "statement": "A Malicious user or benign model failure (TA014) LLM can hallucinate; an experimental SEMHUB_STRIP_GUARDS toggle removes the citation-discipline/statistical-rigor guardrails. can Coerce (or trigger) confident, ungrounded oncology claims without honest provenance tagging., which leads to Fabricated/ungrounded medical claims presented as grounded, violating the core faithfulness NFR and risking research misinformation.",
+      "displayOrder": 18,
+      "status": "threatIdentified",
+      "tags": [
+        "hallucination",
+        "faithfulness",
+        "guardrail-strip"
+      ],
+      "metadata": []
+    },
+    {
+      "id": "T019",
+      "numericId": 19,
+      "threatSource": "Privileged user error (TA009)",
+      "prerequisites": "Lake Formation grants are applied best-effort at deploy; graph/lake availability is unmanaged.",
+      "threatAction": "Misconfigure or revoke LF grants / graph availability.",
+      "threatImpact": "Agent queries fail (often silently), degrading hub availability and answer quality.",
+      "impactedGoal": [],
+      "impactedAssets": [
+        "A009"
+      ],
+      "statement": "A Privileged user error (TA009) Lake Formation grants are applied best-effort at deploy; graph/lake availability is unmanaged. can Misconfigure or revoke LF grants / graph availability., which leads to Agent queries fail (often silently), degrading hub availability and answer quality.",
+      "displayOrder": 19,
+      "status": "threatResolved",
+      "tags": [
+        "lake-formation",
+        "availability"
+      ],
+      "metadata": []
+    },
+    {
+      "id": "T020",
+      "numericId": 20,
+      "threatSource": "Organized crime / external attacker (TA005/TA002)",
+      "prerequisites": "A customer loads BYOD PHI into the shipped demo-grade posture (single role, no per-user scoping, PUBLIC network, no BAA-aligned config).",
+      "threatAction": "Exploit any of the disclosure/exfiltration paths against real PHI.",
+      "threatImpact": "HIPAA violation and patient-privacy breach; high financial/reputational/legal impact.",
+      "impactedGoal": [],
+      "impactedAssets": [
+        "A017"
+      ],
+      "statement": "A Organized crime / external attacker (TA005/TA002) A customer loads BYOD PHI into the shipped demo-grade posture (single role, no per-user scoping, PUBLIC network, no BAA-aligned config). can Exploit any of the disclosure/exfiltration paths against real PHI., which leads to HIPAA violation and patient-privacy breach; high financial/reputational/legal impact.",
+      "displayOrder": 20,
+      "status": "threatIdentified",
+      "tags": [
+        "byod",
+        "phi",
+        "hipaa"
+      ],
+      "metadata": []
+    }
+  ],
+  "businessContext": {
+    "description": "Oncology Semantic Hub - an open-source (MIT-0) AWS solution accelerator that unifies cancer genomics (TCGA, cBioPortal), curated biomedical knowledge (PrimeKG), variant annotations (CIViC, ClinVar) and literature into a governed semantic layer queried by an agentic AI application. Accelerator 1 is a Strands agent on Amazon Bedrock AgentCore Runtime (Claude Sonnet 4.5) with env-gated tool tiers L0-L3 (Neptune knowledge-graph queries, Athena patient-data/variant SQL, Bedrock Knowledge Base retrieval, OLS ontology lookup via remote MCP, AWS-managed web search). Accelerator 2 is an agentic dataset-onboarding pipeline (Streamlit + LLM curation agent) that discovers AWS Registry of Open Data (RODA) datasets via a live MCP client, LLM-curates column-to-hub mappings, generates declarative transform specs, and executes ETL inside an AgentCore Code Interpreter sandbox to write additive *_staging tables. Data plane: Neptune Analytics, Athena/Glue/S3 (Lake Formation governed), Bedrock Knowledge Base. Shipped demo uses PUBLIC de-identified TCGA data (no PHI); a documented Bring-Your-Own-Data path lets customers substitute their own cohort, which may be PHI. Explicitly demonstrative - not for clinical use or production per the repo legal note.",
+    "features": {
+      "industry_sector": "Healthcare",
+      "sensitivity_tier": "Public",
+      "user_base_size": "Micro",
+      "geographic_scope": "Multi-Continental / International",
+      "regulatory_requirements": [
+        "HIPAA"
+      ],
+      "system_criticality": "Medium",
+      "financial_impact": "Low",
+      "authentication_requirement": "Basic",
+      "deployment_model": "Serverless / FaaS",
+      "user_base_metric": "Organizational customers",
+      "revenue_band": "Enterprise",
+      "geographic_profile": {
+        "data_residency": "National / Single-Country",
+        "compute_location": "National / Single-Country",
+        "user_base_location": "Multi-Continental / International",
+        "organizational_headquarters": "Multi-Continental / International"
+      }
+    }
+  },
+  "components": [
+    {
+      "id": "C001",
+      "name": "Semantic Hub Agent (AgentCore Runtime)",
+      "type": "Serverless",
+      "service_provider": "AWS",
+      "specific_service": "Bedrock AgentCore Runtime",
+      "version": null,
+      "description": "Single-file Strands agent (semantic_hub_agent.py), env-gated tool tiers L0-L3. Entry point invoke(); reuses per-session Agent objects in an in-memory _SESSIONS dict in the warm container. networkMode PUBLIC.",
+      "configuration": {
+        "network_mode": "PUBLIC",
+        "layer": "L3",
+        "session_reuse": "in-memory _SESSIONS keyed by session_id"
+      }
+    },
+    {
+      "id": "C002",
+      "name": "Claude Sonnet 4.5 (Bedrock model)",
+      "type": "Serverless",
+      "service_provider": "AWS",
+      "specific_service": "Amazon Bedrock (InvokeModelWithResponseStream)",
+      "version": null,
+      "description": "Foundation model backing the agent and the onboarding curation/NL/text-to-SQL calls. temperature 0.0.",
+      "configuration": null
+    },
+    {
+      "id": "C003",
+      "name": "OLS MCP Server (remote)",
+      "type": "Serverless",
+      "service_provider": "AWS",
+      "specific_service": "Bedrock AgentCore Runtime (MCP)",
+      "version": null,
+      "description": "Remote EBI Ontology Lookup Service MCP server; separate component. CUSTOM_JWT (Cognito M2M) authorizer. Agent calls search_terms over streamable-http with Bearer token.",
+      "configuration": {
+        "auth": "Cognito M2M CUSTOM_JWT",
+        "network_mode": "PUBLIC"
+      }
+    },
+    {
+      "id": "C004",
+      "name": "oncology-hub-data MCP Server (planned)",
+      "type": "Serverless",
+      "service_provider": "AWS",
+      "specific_service": "Bedrock AgentCore Runtime (MCP)",
+      "version": null,
+      "description": "Planned remote MCP server exposing 4 read-only tools (graph/lake/variant/schema) over HTTPS+JWT, reusing OLS Cognito. In-process read-only guards. networkMode PUBLIC.",
+      "configuration": {
+        "auth": "Cognito M2M CUSTOM_JWT (reused from OLS)",
+        "network_mode": "PUBLIC",
+        "status": "design/planned"
+      }
+    },
+    {
+      "id": "C005",
+      "name": "AWS-managed Web Search (AgentCore Gateway)",
+      "type": "Serverless",
+      "service_provider": "AWS",
+      "specific_service": "Bedrock AgentCore Gateway",
+      "version": null,
+      "description": "L0-web tool: web_search calls the AWS-managed Web Search Tool via AgentCore Gateway (us-east-1) using an OAuth client-credentials token. Returns untrusted web content into the LLM context.",
+      "configuration": null
+    },
+    {
+      "id": "C006",
+      "name": "Cognito User Pool (M2M auth)",
+      "type": "Security",
+      "service_provider": "AWS",
+      "specific_service": "Amazon Cognito",
+      "version": null,
+      "description": "Machine-to-machine OAuth2 client_credentials pool (shared with OLS). Issues short-lived JWTs validated by the CUSTOM_JWT authorizer. Single shared app-client; no per-user identity.",
+      "configuration": null
+    },
+    {
+      "id": "C007",
+      "name": "SSM Parameter Store",
+      "type": "Security",
+      "service_provider": "AWS",
+      "specific_service": "AWS Systems Manager Parameter Store",
+      "version": null,
+      "description": "Holds OLS/data MCP config + Cognito client_id/secret and KB id. Secret stored as plaintext String (not SecureString) per current-state design.",
+      "configuration": null
+    },
+    {
+      "id": "C008",
+      "name": "Dataset Onboarding UI (Streamlit)",
+      "type": "Compute",
+      "service_provider": "On-Premise",
+      "specific_service": "Streamlit (operator workstation)",
+      "version": null,
+      "description": "5-stage onboarding UI (discover->align->plan->execute->wire). Human-in-the-loop review of LLM-curated mappings and transform specs before apply.",
+      "configuration": null
+    },
+    {
+      "id": "C009",
+      "name": "Onboarding Curation Agent (orchestration)",
+      "type": "Compute",
+      "service_provider": "AWS",
+      "specific_service": "orchestration/agent.py + llm.py (Bedrock Converse)",
+      "version": null,
+      "description": "LLM-backed: curate_mapping (columns->hub constructs), generate_transform_spec (declarative), nl_answer, and guarded text-to-SQL (answer_question/answer_hub: SELECT-only + write-keyword reject + table allowlist + LIMIT). Ingests untrusted RODA samples.",
+      "configuration": null
+    },
+    {
+      "id": "C010",
+      "name": "AgentCore Code Interpreter sandbox",
+      "type": "Serverless",
+      "service_provider": "AWS",
+      "specific_service": "Bedrock AgentCore Code Interpreter",
+      "version": null,
+      "description": "Runs the FIXED dynamic.py ETL harness (LLM supplies only a validated declarative spec, not code). Scoped role agentcore-onboarding-ci-role. networkMode PUBLIC. Reads arbitrary public RODA S3, writes additive *_staging Parquet + Glue tables.",
+      "configuration": {
+        "role": "agentcore-onboarding-ci-role",
+        "network_mode": "PUBLIC"
+      }
+    },
+    {
+      "id": "C011",
+      "name": "RODA MCP client (uvx subprocess)",
+      "type": "Other",
+      "service_provider": "Other",
+      "specific_service": "awslabs.roda-mcp-server via uvx stdio",
+      "version": null,
+      "description": "Live discovery client spawned as a uvx subprocess; searches the AWS Registry of Open Data (search_datasets/preview_dataset/sample_dataset). Returns untrusted third-party dataset metadata/content.",
+      "configuration": null
+    },
+    {
+      "id": "C012",
+      "name": "Athena query engine",
+      "type": "Analytics",
+      "service_provider": "AWS",
+      "specific_service": "Amazon Athena",
+      "version": null,
+      "description": "Executes read-only SQL (SELECT/WITH/SHOW/DESCRIBE/EXPLAIN) against the Lake Formation-governed lake databases; results to an S3 athena-results prefix.",
+      "configuration": null
+    },
+    {
+      "id": "C013",
+      "name": "Glue Data Catalog + Lake Formation",
+      "type": "Security",
+      "service_provider": "AWS",
+      "specific_service": "AWS Glue Data Catalog + Lake Formation",
+      "version": null,
+      "description": "Table metadata + fine-grained governance. Runtime role granted DESCRIBE/SELECT via best-effort Lake Formation grants at deploy time.",
+      "configuration": null
+    },
+    {
+      "id": "C014",
+      "name": "Observability (CloudWatch/X-Ray)",
+      "type": "Analytics",
+      "service_provider": "AWS",
+      "specific_service": "CloudWatch + X-Ray (OTel)",
+      "version": null,
+      "description": "OpenTelemetry traces/spans, EMF/PutMetricData grounding metrics, agent logs. Prompts and answers may appear in traces/logs.",
+      "configuration": null
+    }
+  ],
+  "connections": [
+    {
+      "id": "CN001",
+      "source_id": "C001",
+      "destination_id": "C002",
+      "protocol": "HTTPS",
+      "port": null,
+      "encryption": true,
+      "description": "Agent invokes Claude Sonnet 4.5 (streaming) for reasoning + tool selection."
+    },
+    {
+      "id": "CN002",
+      "source_id": "C001",
+      "destination_id": "C012",
+      "protocol": "HTTPS",
+      "port": null,
+      "encryption": true,
+      "description": "query_patient_data / query_variant_annotation / query_primekg -> Athena (SQL passes require_select guard)."
+    },
+    {
+      "id": "CN003",
+      "source_id": "C012",
+      "destination_id": "D002",
+      "protocol": "HTTPS",
+      "port": null,
+      "encryption": true,
+      "description": "Athena reads TCGA patient lake (Lake Formation governed)."
+    },
+    {
+      "id": "CN004",
+      "source_id": "C012",
+      "destination_id": "D003",
+      "protocol": "HTTPS",
+      "port": null,
+      "encryption": true,
+      "description": "Athena reads RODA/staging DB."
+    },
+    {
+      "id": "CN005",
+      "source_id": "C012",
+      "destination_id": "D004",
+      "protocol": "HTTPS",
+      "port": null,
+      "encryption": true,
+      "description": "Athena reads raw flat PrimeKG (L2)."
+    },
+    {
+      "id": "CN006",
+      "source_id": "C012",
+      "destination_id": "D007",
+      "protocol": "HTTPS",
+      "port": null,
+      "encryption": true,
+      "description": "Athena writes query results to the athena-results S3 prefix."
+    },
+    {
+      "id": "CN007",
+      "source_id": "C001",
+      "destination_id": "D001",
+      "protocol": "HTTPS",
+      "port": null,
+      "encryption": true,
+      "description": "query_knowledge_graph -> Neptune openCypher (read; passes reject_mutations guard)."
+    },
+    {
+      "id": "CN008",
+      "source_id": "C001",
+      "destination_id": "D005",
+      "protocol": "HTTPS",
+      "port": null,
+      "encryption": true,
+      "description": "knowledge_search -> Bedrock Knowledge Base retrieve; passages returned into LLM context."
+    },
+    {
+      "id": "CN009",
+      "source_id": "C001",
+      "destination_id": "C007",
+      "protocol": "HTTPS",
+      "port": null,
+      "encryption": true,
+      "description": "Agent reads SSM params (OLS/KB config + Cognito client_id/secret)."
+    },
+    {
+      "id": "CN010",
+      "source_id": "C001",
+      "destination_id": "C006",
+      "protocol": "HTTPS",
+      "port": null,
+      "encryption": true,
+      "description": "Agent mints a Cognito M2M JWT (client_credentials) to call the OLS MCP server."
+    },
+    {
+      "id": "CN011",
+      "source_id": "C001",
+      "destination_id": "C003",
+      "protocol": "HTTPS",
+      "port": null,
+      "encryption": true,
+      "description": "ontology_lookup -> OLS MCP server (streamable-http, Bearer JWT); returns external content into LLM context."
+    },
+    {
+      "id": "CN012",
+      "source_id": "C001",
+      "destination_id": "C005",
+      "protocol": "HTTPS",
+      "port": null,
+      "encryption": true,
+      "description": "web_search -> AWS-managed Web Search via AgentCore Gateway (L0-web); untrusted web content into LLM context."
+    },
+    {
+      "id": "CN013",
+      "source_id": "C001",
+      "destination_id": "C013",
+      "protocol": "HTTPS",
+      "port": null,
+      "encryption": true,
+      "description": "get_hub_schema live introspection: Glue GetDatabases/GetTables + Neptune GetGraphSummary."
+    },
+    {
+      "id": "CN014",
+      "source_id": "C001",
+      "destination_id": "C014",
+      "protocol": "HTTPS",
+      "port": null,
+      "encryption": true,
+      "description": "OTel traces/spans + EMF/PutMetricData grounding metrics; prompts/answers may appear in logs/traces."
+    },
+    {
+      "id": "CN015",
+      "source_id": "C003",
+      "destination_id": "C006",
+      "protocol": "HTTPS",
+      "port": null,
+      "encryption": true,
+      "description": "OLS MCP server validates the inbound JWT against the Cognito issuer (CUSTOM_JWT authorizer)."
+    },
+    {
+      "id": "CN016",
+      "source_id": "C004",
+      "destination_id": "D001",
+      "protocol": "HTTPS",
+      "port": null,
+      "encryption": true,
+      "description": "Planned data MCP server: query_knowledge_graph -> Neptune (read-only guarded)."
+    },
+    {
+      "id": "CN017",
+      "source_id": "C004",
+      "destination_id": "C012",
+      "protocol": "HTTPS",
+      "port": null,
+      "encryption": true,
+      "description": "Planned data MCP server: query_patient_data/variant -> Athena (read-only guarded)."
+    },
+    {
+      "id": "CN018",
+      "source_id": "C008",
+      "destination_id": "C009",
+      "protocol": "HTTPS",
+      "port": null,
+      "encryption": true,
+      "description": "Streamlit UI drives the onboarding curation agent through the 5 stages (HITL review)."
+    },
+    {
+      "id": "CN019",
+      "source_id": "C009",
+      "destination_id": "C002",
+      "protocol": "HTTPS",
+      "port": null,
+      "encryption": true,
+      "description": "Curation agent calls Bedrock Converse for mapping, transform-spec generation, NL answers, text-to-SQL."
+    },
+    {
+      "id": "CN020",
+      "source_id": "C009",
+      "destination_id": "C011",
+      "protocol": "Other",
+      "port": null,
+      "encryption": false,
+      "description": "Onboarding discovery via the live RODA MCP client (uvx stdio subprocess)."
+    },
+    {
+      "id": "CN021",
+      "source_id": "C011",
+      "destination_id": "D006",
+      "protocol": "HTTPS",
+      "port": null,
+      "encryption": true,
+      "description": "RODA MCP client searches/previews/samples third-party public open-data S3 buckets (anonymous)."
+    },
+    {
+      "id": "CN022",
+      "source_id": "C009",
+      "destination_id": "C010",
+      "protocol": "HTTPS",
+      "port": null,
+      "encryption": true,
+      "description": "Curation agent invokes the Code Interpreter sandbox to run the fixed ETL harness (executeCode)."
+    },
+    {
+      "id": "CN023",
+      "source_id": "C010",
+      "destination_id": "D006",
+      "protocol": "HTTPS",
+      "port": null,
+      "encryption": true,
+      "description": "ETL sandbox reads source data from arbitrary public RODA S3 buckets (UNSIGNED/anonymous)."
+    },
+    {
+      "id": "CN024",
+      "source_id": "C010",
+      "destination_id": "D003",
+      "protocol": "HTTPS",
+      "port": null,
+      "encryption": true,
+      "description": "ETL sandbox writes additive *_staging Parquet to S3 and registers Glue tables (additive only)."
+    },
+    {
+      "id": "CN025",
+      "source_id": "C010",
+      "destination_id": "C013",
+      "protocol": "HTTPS",
+      "port": null,
+      "encryption": true,
+      "description": "ETL sandbox creates/replaces Glue tables for the new staging dataset."
+    },
+    {
+      "id": "CN026",
+      "source_id": "C009",
+      "destination_id": "C012",
+      "protocol": "HTTPS",
+      "port": null,
+      "encryption": true,
+      "description": "Onboarding text-to-SQL (answer_question/answer_hub) runs generated SELECTs against staging via Athena."
+    },
+    {
+      "id": "CN027",
+      "source_id": "C009",
+      "destination_id": "C001",
+      "protocol": "HTTPS",
+      "port": null,
+      "encryption": true,
+      "description": "onboard_runner.ask_l3 invokes the live deployed L3 agent runtime to answer over the augmented hub."
+    }
+  ],
+  "dataStores": [
+    {
+      "id": "D001",
+      "name": "Neptune Analytics knowledge graph",
+      "type": "Graph",
+      "classification": "Public",
+      "encryption_at_rest": true,
+      "backup_frequency": "None",
+      "description": "Neptune Analytics graph: PrimeKG relationships + TCGA case/sample nodes (clinical properties). Read via openCypher. BYOD could load enterprise KG."
+    },
+    {
+      "id": "D002",
+      "name": "TCGA patient data lake (S3/Athena oncology_semantic_hub)",
+      "type": "Object Storage",
+      "classification": "Public",
+      "encryption_at_rest": true,
+      "backup_frequency": "None",
+      "description": "TCGA patient data lake (Parquet on S3, database oncology_semantic_hub): tcga_mutations/expression/copy-number. Lake Formation governed. BYOD may hold PHI."
+    },
+    {
+      "id": "D003",
+      "name": "RODA/staging DB (S3/Athena oncology_semantic_hub_roda)",
+      "type": "Object Storage",
+      "classification": "Public",
+      "encryption_at_rest": true,
+      "backup_frequency": "None",
+      "description": "RODA variant-annotation + onboarded additive *_staging tables (database oncology_semantic_hub_roda) on S3. Written by the onboarding ETL sandbox."
+    },
+    {
+      "id": "D004",
+      "name": "Raw flat PrimeKG DB (S3/Athena oncology_semantic_hub_raw)",
+      "type": "Object Storage",
+      "classification": "Public",
+      "encryption_at_rest": true,
+      "backup_frequency": "None",
+      "description": "Flat PrimeKG for the L2 baseline (database oncology_semantic_hub_raw) on S3."
+    },
+    {
+      "id": "D005",
+      "name": "Bedrock Knowledge Base vector store",
+      "type": "Other",
+      "classification": "Public",
+      "encryption_at_rest": true,
+      "backup_frequency": "None",
+      "description": "Bedrock Knowledge Base vector store over PubMed abstracts + TCGA study descriptions. Passages retrieved into LLM context (knowledge_search)."
+    },
+    {
+      "id": "D006",
+      "name": "External RODA public S3 buckets",
+      "type": "Object Storage",
+      "classification": "Public",
+      "encryption_at_rest": true,
+      "backup_frequency": "None",
+      "description": "Third-party public S3 buckets on the AWS Registry of Open Data (e.g. civic-aws-opendata, genoxus-annotation-release) read anonymously (UNSIGNED) by the ETL sandbox. Untrusted external source."
+    },
+    {
+      "id": "D007",
+      "name": "Athena query-results S3 prefix",
+      "type": "Object Storage",
+      "classification": "Internal",
+      "encryption_at_rest": true,
+      "backup_frequency": "None",
+      "description": "S3 athena-results/ prefix holding query outputs (read/write by the runtime role)."
+    }
+  ],
+  "threatActors": [
+    {
+      "id": "TA001",
+      "type": "Insider Threat",
+      "name": "Insider",
+      "sophistication_tier": "Tier 2 - Hacktivist / campaign-driven",
+      "motivations": [
+        "Financial gain",
+        "Revenge / grievance"
+      ],
+      "resources": "Individual",
+      "description": "Deployer/operator/data-engineer with legitimate broad AWS access to Bedrock/Neptune/Athena/Glue/SSM and the onboarding pipeline.",
+      "priority": 6,
+      "is_relevant": true,
+      "reviewed": true,
+      "relationship_to_target": "Internal",
+      "state_nexus": "None",
+      "targeting_specificity": "Targeted"
+    },
+    {
+      "id": "TA002",
+      "type": "External Attacker",
+      "name": "External Attacker",
+      "sophistication_tier": "Tier 1 - Opportunistic / script kiddie",
+      "motivations": [
+        "Financial gain"
+      ],
+      "resources": "Club / small group",
+      "description": "External individual/group reaching the PUBLIC AgentCore endpoints; primary conventional external threat given networkMode PUBLIC + shared M2M auth.",
+      "priority": 3,
+      "is_relevant": true,
+      "reviewed": true,
+      "relationship_to_target": "External",
+      "state_nexus": "None",
+      "targeting_specificity": "Opportunistic"
+    },
+    {
+      "id": "TA003",
+      "type": "Nation-State / APT",
+      "name": "Nation-state Actor",
+      "sophistication_tier": "Tier 5 - Nation-state APT / elite",
+      "motivations": [
+        "Espionage / intelligence collection"
+      ],
+      "resources": "Government",
+      "description": "Genomics/health research can draw state espionage interest, but low likelihood against the public-data demo; relevant mainly for BYOD production.",
+      "priority": 0,
+      "is_relevant": true,
+      "reviewed": true,
+      "relationship_to_target": "External",
+      "state_nexus": "State-executed",
+      "targeting_specificity": "Targeted"
+    },
+    {
+      "id": "TA004",
+      "type": "Hacktivist",
+      "name": "Hacktivist",
+      "sophistication_tier": "Tier 2 - Hacktivist / campaign-driven",
+      "motivations": [
+        "Ideological / hacktivism"
+      ],
+      "resources": "Contest / crowd",
+      "description": "Healthcare is a sector-focused hacktivist target; could aim to discredit or deface a research tool.",
+      "priority": 9,
+      "is_relevant": true,
+      "reviewed": true,
+      "relationship_to_target": "External",
+      "state_nexus": "None",
+      "targeting_specificity": "Sector-focused"
+    },
+    {
+      "id": "TA005",
+      "type": "Financially Motivated Cybercriminal / Organized Crime",
+      "name": "Organized Crime",
+      "sophistication_tier": "Tier 3 - Organized cybercrime",
+      "motivations": [
+        "Financial gain"
+      ],
+      "resources": "Organization",
+      "description": "Financially motivated; low value against public TCGA, but material for BYOD/PHI production deployments (exfiltration/ransomware of a patient cohort).",
+      "priority": 8,
+      "is_relevant": true,
+      "reviewed": true,
+      "relationship_to_target": "External",
+      "state_nexus": "None",
+      "targeting_specificity": "Opportunistic"
+    },
+    {
+      "id": "TA006",
+      "type": "Competitor / Corporate Espionage",
+      "name": "Competitor",
+      "sophistication_tier": "Tier 3 - Organized cybercrime",
+      "motivations": [
+        "Competitive advantage",
+        "Espionage / intelligence collection"
+      ],
+      "resources": "Organization",
+      "description": "Low: data is public and the value proposition is a methodology; limited IP to steal in the shipped demo.",
+      "priority": 0,
+      "is_relevant": true,
+      "reviewed": true,
+      "relationship_to_target": "External",
+      "state_nexus": "None",
+      "targeting_specificity": "Targeted"
+    },
+    {
+      "id": "TA007",
+      "type": "Script Kiddie / Novice",
+      "name": "Script Kiddie",
+      "sophistication_tier": "Tier 1 - Opportunistic / script kiddie",
+      "motivations": [
+        "Thrill-seeking / notoriety"
+      ],
+      "resources": "Individual",
+      "description": "Opportunistic scanning of the internet-exposed AgentCore endpoints; low sophistication but relevant due to PUBLIC exposure.",
+      "priority": 7,
+      "is_relevant": true,
+      "reviewed": true,
+      "relationship_to_target": "External",
+      "state_nexus": "None",
+      "targeting_specificity": "Opportunistic"
+    },
+    {
+      "id": "TA008",
+      "type": "Disgruntled Employee",
+      "name": "Disgruntled Employee",
+      "sophistication_tier": "Tier 1 - Opportunistic / script kiddie",
+      "motivations": [
+        "Revenge / grievance"
+      ],
+      "resources": "Individual",
+      "description": "Former deployer/operator retaining knowledge of the shared M2M secret / SSM params or role access.",
+      "priority": 10,
+      "is_relevant": true,
+      "reviewed": true,
+      "relationship_to_target": "Internal",
+      "state_nexus": "None",
+      "targeting_specificity": "Targeted"
+    },
+    {
+      "id": "TA009",
+      "type": "Privileged User",
+      "name": "Privileged User",
+      "sophistication_tier": "Tier 2 - Hacktivist / campaign-driven",
+      "motivations": [
+        "Financial gain"
+      ],
+      "resources": "Individual",
+      "description": "The single elevated IAM execution role (Resource:*) and deployer credentials; abuse or error has broad blast radius with no per-user scoping.",
+      "priority": 5,
+      "is_relevant": true,
+      "reviewed": true,
+      "relationship_to_target": "Internal",
+      "state_nexus": "None",
+      "targeting_specificity": "Targeted"
+    },
+    {
+      "id": "TA010",
+      "type": "Third Party",
+      "name": "Third Party",
+      "sophistication_tier": "Tier 2 - Hacktivist / campaign-driven",
+      "motivations": [
+        "Financial gain"
+      ],
+      "resources": "Organization",
+      "description": "Supply-chain / third-party surface: unpinned deps, uvx-spawned awslabs.roda-mcp-server, external OLS/web-search/RODA services whose content and availability the agents depend on.",
+      "priority": 4,
+      "is_relevant": true,
+      "reviewed": true,
+      "relationship_to_target": "Partner / third-party",
+      "state_nexus": "None",
+      "targeting_specificity": "Opportunistic"
+    },
+    {
+      "id": "TA011",
+      "type": "Terrorist Organization",
+      "name": "Terrorist Organization",
+      "sophistication_tier": "Tier 2 - Hacktivist / campaign-driven",
+      "motivations": [
+        "Ideological / hacktivism",
+        "Disruption / destruction"
+      ],
+      "resources": "Club / small group",
+      "description": "Not relevant: no critical-infrastructure or destructive target profile for a public-data research accelerator.",
+      "priority": 0,
+      "is_relevant": false,
+      "reviewed": true,
+      "relationship_to_target": "External",
+      "state_nexus": "None",
+      "targeting_specificity": "Sector-focused"
+    },
+    {
+      "id": "TA012",
+      "type": "Private Sector Offensive Actor / Cyber Mercenary",
+      "name": "Private Sector Offensive Actor",
+      "sophistication_tier": "Tier 4 - State-nexus / advanced",
+      "motivations": [
+        "Financial gain"
+      ],
+      "resources": "Organization",
+      "description": "Not relevant to the shipped public-data demo; mercenary zero-day operations are disproportionate to the target value.",
+      "priority": 0,
+      "is_relevant": false,
+      "reviewed": true,
+      "relationship_to_target": "External",
+      "state_nexus": "State-aligned",
+      "targeting_specificity": "Targeted"
+    },
+    {
+      "id": "TA013",
+      "type": "Third Party",
+      "name": "Adversarial open-data / content author (indirect prompt injection)",
+      "sophistication_tier": "Tier 3 - Organized cybercrime",
+      "motivations": [
+        "Disruption / destruction",
+        "Ideological / hacktivism"
+      ],
+      "resources": "Organization",
+      "description": "An actor who plants indirect prompt-injection payloads or poisoned/misleading records in content the agents ingest: AWS Registry of Open Data datasets (discovered/sampled by the onboarding agent), the PubMed/TCGA Knowledge Base corpus, web-search results, or OLS responses. Goal: manipulate the LLM to fabricate oncology findings/citations, exfiltrate data, misroute tool calls, or steer the onboarding curation/text-to-SQL. Distinctive top actor for this agentic system.",
+      "priority": 1,
+      "is_relevant": true,
+      "reviewed": true,
+      "relationship_to_target": "Partner / third-party",
+      "state_nexus": "None",
+      "targeting_specificity": "Sector-focused"
+    },
+    {
+      "id": "TA014",
+      "type": "External Attacker",
+      "name": "Malicious hub user (prompt injection / jailbreak / tool abuse)",
+      "sophistication_tier": "Tier 2 - Hacktivist / campaign-driven",
+      "motivations": [
+        "Thrill-seeking / notoriety",
+        "Espionage / intelligence collection"
+      ],
+      "resources": "Individual",
+      "description": "A user (authenticated researcher or, given PUBLIC endpoints, an anonymous internet actor) who crafts adversarial prompts to jailbreak the agent, exfiltrate data beyond entitlement, abuse the query tools (resource-exhaustion Cypher/SQL, attempts to bypass the read-only guards), or coerce confident fabricated medical claims that undermine the faithfulness guarantee.",
+      "priority": 2,
+      "is_relevant": true,
+      "reviewed": true,
+      "relationship_to_target": "External",
+      "state_nexus": "None",
+      "targeting_specificity": "Targeted"
+    }
+  ],
+  "trustZones": [
+    {
+      "id": "TZ001",
+      "name": "External / Untrusted (internet, third-party content & services)",
+      "trust_level": "Untrusted",
+      "contained_nodes": [
+        "C003",
+        "C005",
+        "C011",
+        "D006"
+      ],
+      "description": "Internet-facing untrusted zone: anonymous/authenticated external clients reaching the PUBLIC AgentCore endpoints, plus third-party content/services whose output is treated as untrusted (OLS MCP, AWS web search, RODA MCP client, external RODA public S3 buckets)."
+    },
+    {
+      "id": "TZ002",
+      "name": "Agent / LLM Execution (AgentCore Runtime)",
+      "trust_level": "Low",
+      "contained_nodes": [
+        "C001",
+        "C002",
+        "C004",
+        "C009",
+        "C010"
+      ],
+      "description": "The LLM/agent execution zone on Bedrock AgentCore: the semantic hub agent, the Bedrock model, the planned data MCP server, the onboarding curation agent, and the Code Interpreter ETL sandbox. Low trust because it processes untrusted prompts and untrusted tool/data outputs and its decisions must not be implicitly trusted."
+    },
+    {
+      "id": "TZ003",
+      "name": "Operator / Deployment",
+      "trust_level": "Medium",
+      "contained_nodes": [
+        "C008"
+      ],
+      "description": "Operator/deployer workstation running the Streamlit onboarding UI and deploy scripts; holds elevated AWS credentials and performs human-in-the-loop approvals."
+    },
+    {
+      "id": "TZ004",
+      "name": "Identity & Secrets",
+      "trust_level": "Medium",
+      "contained_nodes": [
+        "C006",
+        "C007"
+      ],
+      "description": "Identity and secrets services: Cognito M2M user pool and SSM Parameter Store (holds the shared client secret + config)."
+    },
+    {
+      "id": "TZ005",
+      "name": "Governed Data Plane (AWS account)",
+      "trust_level": "High",
+      "contained_nodes": [
+        "C012",
+        "C013",
+        "C014",
+        "D001",
+        "D002",
+        "D003",
+        "D004",
+        "D005",
+        "D007"
+      ],
+      "description": "Governed AWS data plane inside the account: Athena, Glue Data Catalog + Lake Formation, Neptune Analytics graph, S3 lake databases (TCGA/RODA/raw/results), Bedrock Knowledge Base, and observability. Highest trust; protected by IAM + Lake Formation + read-only guards."
+    }
+  ],
+  "crossingPoints": [
+    {
+      "id": "CP001",
+      "source_zone_id": "TZ001",
+      "destination_zone_id": "TZ002",
+      "connection_ids": [
+        "CN011",
+        "CN012"
+      ],
+      "authentication_method": "Token",
+      "authorization_method": "Rule-based",
+      "description": "Inbound to the PUBLIC AgentCore agent/MCP endpoints and outbound agent->OLS/web-search. Cognito M2M JWT validated by CUSTOM_JWT authorizer (allowedClients). Untrusted external content crosses into the LLM context here (prompt-injection surface)."
+    },
+    {
+      "id": "CP002",
+      "source_zone_id": "TZ002",
+      "destination_zone_id": "TZ001",
+      "connection_ids": [
+        "CN020",
+        "CN023"
+      ],
+      "authentication_method": "None",
+      "authorization_method": "None",
+      "description": "Agent/onboarding + Code Interpreter sandbox read third-party open data from RODA public S3 anonymously (UNSIGNED). No auth; content fully untrusted and flows into LLM curation and the ETL sandbox."
+    },
+    {
+      "id": "CP003",
+      "source_zone_id": "TZ002",
+      "destination_zone_id": "TZ005",
+      "connection_ids": [
+        "CN002",
+        "CN007",
+        "CN008",
+        "CN013",
+        "CN014",
+        "CN016",
+        "CN017",
+        "CN024",
+        "CN025",
+        "CN026"
+      ],
+      "authentication_method": "IAM Role",
+      "authorization_method": "Policy-based",
+      "description": "Agent/MCP/sandbox -> governed data plane (Neptune, Athena, Glue/LF, KB, S3, observability). Enforced by the single IAM execution role (Resource:*), Lake Formation grants, and in-process read-only guards (reject_mutations / require_select) + onboarding text-to-SQL guard. Critical control boundary."
+    },
+    {
+      "id": "CP004",
+      "source_zone_id": "TZ002",
+      "destination_zone_id": "TZ004",
+      "connection_ids": [
+        "CN009",
+        "CN010"
+      ],
+      "authentication_method": "IAM Role",
+      "authorization_method": "Policy-based",
+      "description": "Agent -> Identity & Secrets: SSM GetParameter for OLS/KB config + Cognito client_id/secret (secret stored as plaintext String), and Cognito token minting."
+    },
+    {
+      "id": "CP005",
+      "source_zone_id": "TZ003",
+      "destination_zone_id": "TZ002",
+      "connection_ids": [
+        "CN018"
+      ],
+      "authentication_method": "IAM Role",
+      "authorization_method": "Discretionary",
+      "description": "Operator workstation drives the onboarding curation agent (HITL approvals) and deploys runtimes; broad AWS credentials."
+    },
+    {
+      "id": "CP006",
+      "source_zone_id": "TZ001",
+      "destination_zone_id": "TZ004",
+      "connection_ids": [
+        "CN015"
+      ],
+      "authentication_method": "Token",
+      "authorization_method": "Rule-based",
+      "description": "OLS MCP server validates the inbound Cognito M2M JWT against the shared user pool (CUSTOM_JWT authorizer). Auth depends entirely on the shared client secret."
+    }
+  ],
+  "trustBoundaries": [
+    {
+      "id": "TB001",
+      "name": "Internet / Untrusted-Content Boundary",
+      "type": "Network",
+      "crossing_points": [
+        "CP001",
+        "CP002",
+        "CP006"
+      ],
+      "controls": [
+        "Cognito M2M CUSTOM_JWT authorizer (allowedClients)",
+        "HTTPS/TLS",
+        "networkMode PUBLIC (AWS recommends VPC per BedrockAgentCore.1)",
+        "System-prompt provenance/citation discipline",
+        "No dedicated prompt-injection / content-sanitization filter on tool outputs"
+      ],
+      "description": "Network + content boundary between the internet/third-party content and the agent/LLM zone. Governs inbound API access (JWT) and the flow of untrusted external content (OLS, web search, RODA open data) into the LLM context and ETL sandbox."
+    },
+    {
+      "id": "TB002",
+      "name": "Agent-to-Data-Plane Boundary",
+      "type": "Account",
+      "crossing_points": [
+        "CP003"
+      ],
+      "controls": [
+        "Single IAM execution role (Resource:*)",
+        "Lake Formation grants (DESCRIBE/SELECT)",
+        "In-process read-only guards: reject_mutations (Cypher), require_select (SQL)",
+        "Onboarding text-to-SQL guard (SELECT-only, write-keyword reject, table allowlist, LIMIT)",
+        "Additive *_staging writes only; prod tables untouched",
+        "Encryption in transit (HTTPS) + at rest"
+      ],
+      "description": "The critical control boundary between the low-trust agent zone and the governed data plane. Read-only enforcement, IAM, and Lake Formation are the primary defenses against excessive agency and data exfiltration. No per-user data scoping (single role)."
+    },
+    {
+      "id": "TB003",
+      "name": "Identity & Secrets Boundary",
+      "type": "Account",
+      "crossing_points": [
+        "CP004"
+      ],
+      "controls": [
+        "IAM execution role",
+        "SSM parameter access",
+        "Client secret stored as plaintext String (not SecureString)",
+        "Broad ssm:GetParameter"
+      ],
+      "description": "Boundary to identity/secrets. Weakness: the shared Cognito M2M secret is stored in SSM as plaintext; anyone with ssm:GetParameter can mint valid tokens (per per-user-auth-design.md)."
+    },
+    {
+      "id": "TB004",
+      "name": "Operator / Onboarding-Autonomy Boundary",
+      "type": "Process",
+      "crossing_points": [
+        "CP005"
+      ],
+      "controls": [
+        "Operator AWS credentials / IAM Role",
+        "Human-in-the-loop review of LLM-curated mappings and transform specs",
+        "Fixed dynamic.py ETL harness (validates declarative spec; no LLM-authored AWS I/O)",
+        "Code Interpreter sandbox isolation (networkMode PUBLIC; AWS recommends private)"
+      ],
+      "description": "Process/account boundary between the operator zone and the agentic onboarding pipeline. HITL approval and the fixed harness bound the onboarding agent's autonomy; sandbox isolation contains ETL execution."
+    }
+  ],
+  "assets": [
+    {
+      "id": "A009",
+      "name": "TCGA patient cohort data",
+      "type": "Data",
+      "classification": "Public",
+      "lifecycle_state": "Active",
+      "data_states": [
+        "At rest",
+        "In transit",
+        "In use"
+      ],
+      "description": "De-identified public TCGA mutations/expression/CNA queried read-only from the lake. Integrity/availability matter more than confidentiality for the demo; confidentiality escalates under BYOD.",
+      "owner": "Hub data plane",
+      "criticality": 3,
+      "metadata": {}
+    },
+    {
+      "id": "A010",
+      "name": "Neptune knowledge-graph facts",
+      "type": "Data",
+      "classification": "Public",
+      "lifecycle_state": "Active",
+      "data_states": [
+        "At rest",
+        "In use"
+      ],
+      "description": "PrimeKG + TCGA case/sample knowledge graph facts returned by query_knowledge_graph. Integrity is central to grounded answers.",
+      "owner": "Hub data plane",
+      "criticality": 3,
+      "metadata": {}
+    },
+    {
+      "id": "A011",
+      "name": "Knowledge Base literature passages",
+      "type": "Data",
+      "classification": "Public",
+      "lifecycle_state": "Active",
+      "data_states": [
+        "At rest",
+        "In use"
+      ],
+      "description": "PubMed/TCGA literature passages retrieved from the Bedrock KB into the LLM context. If poisoned, drives fabricated citations.",
+      "owner": "Hub data plane",
+      "criticality": 2,
+      "metadata": {}
+    },
+    {
+      "id": "A012",
+      "name": "Cognito M2M client secret",
+      "type": "Credential",
+      "classification": "Restricted",
+      "lifecycle_state": "Active",
+      "data_states": [
+        "At rest",
+        "In transit",
+        "In use"
+      ],
+      "description": "Shared Cognito M2M OAuth client_id/secret in SSM (plaintext String). Disclosure lets any holder mint valid JWTs for the MCP endpoints.",
+      "owner": "Identity & Secrets",
+      "criticality": 5,
+      "metadata": {}
+    },
+    {
+      "id": "A013",
+      "name": "Cognito M2M access token (JWT)",
+      "type": "Token",
+      "classification": "Restricted",
+      "lifecycle_state": "Active",
+      "data_states": [
+        "In transit",
+        "In use"
+      ],
+      "description": "Short-lived Cognito M2M access token (Bearer JWT, ~60 min) presented to OLS/data MCP endpoints.",
+      "owner": "Identity & Secrets",
+      "criticality": 4,
+      "metadata": {}
+    },
+    {
+      "id": "A014",
+      "name": "Untrusted external content (RODA/web/OLS)",
+      "type": "Data",
+      "classification": "Public",
+      "lifecycle_state": "Active",
+      "data_states": [
+        "In transit",
+        "In use"
+      ],
+      "description": "Untrusted third-party content ingested into the LLM/ETL: RODA dataset schemas/samples/content, web-search results, OLS responses, KB passages. Primary indirect-prompt-injection / data-poisoning carrier.",
+      "owner": "External sources",
+      "criticality": 3,
+      "metadata": {}
+    },
+    {
+      "id": "A015",
+      "name": "Agent answer + provenance tags",
+      "type": "Data",
+      "classification": "Internal",
+      "lifecycle_state": "Active",
+      "data_states": [
+        "In transit",
+        "In use"
+      ],
+      "description": "Agent's natural-language answer with inline provenance tags and grounding/faithfulness metrics. Integrity (no fabricated citations) is the core value proposition.",
+      "owner": "Agent zone",
+      "criticality": 3,
+      "metadata": {}
+    },
+    {
+      "id": "A016",
+      "name": "User prompt + agent session state",
+      "type": "Session",
+      "classification": "Internal",
+      "lifecycle_state": "Active",
+      "data_states": [
+        "In transit",
+        "In use"
+      ],
+      "description": "User prompt and per-session Agent object held in the warm container's in-memory _SESSIONS dict (keyed by session_id).",
+      "owner": "Agent zone",
+      "criticality": 2,
+      "metadata": {}
+    },
+    {
+      "id": "A017",
+      "name": "BYOD customer PHI cohort (latent)",
+      "type": "Data",
+      "classification": "Restricted",
+      "lifecycle_state": "Quarantined",
+      "data_states": [
+        "At rest",
+        "In transit",
+        "In use"
+      ],
+      "description": "Latent: customer PHI cohort substituted for TCGA via the BYOD path. Not in the shipped demo; drives HIPAA obligations and elevates all confidentiality flows when present.",
+      "owner": "Customer (production)",
+      "criticality": 5,
+      "metadata": {}
+    }
+  ],
+  "flows": [
+    {
+      "id": "F001",
+      "asset_id": "A014",
+      "source_id": "D006",
+      "destination_id": "C010",
+      "transformation_type": "Processing",
+      "controls": [
+        "Encryption"
+      ],
+      "description": "Code Interpreter sandbox reads untrusted third-party open data from RODA public S3 anonymously; content is parsed and (samples) fed to the LLM. No authentication, no content trust.",
+      "protocol": "HTTPS",
+      "encryption": true,
+      "authenticated": false,
+      "authorized": false,
+      "validated": false,
+      "risk_level": 4
+    },
+    {
+      "id": "F002",
+      "asset_id": "A014",
+      "source_id": "C011",
+      "destination_id": "C009",
+      "transformation_type": "Processing",
+      "controls": [
+        "Rate Limiting"
+      ],
+      "description": "RODA MCP client returns dataset metadata/samples to the onboarding curation agent (LLM), which curates mappings and generates transform specs. Indirect prompt-injection carrier.",
+      "protocol": "stdio",
+      "encryption": false,
+      "authenticated": false,
+      "authorized": false,
+      "validated": false,
+      "risk_level": 4
+    },
+    {
+      "id": "F003",
+      "asset_id": "A014",
+      "source_id": "C003",
+      "destination_id": "C001",
+      "transformation_type": "Processing",
+      "controls": [
+        "Authentication",
+        "Encryption"
+      ],
+      "description": "OLS ontology-lookup responses and (L0-web) web-search results flow into the agent's LLM context. Bearer-JWT authenticated to the endpoint but the returned content is untrusted (injection surface).",
+      "protocol": "HTTPS",
+      "encryption": true,
+      "authenticated": true,
+      "authorized": true,
+      "validated": false,
+      "risk_level": 4
+    },
+    {
+      "id": "F004",
+      "asset_id": "A011",
+      "source_id": "D005",
+      "destination_id": "C001",
+      "transformation_type": "Processing",
+      "controls": [
+        "Access Control",
+        "Encryption"
+      ],
+      "description": "Bedrock KB literature passages retrieved into the LLM context (knowledge_search). Drives citations; poisoned corpus => fabricated PMIDs.",
+      "protocol": "HTTPS",
+      "encryption": true,
+      "authenticated": true,
+      "authorized": true,
+      "validated": false,
+      "risk_level": 3
+    },
+    {
+      "id": "F005",
+      "asset_id": "A009",
+      "source_id": "C012",
+      "destination_id": "C001",
+      "transformation_type": "Processing",
+      "controls": [
+        "Access Control",
+        "Authorization",
+        "Input Validation",
+        "Encryption"
+      ],
+      "description": "TCGA lake query results reach the agent via Athena. Protected by IAM, Lake Formation, and the require_select read-only guard.",
+      "protocol": "HTTPS",
+      "encryption": true,
+      "authenticated": true,
+      "authorized": true,
+      "validated": true,
+      "risk_level": 2
+    },
+    {
+      "id": "F006",
+      "asset_id": "A010",
+      "source_id": "D001",
+      "destination_id": "C001",
+      "transformation_type": "Processing",
+      "controls": [
+        "Access Control",
+        "Input Validation",
+        "Encryption"
+      ],
+      "description": "Neptune openCypher results to the agent; reject_mutations guard enforces read-only.",
+      "protocol": "HTTPS",
+      "encryption": true,
+      "authenticated": true,
+      "authorized": true,
+      "validated": true,
+      "risk_level": 2
+    },
+    {
+      "id": "F007",
+      "asset_id": "A012",
+      "source_id": "C007",
+      "destination_id": "C001",
+      "transformation_type": "Other",
+      "controls": [
+        "Access Control",
+        "Encryption"
+      ],
+      "description": "Agent reads the shared Cognito client secret from SSM (stored as plaintext String) to mint a JWT. Encrypted in transit but plaintext at rest; broad ssm:GetParameter.",
+      "protocol": "HTTPS",
+      "encryption": true,
+      "authenticated": true,
+      "authorized": true,
+      "validated": false,
+      "risk_level": 4
+    },
+    {
+      "id": "F008",
+      "asset_id": "A013",
+      "source_id": "C001",
+      "destination_id": "C003",
+      "transformation_type": "Verification",
+      "controls": [
+        "Authentication",
+        "Encryption"
+      ],
+      "description": "Agent presents the Bearer JWT to the OLS/data MCP endpoints; validated by the CUSTOM_JWT authorizer.",
+      "protocol": "HTTPS",
+      "encryption": true,
+      "authenticated": true,
+      "authorized": true,
+      "validated": true,
+      "risk_level": 3
+    },
+    {
+      "id": "F009",
+      "asset_id": "A014",
+      "source_id": "C010",
+      "destination_id": "D003",
+      "transformation_type": "Processing",
+      "controls": [
+        "Input Validation",
+        "Authorization",
+        "Integrity Check"
+      ],
+      "description": "Sandbox transforms untrusted source data per the validated declarative spec and writes an additive *_staging Parquet + Glue table (prod untouched). Fixed harness; row-conservation checks.",
+      "protocol": "HTTPS",
+      "encryption": true,
+      "authenticated": true,
+      "authorized": true,
+      "validated": true,
+      "risk_level": 3
+    },
+    {
+      "id": "F010",
+      "asset_id": "A015",
+      "source_id": "C001",
+      "destination_id": "C014",
+      "transformation_type": "Other",
+      "controls": [
+        "Audit Logging",
+        "Monitoring"
+      ],
+      "description": "Agent answers + prompts + provenance/grounding metrics flow to observability (OTel/CloudWatch/EMF). Prompts/answers may appear in traces/logs.",
+      "protocol": "HTTPS",
+      "encryption": true,
+      "authenticated": true,
+      "authorized": true,
+      "validated": false,
+      "risk_level": 2
+    },
+    {
+      "id": "F011",
+      "asset_id": "A017",
+      "source_id": "C012",
+      "destination_id": "C001",
+      "transformation_type": "Processing",
+      "controls": [
+        "Access Control",
+        "Authorization",
+        "Input Validation",
+        "Encryption"
+      ],
+      "description": "LATENT (BYOD production): customer PHI cohort results flow from the lake to the agent under a single shared IAM role with no per-user data scoping; confidentiality/HIPAA impact is high when this asset is present.",
+      "protocol": "HTTPS",
+      "encryption": true,
+      "authenticated": true,
+      "authorized": true,
+      "validated": true,
+      "risk_level": 5
+    }
+  ],
+  "residualRiskAssessments": [
+    {
+      "threat_id": "T001",
+      "decision": "Open",
+      "residual_severity": "High",
+      "residual_likelihood": "Likely",
+      "rationale": "No preventive control implemented (no Bedrock Guardrails, no content sanitization); only prompt instruction-following. Top agentic risk; must implement M001/M002 before production.",
+      "is_current": true
+    },
+    {
+      "threat_id": "T002",
+      "decision": "Accepted",
+      "residual_severity": "Medium",
+      "residual_likelihood": "Possible",
+      "rationale": "Citation-discipline prompt + provenance-faithfulness scorer detect fabricated grounding; data is public. Accept for the demo while adding corpus-integrity checks + fabricated-grounding alarms (M016) for production.",
+      "is_current": true
+    },
+    {
+      "threat_id": "T003",
+      "decision": "Open",
+      "residual_severity": "High",
+      "residual_likelihood": "Possible",
+      "rationale": "Secret stored as plaintext SSM String with Resource:* read; disclosure enables token minting. Fix with SecureString + ARN-scoped SSM (M003) - cheap, high value.",
+      "is_current": true
+    },
+    {
+      "threat_id": "T004",
+      "decision": "Open",
+      "residual_severity": "High",
+      "residual_likelihood": "Possible",
+      "rationale": "Single shared machine identity; no per-user auth. Acceptable only for a single-operator demo; must adopt per-user SSO (M004) before multi-tenant/production.",
+      "is_current": true
+    },
+    {
+      "threat_id": "T005",
+      "decision": "Open",
+      "residual_severity": "High",
+      "residual_likelihood": "Possible",
+      "rationale": "Agent runtime is IAM-SigV4 gated (reduces from Critical) but networkMode is PUBLIC and there is no deploy-time authorizer preflight for the MCP path. Enforce authorizer + VPC (M005) and add WAF (M019).",
+      "is_current": true
+    },
+    {
+      "threat_id": "T006",
+      "decision": "Open",
+      "residual_severity": "High",
+      "residual_likelihood": "Likely",
+      "rationale": "Single IAM role, no per-user data scoping; any authorized caller can reach all data the role can. High for demo, Critical under BYOD. Requires M006.",
+      "is_current": true
+    },
+    {
+      "threat_id": "T007",
+      "decision": "Accepted",
+      "residual_severity": "Low",
+      "residual_likelihood": "Unlikely",
+      "rationale": "Read-only guards are implemented and unit-tested, and IAM grants no write actions (backstop). Residual bypass risk is low for read-only public data; add explicit IAM write-Deny (M007) as hardening.",
+      "is_current": true
+    },
+    {
+      "threat_id": "T008",
+      "decision": "Accepted",
+      "residual_severity": "Medium",
+      "residual_likelihood": "Unlikely",
+      "rationale": "Onboarding text-to-SQL is guarded (SELECT-only, write-keyword reject, table allowlist, LIMIT) and confined to the RODA staging DB over public data. Accept for demo; consolidate onto hub_core.guards (M008).",
+      "is_current": true
+    },
+    {
+      "threat_id": "T009",
+      "decision": "Accepted",
+      "residual_severity": "Medium",
+      "residual_likelihood": "Unlikely",
+      "rationale": "Strong containment: fixed harness + validate_spec (no LLM-authored AWS I/O), additive staging only, HITL review. Residual is limited to poisoned staging content; harden sandbox network (M009) for production.",
+      "is_current": true
+    },
+    {
+      "threat_id": "T010",
+      "decision": "Open",
+      "residual_severity": "Medium",
+      "residual_likelihood": "Likely",
+      "rationale": "No Athena scan cutoff or Neptune complexity/timeout cap; unbounded queries can drive cost/latency. Implement M010 + edge throttling (M019).",
+      "is_current": true
+    },
+    {
+      "threat_id": "T011",
+      "decision": "Open",
+      "residual_severity": "Medium",
+      "residual_likelihood": "Possible",
+      "rationale": "No agent iteration/tool-call/spend cap; adversarial prompts or injection can drive denial-of-wallet. Implement M011 + cost alarms.",
+      "is_current": true
+    },
+    {
+      "threat_id": "T012",
+      "decision": "Accepted",
+      "residual_severity": "Low",
+      "residual_likelihood": "Unlikely",
+      "rationale": "Sessions are keyed by session_id in a warm container; single-tenant demo makes cross-session leakage low-likelihood. Bind to principal + TTL (M012) before multi-tenant use.",
+      "is_current": true
+    },
+    {
+      "threat_id": "T013",
+      "decision": "Open",
+      "residual_severity": "Medium",
+      "residual_likelihood": "Possible",
+      "rationale": "Prompts/answers are logged and traced with no redaction. Low sensitivity for public data but High under BYOD PHI; implement redaction + KMS (M013).",
+      "is_current": true
+    },
+    {
+      "threat_id": "T014",
+      "decision": "Open",
+      "residual_severity": "High",
+      "residual_likelihood": "Possible",
+      "rationale": "Resource:* IAM amplifies any agent/role compromise across the account. Scope to ARNs and split roles (M014).",
+      "is_current": true
+    },
+    {
+      "threat_id": "T015",
+      "decision": "Open",
+      "residual_severity": "High",
+      "residual_likelihood": "Possible",
+      "rationale": "Unpinned deps + on-demand uvx MCP resolution widen the supply-chain surface in a trusted runtime. Pin/hash + lock + SCA (M015).",
+      "is_current": true
+    },
+    {
+      "threat_id": "T016",
+      "decision": "Accepted",
+      "residual_severity": "Medium",
+      "residual_likelihood": "Possible",
+      "rationale": "External services are reputable AWS/EBI/PubMed sources; content is already treated as citation-only and public. Accept for demo; add integrity/allowlist checks with M001/M002 for production.",
+      "is_current": true
+    },
+    {
+      "threat_id": "T017",
+      "decision": "Accepted",
+      "residual_severity": "Low",
+      "residual_likelihood": "Likely",
+      "rationale": "Single shared identity gives no per-user attribution, acceptable for a single-operator public-data demo but a compliance gap for production; addressed by per-user SSO (M004).",
+      "is_current": true
+    },
+    {
+      "threat_id": "T018",
+      "decision": "Open",
+      "residual_severity": "High",
+      "residual_likelihood": "Possible",
+      "rationale": "Faithfulness is the core value proposition; the SEMHUB_STRIP_GUARDS toggle can disable citation discipline at runtime and is not blocked in prod. Gate the toggle + alarm on fabricated grounding (M016).",
+      "is_current": true
+    },
+    {
+      "threat_id": "T019",
+      "decision": "Accepted",
+      "residual_severity": "Low",
+      "residual_likelihood": "Possible",
+      "rationale": "Availability-only, non-security; best-effort LF grants + graceful degradation are acceptable for a demo. Add fail-closed verification + alarms (M017) for production.",
+      "is_current": true
+    },
+    {
+      "threat_id": "T020",
+      "decision": "Open",
+      "residual_severity": "Critical",
+      "residual_likelihood": "Possible",
+      "rationale": "The shipped posture (single role, no per-user scoping, PUBLIC network, no log redaction, no BAA-aligned config) is unsuitable for PHI. BYOD PHI use must be gated behind a hardened profile (M018) + M006/M013; the repo legal note requires a BAA.",
+      "is_current": true
+    }
+  ],
+  "softwareProfile": {
+    "software_type": "AI / ML System",
+    "deployment_model": "Serverless / FaaS",
+    "architecture_style": "Microservices",
+    "platform_runtime": "Cloud runtime",
+    "user_domain": "Healthcare",
+    "licensing_ownership": "Open source",
+    "modern_paradigms": [
+      "Agentic AI",
+      "AI/ML",
+      "Cloud-native",
+      "Event-driven architecture"
+    ],
+    "description": "Agentic AI system: Strands agent on Bedrock AgentCore Runtime invoking read-only data tools plus remote MCP servers (OLS, planned oncology-hub-data) and a live RODA MCP client; LLM-driven data onboarding executing ETL in an AgentCore Code Interpreter sandbox. Untrusted external content (RODA datasets, web search, KB passages, graph/lake tool outputs) flows into the LLM context - a prompt-injection surface. Read-only guards (Cypher mutation rejection, SQL SELECT-only) provide defense-in-depth over least-privilege IAM."
+  },
+  "dataAssetProfiles": [
+    {
+      "id": "DP001",
+      "name": "TCGA patient cohort data (mutations/expression/CNA)",
+      "asset_id": null,
+      "structural_category": "Structured Data",
+      "content_types": [
+        "Non-sensitive / other",
+        "System metadata"
+      ],
+      "sensitivity_tier": "Public",
+      "compliance_regimes": [
+        "None"
+      ],
+      "data_states": [
+        "At rest",
+        "In transit",
+        "In use"
+      ],
+      "volume_tier": "Big data",
+      "lifecycle_state": "Active",
+      "business_domain": "Healthcare",
+      "description": "De-identified public TCGA somatic mutations, gene expression, copy-number in Athena/S3 (Parquet), Lake Formation governed. Queried read-only by query_patient_data. BYOD path may replace this with customer PHI cohort."
+    },
+    {
+      "id": "DP002",
+      "name": "Neptune knowledge graph (PrimeKG + TCGA case/sample nodes)",
+      "asset_id": null,
+      "structural_category": "Structured Data",
+      "content_types": [
+        "System metadata",
+        "Non-sensitive / other"
+      ],
+      "sensitivity_tier": "Public",
+      "compliance_regimes": [
+        "None"
+      ],
+      "data_states": [
+        "At rest",
+        "In transit",
+        "In use"
+      ],
+      "volume_tier": "Big data",
+      "lifecycle_state": "Active",
+      "business_domain": "Healthcare",
+      "description": "Neptune Analytics graph: PrimeKG biomedical relationships plus TCGA case/sample nodes with clinical properties (age, gender, vital_status). Queried read-only via openCypher (query_knowledge_graph)."
+    },
+    {
+      "id": "DP003",
+      "name": "Bedrock Knowledge Base literature corpus",
+      "asset_id": null,
+      "structural_category": "Unstructured Data",
+      "content_types": [
+        "Non-sensitive / other"
+      ],
+      "sensitivity_tier": "Public",
+      "compliance_regimes": [
+        "None"
+      ],
+      "data_states": [
+        "At rest",
+        "In use"
+      ],
+      "volume_tier": "Medium",
+      "lifecycle_state": "Active",
+      "business_domain": "Healthcare",
+      "description": "PubMed abstracts + TCGA study descriptions vectorized in a Bedrock Knowledge Base; retrieved passages feed the LLM (knowledge_search) - untrusted-content/prompt-injection surface if corpus is poisoned."
+    },
+    {
+      "id": "DP004",
+      "name": "Shared Cognito M2M client secret (SSM)",
+      "asset_id": null,
+      "structural_category": "Secrets and Credentials",
+      "content_types": [
+        "Authentication credentials"
+      ],
+      "sensitivity_tier": "Restricted",
+      "compliance_regimes": [
+        "None"
+      ],
+      "data_states": [
+        "At rest",
+        "In transit",
+        "In use"
+      ],
+      "volume_tier": "Small",
+      "lifecycle_state": "Active",
+      "business_domain": "Engineering",
+      "description": "Single shared Cognito machine-to-machine OAuth client_id/secret used to mint JWTs for the OLS (and planned data) MCP endpoints. Stored in SSM as a PLAINTEXT String (not SecureString) per per-user-auth-design.md - anyone with ssm:GetParameter can mint a token."
+    },
+    {
+      "id": "DP005",
+      "name": "RODA open-data datasets (untrusted external)",
+      "asset_id": null,
+      "structural_category": "Semi-Structured Data",
+      "content_types": [
+        "Non-sensitive / other"
+      ],
+      "sensitivity_tier": "Public",
+      "compliance_regimes": [
+        "None"
+      ],
+      "data_states": [
+        "In transit",
+        "In use"
+      ],
+      "volume_tier": "Big data",
+      "lifecycle_state": "Active",
+      "business_domain": "Healthcare",
+      "description": "Third-party AWS Registry of Open Data datasets discovered via the live RODA MCP client and ingested (schema, samples, content) into the LLM curation agent and the Code Interpreter ETL sandbox. Untrusted content - prompt-injection and malicious-data surface."
+    },
+    {
+      "id": "DP006",
+      "name": "BYOD customer cohort (latent PHI)",
+      "asset_id": null,
+      "structural_category": "Structured Data",
+      "content_types": [
+        "PHI",
+        "PII"
+      ],
+      "sensitivity_tier": "Restricted",
+      "compliance_regimes": [
+        "HIPAA"
+      ],
+      "data_states": [
+        "At rest",
+        "In transit",
+        "In use"
+      ],
+      "volume_tier": "Big data",
+      "lifecycle_state": "Quarantined",
+      "business_domain": "Healthcare",
+      "description": "Latent asset: the documented Bring-Your-Own-Data path lets a customer swap TCGA for their own patient cohort, which may contain PHI. Not present in the shipped demo but a first-class risk for production deployments (single shared IAM role, no per-user scoping)."
+    },
+    {
+      "id": "DP007",
+      "name": "Agent answers, prompts and provenance telemetry",
+      "asset_id": null,
+      "structural_category": "API Data",
+      "content_types": [
+        "Operational / telemetry data"
+      ],
+      "sensitivity_tier": "Internal",
+      "compliance_regimes": [
+        "None"
+      ],
+      "data_states": [
+        "In transit",
+        "In use"
+      ],
+      "volume_tier": "Medium",
+      "lifecycle_state": "Active",
+      "business_domain": "Healthcare",
+      "description": "User prompts, tool inputs/outputs, agent answers with inline provenance tags, and CloudWatch/EMF grounding metrics emitted for observability. Basis for faithfulness/grounding scoring."
+    }
+  ],
+  "userPersonas": [
+    {
+      "id": "UP001",
+      "persona_type": "Authenticated Standard User",
+      "name": "Researcher / clinician-scientist",
+      "privilege_level": "Low",
+      "organizational_affiliation": "Customer",
+      "functional_roles": [
+        "End User"
+      ],
+      "intent_behavior": "Legitimate",
+      "entity_type": "Human",
+      "authentication_method": "OAuth",
+      "threat_actor_overlay": [],
+      "description": "Oncology researcher querying the hub in natural language via Amazon Quick / chat UI / MCP client. Untrusted prompt source.",
+      "is_relevant": true
+    },
+    {
+      "id": "UP002",
+      "persona_type": "Developer / DevOps User",
+      "name": "Hub deployer / data engineer",
+      "privilege_level": "Elevated",
+      "organizational_affiliation": "Customer",
+      "functional_roles": [
+        "Developer",
+        "Operator"
+      ],
+      "intent_behavior": "Legitimate",
+      "entity_type": "Human",
+      "authentication_method": "IAM Role",
+      "threat_actor_overlay": [],
+      "description": "Deploys the agent + MCP servers via deploy.py, runs the data pipeline, drives the Streamlit onboarding UI. Holds AWS credentials with IAM/Lake Formation/Bedrock permissions.",
+      "is_relevant": true
+    },
+    {
+      "id": "UP003",
+      "persona_type": "Non-Human Identity / Service Account",
+      "name": "AgentCore runtime execution role",
+      "privilege_level": "Elevated",
+      "organizational_affiliation": "Customer",
+      "functional_roles": [
+        "Service Account"
+      ],
+      "intent_behavior": "Legitimate",
+      "entity_type": "Non-Human",
+      "authentication_method": "IAM Role",
+      "threat_actor_overlay": [],
+      "description": "The single IAM execution role the AgentCore Runtime assumes to reach Neptune/Athena/Glue/S3/SSM/Bedrock (Resource:*). Also the Code Interpreter scoped role (agentcore-onboarding-ci-role). No per-user scoping.",
+      "is_relevant": true
+    },
+    {
+      "id": "UP004",
+      "persona_type": "Anonymous / Unauthenticated User",
+      "name": "Internet actor (PUBLIC network endpoints)",
+      "privilege_level": "None",
+      "organizational_affiliation": "Public / Unknown",
+      "functional_roles": [
+        "End User"
+      ],
+      "intent_behavior": "Malicious",
+      "entity_type": "Human",
+      "authentication_method": "None",
+      "threat_actor_overlay": [],
+      "description": "The AgentCore runtimes are networkMode PUBLIC. If the CUSTOM_JWT authorizer is missing/misconfigured (design explicitly warns against shipping unauthenticated), an internet actor can reach the MCP/agent endpoints.",
+      "is_relevant": true
+    },
+    {
+      "id": "UP005",
+      "persona_type": "External Service / Third-Party Integration",
+      "name": "External content/data sources (RODA, OLS, web, PubMed)",
+      "privilege_level": "None",
+      "organizational_affiliation": "Vendor",
+      "functional_roles": [
+        "Integration Endpoint"
+      ],
+      "intent_behavior": "Compromised",
+      "entity_type": "External System",
+      "authentication_method": "None",
+      "threat_actor_overlay": [],
+      "description": "AWS Registry of Open Data datasets, OLS MCP server, AWS-managed web search, PubMed corpus. Their content flows into the LLM context and the ETL sandbox; treated as untrusted (prompt-injection / data-poisoning source).",
+      "is_relevant": true
+    },
+    {
+      "id": "UP006",
+      "persona_type": "Support / Operator User",
+      "name": "Dataset onboarding operator",
+      "privilege_level": "Elevated",
+      "organizational_affiliation": "Customer",
+      "functional_roles": [
+        "Operator"
+      ],
+      "intent_behavior": "Legitimate",
+      "entity_type": "Human",
+      "authentication_method": "IAM Role",
+      "threat_actor_overlay": [],
+      "description": "Operates the agentic onboarding pipeline: selects RODA datasets, reviews LLM-curated mappings/specs (HITL), applies additive staging tables via the Code Interpreter sandbox.",
+      "is_relevant": true
+    }
+  ],
+  "nonFunctionalRequirements": [
+    {
+      "quality_class": "Faultlessness",
+      "level": "High",
+      "rationale": "Provenance faithfulness / grounding is the core value proposition; fabricated citations or ungrounded oncology claims are the primary quality risk."
+    },
+    {
+      "quality_class": "Availability",
+      "level": "99%",
+      "rationale": "Demonstrative accelerator; no production SLA."
+    },
+    {
+      "quality_class": "Scalability",
+      "level": "Elastic",
+      "rationale": "Serverless AgentCore Runtime scales per-session microVMs."
+    },
+    {
+      "quality_class": "Interoperability",
+      "level": "Standards-based",
+      "rationale": "MCP (Model Context Protocol) over HTTPS+JWT; boto3 to AWS services."
+    },
+    {
+      "quality_class": "Safety Criticality",
+      "level": "Non-safety-related",
+      "rationale": "Repo legal note: not for clinical use, not a substitute for medical advice; research/demo only. Accuracy risk captured under Faultlessness."
+    },
+    {
+      "quality_class": "Testability",
+      "level": "High",
+      "rationale": "Unit tests for guards/queries/schema plus an 84-question benchmark and provenance-faithfulness scorers."
+    }
+  ],
+  "phaseProgress": {
+    "current_phase": 1,
+    "current_phase_name": "Business Context Analysis",
+    "phase_completion": {
+      "1": 1.0,
+      "2": 1.0,
+      "3": 1.0,
+      "4": 0.0,
+      "5": 0.0,
+      "6": 1.0,
+      "7": 1.0,
+      "7.5": 1.0,
+      "8": 1.0,
+      "9": 1.0
+    },
+    "phases": {
+      "1": "Business Context Analysis",
+      "2": "Architecture Analysis",
+      "3": "Threat Actor Analysis",
+      "4": "Trust Boundary Analysis",
+      "5": "Asset Flow Analysis",
+      "6": "Threat Identification",
+      "7": "Mitigation Planning",
+      "7.5": "Code Validation Analysis",
+      "8": "Residual Risk Analysis",
+      "9": "Output Generation and Documentation"
+    },
+    "overall_completion": 0.8
+  },
+  "referenceCatalogue": {
+    "description": "Threat actors the server pre-loaded but that were never assessed for this system. These are NOT part of the threat model.",
+    "threatActors": []
+  }
+}

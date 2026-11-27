@@ -1,0 +1,7 @@
+TCGA project TCGA-DLBC: Lymphoid Neoplasm Diffuse Large B-cell Lymphoma.
+Program: The Cancer Genome Atlas (TCGA).
+Primary site(s): Colon, Retroperitoneum and peritoneum, Heart, mediastinum, and pleura, Breast, Bones, joints and articular cartilage of other and unspecified sites, Lymph nodes, Small intestine, Stomach, Testis, Brain, Connective, subcutaneous and other soft tissues, Thyroid gland, Hematopoietic and reticuloendothelial systems, Other and unspecified major salivary glands.
+Disease type(s): Mature B-Cell Lymphomas, Not Reported.
+Cases: 58. Files: 3141.
+
+This TCGA cohort (TCGA-DLBC) provides molecular and clinical data for Lymphoid Neoplasm Diffuse Large B-cell Lymphoma (primary site: Colon, Retroperitoneum and peritoneum, Heart, mediastinum, and pleura, Breast, Bones, joints and articular cartilage of other and unspecified sites, Lymph nodes, Small intestine, Stomach, Testis, Brain, Connective, subcutaneous and other soft tissues, Thyroid gland, Hematopoietic and reticuloendothelial systems, Other and unspecified major salivary glands; disease type: Mature B-Cell Lymphomas, Not Reported). It supports biomarker, mutation, expression, and copy-number analyses in oncology research.

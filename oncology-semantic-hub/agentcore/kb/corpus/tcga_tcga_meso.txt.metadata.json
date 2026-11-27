@@ -1,0 +1,8 @@
+{
+  "metadataAttributes": {
+    "source": "TCGA",
+    "project_id": "TCGA-MESO",
+    "disease": "Mesothelioma",
+    "primary_site": "Bronchus and lung; Heart, mediastinum, and pleura"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "metadataAttributes": {
+    "source": "TCGA",
+    "project_id": "TCGA-STAD",
+    "disease": "Stomach Adenocarcinoma",
+    "primary_site": "Stomach"
+  }
+}

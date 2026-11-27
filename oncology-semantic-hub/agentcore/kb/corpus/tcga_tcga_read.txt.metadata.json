@@ -1,0 +1,8 @@
+{
+  "metadataAttributes": {
+    "source": "TCGA",
+    "project_id": "TCGA-READ",
+    "disease": "Rectum Adenocarcinoma",
+    "primary_site": "Colon; Rectosigmoid junction; Rectum; Connective, subcutaneous and other soft tissues; Unknown"
+  }
+}

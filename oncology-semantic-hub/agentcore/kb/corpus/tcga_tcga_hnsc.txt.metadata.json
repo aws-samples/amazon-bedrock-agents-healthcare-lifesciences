@@ -1,0 +1,8 @@
+{
+  "metadataAttributes": {
+    "source": "TCGA",
+    "project_id": "TCGA-HNSC",
+    "disease": "Head and Neck Squamous Cell Carcinoma",
+    "primary_site": "Lip; Tonsil; Gum; Bones, joints and articular cartilage of other and unspecified sites; Palate; Other and unspecified parts of tongue; Floor of mouth; Other and ill-defined sites in lip, oral cavity and pharynx; Larynx; Base of tongue; Other and unsp"
+  }
+}

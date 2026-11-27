@@ -1,0 +1,11 @@
+{
+  "agent_id": "oncology_semantic_hub_l0_haiku_9b799299-E62FUzD6Lx",
+  "agent_arn": "arn:aws:bedrock-agentcore:us-west-2:942514891246:runtime/oncology_semantic_hub_l0_haiku_9b799299-E62FUzD6Lx",
+  "cw_log_group": "/aws/bedrock-agentcore/runtimes/oncology_semantic_hub_l0_haiku_9b799299-E62FUzD6Lx-DEFAULT",
+  "region": "us-west-2",
+  "role_arn": "arn:aws:iam::942514891246:role/oncology_semantic_hub_l0_haiku_9b799299_role",
+  "s3_bucket": "bedrock-agentcore-code-942514891246-us-west-2",
+  "s3_key": "oncology_semantic_hub_l0_haiku_9b799299/deployment_package.zip",
+  "layer": "L0",
+  "subject_model": "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+}

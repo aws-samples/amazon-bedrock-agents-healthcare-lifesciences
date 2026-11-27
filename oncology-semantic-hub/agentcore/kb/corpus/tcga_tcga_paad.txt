@@ -1,0 +1,7 @@
+TCGA project TCGA-PAAD: Pancreatic Adenocarcinoma.
+Program: The Cancer Genome Atlas (TCGA).
+Primary site(s): Pancreas.
+Disease type(s): Ductal and Lobular Neoplasms, Cystic, Mucinous and Serous Neoplasms, Epithelial Neoplasms, NOS, Adenomas and Adenocarcinomas.
+Cases: 185. Files: 12853.
+
+This TCGA cohort (TCGA-PAAD) provides molecular and clinical data for Pancreatic Adenocarcinoma (primary site: Pancreas; disease type: Ductal and Lobular Neoplasms, Cystic, Mucinous and Serous Neoplasms, Epithelial Neoplasms, NOS, Adenomas and Adenocarcinomas). It supports biomarker, mutation, expression, and copy-number analyses in oncology research.

@@ -1,0 +1,188 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Ontology Lookup Service MCP Server - Cognito OAuth2 Authentication'
+
+Parameters:
+  AppName:
+    Description: Application name used as prefix for all resources
+    Type: String
+    Default: "ontology-lookup-service"
+
+  UserPoolName:
+    Type: String
+    Default: 'OLSGatewayPool'
+    Description: 'Name of the Cognito User Pool'
+
+  MachineAppClientName:
+    Type: String
+    Default: 'OLSMachineClient'
+    Description: 'Name of the M2M app client'
+
+Resources:
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Ref UserPoolName
+      MfaConfiguration: 'OPTIONAL'
+      EnabledMfas:
+        - SOFTWARE_TOKEN_MFA
+      UsernameConfiguration:
+        CaseSensitive: false
+      UsernameAttributes:
+        - email
+      AutoVerifiedAttributes:
+        - email
+
+  ResourceServer:
+    Type: AWS::Cognito::UserPoolResourceServer
+    Properties:
+      UserPoolId: !Ref UserPool
+      Identifier: !Join
+        - '-'
+        - - 'default-m2m-resource-server'
+          - !Select [0, !Split ['-', !Select [2, !Split ['/', !Ref 'AWS::StackId']]]]
+      Name: !Join
+        - '-'
+        - - 'Default M2M Resource Server '
+          - !Select [0, !Split ['-', !Select [2, !Split ['/', !Ref 'AWS::StackId']]]]
+      Scopes:
+        - ScopeName: 'read'
+          ScopeDescription: 'Read access to OLS MCP Runtime tools'
+
+  MachineUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    DependsOn: ResourceServer
+    Properties:
+      ClientName: !Ref MachineAppClientName
+      UserPoolId: !Ref UserPool
+      GenerateSecret: true
+      ExplicitAuthFlows:
+        - ALLOW_REFRESH_TOKEN_AUTH
+      RefreshTokenValidity: 1
+      AccessTokenValidity: 60
+      IdTokenValidity: 60
+      TokenValidityUnits:
+        AccessToken: minutes
+        IdToken: minutes
+        RefreshToken: days
+      AllowedOAuthFlows:
+        - client_credentials
+      AllowedOAuthScopes:
+        - !Join
+          - ''
+          - - 'default-m2m-resource-server-'
+            - !Select [0, !Split ['-', !Select [2, !Split ['/', !Ref 'AWS::StackId']]]]
+            - '/read'
+      AllowedOAuthFlowsUserPoolClient: true
+      SupportedIdentityProviders:
+        - COGNITO
+      EnableTokenRevocation: true
+
+  UserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      UserPoolId: !Ref UserPool
+      Domain: !Join
+        - ''
+        - - !Ref 'AWS::Region'
+          - !Select [0, !Split ['-', !Select [2, !Split ['/', !Ref 'AWS::StackId']]]]
+          - '-ols'
+
+  # SSM Parameters
+  CognitoMachineClientIdParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /app/${AppName}/agentcore/machine_client_id
+      Type: String
+      Value: !Ref MachineUserPoolClient
+      Description: Machine Cognito client ID
+      Tags:
+        Application: !Ref AppName
+
+  CognitoMachineClientSecretParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /app/${AppName}/agentcore/cognito_secret
+      Type: String
+      Value: !GetAtt MachineUserPoolClient.ClientSecret
+      Description: Machine Cognito client secret
+      Tags:
+        Application: !Ref AppName
+
+  UserPoolIdParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /app/${AppName}/agentcore/userpool_id
+      Type: String
+      Value: !Ref UserPool
+      Description: Cognito User Pool ID
+      Tags:
+        Application: !Ref AppName
+
+  CognitoAuthScopeParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /app/${AppName}/agentcore/cognito_auth_scope
+      Type: String
+      Value: !Join
+        - ''
+        - - 'default-m2m-resource-server-'
+          - !Select [0, !Split ['-', !Select [2, !Split ['/', !Ref 'AWS::StackId']]]]
+          - '/read'
+      Description: OAuth2 scope for Cognito auth
+      Tags:
+        Application: !Ref AppName
+
+  CognitoDiscoveryURLParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /app/${AppName}/agentcore/cognito_discovery_url
+      Type: String
+      Value: !Sub 'https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPool}/.well-known/openid-configuration'
+      Description: OAuth2 Discovery URL
+      Tags:
+        Application: !Ref AppName
+
+  CognitoTokenURLParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /app/${AppName}/agentcore/cognito_token_url
+      Type: String
+      Value: !Join
+        - ''
+        - - !Sub 'https://${AWS::Region}'
+          - !Select [0, !Split ['-', !Select [2, !Split ['/', !Ref 'AWS::StackId']]]]
+          - '-ols'
+          - !Sub '.auth.${AWS::Region}.amazoncognito.com/oauth2/token'
+      Description: OAuth2 Token URL
+      Tags:
+        Application: !Ref AppName
+
+  CognitoDomainParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /app/${AppName}/agentcore/cognito_domain
+      Type: String
+      Value: !Join
+        - ''
+        - - !Sub 'https://${AWS::Region}'
+          - !Select [0, !Split ['-', !Select [2, !Split ['/', !Ref 'AWS::StackId']]]]
+          - '-ols'
+          - !Sub '.auth.${AWS::Region}.amazoncognito.com'
+      Description: Cognito hosted domain for OAuth2
+      Tags:
+        Application: !Ref AppName
+
+Outputs:
+  UserPoolId:
+    Value: !Ref UserPool
+  MachineClientId:
+    Value: !Ref MachineUserPoolClient
+  DiscoveryUrl:
+    Value: !Sub 'https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPool}/.well-known/openid-configuration'
+  CognitoDomain:
+    Value: !Join
+      - ''
+      - - !Sub 'https://${AWS::Region}'
+        - !Select [0, !Split ['-', !Select [2, !Split ['/', !Ref 'AWS::StackId']]]]
+        - '-ols'
+        - !Sub '.auth.${AWS::Region}.amazoncognito.com'

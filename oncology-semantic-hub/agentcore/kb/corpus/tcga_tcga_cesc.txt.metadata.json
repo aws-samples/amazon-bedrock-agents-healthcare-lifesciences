@@ -1,0 +1,8 @@
+{
+  "metadataAttributes": {
+    "source": "TCGA",
+    "project_id": "TCGA-CESC",
+    "disease": "Cervical Squamous Cell Carcinoma and Endocervical Adenocarcinoma",
+    "primary_site": "Cervix uteri; Ovary"
+  }
+}

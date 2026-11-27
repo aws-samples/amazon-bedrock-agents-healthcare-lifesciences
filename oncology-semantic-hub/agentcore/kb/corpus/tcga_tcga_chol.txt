@@ -1,0 +1,7 @@
+TCGA project TCGA-CHOL: Cholangiocarcinoma.
+Program: The Cancer Genome Atlas (TCGA).
+Primary site(s): Liver and intrahepatic bile ducts, Other and unspecified parts of biliary tract, Pancreas.
+Disease type(s): Adenomas and Adenocarcinomas.
+Cases: 51. Files: 3171.
+
+This TCGA cohort (TCGA-CHOL) provides molecular and clinical data for Cholangiocarcinoma (primary site: Liver and intrahepatic bile ducts, Other and unspecified parts of biliary tract, Pancreas; disease type: Adenomas and Adenocarcinomas). It supports biomarker, mutation, expression, and copy-number analyses in oncology research.

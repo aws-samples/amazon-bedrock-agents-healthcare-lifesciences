@@ -1,0 +1,7 @@
+TCGA project TCGA-THYM: Thymoma.
+Program: The Cancer Genome Atlas (TCGA).
+Primary site(s): Thymus, Other and ill-defined sites, Heart, mediastinum, and pleura.
+Disease type(s): Thymic Epithelial Neoplasms.
+Cases: 124. Files: 7968.
+
+This TCGA cohort (TCGA-THYM) provides molecular and clinical data for Thymoma (primary site: Thymus, Other and ill-defined sites, Heart, mediastinum, and pleura; disease type: Thymic Epithelial Neoplasms). It supports biomarker, mutation, expression, and copy-number analyses in oncology research.

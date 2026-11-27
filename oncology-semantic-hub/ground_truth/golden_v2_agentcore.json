@@ -1,0 +1,926 @@
+[
+  {
+    "id": "v2_lake_001",
+    "input": "How many distinct TCGA-GBM patients carry a mutation in EGFR?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "82 patients"
+    },
+    "metadata": {
+      "category": "lake",
+      "answer_type": "exact_number"
+    }
+  },
+  {
+    "id": "v2_lake_002",
+    "input": "How many distinct TCGA-GBM patients carry a mutation in TP53?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "114 patients"
+    },
+    "metadata": {
+      "category": "lake",
+      "answer_type": "exact_number"
+    }
+  },
+  {
+    "id": "v2_lake_003",
+    "input": "How many distinct TCGA-GBM patients carry a mutation in PTEN?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "116 patients"
+    },
+    "metadata": {
+      "category": "lake",
+      "answer_type": "exact_number"
+    }
+  },
+  {
+    "id": "v2_lake_004",
+    "input": "How many distinct TCGA-GBM patients carry a mutation in KRAS?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "2 patients"
+    },
+    "metadata": {
+      "category": "lake",
+      "answer_type": "exact_number"
+    }
+  },
+  {
+    "id": "v2_lake_005",
+    "input": "How many distinct TCGA-BRCA patients carry a mutation in EGFR?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "9 patients"
+    },
+    "metadata": {
+      "category": "lake",
+      "answer_type": "exact_number"
+    }
+  },
+  {
+    "id": "v2_lake_006",
+    "input": "How many distinct TCGA-BRCA patients carry a mutation in TP53?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "330 patients"
+    },
+    "metadata": {
+      "category": "lake",
+      "answer_type": "exact_number"
+    }
+  },
+  {
+    "id": "v2_lake_007",
+    "input": "How many distinct TCGA-BRCA patients carry a mutation in PTEN?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "52 patients"
+    },
+    "metadata": {
+      "category": "lake",
+      "answer_type": "exact_number"
+    }
+  },
+  {
+    "id": "v2_lake_008",
+    "input": "How many distinct TCGA-BRCA patients carry a mutation in KRAS?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "7 patients"
+    },
+    "metadata": {
+      "category": "lake",
+      "answer_type": "exact_number"
+    }
+  },
+  {
+    "id": "v2_lake_009",
+    "input": "How many distinct TCGA-LUAD patients carry a mutation in EGFR?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "74 patients"
+    },
+    "metadata": {
+      "category": "lake",
+      "answer_type": "exact_number"
+    }
+  },
+  {
+    "id": "v2_lake_010",
+    "input": "How many distinct TCGA-LUAD patients carry a mutation in TP53?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "274 patients"
+    },
+    "metadata": {
+      "category": "lake",
+      "answer_type": "exact_number"
+    }
+  },
+  {
+    "id": "v2_lake_011",
+    "input": "How many distinct TCGA-LUAD patients carry a mutation in PTEN?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "10 patients"
+    },
+    "metadata": {
+      "category": "lake",
+      "answer_type": "exact_number"
+    }
+  },
+  {
+    "id": "v2_lake_012",
+    "input": "How many distinct TCGA-LUAD patients carry a mutation in KRAS?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "148 patients"
+    },
+    "metadata": {
+      "category": "lake",
+      "answer_type": "exact_number"
+    }
+  },
+  {
+    "id": "v2_lake_013",
+    "input": "How many distinct TCGA-COAD patients carry a mutation in EGFR?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "11 patients"
+    },
+    "metadata": {
+      "category": "lake",
+      "answer_type": "exact_number"
+    }
+  },
+  {
+    "id": "v2_lake_014",
+    "input": "How many distinct TCGA-COAD patients carry a mutation in TP53?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "234 patients"
+    },
+    "metadata": {
+      "category": "lake",
+      "answer_type": "exact_number"
+    }
+  },
+  {
+    "id": "v2_lake_015",
+    "input": "How many distinct TCGA-COAD patients carry a mutation in PTEN?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "27 patients"
+    },
+    "metadata": {
+      "category": "lake",
+      "answer_type": "exact_number"
+    }
+  },
+  {
+    "id": "v2_lake_016",
+    "input": "How many distinct TCGA-COAD patients carry a mutation in KRAS?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "184 patients"
+    },
+    "metadata": {
+      "category": "lake",
+      "answer_type": "exact_number"
+    }
+  },
+  {
+    "id": "v2_g1_017",
+    "input": "How many distinct drugs are known to target EGFR?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "31 drugs"
+    },
+    "metadata": {
+      "category": "graph_1hop",
+      "answer_type": "exact_number"
+    }
+  },
+  {
+    "id": "v2_g1_018",
+    "input": "How many distinct drugs are known to target TP53?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "8 drugs"
+    },
+    "metadata": {
+      "category": "graph_1hop",
+      "answer_type": "exact_number"
+    }
+  },
+  {
+    "id": "v2_g1_019",
+    "input": "How many distinct drugs are known to target PTEN?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "1 drugs"
+    },
+    "metadata": {
+      "category": "graph_1hop",
+      "answer_type": "exact_number"
+    }
+  },
+  {
+    "id": "v2_g1_020",
+    "input": "How many distinct drugs are known to target PIK3CA?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "7 drugs"
+    },
+    "metadata": {
+      "category": "graph_1hop",
+      "answer_type": "exact_number"
+    }
+  },
+  {
+    "id": "v2_g1_021",
+    "input": "How many distinct drugs are known to target IDH1?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "4 drugs"
+    },
+    "metadata": {
+      "category": "graph_1hop",
+      "answer_type": "exact_number"
+    }
+  },
+  {
+    "id": "v2_g1_022",
+    "input": "How many distinct drugs are known to target PDGFRA?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "16 drugs"
+    },
+    "metadata": {
+      "category": "graph_1hop",
+      "answer_type": "exact_number"
+    }
+  },
+  {
+    "id": "v2_g1_023",
+    "input": "How many distinct drugs are known to target KRAS?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "4 drugs"
+    },
+    "metadata": {
+      "category": "graph_1hop",
+      "answer_type": "exact_number"
+    }
+  },
+  {
+    "id": "v2_g1_024",
+    "input": "How many distinct drugs are known to target BRAF?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "12 drugs"
+    },
+    "metadata": {
+      "category": "graph_1hop",
+      "answer_type": "exact_number"
+    }
+  },
+  {
+    "id": "v2_g1_025",
+    "input": "How many distinct drugs are known to target RB1?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "2 drugs"
+    },
+    "metadata": {
+      "category": "graph_1hop",
+      "answer_type": "exact_number"
+    }
+  },
+  {
+    "id": "v2_g1_026",
+    "input": "How many distinct drugs are known to target PIK3R1?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "4 drugs"
+    },
+    "metadata": {
+      "category": "graph_1hop",
+      "answer_type": "exact_number"
+    }
+  },
+  {
+    "id": "v2_recon_027",
+    "input": "How many distinct genes are associated with the type of cancer studied in the TCGA-GBM cohort?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "144 associated genes"
+    },
+    "metadata": {
+      "category": "reconciliation",
+      "answer_type": "exact_number"
+    }
+  },
+  {
+    "id": "v2_recon_028",
+    "input": "How many distinct genes are associated with the type of cancer studied in the TCGA-BRCA cohort?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "538 associated genes"
+    },
+    "metadata": {
+      "category": "reconciliation",
+      "answer_type": "exact_number"
+    }
+  },
+  {
+    "id": "v2_recon_029",
+    "input": "How many distinct genes are associated with the type of cancer studied in the TCGA-LUAD cohort?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "206 associated genes"
+    },
+    "metadata": {
+      "category": "reconciliation",
+      "answer_type": "exact_number"
+    }
+  },
+  {
+    "id": "v2_recon_030",
+    "input": "How many distinct genes are associated with the type of cancer studied in the TCGA-COAD cohort?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "819 associated genes"
+    },
+    "metadata": {
+      "category": "reconciliation",
+      "answer_type": "exact_number"
+    }
+  },
+  {
+    "id": "v2_recon_031",
+    "input": "How many distinct genes are associated with the type of cancer studied in the TCGA-SKCM cohort?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "250 associated genes"
+    },
+    "metadata": {
+      "category": "reconciliation",
+      "answer_type": "exact_number"
+    }
+  },
+  {
+    "id": "v2_recon_032",
+    "input": "How many distinct genes are associated with the type of cancer studied in the TCGA-PRAD cohort?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "616 associated genes"
+    },
+    "metadata": {
+      "category": "reconciliation",
+      "answer_type": "exact_number"
+    }
+  },
+  {
+    "id": "v2_multi_033",
+    "input": "Among genes mutated in at least 10 TCGA-GBM patients, which are both associated with glioblastoma and targeted by at least one known drug? List the genes.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Genes: EGFR, IDH1, PDGFRA, PIK3CA, PIK3R1, PTEN"
+    },
+    "metadata": {
+      "category": "multi_source",
+      "answer_type": "entity_list"
+    }
+  },
+  {
+    "id": "v2_multi_034",
+    "input": "Among genes mutated in at least 10 TCGA-BRCA patients, which are both associated with breast carcinoma and targeted by at least one known drug? List the genes.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Genes: AKT1, ALK, ATM, CASP8, ERBB2, ERBB3, ERBB4, FASN, FLNA, FN1, GRIK2, LEPR, MAP3K1, MAP3K13, MTOR, MYH9, NRIP1, PARP1, PIK3CA, PIK3CB, PLA2G4A, PTEN, RB1, TP53"
+    },
+    "metadata": {
+      "category": "multi_source",
+      "answer_type": "entity_list"
+    }
+  },
+  {
+    "id": "v2_multi_035",
+    "input": "Among genes mutated in at least 10 TCGA-LUAD patients, which are both associated with lung adenocarcinoma and targeted by at least one known drug? List the genes.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Genes: ATM, BRAF, CAMK4, EGFR, EPHA8, ERBB2, FGFR2, PAK5, PIK3CA, PPP3CA, SLC4A4, TRPM6"
+    },
+    "metadata": {
+      "category": "multi_source",
+      "answer_type": "entity_list"
+    }
+  },
+  {
+    "id": "v2_multi_036",
+    "input": "Among genes mutated in at least 10 TCGA-COAD patients, which are both associated with colorectal cancer and targeted by at least one known drug? List the genes.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Genes: ABCC3, ABCC5, ABCC6, ACACA, AMPD1, BRAF, CASP8, CFTR, CYP26A1, DMD, EGFR, EPHB6, ERBB2, FBN2, GUCY1A2, KCNB2, KCNQ5, LAMA1, LIG1, MMP9, MYLK3, PIK3CA, RET, SLCO1B3, SMAD2, TXNRD1"
+    },
+    "metadata": {
+      "category": "multi_source",
+      "answer_type": "entity_list"
+    }
+  },
+  {
+    "id": "v2_multi_037",
+    "input": "Among genes mutated in at least 10 TCGA-SKCM patients, which are both associated with melanoma and targeted by at least one known drug? List the genes.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Genes: ALK, CP, CTNNB1, ERBB4, FLT1, SF1, SLC15A2, SLC39A12, SYK"
+    },
+    "metadata": {
+      "category": "multi_source",
+      "answer_type": "entity_list"
+    }
+  },
+  {
+    "id": "v2_multi_038",
+    "input": "Among genes mutated in at least 10 TCGA-PRAD patients, which are both associated with prostate cancer and targeted by at least one known drug? List the genes.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Genes: ATM, PIK3CA, PTEN, TP53"
+    },
+    "metadata": {
+      "category": "multi_source",
+      "answer_type": "entity_list"
+    }
+  },
+  {
+    "id": "v2_mh_039",
+    "input": "Among cancer-driver genes associated with glioblastoma, which are targeted by the most drugs? Give the top few with counts.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Top: EGFR (31), MET (16), PDGFRA (16), BRAF (12), ALK (8)"
+    },
+    "metadata": {
+      "category": "graph_multihop",
+      "answer_type": "ranked_list"
+    }
+  },
+  {
+    "id": "v2_mh_041",
+    "input": "Among cancer-driver genes associated with lung adenocarcinoma, which are targeted by the most drugs? Give the top few with counts.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Top: EGFR (31), FGFR2 (16), ERBB2 (14), BRAF (12), MAP2K1 (11)"
+    },
+    "metadata": {
+      "category": "graph_multihop",
+      "answer_type": "ranked_list"
+    }
+  },
+  {
+    "id": "v2_mh_042",
+    "input": "Among cancer-driver genes associated with colorectal cancer, which are targeted by the most drugs? Give the top few with counts.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Top: EGFR (31), ERBB2 (14), BRAF (12), CALR (12), AKT1 (10)"
+    },
+    "metadata": {
+      "category": "graph_multihop",
+      "answer_type": "ranked_list"
+    }
+  },
+  {
+    "id": "v2_mh_043",
+    "input": "Among cancer-driver genes associated with melanoma, which are targeted by the most drugs? Give the top few with counts.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Top: KIT (21), MET (16), PDGFRA (16), BRAF (12), MAP2K1 (11)"
+    },
+    "metadata": {
+      "category": "graph_multihop",
+      "answer_type": "ranked_list"
+    }
+  },
+  {
+    "id": "v2_mh_044",
+    "input": "Among cancer-driver genes associated with prostate cancer, which are targeted by the most drugs? Give the top few with counts.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Top: EGFR (31), MET (16), ERBB2 (14), BRAF (12), CALR (12)"
+    },
+    "metadata": {
+      "category": "graph_multihop",
+      "answer_type": "ranked_list"
+    }
+  },
+  {
+    "id": "v2_mh_045",
+    "input": "Which druggable genes participate in the same signaling pathways as EGFR and are implicated in glioblastoma? List them.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Genes: CCND1, EGF, GDNF, HIF1A, HRAS, IL2, IRAK1, MET, MMP2, MMP9, MTOR, PDGFRA, PIK3CA, PIK3R1, PML, PRKCA, PTK2, VEGFA"
+    },
+    "metadata": {
+      "category": "graph_multihop",
+      "answer_type": "entity_list"
+    }
+  },
+  {
+    "id": "v2_mh_046",
+    "input": "Which druggable genes participate in the same signaling pathways as KRAS and are implicated in colorectal cancer? List them.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Genes: AKT1, BRAF, CCND1, CDKN1A, CSF2, CTNNB1, EGFR, ERBB2, FGFR3, FN1, JUN, KDR, LEF1, MMP9, NFATC1, NFKB1, PIK3CA, PRKCB, PRKCE, PRKCZ, PSMA2, PTPN12, RELA, RET, SRC, STAT3, TGFB1, VEGFA"
+    },
+    "metadata": {
+      "category": "graph_multihop",
+      "answer_type": "entity_list"
+    }
+  },
+  {
+    "id": "v2_mh_047",
+    "input": "Which druggable genes participate in the same signaling pathways as BRAF and are implicated in melanoma? List them.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Genes: HRAS, MAP2K1, MAP2K2, RAF1"
+    },
+    "metadata": {
+      "category": "graph_multihop",
+      "answer_type": "entity_list"
+    }
+  },
+  {
+    "id": "v2_mh_048",
+    "input": "Which druggable genes participate in the same signaling pathways as PIK3CA and are implicated in breast carcinoma? List them.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Genes: AKT1, AKT2, ARF1, BTK, CHEK1, CSF2, EDNRB, EGF, EGFR, EPOR, ERBB2, ERBB3, ERBB4, ESR1, ESR2, FGF4, FGFR1, FGFR2, HRAS, HSP90AA1, IGF1R, KDR, KIT, KRAS, MMP2, MMP3, MMP9, MTOR, NFKBIA, NISCH, NOS3, PAK1, PDPK1, PIK3CB, PIM1, PTEN, RELA, SRC, STAT3, TFRC"
+    },
+    "metadata": {
+      "category": "graph_multihop",
+      "answer_type": "entity_list"
+    }
+  },
+  {
+    "id": "v2_mh_049",
+    "input": "Which druggable proteins directly interact with EGFR and are implicated in glioblastoma? List them.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Genes: CCND1, CTNNB1, EGF, FN1, HIF1A, IQGAP1, MAPK8, MAPKAPK3, MET, PCNA, PDGFRA, PIK3CA, PIK3R1, PIM1, PML, PRKCA, PRKCB, PTK2"
+    },
+    "metadata": {
+      "category": "graph_multihop",
+      "answer_type": "entity_list"
+    }
+  },
+  {
+    "id": "v2_mh_050",
+    "input": "Which druggable proteins directly interact with TP53 and are implicated in breast carcinoma? List them.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Genes: ABL1, ACTA2, AKT1, AR, ARAF, ATM, AURKA, BAG1, BCL2, BIRC5, BTK, CASP8, CHEK1, CHEK2, CTNNB1, DHFR, DNMT1, EEF2, ERBB2, ERBB4, ESR1, GPX2, HIF1A, HNRNPK, HRAS, HSP90AA1, IGF1R, JUN, MAP3K1, MDM2, MTOR, NCOA1, NCOA2, NFKBIA, NQO1, NQO2, PARP1, PHB, PIN1, PTEN, PTGS2, RAD51, RB1, RELA, SIRT1, SRC, TOP2A, TP73, TXN"
+    },
+    "metadata": {
+      "category": "graph_multihop",
+      "answer_type": "entity_list"
+    }
+  },
+  {
+    "id": "v2_mh_051",
+    "input": "Which druggable proteins directly interact with KRAS and are implicated in colorectal cancer? List them.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Genes: BCL2, BRAF, IGFBP3, MTOR, PIK3CA, SERPINB5"
+    },
+    "metadata": {
+      "category": "graph_multihop",
+      "answer_type": "entity_list"
+    }
+  },
+  {
+    "id": "v2_onto_052",
+    "input": "Which genes associated with grade IV astrocytoma are also mutated in TCGA-GBM patients? List the genes.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Genes: APC, ATRX, FAT1, MET, NOTCH3, PML, PRKCA, SRPK2, STAG2, STYK1, TRMT11"
+    },
+    "metadata": {
+      "category": "ontology",
+      "answer_type": "entity_list"
+    }
+  },
+  {
+    "id": "v2_onto_053",
+    "input": "Which genes are targeted by the drug Tarceva?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Genes: ABCB1, ABCG2, ALB, CYP1A1, CYP1A2, CYP1B1, CYP2C8, CYP2D6, CYP3A4, CYP3A5, EGFR, NR1I2, ORM1, SLCO2B1, UGT1A1"
+    },
+    "metadata": {
+      "category": "ontology",
+      "answer_type": "entity_list"
+    }
+  },
+  {
+    "id": "v2_onto_054",
+    "input": "Which genes are targeted by the drug Iressa?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Genes: ABCB1, ABCG2, ALB, CYP1A1, CYP2C19, CYP2C9, CYP2D6, CYP3A4, CYP3A5, EGFR, ORM1"
+    },
+    "metadata": {
+      "category": "ontology",
+      "answer_type": "entity_list"
+    }
+  },
+  {
+    "id": "v2_onto_055",
+    "input": "Which genes are targeted by the drug Tagrisso?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Genes: ABCB1, ABCG2, CYP1A2, CYP3A4, EGFR"
+    },
+    "metadata": {
+      "category": "ontology",
+      "answer_type": "entity_list"
+    }
+  },
+  {
+    "id": "v2_onto_056",
+    "input": "Which genes are targeted by the drug Gleevec?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Genes: ABCA3, ABCB1, ABCB11, ABCG2, ABL1, ALB, BCR, CSF1R, CYP1A2, CYP2C19, CYP2C8, CYP2C9, CYP2D6, CYP3A4, CYP3A5, CYP3A7, DDR1, KIT, NTRK1, ORM1, PDGFRA, PDGFRB, PTGS1, SLC22A1, SLC22A2"
+    },
+    "metadata": {
+      "category": "ontology",
+      "answer_type": "entity_list"
+    }
+  },
+  {
+    "id": "v2_onto_057",
+    "input": "Which genes are targeted by the drug Herceptin?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Genes: ERBB2"
+    },
+    "metadata": {
+      "category": "ontology",
+      "answer_type": "entity_list"
+    }
+  },
+  {
+    "id": "v2_recon_058",
+    "input": "How many distinct genes are associated with breast cancer?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "538 associated genes"
+    },
+    "metadata": {
+      "category": "reconciliation",
+      "answer_type": "exact_number"
+    }
+  },
+  {
+    "id": "v2_recon_059",
+    "input": "How many distinct genes are associated with colon cancer?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "819 associated genes"
+    },
+    "metadata": {
+      "category": "reconciliation",
+      "answer_type": "exact_number"
+    }
+  },
+  {
+    "id": "v2_neg_060",
+    "input": "What is the AJCC tumor stage distribution of EGFR-mutant TCGA-GBM patients?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Cannot be determined \u2014 stage is not present in the hub."
+    },
+    "metadata": {
+      "category": "negative",
+      "answer_type": "abstention"
+    }
+  },
+  {
+    "id": "v2_neg_061",
+    "input": "What is the AJCC tumor stage distribution of EGFR-mutant TCGA-BRCA patients?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Cannot be determined \u2014 stage is not present in the hub."
+    },
+    "metadata": {
+      "category": "negative",
+      "answer_type": "abstention"
+    }
+  },
+  {
+    "id": "v2_neg_062",
+    "input": "What is the overall survival (months) of EGFR-mutant TCGA-GBM patients?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Cannot be determined \u2014 survival is not present in the hub."
+    },
+    "metadata": {
+      "category": "negative",
+      "answer_type": "abstention"
+    }
+  },
+  {
+    "id": "v2_neg_063",
+    "input": "What is the overall survival (months) of EGFR-mutant TCGA-BRCA patients?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Cannot be determined \u2014 survival is not present in the hub."
+    },
+    "metadata": {
+      "category": "negative",
+      "answer_type": "abstention"
+    }
+  },
+  {
+    "id": "v2_neg_064",
+    "input": "What is the protein abundance of EGFR-mutant TCGA-GBM patients?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Cannot be determined \u2014 proteomics is not present in the hub."
+    },
+    "metadata": {
+      "category": "negative",
+      "answer_type": "abstention"
+    }
+  },
+  {
+    "id": "v2_neg_065",
+    "input": "What is the radiology imaging findings of EGFR-mutant TCGA-GBM patients?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Cannot be determined \u2014 imaging is not present in the hub."
+    },
+    "metadata": {
+      "category": "negative",
+      "answer_type": "abstention"
+    }
+  },
+  {
+    "id": "q_paper_bailey_03",
+    "input": "Which TCGA cancer type has the most distinct patients with TP53 mutations, and how many?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "393"
+    },
+    "metadata": {
+      "category": "lake",
+      "answer_type": "exact_number"
+    }
+  },
+  {
+    "id": "q_paper_liu_01",
+    "input": "How many distinct patients are in the TCGA mutation data across all projects?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "10094 patients"
+    },
+    "metadata": {
+      "category": "lake",
+      "answer_type": "exact_number"
+    }
+  },
+  {
+    "id": "q_paper_liu_03",
+    "input": "Which gene is mutated across the most TCGA cancer types, and in how many?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "{\"gene\": \"MUC16\", \"n_cancer_types\": 33, \"note\": \"MUC16 is a large passenger gene (broad mutation across types); correct answer to the literal question\"}"
+    },
+    "metadata": {
+      "category": "lake",
+      "answer_type": "exact_number"
+    }
+  },
+  {
+    "id": "q_paper_bailey_01",
+    "input": "How many confirmed cancer-driver genes are targeted by at least one drug?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "{\"n_druggable_drivers\": 35, \"n_drivers_total\": 74, \"note\": \"drivers = COSMIC Cancer Gene Census Tier-1\"}"
+    },
+    "metadata": {
+      "category": "multi_source",
+      "answer_type": "exact_number"
+    }
+  },
+  {
+    "id": "q_paper_sanchezvega_01",
+    "input": "Which biological pathways involve both EGFR and PIK3CA?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "11"
+    },
+    "metadata": {
+      "category": "graph_multihop",
+      "answer_type": "exact_number"
+    }
+  },
+  {
+    "id": "q_paper_primekg_01",
+    "input": "How many distinct drug\u2013disease indication relationships are documented in the dataset?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "9388 indication relationships"
+    },
+    "metadata": {
+      "category": "graph_1hop",
+      "answer_type": "exact_number"
+    }
+  },
+  {
+    "id": "q_paper_primekg_02",
+    "input": "Which genes does the drug Crizotinib act on as therapeutic targets, and which diseases is it approved to treat?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "{\"targets\": [\"ALK\", \"MET\"], \"indications\": [\"non-small cell lung carcinoma\", \"lung cancer\"], \"note\": \"kinase targets present in hub (metabolism enzymes CYP/ABC excluded); ROS1 not represented in the hub's drug-target data\"}"
+    },
+    "metadata": {
+      "category": "multi_source",
+      "answer_type": "exact_number"
+    }
+  },
+  {
+    "id": "q_paper_abbvie_02",
+    "input": "Among the 10 most frequently mutated genes in TCGA-LUAD, which is targeted by the most drugs, and how many?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "8 drugs"
+    },
+    "metadata": {
+      "category": "multi_source",
+      "answer_type": "exact_number"
+    }
+  },
+  {
+    "id": "q_paper_karim_01",
+    "input": "Which genes associated with glioblastoma are mutated in more than 10% of TCGA-GBM patients?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Genes: EGFR, NF1, PTEN"
+    },
+    "metadata": {
+      "category": "multi_source",
+      "answer_type": "entity_list"
+    }
+  },
+  {
+    "id": "q_paper_karim_02",
+    "input": "For breast cancer, which cancer-driver genes are targeted by the most drugs? Give the top few with counts.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Top: EGFR (31), KIT (21), FGFR1 (16), FGFR2 (16), ERBB2 (14)"
+    },
+    "metadata": {
+      "category": "graph_multihop",
+      "answer_type": "ranked_list"
+    }
+  },
+  {
+    "id": "v2_evidence_01",
+    "input": "The literature describes MET as a mechanism of resistance to EGFR-targeted therapy in glioblastoma. Is MET connected to EGFR through a shared pathway or interaction, and how many TCGA-GBM patients carry MET mutations? Cite the supporting literature.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Association holds; met_tcga_gbm_patients=5; PMID 31564718/39956859"
+    },
+    "metadata": {
+      "category": "evidence",
+      "answer_type": "exact_number"
+    }
+  },
+  {
+    "id": "v2_evidence_02",
+    "input": "Literature links PTEN loss to EGFR-inhibitor resistance in glioblastoma. Is PTEN associated with glioblastoma in the hub, and in how many TCGA-GBM patients is PTEN mutated? Cite the evidence.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Association holds; pten_tcga_gbm_patients=116; PMID 20030624/38473776"
+    },
+    "metadata": {
+      "category": "evidence",
+      "answer_type": "exact_number"
+    }
+  },
+  {
+    "id": "v2_recon_lgg_misalign",
+    "input": "The TCGA-LGG cohort studies low-grade glioma. Is the disease that the hub associates with these cases the correct one?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "No \u2014 the graph's case-level disease mapping for TCGA-LGG is mismatched; the correct disease is low grade glioma (MONDO:0021637)"
+    },
+    "metadata": {
+      "category": "reconciliation",
+      "answer_type": "abstention"
+    }
+  },
+  {
+    "id": "v2_civic_01",
+    "input": "For the BRAF V600E mutation in melanoma, which targeted therapy has validated (highest-tier) clinical evidence of response, and what publication (PMID) supports it?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Expected: Vemurafenib, 21639808"
+    },
+    "metadata": {
+      "category": "actionability",
+      "answer_type": "lookup"
+    }
+  },
+  {
+    "id": "v2_civic_02",
+    "input": "In lung cancer, does the EGFR T790M mutation predict sensitivity or resistance to erlotinib? Cite the supporting publication.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Expected: resistance, 25668228"
+    },
+    "metadata": {
+      "category": "actionability",
+      "answer_type": "lookup"
+    }
+  },
+  {
+    "id": "v2_civic_03",
+    "input": "How many genes have at least one variant with validated (highest-tier) clinical actionability evidence?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "69"
+    },
+    "metadata": {
+      "category": "actionability",
+      "answer_type": "exact_number"
+    }
+  },
+  {
+    "id": "v2_civic_04",
+    "input": "Which targeted therapies have validated (highest-tier) evidence of response for EGFR-mutant non-small cell lung cancer? List them.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Genes: Osimertinib, Erlotinib, Afatinib, Dacomitinib, Gefitinib, Amivantamab"
+    },
+    "metadata": {
+      "category": "actionability",
+      "answer_type": "entity_list"
+    }
+  },
+  {
+    "id": "v2_civic_05",
+    "input": "Among genes with validated (highest-tier) actionability evidence in lung cancer, which are also mutated in the TCGA lung adenocarcinoma cohort? List the genes.",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Genes: BRAF, EGFR, ERBB2, KRAS, MET"
+    },
+    "metadata": {
+      "category": "actionability",
+      "answer_type": "entity_list"
+    }
+  },
+  {
+    "id": "v2_civic_06",
+    "input": "What is the clinical actionability evidence level for the TTN gene?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Cannot be determined \u2014 TTN has no clinical actionability evidence items."
+    },
+    "metadata": {
+      "category": "actionability",
+      "answer_type": "abstention"
+    }
+  },
+  {
+    "id": "v2_civic_07",
+    "input": "For the KRAS G12C mutation in lung cancer, which therapy has validated (highest-tier) response evidence, and what publication supports it?",
+    "evaluationReferenceInputs": {
+      "expectedResponse": "Expected: Sotorasib, 34096690"
+    },
+    "metadata": {
+      "category": "actionability",
+      "answer_type": "lookup"
+    }
+  }
+]

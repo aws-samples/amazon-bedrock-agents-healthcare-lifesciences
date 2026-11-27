@@ -1,0 +1,7 @@
+TCGA project TCGA-LUAD: Lung Adenocarcinoma.
+Program: The Cancer Genome Atlas (TCGA).
+Primary site(s): Bronchus and lung.
+Disease type(s): Ductal and Lobular Neoplasms, Cystic, Mucinous and Serous Neoplasms, Acinar Cell Neoplasms, Adenomas and Adenocarcinomas.
+Cases: 585. Files: 36224.
+
+This TCGA cohort (TCGA-LUAD) provides molecular and clinical data for Lung Adenocarcinoma (primary site: Bronchus and lung; disease type: Ductal and Lobular Neoplasms, Cystic, Mucinous and Serous Neoplasms, Acinar Cell Neoplasms, Adenomas and Adenocarcinomas). It supports biomarker, mutation, expression, and copy-number analyses in oncology research.
