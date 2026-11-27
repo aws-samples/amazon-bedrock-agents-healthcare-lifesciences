@@ -810,7 +810,7 @@ wheels = [
 
 [[package]]
 name = "strands-agents"
-version = "1.19.0"
+version = "1.48.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "boto3" },
@@ -822,12 +822,13 @@ dependencies = [
     { name = "opentelemetry-instrumentation-threading" },
     { name = "opentelemetry-sdk" },
     { name = "pydantic" },
+    { name = "pyyaml" },
     { name = "typing-extensions" },
     { name = "watchdog" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/40/2a/1da9a1edf822a2b491bedcc9b204a879e19825a730b1c06f9617d8b70109/strands_agents-1.19.0.tar.gz", hash = "sha256:20226330640c1afc6985a6e77a2dc394416c05ace51de5ac0ddeb1fed9c86f4a", size = 602767, upload-time = "2025-12-03T18:48:26.431Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a5/1e/834e4a63c6ad039d10924b5ba8c0651ccb24d7e28fd8c07c1a09b859120f/strands_agents-1.48.0.tar.gz", hash = "sha256:bfbf5af9d8f1cb348b617d5f8d17b949ef3c3fdd74fa8c849f1fda46885449c2", size = 1174326, upload-time = "2026-07-17T14:03:45.509Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7a/3f/6c0413336375e6c90ae646799641b51b8c7b69755554013571afb66f66ab/strands_agents-1.19.0-py3-none-any.whl", hash = "sha256:94823e95d5abfcc0108c1d6d17e2d46a55848c7d94428beae591de3be75de0d5", size = 316834, upload-time = "2025-12-03T18:48:24.143Z" },
+    { url = "https://files.pythonhosted.org/packages/25/67/67d1e267405f6ae119cc0412891f66997a5a97eed2dbba18fc430a9ac00a/strands_agents-1.48.0-py3-none-any.whl", hash = "sha256:7118a644e844ab6ef77f4bc9883b7082b2e7a309bcd689cc5ef5345e07abcc9e", size = 612156, upload-time = "2026-07-17T14:03:43.06Z" },
 ]
 
 [[package]]
