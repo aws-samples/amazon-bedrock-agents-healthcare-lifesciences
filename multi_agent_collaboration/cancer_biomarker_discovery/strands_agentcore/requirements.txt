@@ -9,5 +9,5 @@ datasets
 matplotlib
 sagemaker
 strands-agents
-strands-agents-tools
+strands-agents-tools<0.9.0
 requests

@@ -4,7 +4,7 @@ termcolor
 xmltodict
 matplotlib
 strands-agents[otel]
-strands-agents-tools
+strands-agents-tools<0.9.0
 uv
 bedrock-agentcore
 bedrock-agentcore-starter-toolkit

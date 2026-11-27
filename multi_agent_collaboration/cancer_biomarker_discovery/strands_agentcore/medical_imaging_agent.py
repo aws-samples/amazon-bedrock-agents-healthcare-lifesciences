@@ -14,7 +14,7 @@ account_id = sts_client.get_caller_identity()['Account']
 region = boto3.Session().region_name
 
 # Define Bedrock model id
-MODEL_ID = "global.anthropic.claude-sonnet-4-6"
+from lab_config import MODEL_ID  # model is set in lab_config.py
 
 # Initialize AWS clients
 bedrock_client = boto3.client('bedrock-runtime', region_name=region)

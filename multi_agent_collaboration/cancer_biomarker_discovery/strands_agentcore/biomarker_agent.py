@@ -15,7 +15,7 @@ account_id = sts_client.get_caller_identity()['Account']
 region = boto3.Session().region_name
 
 # Define Bedrock model id
-MODEL_ID = "global.anthropic.claude-sonnet-4-6"
+from lab_config import MODEL_ID  # model is set in lab_config.py
 
 # Initialize AWS clients
 bedrock_client = boto3.client('bedrock-runtime', region_name=region)
@@ -256,30 +256,21 @@ def refine_sql(sql: str, question: str) -> str:
     """
     
     try:
-        user_message = {"role": "user", "content": prompt}
-        claude_response = {"role": "assistant", "content": ""}
-        model_Id = MODEL_ID
-        messages = [user_message, claude_response]
         system_prompt = "You are an extremely critical sql query evaluation assistant, your job is to look at the schema, sql query and question being asked to then evaluate the query to ensure it is efficient."
         max_tokens = 1000
-        
-        body = json.dumps({
-            "messages": messages,
-            "anthropic_version": "bedrock-2023-05-31",
-            "max_tokens": max_tokens,
-            "system": system_prompt
-        })
-    
-        response = bedrock_client.invoke_model(body=body, modelId=model_Id)
-        response_bytes = response.get("body").read()
-        response_text = response_bytes.decode('utf-8')
-        response_json = json.loads(response_text)
-        content = response_json.get('content', [])
-        for item in content:
-            if item.get('type') == 'text':
-                result_text = item.get('text')
-                print(f"\nRefined SQL: {result_text}\n")
-                return result_text
+
+        # Converse API: same request shape for every Bedrock model (not only Anthropic)
+        response = bedrock_client.converse(
+            modelId=MODEL_ID,
+            system=[{"text": system_prompt}],
+            messages=[{"role": "user", "content": [{"text": prompt}]}],
+            inferenceConfig={"maxTokens": max_tokens},
+        )
+        content = response["output"]["message"]["content"]
+        result_text = "".join(item["text"] for item in content if "text" in item).strip()
+        if result_text:
+            print(f"\nRefined SQL: {result_text}\n")
+            return result_text
         return "No SQL found in response"
     except Exception as e:
         print("Error:", e)
